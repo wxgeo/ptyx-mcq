@@ -158,7 +158,7 @@ def find_corner_square(m, size, corner, max_whiteness):
     # or the ID band.
     # Anyway, even if the core of the black square is not
     # the darkest cell, it should be almost as dark as the darkest.
-    detection_level = darkest + 0.15 * half ** 2
+    detection_level = darkest + 0.15 * half**2
 
     # Then, we will browse the mesh grid, starting from the top left corner,
     # following oblique lines (North-East->South-West), as follows:
@@ -232,13 +232,11 @@ def find_corner_square(m, size, corner, max_whiteness):
             j0 -= 1
 
     # Test the result. If the square is too dim, raise LookupError.
-    whiteness_measure = m[i0 : i0 + size, j0 : j0 + size].sum() / size ** 2
+    whiteness_measure = m[i0 : i0 + size, j0 : j0 + size].sum() / size**2
     print(f"Corner square {corner} found...")
     #    color2debug(m, (i0, j0), (i0 + size, j0 + size))
     if whiteness_measure > max_whiteness:
-        print(
-            f"WARNING: Corner square {corner} not found " f"(not dark enough: {whiteness_measure}!)"
-        )
+        print(f"WARNING: Corner square {corner} not found " f"(not dark enough: {whiteness_measure}!)")
         color2debug(m, (i0, j0), (i0 + size, j0 + size), color="blue", display=False)
         raise LookupError(f"Corner square {corner} not found.")
 
@@ -314,15 +312,15 @@ def detect_four_squares(m, square_size, cm, max_alignment_error_cm=0.4, debug=Fa
                 print("Warning: Vertical alignment problem in corners squares !")
                 debug = True
 
+    number_of_orthogonal_corners = 0
     # Try to detect false positives.
     if len(positions) == 4:
         # If only one corner is orthogonal, the opposite corner must be wrong.
-        n = 0
         for corner in positions:
             if orthogonal(corner, positions):
-                n += 1
+                number_of_orthogonal_corners += 1
                 orthogonal_corner = corner
-        if n == 1:
+        if number_of_orthogonal_corners == 1:
             V, H = orthogonal_corner
             opposite_corner = ("t" if V == "b" else "b") + ("l" if H == "r" else "r")
             print(f"Removing {CORNER_NAMES[opposite_corner]} corner (not orthogonal !)")
@@ -342,11 +340,11 @@ def detect_four_squares(m, square_size, cm, max_alignment_error_cm=0.4, debug=Fa
             del positions[lighter_corner]
 
     if len(positions) == 4:
-        if n <= 2:
+        if number_of_orthogonal_corners <= 2:
             for (i, j) in positions.values():
                 color2debug(m, (i, j), (i + square_size, j + square_size), display=False)
             color2debug(m)
-            print("n =", n)
+            print("number_of_orthogonal_corners =", number_of_orthogonal_corners)
             raise CalibrationError("Something wrong with the corners !")
 
     for corner in CORNERS:
@@ -481,7 +479,7 @@ def calibrate(pic, m, debug=False):
     rotation = (rotation_h + 1.5 * rotation_v) / 2.5
 
     print(f"Rotate picture: {round(rotation, 4)}°")
-    pic, m = transform(pic, "rotate", rotation, resample=Image.BICUBIC, expand=True)
+    pic, m = transform(pic, "rotate", rotation, resample=Image.Resampling.BICUBIC, expand=True)
 
     (i1, j1), (i2, j2) = positions["tl"], positions["br"]
 
@@ -512,9 +510,7 @@ def calibrate(pic, m, debug=False):
             i = height - 1 - i - calib_square
             j = width - 1 - j - calib_square
             p[corner] = i, j
-            color2debug(
-                m, (i, j), (i + calib_square, j + calib_square), color="green", display=False
-            )
+            color2debug(m, (i, j), (i + calib_square, j + calib_square), color="green", display=False)
         # Replace each tag by the opposite (top-left -> bottom-right).
         p["tl"], p["bl"], p["br"], p["tr"] = p["br"], p["tr"], p["tl"], p["bl"]
         # ~ color2debug(m)
@@ -539,9 +535,7 @@ def calibrate(pic, m, debug=False):
 
     print(positions)
     for (i, j) in positions.values():
-        color2debug(
-            m, (i, j), (i + CALIBRATION_SQUARE_SIZE, j + CALIBRATION_SQUARE_SIZE), display=False
-        )
+        color2debug(m, (i, j), (i + CALIBRATION_SQUARE_SIZE, j + CALIBRATION_SQUARE_SIZE), display=False)
     color2debug(m, (i3, j3), (i3 + square_size, j3 + square_size), display=False)
     if debug:
         color2debug(m)
@@ -576,8 +570,7 @@ def edit_answers(m, boxes, answered, config, doc_id, xy2ij, cell_size) -> None:
                 continue
 
             ans = input(
-                "Add or remove answers (Example: +2 -1 -4 to add answer 2, "
-                "and remove answers 1 et 4):"
+                "Add or remove answers (Example: +2 -1 -4 to add answer 2, " "and remove answers 1 et 4):"
             )
             checked = answered[q]
             try:
@@ -739,11 +732,9 @@ def scan_picture(filename, config, manual_verification=None, debug=False) -> Tup
         if k % 2:
             color2debug(m, (i, j_), (i + square_size, j_ + square_size), display=False)
         else:
-            color2debug(
-                m, (i, j_), (i + square_size, j_ + square_size), color=(0, 0, 255), display=False
-            )
+            color2debug(m, (i, j_), (i + square_size, j_ + square_size), color=(0, 0, 255), display=False)
         if test_square_color(m, i, j_, square_size, proportion=0.5, gray_level=0.5):
-            test_ID += 2 ** k
+            test_ID += 2**k
             # ~ print((k, (i3, j)), " -> black")
         # ~ else:
         # ~ print((k, (i3, j)), " -> white")
@@ -796,9 +787,7 @@ def scan_picture(filename, config, manual_verification=None, debug=False) -> Tup
             vpos = TOP + 2 * square_size
 
             search_area = m[vpos : vpos + 4 * square_size, :]
-            i, j0 = find_black_square(
-                search_area, size=square_size, error=0.3, mode="column"
-            ).__next__()
+            i, j0 = find_black_square(search_area, size=square_size, error=0.3, mode="column").__next__()
             # ~ color2debug((vpos + i, j0), (vpos + i + square_size, j0 + square_size), color=(0,255,0))
             vpos += i + square_size
 
@@ -875,9 +864,7 @@ def scan_picture(filename, config, manual_verification=None, debug=False) -> Tup
                         black_cells.append((blackness, d))
                         print("Found:", d, blackness)
                         # ~ color2debug(m, (imin + i, j), (imin + i + cell_size, j + cell_size))
-                        color2debug(
-                            m, (i, j), (i + cell_size, j + cell_size), color="cyan", display=False
-                        )
+                        color2debug(m, (i, j), (i + cell_size, j + cell_size), color="cyan", display=False)
                     else:
                         color2debug(m, (i, j), (i + cell_size, j + cell_size), display=False)
                 if black_cells:
@@ -972,9 +959,7 @@ def scan_picture(filename, config, manual_verification=None, debug=False) -> Tup
         #        answer_is_correct = (a in correct_answers)
 
         test_square = partial(test_square_color, m, i, j, cell_size, margin=5)
-        color_square = partial(
-            color2debug, m, (i, j), (i + cell_size, j + cell_size), display=False
-        )
+        color_square = partial(color2debug, m, (i, j), (i + cell_size, j + cell_size), display=False)
 
         if q not in answered:
             answered[q] = set()
@@ -987,10 +972,9 @@ def scan_picture(filename, config, manual_verification=None, debug=False) -> Tup
 
         if (
             test_square(proportion=0.2, gray_level=0.65)
-            or
             # ~ test_square_color(m, i + 3, j + 3, cell_size - 7, proportion=0.4, gray_level=0.75) or
             # ~ test_square_color(m, i + 3, j + 3, cell_size - 7, proportion=0.45, gray_level=0.8) or
-            test_square(proportion=0.4, gray_level=0.90)
+            or test_square(proportion=0.4, gray_level=0.90)
             or test_square(proportion=0.6, gray_level=0.95)
         ):
             # The student has checked this box.
@@ -1027,18 +1011,14 @@ def scan_picture(filename, config, manual_verification=None, debug=False) -> Tup
     ceil = 1.5 * sum(blackness.values()) / len(blackness) + 0.02
     core_ceil = 1.2 * sum(core_blackness.values()) / len(core_blackness) + 0.01
     for (q, a) in blackness:  # pylint: disable=dict-iter-missing-items
-        if a not in answered[q] and (
-            blackness[(q, a)] > ceil or core_blackness[(q, a)] > core_ceil
-        ):
+        if a not in answered[q] and (blackness[(q, a)] > ceil or core_blackness[(q, a)] > core_ceil):
             print("False negative detected", (q, a))
             # This is probably a false negative, but we'd better verify manually.
             manual_verification = manual_verification is not False
             answered[q].add(a)
             # Change box color for manual verification.
             i, j = positions[(q, a)]
-            color2debug(
-                m, (i, j), (i + cell_size, j + cell_size), color="green", thickness=5, display=False
-            )
+            color2debug(m, (i, j), (i + cell_size, j + cell_size), color="green", thickness=5, display=False)
 
     # If a checkbox is tested as checked, but is much lighter than the darker one,
     # it is very probably a false positive.

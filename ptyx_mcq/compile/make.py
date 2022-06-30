@@ -50,8 +50,8 @@ def make(
     try:
         _make(path, num, start, quiet, correction_only)
         print(
-            f"\n\u001b[32;1mCongratulations ! Document was successfully generated "
-            "in {num} version(s).\u001b[0m"
+            "\n\u001b[32;1mCongratulations ! Document was successfully generated "
+            f"in {num} version(s).\u001b[0m"
         )
     except Exception as e:  # noqa
         if hasattr(e, "msg"):

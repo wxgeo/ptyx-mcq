@@ -32,25 +32,25 @@ def generate_ptyx_code(text):
         assert depth[current_level] == target
 
         current_level = level
-        l = []
+        content = []
         if level == "QUESTION":
-            l.append("#CONSECUTIVE_QUESTION" if kw.get("consecutive") else "#NEW_QUESTION")
+            content.append("#CONSECUTIVE_QUESTION" if kw.get("consecutive") else "#NEW_QUESTION")
         else:
-            l.append(f"#{level}")
+            content.append(f"#{level}")
 
         if level == "QCM":
             if kw.get("shuffle", True):
                 # Shuffle sections.
-                l.append("[shuffle]")
+                content.append("[shuffle]")
         elif level == "SECTION":
             if "title" in kw:
-                l.append("[%s]" % kw["title"])
+                content.append("[%s]" % kw["title"])
         elif level == "VERSION":
-            l.append("{%s}" % kw["n"])
+            content.append("{%s}" % kw["n"])
         elif level == "NEW_ANSWER":
-            l.append("{%s}{%s}" % (kw["n"], kw["correct"]))
+            content.append("{%s}{%s}" % (kw["n"], kw["correct"]))
 
-        code.append("".join(l))
+        code.append("".join(content))
 
     def close(level):
         """Close `level` (and any opened upper one).

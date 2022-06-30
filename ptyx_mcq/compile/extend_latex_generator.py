@@ -171,7 +171,8 @@ class AutoQCMLatexGenerator(LatexGenerator):
                 "id-table-pos": None,
                 "ids": {},
                 "ordering": {},
-                # {NUM: {'questions': [2,1,3...], 'answers': {1: [(2, True), (1, False), (3, True)...], ...}}, ...}
+                # {NUM: {'questions': [2,1,3...],
+                #        'answers': {1: [(2, True), (1, False), (3, True)...], ...}}, ...}
                 "boxes": {},  # {NUM: {'tag': 'p4, (23.456, 34.667)', ...}, ...}
                 "id_format": None,
             },

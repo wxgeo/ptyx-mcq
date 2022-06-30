@@ -16,12 +16,12 @@ PIC_EXTS = (".jpg", ".jpeg", ".png")
 
 
 def run(cmd):
-    "Run command as a subprocess, raising an Python error if it fails."
+    """Run command as a subprocess, raising an Python error if it fails."""
     return subprocess.run(cmd, check=True, stdout=subprocess.PIPE)
 
 
 def _extract_pictures(pdf_path, dest, page=None):
-    "Extract all pictures from pdf file in given `dest` directory. "
+    """Extract all pictures from pdf file in given `dest` directory."""
     # pdfimages `-all` : keep image native format (for jpg, png ans some other formats).
     cmd = ["pdfimages", "-all", pdf_path, join(dest, "pic")]
     if page is not None:
@@ -48,7 +48,7 @@ def _export_pdf_to_jpg(pdf_path, dest, page=None):
 
 
 def extract_pdf_pictures(pdf_file: str, dest: str, page=None):
-    "Clear `dest` folder, then extract all pages of the pdf files inside."
+    """Clear `dest` folder, then extract all pages of the pdf files inside."""
     rmtree(dest, ignore_errors=True)
     mkdir(dest)
     tmp_dir = join(dest, ".tmp")
@@ -106,7 +106,7 @@ def extract_pdf_pictures(pdf_file: str, dest: str, page=None):
 
 
 def number_of_pages(pdf_path: str) -> int:
-    "Return the number of pages of the pdf."
+    """Return the number of pages of the pdf."""
     cmd = ["pdfinfo", pdf_path]
     # An example of pdfinfo output:
     # ...
@@ -114,5 +114,5 @@ def number_of_pages(pdf_path: str) -> int:
     # Pages:          19
     # Encrypted:      no
     # ...
-    l = run(cmd).stdout.decode("utf-8").split()
-    return int(l[l.index("Pages:") + 1])
+    output = run(cmd).stdout.decode("utf-8").split()
+    return int(output[output.index("Pages:") + 1])

@@ -1,3 +1,8 @@
+"""
+Warning: This module is just a (non-working) draft !
+"""
+# flake8: noqa
+
 import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText

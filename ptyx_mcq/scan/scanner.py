@@ -220,7 +220,7 @@ class MCQPictureParser:
         if questions_not_seen:
             # Don't raise an error for pages not found (only a warning in log)
             # if all questions were found, this was probably empty pages.
-            raise RuntimeError(f"Questions not seen ! (Look at message above).")
+            raise RuntimeError("Questions not seen ! (Look at message above).")
 
     def _keep_previous_version(self, pic_data: dict) -> bool:
         """Test if a previous version of the same page exist.
