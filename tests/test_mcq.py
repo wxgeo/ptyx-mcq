@@ -10,7 +10,7 @@ from pathlib import Path
 import atexit
 
 from ptyx.latex_generator import Compiler, Node
-from ptyx.extensions.autoqcm.compile.extend_latex_generator import SameAnswerError
+from ptyx_mcq.compile.extend_latex_generator import SameAnswerError
 
 
 TEST_DIR = Path(__file__).parent.resolve()

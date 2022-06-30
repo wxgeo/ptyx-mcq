@@ -14,7 +14,7 @@ numpy = "^1.23.0"
 Pillow = "^9.1.1"
 sympy = "^1.10.1"
 pdf2image = "^1.16.0"
-ptyx = {git = "https://github.com/wxgeo/ptyx.git"}
+# ptyx = "^20.5"
 # ptyx = {path = "../ptyx", develop = true}
 
 
@@ -27,10 +27,13 @@ tox = "^3.24.5"
 sphinx-autodoc-typehints = "^1.18.3"
 sphinx-rtd-theme = "^1.0.0"#
 myst-parser = "^0.18.0"
+ptyx = {path = "../ptyx", develop = true}
 
 [tool.poetry.scripts]
-scan = 'ptyx_mcq:scan'
-autoqcm = 'ptyx_mcq.cli:main'
+mcq = 'ptyx_mcq.cli:main'
+
+[tool.poetry.plugins."ptyx.extensions"]
+mcq = "ptyx_mcq"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

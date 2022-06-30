@@ -392,12 +392,12 @@ testing = ["pytest", "pytest-benchmark"]
 
 [[package]]
 name = "ptyx"
-version = "22.2"
+version = "22.3"
 description = "pTyX is a python precompiler for LaTeX."
 category = "main"
 optional = false
 python-versions = "^3.8"
-develop = false
+develop = true
 
 [package.dependencies]
 numpy = "^1.23.0"
@@ -406,10 +406,8 @@ Pillow = "^9.1.1"
 sympy = "^1.10.1"
 
 [package.source]
-type = "git"
-url = "https://github.com/wxgeo/ptyx.git"
-reference = "master"
-resolved_reference = "006a48b8fb589ebdb623f5cb39242f65f59ba6d9"
+type = "directory"
+url = "../ptyx"
 
 [[package]]
 name = "py"
@@ -761,7 +759,7 @@ testing = ["pytest (>=6)", "pytest-checkdocs (>=2.4)", "pytest-flake8", "pytest-
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.8"
-content-hash = "9fd94fcd16945f54b80ab4cab252375d32f14c7c1e99a00cb72b0b054dc841ea"
+content-hash = "22ffb9c7fb4cdb0e21455e2b636d25733fde35f07696fc70d7c0bfd723379ffb"
 
 [metadata.files]
 alabaster = [

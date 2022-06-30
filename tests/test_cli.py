@@ -13,11 +13,11 @@ from typing import Tuple
 from PIL import ImageDraw
 from pdf2image import convert_from_path
 
-from ptyx.extensions.autoqcm.cli import main
-from ptyx.extensions.autoqcm.parameters import CELL_SIZE_IN_CM
-from ptyx.extensions.autoqcm.scan.square_detection import COLORS
-from ptyx.extensions.autoqcm.scan.tools import round
-from ptyx.extensions.autoqcm.tools.config_parser import load, is_answer_correct
+from ptyx_mcq.cli import main
+from ptyx_mcq.parameters import CELL_SIZE_IN_CM
+from ptyx_mcq.scan.square_detection import COLORS
+from ptyx_mcq.scan.tools import round
+from ptyx_mcq.tools.config_parser import load, is_answer_correct
 
 DPI = 200
 PX_PER_CM = DPI / 2.54
@@ -38,7 +38,7 @@ def xy2ij(x, y) -> Tuple[int, int]:
     # Top left square is printed at 1 cm from the left and the top of the sheet.
     i = (297 - y) * PX_PER_MM  # 29.7 cm - 1 cm = 28.7 cm (A4 sheet format = 21 cm x 29.7 cm)
     j = x * PX_PER_MM
-    return (round(i), round(j))
+    return round(i), round(j)
 
 
 def _fill_checkbox(draw, pos: tuple, size: int, color: str = "red"):
@@ -99,7 +99,7 @@ def test_cli():
 
         path = parent / "mcq"
 
-        # Test autoqcm new
+        # Test mcq new
         main(["new", str(path)])
         assert "new.ptyx" in listdir(path)
 
@@ -111,7 +111,7 @@ def test_cli():
                 ptyxfile_content.replace("\nid format", "\nids=../students.csv\nid format")
             )
 
-        # Test autoqcm make
+        # Test mcq make
         main(["make", str(path), "-n", "2"])
         assert "new.pdf" in listdir(path)
         assert "new-corr.pdf" in listdir(path)
@@ -122,7 +122,7 @@ def test_cli():
             assert student_id in config["ids"], (repr(student_id), repr(config["ids"]))
             assert config["ids"][student_id] == STUDENTS[student_id]
 
-        # Test autoqcm scan
+        # Test mcq scan
         images = convert_from_path(path / "new.pdf", dpi=DPI, output_folder=path)
         images = simulate_answer(images, config)
         scan_path = path / "scan"
