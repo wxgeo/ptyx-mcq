@@ -24,17 +24,12 @@
 
 
 from functools import partial
+
 from ptyx.printers import sympy2latex
 from ptyx.latex_generator import LatexGenerator
-from .header import (
-    packages_and_macros,
-    ID_band,
-    extract_ID_NAME_from_csv,
-    extract_NAME_from_csv,
-    student_ID_table,
-    students_checkboxes,
-    IdentifiantError,
-)
+
+from .header import packages_and_macros, ID_band, extract_ID_NAME_from_csv, extract_NAME_from_csv, student_ID_table, \
+    students_checkboxes, IdentifiantError
 
 
 def _has_option(node, option):
@@ -86,12 +81,12 @@ def _detect_ID_format(ids: dict, id_format: str) -> dict:
         ID_length, max_ndigits, digits = _analyze_IDS(ids)
 
     if id_format:
-        n, ext = id_format.split()
+        num, ext = id_format.split()
         # Test format syntax
         if ext not in ("digit", "digits"):
             raise ValueError(f"Unknown format : {id_format!r}")
         try:
-            n = int(n)
+            n = int(num)
         except ValueError:
             raise ValueError(f"Unknown format : {id_format!r}")
         # Test consistency between format and IDs

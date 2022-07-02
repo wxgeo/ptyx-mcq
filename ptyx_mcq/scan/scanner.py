@@ -32,7 +32,7 @@ import sys
 from ast import literal_eval
 from hashlib import blake2b
 from time import strftime
-from typing import Iterator
+from typing import Iterator, Dict
 from math import inf
 from typing import Union, Literal, Optional
 
@@ -42,6 +42,7 @@ from numpy import int8, array, ndarray
 # File `compilation.py` is in ../.., so we have to "hack" `sys.path` a bit.
 # script_path = dirname(abspath(sys._getframe().f_code.co_filename))
 # sys.path.insert(0, join(script_path, '../..'))
+from ptyx.compilation import join_files, compile_latex
 
 from ..compile.header import answers_and_score
 from ..tools.config_parser import load, get_correct_answers
@@ -58,7 +59,6 @@ from .scan_pic import (
 from .amend import amend_all
 from .pdftools import extract_pdf_pictures, PIC_EXTS, number_of_pages
 from .tools import search_by_extension, print_framed_msg
-from ptyx.compilation import join_files, compile_latex
 
 
 def pic_names_iterator(data: dict) -> Iterator[Path]:
@@ -81,8 +81,8 @@ class MCQPictureParser:
     ):
         self.path = Path(path).expanduser().resolve()
         # Main paths.
-        self.dirs = {}
-        self.files = {}
+        self.dirs: Dict[str, Path] = {}
+        self.files: Dict[str, Union[str, Path]] = {}
         # All data extracted from pdf files.
         self.data = {}
         # Additional informations entered manually.

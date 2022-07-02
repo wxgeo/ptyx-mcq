@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import Tuple
 
 from PIL import ImageDraw
-from pdf2image import convert_from_path
+from pdf2image import convert_from_path  # type: ignore
 
 from ptyx_mcq.cli import main
 from ptyx_mcq.parameters import CELL_SIZE_IN_CM
@@ -27,7 +27,7 @@ STUDENTS = {"12345678": "Jean Dupond", "34567890": "Martin De La Tour"}
 MAX_ID_LEN = max(len(student_id) for student_id in STUDENTS)
 
 
-def xy2ij(x, y) -> Tuple[int, int]:
+def xy2ij(x: float, y: float) -> Tuple[int, int]:
     """Convert (x, y) position (mm) to pixels (i,j).
 
     (x, y) is the position from the bottom left of the page in mm,
@@ -41,13 +41,13 @@ def xy2ij(x, y) -> Tuple[int, int]:
     return round(i), round(j)
 
 
-def _fill_checkbox(draw, pos: tuple, size: int, color: str = "red"):
+def _fill_checkbox(draw: ImageDraw.ImageDraw, pos: tuple, size: int, color: str = "red") -> None:
     i, j = xy2ij(*pos)
     # Draw a blue square around the box (for debugging purpose).
     draw.rectangle((j, i, j + size, i + size), fill=COLORS[color])
 
 
-def write_student_id(draw, student_id: str, config: dict):
+def write_student_id(draw: ImageDraw.ImageDraw, student_id: str, config: dict) -> None:
     x0, y0 = config["id-table-pos"]
     for i, digit in enumerate(student_id.zfill(MAX_ID_LEN)):
         x_shift = 10 + 10 * int(digit)
@@ -130,7 +130,7 @@ def test_cli():
         images[0].save(scan_path / "simulate-scan.pdf", save_all=True, append_images=images[1:])
         main(["scan", str(path)])
 
-        students = set()
+        students: Set[str] = set()
         # TODO : store scores outside of .scan folder, in a RESULTS folder !
         with open(path / ".scan/scores.csv") as csvfile:
             reader = csv.reader(csvfile)

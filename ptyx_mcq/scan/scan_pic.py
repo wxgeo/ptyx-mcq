@@ -13,12 +13,7 @@ from .square_detection import (
     color2debug,
 )
 from .tools import round
-from ..parameters import (
-    SQUARE_SIZE_IN_CM,
-    CELL_SIZE_IN_CM,
-    CALIBRATION_SQUARE_POSITION,
-    CALIBRATION_SQUARE_SIZE,
-)
+from ..parameters import SQUARE_SIZE_IN_CM, CELL_SIZE_IN_CM, CALIBRATION_SQUARE_POSITION, CALIBRATION_SQUARE_SIZE
 from ..tools.config_parser import load, real2apparent, apparent2real, is_answer_correct
 
 ANSI_RESET = "\u001B[0m"
@@ -564,7 +559,7 @@ def edit_answers(m, boxes, answered, config, doc_id, xy2ij, cell_size) -> None:
                 q0 = int(ans)
             except ValueError:
                 continue
-            q = apparent2real(q0, None, config, doc_id)
+            q, _ = apparent2real(q0, None, config, doc_id)
             if q not in answered:
                 print("Invalid question number.")
                 continue
@@ -600,11 +595,9 @@ def edit_answers(m, boxes, answered, config, doc_id, xy2ij, cell_size) -> None:
                 # ~ should_have_answered = set() # for debugging only.
                 i, j = xy2ij(*pos)
                 i, j = adjust_checkbox(m, i, j, cell_size)
-                q, a = key[1:].split("-")
                 # `q` and `a` are real questions and answers numbers, that is,
                 # questions and answers numbers before shuffling.
-                q = int(q)
-                a = int(a)
+                q, a = (int(_) for _ in key[1:].split("-"))
                 valid_answers.setdefault(q, set()).add(a)
                 if a in answered[q]:
                     color2debug(

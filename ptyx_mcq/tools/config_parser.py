@@ -1,9 +1,11 @@
 from json import loads, dumps as _dumps, JSONEncoder
-from typing import Dict, Set, Any, Tuple, Optional
+from pathlib import Path
+from typing import Dict, Set, Any, Tuple, Optional, Union, TypeVar
 
+T = TypeVar("T")
 
 class CustomJSONEncoder(JSONEncoder):
-    def default(self, obj):
+    def default(self, obj: Any) -> Any:
         # Save sets as tuples.
         if isinstance(obj, set):
             return tuple(obj)
@@ -11,7 +13,7 @@ class CustomJSONEncoder(JSONEncoder):
         return JSONEncoder.default(self, obj)
 
 
-def dumps(o):
+def dumps(o: Any) -> str:
     return _dumps(o, ensure_ascii=False, cls=CustomJSONEncoder)
 
 
@@ -48,7 +50,7 @@ def encode2js(o, formatter=(lambda s: s), _level=0):
         return dumps(o)
 
 
-def keys2int(d: Dict[str, Any]) -> Dict[int, Any]:
+def keys2int(d: Dict[str, T]) -> Dict[Union[int, str], T]:
     return {(int(k) if k.isdecimal() else k): v for k, v in d.items()}
 
 
@@ -66,13 +68,13 @@ def decodejs(js):
     return new_d
 
 
-def dump(path, cfg):
+def dump(path: Union[Path, str], cfg: dict) -> None:
     """Dump `cfg` dict to `path` as json."""
     with open(path, "w") as f:
         f.write(encode2js(cfg, formatter=fmt))
 
 
-def load(path):
+def load(path: Union[Path, str]) -> Dict[str, Dict[str, Any]]:
     """Load `path` configuration file (json) and return a dict."""
     with open(path) as f:
         js = f.read()
@@ -106,7 +108,7 @@ def real2apparent(
 
 def apparent2real(
     pdf_q_num: int, pdf_a_num: Optional[int], config: dict, doc_id: int
-) -> Tuple[int, int]:
+) -> Tuple[int, Optional[int]]:
     """Return real question number and answer number.
 
     If `a` is None, return only question number.
@@ -117,10 +119,10 @@ def apparent2real(
     # Attention, first question is numbered 1, corresponding to list index 0.
     original_q_num = questions[pdf_q_num - 1]
     if pdf_a_num is None:
-        return original_q_num
+        return original_q_num, None
     # Real answer number (ie. before shuffling).
     original_a_num = answers[original_q_num][pdf_a_num - 1][0]
-    return (original_q_num, original_a_num)
+    return original_q_num, original_a_num
 
 
 def is_answer_correct(

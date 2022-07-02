@@ -3,16 +3,8 @@ from os.path import abspath, dirname, isabs, join, expanduser
 from string import ascii_letters
 from typing import Sequence, List, Optional
 
-from ..parameters import (
-    CELL_SIZE_IN_CM,
-    MARGIN_LEFT_IN_CM,
-    MARGIN_RIGHT_IN_CM,
-    PAPER_FORMAT,
-    MARGIN_BOTTOM_IN_CM,
-    MARGIN_TOP_IN_CM,
-    CALIBRATION_SQUARE_POSITION,
-    CALIBRATION_SQUARE_SIZE,
-)
+from ..parameters import CELL_SIZE_IN_CM, MARGIN_LEFT_IN_CM, MARGIN_RIGHT_IN_CM, PAPER_FORMAT, MARGIN_BOTTOM_IN_CM, \
+    MARGIN_TOP_IN_CM, CALIBRATION_SQUARE_POSITION, CALIBRATION_SQUARE_SIZE
 from ..tools.config_parser import get_correct_answers
 
 

@@ -11,8 +11,8 @@ from argparse import ArgumentParser
 from pathlib import Path
 from typing import Optional
 
-from ptyx_mcq.compile.make import make
-from ptyx_mcq.scan.scanner import scan
+from .compile.make import make
+from .scan.scanner import scan
 
 
 def main(args: Optional[list] = None) -> None:

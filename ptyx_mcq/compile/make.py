@@ -8,12 +8,13 @@ from typing import List
 
 from ptyx.compilation import make_files, make_file
 from ptyx.latex_generator import compiler
+
 from ..tools.config_parser import dump
 
 
-def generate_config_file(compiler):
-    autoqcm_data = compiler.latex_generator.autoqcm_data
-    file_path = compiler.file_path
+def generate_config_file(_compiler):
+    autoqcm_data = _compiler.latex_generator.autoqcm_data
+    file_path = _compiler.file_path
     folder = file_path.parent
     name = file_path.stem
     id_table_pos = None
@@ -56,7 +57,7 @@ def make(
     except Exception as e:  # noqa
         if hasattr(e, "msg"):
             traceback.print_tb(e.__traceback__)
-            print(e.msg)
+            print(e.msg)  # type: ignore
             print(f"\u001b[31m{e.__class__.__name__}:\u001b[0m {e}")
         else:
             traceback.print_exc()
