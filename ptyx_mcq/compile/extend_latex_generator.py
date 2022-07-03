@@ -28,8 +28,15 @@ from functools import partial
 from ptyx.printers import sympy2latex
 from ptyx.latex_generator import LatexGenerator
 
-from .header import packages_and_macros, ID_band, extract_ID_NAME_from_csv, extract_NAME_from_csv, student_ID_table, \
-    students_checkboxes, IdentifiantError
+from .header import (
+    packages_and_macros,
+    ID_band,
+    extract_ID_NAME_from_csv,
+    extract_NAME_from_csv,
+    student_ID_table,
+    students_checkboxes,
+    IdentifiantError,
+)
 
 
 def _has_option(node, option):
@@ -44,7 +51,7 @@ def _analyze_IDS(ids):
 
     >>> _analyze_IDS(['18', '19', '20', '21'])
     (2, 4, [{'1', '2'}, {'8', '9', '0', '1'}])
-     """
+    """
     lengths = {len(iD) for iD in ids}
     if len(lengths) != 1:
         print(ids)
@@ -328,9 +335,9 @@ class AutoQCMLatexGenerator(LatexGenerator):
                 s = s.replace("^", r"\textasciicircum<!ø5P3C14Lø?>")
                 s = s.replace("'", r"\textquotesingle<!ø5P3C14Lø?>")
                 for char in "#$%&_{}":
-                    s = s.replace(char, fr"\{char}")
+                    s = s.replace(char, rf"\{char}")
                 s = s.replace("<!ø5P3C14Lø?>", "{}")
-                return fr"\texttt{{{s}}}"
+                return rf"\texttt{{{s}}}"
 
             functions.append(escape)
 
@@ -338,9 +345,7 @@ class AutoQCMLatexGenerator(LatexGenerator):
             # This function is used to verify that each answer is unique.
             # This avoids proposing twice the same answer by mistake, which
             # may occur easily when using random values.
-            functions.append(
-                partial(self._test_singularity_and_append, answers_list=self.autoqcm_answers)
-            )
+            functions.append(partial(self._test_singularity_and_append, answers_list=self.autoqcm_answers))
 
         self._parse_children(node.children[2:], function=functions)
         self._close_answer()
@@ -381,12 +386,8 @@ class AutoQCMLatexGenerator(LatexGenerator):
         def eval_and_format_arg(arg_num):
             raw_list = eval(node.arg(arg_num).strip(), self.context)
             if not isinstance(raw_list, (list, tuple)):
-                raise RuntimeError(
-                    f"In #ANSWERS_LIST, argument {arg_num + 1} must be a list of answers."
-                )
-            formated_list = [
-                (val if isinstance(val, str) else f"${sympy2latex(val)}$") for val in raw_list
-            ]
+                raise RuntimeError(f"In #ANSWERS_LIST, argument {arg_num + 1} must be a list of answers.")
+            formated_list = [(val if isinstance(val, str) else f"${sympy2latex(val)}$") for val in raw_list]
             return formated_list
 
         answers = eval_and_format_arg(0)
@@ -552,7 +553,7 @@ class AutoQCMLatexGenerator(LatexGenerator):
             header = self.autoqcm_cache["header"]
         except KeyError:
             # TODO: make packages_and_macros() return a tuple.
-            sty = fr"\usepackage{{{sty}}}" if sty else ""
+            sty = rf"\usepackage{{{sty}}}" if sty else ""
             header1, header2 = packages_and_macros()
             header = "\n".join([header1, sty, header2, *raw_latex, r"\begin{document}"])
             self.autoqcm_cache["header"] = header

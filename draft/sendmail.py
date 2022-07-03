@@ -12,7 +12,7 @@ from os.path import expanduser, join
 
 def send_mail(content, from_, to, *files, **other):
     """send_mail('Nice day !', from_='me@hmail.com', to='notme@kmail.com',
-               subject='important', reply_to='trash@dustbin.org')"""
+    subject='important', reply_to='trash@dustbin.org')"""
 
     join(expanduser("~"), ".config", "ptyx")
 

@@ -103,9 +103,7 @@ def cd(path):
 
 
 def command(string, quiet=False):
-    out = subprocess.Popen(
-        string, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT
-    ).stdout
+    out = subprocess.Popen(string, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT).stdout
     output = out.read()
     sys.stdout.write(str(output))
     out.close()

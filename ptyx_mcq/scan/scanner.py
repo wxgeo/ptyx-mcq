@@ -32,7 +32,7 @@ import sys
 from ast import literal_eval
 from hashlib import blake2b
 from time import strftime
-from typing import Iterator, Dict
+from typing import Iterator, Dict, TypedDict
 from math import inf
 from typing import Union, Literal, Optional
 
@@ -55,10 +55,19 @@ from .scan_pic import (
     ANSI_RED,
     color2debug,
     CalibrationError,
+    PicData,
 )
 from .amend import amend_all
 from .pdftools import extract_pdf_pictures, PIC_EXTS, number_of_pages
 from .tools import search_by_extension, print_framed_msg
+
+
+class FilesPaths(TypedDict, total=False):
+    base: str
+    skipped: Path
+    verified: Path
+    results: Path
+    cfg: Path
 
 
 def pic_names_iterator(data: dict) -> Iterator[Path]:
@@ -82,7 +91,7 @@ class MCQPictureParser:
         self.path = Path(path).expanduser().resolve()
         # Main paths.
         self.dirs: Dict[str, Path] = {}
-        self.files: Dict[str, Union[str, Path]] = {}
+        self.files: FilesPaths = {}
         # All data extracted from pdf files.
         self.data = {}
         # Additional informations entered manually.
@@ -142,7 +151,7 @@ class MCQPictureParser:
         webp = next(self.dirs["data"].glob(f"*/{doc_id}-{p}.webp"))
         im = Image.open(str(webp))
         if as_matrix:
-            return array(im.convert("L")) / 255
+            return array(im.convert("L")) / 255  # type: ignore
         return im
 
     def _read_name_manually(self, doc_id, matrix=None, p=None, default=None):
@@ -189,7 +198,7 @@ class MCQPictureParser:
             writerow([str(doc_id), name, student_ID])
         return name, student_ID
 
-    def _test_integrity(self):
+    def _test_integrity(self) -> None:
         """For every test:
         - all pages must have been scanned,
         - all questions must have been seen."""
@@ -222,7 +231,7 @@ class MCQPictureParser:
             # if all questions were found, this was probably empty pages.
             raise RuntimeError("Questions not seen ! (Look at message above).")
 
-    def _keep_previous_version(self, pic_data: dict) -> bool:
+    def _keep_previous_version(self, pic_data: PicData) -> bool:
         """Test if a previous version of the same page exist.
 
         If so, it probably means the page has been scanned twice, but it could
@@ -250,7 +259,7 @@ class MCQPictureParser:
         self._warn(f"WARNING: Page {p} of test #{ID} seen twice " f'(in "{firstpic}" and "{lastpic}") !')
         action = None
         keys = ("name", "student_ID", "answered")
-        if all(pic_data[key] == self.data[ID]["pages"][p][key] for key in keys):
+        if all(pic_data[key] == self.data[ID]["pages"][p][key] for key in keys):  # type: ignore
             # Same information found on the two pages, just keep one version.
             action = "f"
             self._warn("Both page have the same information, keeping only first one...")
@@ -285,7 +294,7 @@ class MCQPictureParser:
 
         return action == "f"
 
-    def _extract_name(self, doc_id: str, d: dict, matrix: ndarray, ask: bool = False):
+    def _extract_name(self, doc_id: int, d: dict, matrix: ndarray, ask: bool = False) -> None:
         # TODO: what is matrix type ?
         pic_data = d["pages"][1]
         # (a) The first page should contain the name
@@ -419,7 +428,8 @@ class MCQPictureParser:
             # ~ identifier, answers, name, score, students, ids
             name = d["name"]
             score = d["score"]
-            path = self.dirs["pdf"] / "%s-%s-corr.score" % (self.files["base"], doc_id)
+            prefix = self.files["base"]
+            path = self.dirs["pdf"] / f"{prefix}-{doc_id}-corr.score"
             pdf_paths.append(path)
             print(f"Generating pdf file for student {name} (subject {doc_id}, score {score})...")
             latex = answers_and_score(self.config, name, doc_id, (score if display_score else None))
@@ -619,7 +629,7 @@ class MCQPictureParser:
         start: int = 1,
         end: Union[int, float] = inf,
         manual_verification: Optional[bool] = None,
-        ask_for_name: bool = False,
+        # ask_for_name: bool = False,
         reset: bool = False,
     ):
         """Extract information from pdf, calculate scores and annotate documents
@@ -761,7 +771,7 @@ class MCQPictureParser:
 def scan(
     path: Path,
     reset: bool = False,
-    ask_for_name: bool = False,
+    # ask_for_name: bool = False,
     verify: Literal["auto", "always", "never"] = "auto",
 ) -> None:
     """Implement `autoqcm scan` command."""
@@ -772,5 +782,7 @@ def scan(
     else:
         manual_verification = None
     MCQPictureParser(path).scan_all(
-        reset=reset, ask_for_name=ask_for_name, manual_verification=manual_verification
+        reset=reset,
+        # ask_for_name=ask_for_name,
+        manual_verification=manual_verification,
     )

@@ -8,7 +8,7 @@ import csv
 import tempfile
 from os import listdir
 from pathlib import Path
-from typing import Tuple
+from typing import Tuple, Set
 
 from PIL import ImageDraw
 from pdf2image import convert_from_path  # type: ignore
@@ -41,7 +41,7 @@ def xy2ij(x: float, y: float) -> Tuple[int, int]:
     return round(i), round(j)
 
 
-def _fill_checkbox(draw: ImageDraw.ImageDraw, pos: tuple, size: int, color: str = "red") -> None:
+def _fill_checkbox(draw: ImageDraw.ImageDraw, pos: tuple, size: float, color: str = "red") -> None:
     i, j = xy2ij(*pos)
     # Draw a blue square around the box (for debugging purpose).
     draw.rectangle((j, i, j + size, i + size), fill=COLORS[color])
@@ -107,9 +107,7 @@ def test_cli():
             ptyxfile_content = ptyxfile.read()
         with open(path / "new.ptyx", "w") as ptyxfile:
             assert "\nid format" in ptyxfile_content
-            ptyxfile.write(
-                ptyxfile_content.replace("\nid format", "\nids=../students.csv\nid format")
-            )
+            ptyxfile.write(ptyxfile_content.replace("\nid format", "\nids=../students.csv\nid format"))
 
         # Test mcq make
         main(["make", str(path), "-n", "2"])

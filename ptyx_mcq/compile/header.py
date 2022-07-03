@@ -3,8 +3,16 @@ from os.path import abspath, dirname, isabs, join, expanduser
 from string import ascii_letters
 from typing import Sequence, List, Optional
 
-from ..parameters import CELL_SIZE_IN_CM, MARGIN_LEFT_IN_CM, MARGIN_RIGHT_IN_CM, PAPER_FORMAT, MARGIN_BOTTOM_IN_CM, \
-    MARGIN_TOP_IN_CM, CALIBRATION_SQUARE_POSITION, CALIBRATION_SQUARE_SIZE
+from ..parameters import (
+    CELL_SIZE_IN_CM,
+    MARGIN_LEFT_IN_CM,
+    MARGIN_RIGHT_IN_CM,
+    PAPER_FORMAT,
+    MARGIN_BOTTOM_IN_CM,
+    MARGIN_TOP_IN_CM,
+    CALIBRATION_SQUARE_POSITION,
+    CALIBRATION_SQUARE_SIZE,
+)
 from ..tools.config_parser import get_correct_answers
 
 
@@ -21,7 +29,7 @@ def _byte_as_codebar(byte, n=0):
     - `n` should be incremented at each call, so as not to overwrite
       a previous codebar.
     """
-    return fr"""
+    return rf"""
     \n={byte};
     \j={n};
     for \i in {{1,...,8}}{{%
@@ -63,7 +71,7 @@ def ID_band(ID, calibration=True):
         pos = CALIBRATION_SQUARE_POSITION
         pos2 = CALIBRATION_SQUARE_POSITION + CALIBRATION_SQUARE_SIZE
         latex.append(
-            fr"""
+            rf"""
         \draw[fill=black] ([xshift={pos}cm,yshift=-{pos}cm]current page.north west)
             rectangle ([xshift={pos2}cm,yshift=-{pos2}cm]current page.north west);
         \draw[fill=black] ([xshift=-{pos}cm,yshift=-{pos}cm]current page.north east)
@@ -85,7 +93,7 @@ def ID_band(ID, calibration=True):
     latex.append(_byte_as_codebar(ID % 256, n=1))
     latex.append(_byte_as_codebar(ID // 256, n=2))
     latex.append(
-        fr"""}}
+        rf"""}}
         \node[anchor=west] at  ({{2.5+2*\j}},0.1)
             {{\scriptsize\textbf{{\#{ID}}}~:~{{\thepage}}/\zpageref{{LastPage}}}};
         \end{{tikzpicture}}}};
@@ -125,9 +133,7 @@ def extract_ID_NAME_from_csv(csv_path, script_path):
             id_ = id_.strip()
             name = " ".join(item.strip() for item in row)
             if id_ in ids and ids[id_] != name:
-                raise RuntimeError(
-                    f"Error: same ID {id_!r} for different students in {csv_path!r} !"
-                )
+                raise RuntimeError(f"Error: same ID {id_!r} for different students in {csv_path!r} !")
             ids[id_] = name
     return ids
 
@@ -177,15 +183,15 @@ def students_checkboxes(names: Sequence[str], _n_student=None):
         c = a + 0.5
         color = "black" if _n_student == len(names) - i else "white"
         content.append(
-            fr'''\draw[fill={color}] ({a},0) rectangle ({b},1) ({c},0)
-            node[below] {{\tiny \rotatebox{{-90}}{{\texttt{{{name}}}}}}};'''
+            rf"""\draw[fill={color}] ({a},0) rectangle ({b},1) ({c},0)
+            node[below] {{\tiny \rotatebox{{-90}}{{\texttt{{{name}}}}}}};"""
         )
     if b is None:
         # No names.
         return ""
     b += 1
     content.append(
-        fr"""\draw[rounded corners] (-3,2) rectangle ({b}, -6.5);
+        rf"""\draw[rounded corners] (-3,2) rectangle ({b}, -6.5);
         \draw[] (-0.5,2) -- (-0.5,-6.5);
         \end{{tikzpicture}}
         \end{{center}}
@@ -196,7 +202,7 @@ def students_checkboxes(names: Sequence[str], _n_student=None):
 
 
 def student_ID_table(ID_length: int, max_ndigits: int, digits: List[set]) -> str:
-    """"Generate a table where the student will write its identification number.
+    """Generate a table where the student will write its identification number.
 
     The table have a row for each digit, where the student check corresponding
     digit to indicate its number.
@@ -208,7 +214,7 @@ def student_ID_table(ID_length: int, max_ndigits: int, digits: List[set]) -> str
 
     Return: LaTeX code.
     """
-    content = []
+    content: List[str] = []
     write = content.append
     write("\n\n")
     write(r"\begin{tikzpicture}[baseline=-10pt,scale=.5]")
@@ -218,11 +224,11 @@ def student_ID_table(ID_length: int, max_ndigits: int, digits: List[set]) -> str
         # One row for each digit of the student id number.
         for i, d in enumerate(sorted(digits[j])):
             write(
-                fr'''\draw ({i},{-j}) rectangle ({i+1},{-j-1})
-                    ({i+0.25},{-j-0.25}) node  {{\footnotesize\color{{black}}\textsf{{{d}}}}};'''
+                rf"""\draw ({i},{-j}) rectangle ({i+1},{-j-1})
+                    ({i+0.25},{-j-0.25}) node  {{\footnotesize\color{{black}}\textsf{{{d}}}}};"""
             )
         for i in range(i, max_ndigits):
-            write(fr"""\draw ({i},{-j}) rectangle ({i+1},{-j-1});""")
+            write(rf"""\draw ({i},{-j}) rectangle ({i+1},{-j-1});""")
     write(r"\draw[black,->,thick] (-0.5, -0.5) -- (-0.5,%s);" % (0.5 - ID_length))
     write(r"\end{tikzpicture}")
     write(
@@ -248,7 +254,7 @@ def table_for_answers(config: dict, ID: Optional[int] = None) -> str:
     - `ID` is the test ID if correct answers should be shown.
       If `ID` is `None` (default), the table will be blank.
     """
-    content = []
+    content: List[str] = []
     write = content.append
 
     # Generate the table where students will answer.
@@ -273,7 +279,7 @@ def table_for_answers(config: dict, ID: Optional[int] = None) -> str:
     for x1 in range(n_questions):
         x2 = x1 + 1
         x3 = 0.5 * (x1 + x2)
-        write(fr"\draw[ultra thin] ({x1},0) rectangle ({x2},1) ({x3},0.5) " fr"node {{{x1 + 1}}};")
+        write(rf"\draw[ultra thin] ({x1},0) rectangle ({x2},1) ({x3},0.5) " rf"node {{{x1 + 1}}};")
 
     # Find correct answers numbers for each question.
     if ID is not None:
@@ -285,24 +291,20 @@ def table_for_answers(config: dict, ID: Optional[int] = None) -> str:
         y1 = -i
         y2 = y1 - 1
         y3 = 0.5 * (y1 + y2)
-        write(
-            "\n"
-            fr"\draw[ultra thin] (-1,{y1}) rectangle (0,{y2}) (-0.5,{y3}) "
-            fr"node {{{name}}};"
-        )
+        write("\n" rf"\draw[ultra thin] (-1,{y1}) rectangle (0,{y2}) (-0.5,{y3}) " rf"node {{{name}}};")
         for j in range(n_questions):
             x1 = j
             x2 = x1 + 1
             opt = ""
             if ID is not None and i + 1 in correct_ans[j + 1]:
                 opt = "fill=gray"
-            write(fr"\draw [ultra thin,{opt}] ({x1},{y1}) rectangle ({x2},{y2});")
+            write(rf"\draw [ultra thin,{opt}] ({x1},{y1}) rectangle ({x2},{y2});")
 
-    write(fr"\draw [thick] (-1,1) rectangle ({x2},{y2});" "\n")
+    write(rf"\draw [thick] (-1,1) rectangle ({x2},{y2});" "\n")
     #              %\draw [thick] (-1,0) -- ({x2},0);
 
     for i in range(0, x2):
-        write(fr"\draw [thick] ({i},1) -- ({i},{y2});" "\n")
+        write(rf"\draw [thick] ({i},1) -- ({i},{y2});" "\n")
 
     write(r"\end{tikzpicture}\hfill\hfill\hfil" "\n")
 
@@ -315,7 +317,7 @@ def packages_and_macros() -> List[str]:
     paper_format = f"{PAPER_FORMAT.lower()}paper"
     # LaTeX header is in two part, so as user may insert some customization here.
     return [
-        fr"""\documentclass[{paper_format},twoside,10pt]{{article}}
+        rf"""\documentclass[{paper_format},twoside,10pt]{{article}}
     \PassOptionsToPackage{{utf8}}{{inputenc}}
     \PassOptionsToPackage{{document}}{{ragged2e}}
     \PassOptionsToPackage{{left={MARGIN_LEFT_IN_CM}cm,

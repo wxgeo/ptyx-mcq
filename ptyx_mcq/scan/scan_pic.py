@@ -3,7 +3,7 @@ from math import degrees, atan, hypot
 from typing import Dict, Set, Tuple, TypedDict, Optional
 
 from PIL import Image
-from numpy import array, flipud, fliplr, dot, amin, amax, zeros  # , percentile, clip
+from numpy import array, flipud, fliplr, dot, amin, amax, zeros, ndarray  # , percentile, clip
 
 from .square_detection import (
     test_square_color,
@@ -13,7 +13,12 @@ from .square_detection import (
     color2debug,
 )
 from .tools import round
-from ..parameters import SQUARE_SIZE_IN_CM, CELL_SIZE_IN_CM, CALIBRATION_SQUARE_POSITION, CALIBRATION_SQUARE_SIZE
+from ..parameters import (
+    SQUARE_SIZE_IN_CM,
+    CELL_SIZE_IN_CM,
+    CALIBRATION_SQUARE_POSITION,
+    CALIBRATION_SQUARE_SIZE,
+)
 from ..tools.config_parser import load, real2apparent, apparent2real, is_answer_correct
 
 ANSI_RESET = "\u001B[0m"
@@ -590,7 +595,7 @@ def edit_answers(m, boxes, answered, config, doc_id, xy2ij, cell_size) -> None:
             answered[q] = checked
             process.terminate()
             # Color answers
-            valid_answers = {}
+            valid_answers: Dict[int, Set[int]] = {}
             for key, pos in boxes.items():
                 # ~ should_have_answered = set() # for debugging only.
                 i, j = xy2ij(*pos)
@@ -616,7 +621,7 @@ def edit_answers(m, boxes, answered, config, doc_id, xy2ij, cell_size) -> None:
             process = color2debug(m, wait=False)
 
 
-def scan_picture(filename, config, manual_verification=None, debug=False) -> Tuple[PicData, array]:
+def scan_picture(filename, config, manual_verification=None, debug=False) -> Tuple[PicData, ndarray]:
     """Scan picture and return page identifier and list of answers for each question.
 
     - `filename` is a path pointing to a PNG file.
@@ -905,6 +910,7 @@ def scan_picture(filename, config, manual_verification=None, debug=False) -> Tup
         "questions_nums": displayed_questions_numbers,
         # Manual verification by the user ?
         "verified": None,  # bool|None
+        "pic_path": "",
     }
 
     try:

@@ -21,14 +21,10 @@ def _correct_checkboxes(draw, pos, checked, correct, size):
     if checked and not correct:
         # Circle checkbox with red pen.
         try:
-            draw.ellipse(
-                (j - margin, i - margin, j + size + margin, i + size + margin), width=2, outline=red
-            )
+            draw.ellipse((j - margin, i - margin, j + size + margin, i + size + margin), width=2, outline=red)
         except TypeError:
             # old PIL versions (<5.1.3)
-            draw.ellipse(
-                (j - margin, i - margin, j + size + margin, i + size + margin), outline=red
-            )
+            draw.ellipse((j - margin, i - margin, j + size + margin, i + size + margin), outline=red)
     elif not checked and correct:
         # Check (cross) the box (with red pen).
         draw.line((j, i, j + size - 1, i + size - 1), fill=red, width=2)

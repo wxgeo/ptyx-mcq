@@ -14,7 +14,7 @@ from ptyx_mcq.compile.extend_latex_generator import SameAnswerError
 
 
 TEST_DIR = Path(__file__).parent.resolve()
-TMP_PDF = []
+# TMP_PDF: List[Path] = []
 
 
 def load_ptyx_file(filename):
@@ -182,8 +182,8 @@ def cleanup():
         tmp_filename.unlink()
         files_found = True
     assert files_found
-    for tmp_filename in TMP_PDF:
-        (TEST_DIR / Path(tmp_filename)).unlink()
+    # for tmp_filename in TMP_PDF:
+    #     (TEST_DIR / Path(tmp_filename)).unlink()
 
 
 if __name__ == "__main__":

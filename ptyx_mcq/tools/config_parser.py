@@ -4,6 +4,7 @@ from typing import Dict, Set, Any, Tuple, Optional, Union, TypeVar
 
 T = TypeVar("T")
 
+
 class CustomJSONEncoder(JSONEncoder):
     def default(self, obj: Any) -> Any:
         # Save sets as tuples.
@@ -140,9 +141,7 @@ def is_answer_correct(
         return config["ordering"][doc_id]["answers"][original_q_num][a_num - 1][1]
 
 
-def get_correct_answers(
-    config: dict, use_original_num: bool = True
-) -> Dict[int, Dict[int, Set[int]]]:
+def get_correct_answers(config: dict, use_original_num: bool = True) -> Dict[int, Dict[int, Set[int]]]:
     """Return a dict containing the set of the correct answers for each question for each document ID.
 
     Correct answers numbers returned are apparent one (i.e. after shuffling).
