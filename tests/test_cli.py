@@ -17,7 +17,7 @@ from ptyx_mcq.cli import main
 from ptyx_mcq.parameters import CELL_SIZE_IN_CM
 from ptyx_mcq.scan.square_detection import COLORS
 from ptyx_mcq.scan.tools import round
-from ptyx_mcq.tools.config_parser import load, is_answer_correct
+from ptyx_mcq.tools.config_parser import load, is_answer_correct, Configuration
 
 DPI = 200
 PX_PER_CM = DPI / 2.54
@@ -47,8 +47,8 @@ def _fill_checkbox(draw: ImageDraw.ImageDraw, pos: tuple, size: float, color: st
     draw.rectangle((j, i, j + size, i + size), fill=COLORS[color])
 
 
-def write_student_id(draw: ImageDraw.ImageDraw, student_id: str, config: dict) -> None:
-    x0, y0 = config["id-table-pos"]
+def write_student_id(draw: ImageDraw.ImageDraw, student_id: str, config: Configuration) -> None:
+    x0, y0 = config["id_table_pos"]
     for i, digit in enumerate(student_id.zfill(MAX_ID_LEN)):
         x_shift = 10 + 10 * int(digit)
         y_shift = 10 * i
@@ -60,7 +60,7 @@ def write_student_id(draw: ImageDraw.ImageDraw, student_id: str, config: dict) -
         )
 
 
-def simulate_answer(pics: list, config: dict):
+def simulate_answer(pics: list, config: Configuration):
     """Amend answer sheet with scores and correct answers.
 
     `data` is the dict generated when the answer sheet is scanned.

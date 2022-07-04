@@ -29,10 +29,10 @@ def top_left_iterator(stop, step=1):
     # 9  7  5  11
     # 16 14 12 10
     for n in range(0, stop, step):
-        yield (n, n)
+        yield n, n
         for k in range(n - step, -1, -step):
-            yield (k, n)
-            yield (n, k)
+            yield k, n
+            yield n, k
 
 
 def total_grayness(m):
@@ -199,7 +199,7 @@ def find_black_rectangle(matrix, width=50, height=50, error=0.30, gray_level=0.4
             # ~ print(to_avoid)
             if debug:
                 input("-- pause --")
-            yield (i, j)
+            yield i, j
 
 
 def find_black_square(matrix, size, error=0.4, gray_level=0.4, **kw):
@@ -304,7 +304,7 @@ def find_lonely_square(m, size, error=0.4, gray_level=0.4):
                 (i + s, j + s),
             ]
         ):
-            yield (i, j)
+            yield i, j
     # ~ raise LookupError("No lonely black square in the search area.")
 
 

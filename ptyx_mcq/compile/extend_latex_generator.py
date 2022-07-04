@@ -170,7 +170,7 @@ class AutoQCMLatexGenerator(LatexGenerator):
                 "skipped": {"default": 0},
                 # 'correct_answers': correct_answers, # {1: [4], 2:[1,5], ...}
                 "students": [],
-                "id-table-pos": None,
+                "id_table_pos": None,
                 "ids": {},
                 "ordering": {},
                 # {NUM: {'questions': [2,1,3...],

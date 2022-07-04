@@ -19,7 +19,7 @@ from ..parameters import (
     CALIBRATION_SQUARE_POSITION,
     CALIBRATION_SQUARE_SIZE,
 )
-from ..tools.config_parser import load, real2apparent, apparent2real, is_answer_correct
+from ..tools.config_parser import real2apparent, apparent2real, is_answer_correct, Configuration
 
 ANSI_RESET = "\u001B[0m"
 ANSI_BLACK = "\u001B[30m"
@@ -96,7 +96,7 @@ class CalibrationError(RuntimeError):
 #    return array(im)/255
 
 
-def transform(pic, transformation: str, *args, **kw):
+def transform(pic: Image.Image, transformation: str, *args, **kw) -> Tuple[Image.Image, ndarray]:
     """Return a transformed version of `pic` and its matrix."""
     # cf. http://stackoverflow.com/questions/5252170/
     # specify-image-filling-color-when-rotating-in-python-with-pil-and-setting-expand
@@ -124,9 +124,9 @@ def find_black_cell(grid, ll: int, LL: int, detection_level: float):
 
 
 # noinspection PyArgumentList
-def find_corner_square(m, size, corner, max_whiteness):
+def find_corner_square(m: ndarray, size: int, corner: str, max_whiteness: float):
     height, width = m.shape
-    V, H = corner
+    V, H = tuple(corner)  # for mypy support
     # First, flip the matrix if needed, so that the corner considered
     # is now the top left corner.
     if V == "b":
@@ -269,7 +269,7 @@ def area_opposite_corners(positions):
     return (i1, j1), (i2, j2)
 
 
-def detect_four_squares(m, square_size, cm, max_alignment_error_cm=0.4, debug=False):
+def detect_four_squares(m: ndarray, square_size, cm, max_alignment_error_cm=0.4, debug=False):
     #    h = w = round(2*(1 + SQUARE_SIZE_IN_CM)*cm)
     max_whiteness = 0.55
     # Make a mutable copy of frozenset CORNERS.
@@ -321,7 +321,7 @@ def detect_four_squares(m, square_size, cm, max_alignment_error_cm=0.4, debug=Fa
                 number_of_orthogonal_corners += 1
                 orthogonal_corner = corner
         if number_of_orthogonal_corners == 1:
-            V, H = orthogonal_corner
+            V, H = tuple(orthogonal_corner)  # for mypy support
             opposite_corner = ("t" if V == "b" else "b") + ("l" if H == "r" else "r")
             print(f"Removing {CORNER_NAMES[opposite_corner]} corner (not orthogonal !)")
             del positions[opposite_corner]
@@ -331,7 +331,7 @@ def detect_four_squares(m, square_size, cm, max_alignment_error_cm=0.4, debug=Fa
         for corner, position in positions.items():
             darkness[corner] = eval_square_color(m, *position, square_size)
 
-        lighter_corner = min(darkness, key=darkness.get)
+        lighter_corner = min(darkness, key=darkness.get)  # type: ignore
         if darkness[lighter_corner] < 0.4:
             print(
                 f"Removing {CORNER_NAMES[lighter_corner]} corner "
@@ -353,7 +353,7 @@ def detect_four_squares(m, square_size, cm, max_alignment_error_cm=0.4, debug=Fa
                 f"Warning: {CORNER_NAMES[corner]} corner not found.\n"
                 "Its position will be deduced from the 3 other corners."
             )
-            V, H = corner  # 'b' 'r'
+            V, H = tuple(corner)  # 'b' 'r'
             nV, nH = ("t" if V == "b" else "b"), ("l" if H == "r" else "r")
             # This is the opposite corner of the missing one.
             i0, j0 = positions[nV + nH]
@@ -621,7 +621,9 @@ def edit_answers(m, boxes, answered, config, doc_id, xy2ij, cell_size) -> None:
             process = color2debug(m, wait=False)
 
 
-def scan_picture(filename, config, manual_verification=None, debug=False) -> Tuple[PicData, ndarray]:
+def scan_picture(
+    filename, config: Configuration, manual_verification=None, debug=False
+) -> Tuple[PicData, ndarray]:
     """Scan picture and return page identifier and list of answers for each question.
 
     - `filename` is a path pointing to a PNG file.
@@ -653,9 +655,9 @@ def scan_picture(filename, config, manual_verification=None, debug=False) -> Tup
     """
     filename = str(filename)
     # Convert to grayscale picture.
-    pic = Image.open(filename).convert("L")
+    pic: Image.Image = Image.open(filename).convert("L")
     # noinspection PyTypeChecker
-    m = array(pic) / 255.0
+    m: ndarray = array(pic) / 255.0
     # Increase contrast if needed (the lightest pixel must be white,
     # the darkest must be black).
     min_val = amin(m)
@@ -675,8 +677,8 @@ def scan_picture(filename, config, manual_verification=None, debug=False) -> Tup
     #                          CONFIGURATION
     # ------------------------------------------------------------------
     # Load configuration.
-    if isinstance(config, str):
-        config = load(config)
+    # if isinstance(config, str):
+    #     config: Configuration = load(config)
     # ~ n_questions = config['questions']
     # ~ n_answers = config['answers (max)']
     students = config["students"]
@@ -816,7 +818,7 @@ def scan_picture(filename, config, manual_verification=None, debug=False) -> Tup
             ID_length, max_digits, digits = config["id_format"]
             # ~ height = ID_length*cell_size
 
-            i0, j0 = xy2ij(*config["id-table-pos"])
+            i0, j0 = xy2ij(*config["id_table_pos"])
 
             #            color2debug(m, (i0, j0), (i0 + cell_size, j0 + cell_size), color=(0,255,0))
 

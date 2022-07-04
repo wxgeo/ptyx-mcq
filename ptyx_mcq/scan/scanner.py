@@ -23,17 +23,17 @@
 #    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 
-from pathlib import Path
-import tempfile
-from shutil import rmtree
-import subprocess
 import csv
+import subprocess
 import sys
+import tempfile
 from ast import literal_eval
 from hashlib import blake2b
-from time import strftime
-from typing import Iterator, Dict, TypedDict
 from math import inf
+from pathlib import Path
+from shutil import rmtree
+from time import strftime
+from typing import Iterator, Dict, TypedDict, Set, Tuple, List
 from typing import Union, Literal, Optional
 
 from PIL import Image
@@ -44,8 +44,8 @@ from numpy import int8, array, ndarray
 # sys.path.insert(0, join(script_path, '../..'))
 from ptyx.compilation import join_files, compile_latex
 
-from ..compile.header import answers_and_score
-from ..tools.config_parser import load, get_correct_answers
+from .amend import amend_all
+from .pdftools import extract_pdf_pictures, PIC_EXTS, number_of_pages
 from .scan_pic import (
     scan_picture,
     ANSI_YELLOW,
@@ -57,9 +57,9 @@ from .scan_pic import (
     CalibrationError,
     PicData,
 )
-from .amend import amend_all
-from .pdftools import extract_pdf_pictures, PIC_EXTS, number_of_pages
 from .tools import search_by_extension, print_framed_msg
+from ..compile.header import answers_and_score
+from ..tools.config_parser import load, get_correct_answers, Configuration
 
 
 class FilesPaths(TypedDict, total=False):
@@ -68,6 +68,15 @@ class FilesPaths(TypedDict, total=False):
     verified: Path
     results: Path
     cfg: Path
+
+
+class DocumentData(TypedDict):
+    pages: Dict[int, PicData]
+    name: str
+    student_ID: str
+    answered: Dict[int, Set[int]]  # {question: set of answers}
+    score: int
+    score_per_question: Dict[int, float]  # {question: score}
 
 
 def pic_names_iterator(data: dict) -> Iterator[Path]:
@@ -93,24 +102,24 @@ class MCQPictureParser:
         self.dirs: Dict[str, Path] = {}
         self.files: FilesPaths = {}
         # All data extracted from pdf files.
-        self.data = {}
+        self.data: Dict[int, DocumentData] = {}
         # Additional informations entered manually.
-        self.more_infos = {}  # sheet_id: (name, student_id)
-        self.config = {}
+        self.more_infos: Dict[int, Tuple[str, str]] = {}  # sheet_id: (name, student_id)
+        self.config: Configuration = {}
         # Manually verified pages.
-        self.verified = set()
-        # `name2sheetID` is used to retrieve the data associated with a name.
+        self.verified: Set[Path] = set()
+        # `name2docID` is used to retrieve the data associated with a name.
         # FORMAT: {name: test ID}
-        self.name2sheetID = {}
+        self.name2docID: Dict[str, int] = {}
         # Set `already_seen` will contain all seen (ID, page) couples.
-        # It is used to catch an hypothetical scanning problem:
+        # It is used to catch a hypothetical scanning problem:
         # we have to be sure that the same page on the same test is not seen
         # twice.
-        self.already_seen = set()
-        self.skipped = set()
+        self.already_seen: Set[Tuple[int, int]] = set()
+        self.skipped: Set[Path] = set()
         self.warnings = False
         self.logname = strftime("%Y.%m.%d-%H.%M.%S") + ".log"
-        self.correct_answers = {}
+        self.correct_answers: Dict[int, Dict[int, Set[int]]] = {}  # {doc_id: {question: set of answers}}
         self._generate_paths(input_dir, output_dir)
         self._load_configuration()
 
@@ -147,14 +156,14 @@ class MCQPictureParser:
             webp = folder / f"{doc_id}-{p}.webp"
             Image.fromarray((255 * matrix).astype(int8)).save(str(webp), format="WEBP")
 
-    def get_pic(self, doc_id, p, as_matrix=False):
+    def get_pic(self, doc_id: int, p: int, as_matrix=False) -> Image.Image:
         webp = next(self.dirs["data"].glob(f"*/{doc_id}-{p}.webp"))
         im = Image.open(str(webp))
         if as_matrix:
             return array(im.convert("L")) / 255  # type: ignore
         return im
 
-    def _read_name_manually(self, doc_id, matrix=None, p=None, default=None):
+    def _read_name_manually(self, doc_id: int, matrix=None, p=None, default=None):
         if matrix is None:
             matrix = self.get_pic(doc_id, p, as_matrix=True)
         student_ids = self.config["ids"]
@@ -204,27 +213,27 @@ class MCQPictureParser:
         - all questions must have been seen."""
         questions_not_seen = {}
         pages_not_seen = {}
-        for ID in self.data:
-            questions = set(self.config["ordering"][ID]["questions"])
-            diff = questions - set(self.data[ID]["answered"])
+        for doc_id in self.data:
+            questions = set(self.config["ordering"][doc_id]["questions"])
+            diff = questions - set(self.data[doc_id]["answered"])
             if diff:
-                questions_not_seen[ID] = ", ".join(str(q) for q in diff)
+                questions_not_seen[doc_id] = ", ".join(str(q) for q in diff)
             # All tests may not have the same number of pages, since
             # page breaking will occur at a different place for each test.
-            pages = set(self.config["boxes"][ID])
-            diff = pages - set(self.data[ID]["pages"])
+            pages = set(self.config["boxes"][doc_id])
+            diff = pages - set(self.data[doc_id]["pages"])
             if diff:
-                pages_not_seen[ID] = ", ".join(str(p) for p in diff)
+                pages_not_seen[doc_id] = ", ".join(str(p) for p in diff)
         if pages_not_seen:
             self._warn("= WARNING =")
             self._warn("Pages not seen:")
-            for ID in sorted(pages_not_seen):
-                self._warn(f"    • Test {ID}: page(s) {pages_not_seen[ID]}")
+            for doc_id in sorted(pages_not_seen):
+                self._warn(f"    • Test {doc_id}: page(s) {pages_not_seen[doc_id]}")
         if questions_not_seen:
             self._warn("=== ERROR ===")
             self._warn("Questions not seen !")
-            for ID in sorted(questions_not_seen):
-                self._warn(f"    • Test {ID}: question(s) {questions_not_seen[ID]}")
+            for doc_id in sorted(questions_not_seen):
+                self._warn(f"    • Test {doc_id}: question(s) {questions_not_seen[doc_id]}")
 
         if questions_not_seen:
             # Don't raise an error for pages not found (only a warning in log)
@@ -240,26 +249,26 @@ class MCQPictureParser:
         As a precaution, we should signal the problem to the user, and ask him
         what he wants to do.
         """
-        ID = pic_data["ID"]
+        doc_id = pic_data["ID"]
         p = pic_data["page"]
 
         # This page has never been seen before, everything is OK.
-        if (ID, p) not in self.already_seen:
-            self.already_seen.add((ID, p))
+        if (doc_id, p) not in self.already_seen:
+            self.already_seen.add((doc_id, p))
             return False
 
         # This is problematic: it seems like the same page has been seen twice.
         lastpic_path = pic_data["pic_path"]
         lastpic = Path(lastpic_path).relative_to(self.dirs["pic"])
-        firstpic_path = self.data[ID]["pages"][p]["pic_path"]
+        firstpic_path = self.data[doc_id]["pages"][p]["pic_path"]
         firstpic = Path(firstpic_path).relative_to(self.dirs["pic"])
         assert isinstance(lastpic_path, str)
         assert isinstance(firstpic_path, str)
 
-        self._warn(f"WARNING: Page {p} of test #{ID} seen twice " f'(in "{firstpic}" and "{lastpic}") !')
+        self._warn(f"WARNING: Page {p} of test #{doc_id} seen twice " f'(in "{firstpic}" and "{lastpic}") !')
         action = None
         keys = ("name", "student_ID", "answered")
-        if all(pic_data[key] == self.data[ID]["pages"][p][key] for key in keys):  # type: ignore
+        if all(pic_data[key] == self.data[doc_id]["pages"][p][key] for key in keys):  # type: ignore
             # Same information found on the two pages, just keep one version.
             action = "f"
             self._warn("Both page have the same information, keeping only first one...")
@@ -289,24 +298,24 @@ class MCQPictureParser:
 
         if action == "l":
             # Remove first picture information.
-            del self.data[ID]["pages"][p]
-            self._store_data(firstpic.parent.name, ID, p)
+            del self.data[doc_id]["pages"][p]
+            self._store_data(firstpic.parent.name, doc_id, p)
 
         return action == "f"
 
-    def _extract_name(self, doc_id: int, d: dict, matrix: ndarray, ask: bool = False) -> None:
+    def _extract_name(self, doc_id: int, doc_data: DocumentData, matrix: ndarray, ask: bool = False) -> None:
         # TODO: what is matrix type ?
-        pic_data = d["pages"][1]
+        pic_data = doc_data["pages"][1]
         # (a) The first page should contain the name
         #     ‾ ‾ ‾ ‾ ‾ ‾ ‾ ‾ ‾ ‾ ‾ ‾ ‾ ‾ ‾ ‾ ‾ ‾ ‾ ‾
         # However, if the name was already set (using `more_infos`),
         # don't overwrite it.
-        if not d["name"]:
+        if not doc_data["name"]:
             # Store the name read (except if ask not to do so).
             if not ask:
-                d["name"] = pic_data["name"]
+                doc_data["name"] = pic_data["name"]
 
-        name = d["name"]
+        name = doc_data["name"]
 
         # (b) Update name manually if it was not found
         #     ‾ ‾ ‾ ‾ ‾ ‾ ‾ ‾ ‾ ‾ ‾ ‾ ‾ ‾ ‾ ‾ ‾ ‾ ‾ ‾ ‾
@@ -316,27 +325,27 @@ class MCQPictureParser:
 
         # (c) A name must not appear twice
         #     ‾ ‾ ‾ ‾ ‾ ‾ ‾ ‾ ‾ ‾ ‾ ‾ ‾ ‾ ‾
-        while name in self.name2sheetID:
-            print(f"Test #{self.name2sheetID[name]}: {name}")
+        while name in self.name2docID:
+            print(f"Test #{self.name2docID[name]}: {name}")
             print(f"Test #{doc_id}: {name}")
             print_framed_msg(
                 f"Error : 2 tests for same student ({name}) !\n"
                 "Please modify at least one name (enter nothing to keep a name)."
             )
-            # Remove twin name from name2sheetID, and get the corresponding previous test ID.
-            ID0 = self.name2sheetID.pop(name)
+            # Remove twin name from name2doc_id, and get the corresponding previous test ID.
+            ID0 = self.name2docID.pop(name)
             # Ask for a new name.
             name0, student_ID0 = self._read_name_manually(ID0, p=1, default=name)
             # Update all infos.
-            self.name2sheetID[name0] = ID0
+            self.name2docID[name0] = ID0
             self.data[ID0]["name"] = name0
             self.data[ID0]["student_ID"] = student_ID0
             # Ask for a new name for new test too.
             name = self._read_name_manually(doc_id, matrix, default=name)[0]
 
         assert name, "Name should not be left empty at this stage !"
-        self.name2sheetID[name] = doc_id
-        d["name"] = name
+        self.name2docID[name] = doc_id
+        doc_data["name"] = name
 
     def _calculate_scores(self):
         cfg = self.config
@@ -345,12 +354,12 @@ class MCQPictureParser:
         default_incorrect = cfg["incorrect"]["default"]
         default_skipped = cfg["skipped"]["default"]
 
-        for ID in self.data:
-            correct_ans = self.correct_answers[ID]
-            print(f'Test {ID} - {self.data[ID]["name"]}')
-            d = self.data[ID]
-            for q in sorted(d["answered"]):
-                answered = set(d["answered"][q])
+        for doc_id in self.data:
+            correct_ans = self.correct_answers[doc_id]
+            print(f'Test {doc_id} - {self.data[doc_id]["name"]}')
+            doc_data = self.data[doc_id]
+            for q in sorted(doc_data["answered"]):
+                answered = set(doc_data["answered"][q])
                 correct_ones = correct_ans[q]
                 mode = cfg["mode"].get(q, default_mode)
 
@@ -375,14 +384,14 @@ class MCQPictureParser:
                     earn = float(cfg["incorrect"].get(q, default_incorrect))
                     color = ANSI_RED
                 print(f"-  {color}Rating (Q{q}): {color}{earn:g}{ANSI_RESET}")
-                d["score"] += earn
-                d["score_per_question"][q] = earn
+                doc_data["score"] += earn
+                doc_data["score_per_question"][q] = earn
 
     def generate_output(self):
         """Generate CSV files with scores and annotated documents."""
         max_score = self.config["max_score"]
         # Generate CSV file with results.
-        scores = {d["name"]: d["score"] for d in self.data.values()}
+        scores = {doc_data["name"]: doc_data["score"] for doc_data in self.data.values()}
         # ~ print(scores)
         scores_path = self.dirs["output"] / "scores.csv"
         print(f"{ANSI_CYAN}SCORES (/{max_score:g}):{ANSI_RESET}")
@@ -403,13 +412,13 @@ class MCQPictureParser:
         info_path = self.dirs["output"] / "infos.csv"
         info = [
             (
-                d["name"],
-                d["student_ID"],
-                ID,
-                d["score"],
-                [d["pages"][p]["pic_path"] for p in d["pages"]],
+                doc_data["name"],
+                doc_data["student_ID"],
+                doc_id,
+                doc_data["score"],
+                [doc_data["pages"][p]["pic_path"] for p in doc_data["pages"]],
             )
-            for ID, d in self.data.items()
+            for doc_id, doc_data in self.data.items()
         ]
         print(f"{ANSI_CYAN}SCORES (/{max_score:g}):{ANSI_RESET}")
         with open(info_path, "w", newline="") as csvfile:
@@ -423,7 +432,7 @@ class MCQPictureParser:
 
     def generate_correction(self, display_score: bool = True) -> None:
         """Generate pdf files, with the score and the table of correct answers for each test."""
-        pdf_paths = []
+        pdf_paths: List[Path] = []
         for doc_id, d in self.data.items():
             # ~ identifier, answers, name, score, students, ids
             name = d["name"]
@@ -443,7 +452,7 @@ class MCQPictureParser:
     def _load_configuration(self):
         """Read configuration file, load configuration and calculate maximal score too."""
         configfile = search_by_extension(self.path, ".autoqcm.config.json")
-        cfg = load(configfile)
+        cfg: Configuration = load(configfile)
         self.correct_answers = get_correct_answers(cfg)
         default_mode = cfg["mode"]["default"]
         default_correct = cfg["correct"]["default"]
@@ -659,7 +668,7 @@ class MCQPictureParser:
         # Extract informations from the pictures.
         # ---------------------------------------
         data = self.data
-        self.name2sheetID = {d["name"]: ID for ID, d in data.items()}
+        self.name2docID = {d["name"]: ID for ID, d in data.items()}
         self.already_seen = set((ID, p) for ID, d in data.items() for p in d["pages"])
         pic_list = sorted(f for f in self.dirs["pic"].glob("*/*") if f.suffix.lower() in PIC_EXTS)
 
@@ -703,7 +712,7 @@ class MCQPictureParser:
                 with open(self.files["verified"], "a", newline="", encoding="utf8") as file:
                     file.write(f"{pic_path}\n")
 
-            ID = pic_data["ID"]
+            doc_id = pic_data["ID"]
             page = pic_data["page"]
 
             if self._keep_previous_version(pic_data):
@@ -711,31 +720,27 @@ class MCQPictureParser:
 
             # 2) Gather data
             #    ‾‾‾‾‾‾‾‾‾‾‾
-            name, student_ID = self.more_infos.get(ID, ("", ""))
-            data_for_this_ID = data.setdefault(
-                ID,
-                {
-                    "pages": {},
-                    "name": name,
-                    "student_ID": student_ID,
-                    "answered": {},
-                    "score": 0,
-                    "score_per_question": {},
-                },
+            name, student_ID = self.more_infos.get(doc_id, ("", ""))
+            doc_data: DocumentData = data.setdefault(
+                doc_id,
+                DocumentData(
+                    pages={}, name=name, student_ID=student_ID, answered={}, score=0, score_per_question={}
+                ),
             )
-            data_for_this_ID["pages"][page] = pic_data
+            doc_data["pages"][page] = pic_data
 
             for q in pic_data["answered"]:
-                ans = data_for_this_ID["answered"].setdefault(q, set())
+                ans = doc_data["answered"].setdefault(q, set())
                 ans |= pic_data["answered"][q]
+                # Simplify: doc_data["answered"][q] = set(pic_data["answered"][q])
 
             # 3) 1st page of the test => retrieve the student name
             #    ‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾
             if page == 1:
-                self._extract_name(ID, data_for_this_ID, matrix)
+                self._extract_name(doc_id, doc_data, matrix)
 
             # Store work in progress, so we can resume process if something fails...
-            self._store_data(pic_path.parent.name, ID, page, matrix)
+            self._store_data(pic_path.parent.name, doc_id, page, matrix)
 
         # ---------------------------
         # Test integrity

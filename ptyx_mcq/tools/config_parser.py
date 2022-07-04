@@ -1,8 +1,28 @@
 from json import loads, dumps as _dumps, JSONEncoder
 from pathlib import Path
-from typing import Dict, Set, Any, Tuple, Optional, Union, TypeVar
+from typing import Dict, Set, Any, Tuple, Optional, Union, TypeVar, TypedDict, List
 
 T = TypeVar("T")
+
+
+class OrderingConfiguration(TypedDict):
+    questions: List[int]
+    answers: Dict[int, List[Tuple[int, bool]]]
+
+
+# TODO: improve typing precision
+class Configuration(TypedDict, total=False):
+    ordering: Dict[int, OrderingConfiguration]
+    mode: dict
+    correct: dict
+    incorrect: dict
+    skipped: dict
+    students: list
+    id_table_pos: List[float]
+    id_format: list
+    ids: Dict[str, str]
+    boxes: dict
+    max_score: float
 
 
 class CustomJSONEncoder(JSONEncoder):
@@ -22,7 +42,7 @@ def fmt(s: str) -> str:
     return s.upper().center(40, "-")
 
 
-def encode2js(o, formatter=(lambda s: s), _level=0):
+def encode2js(o, formatter=(lambda s: s), _level=0) -> str:
     """Encode dict `o` to JSON.
 
     If `formatter` is set, it must be a function used to format first-level
@@ -69,7 +89,7 @@ def decodejs(js):
     return new_d
 
 
-def dump(path: Union[Path, str], cfg: dict) -> None:
+def dump(path: Union[Path, str], cfg: Configuration) -> None:
     """Dump `cfg` dict to `path` as json."""
     with open(path, "w") as f:
         f.write(encode2js(cfg, formatter=fmt))
@@ -83,8 +103,8 @@ def load(path: Union[Path, str]) -> Dict[str, Dict[str, Any]]:
 
 
 def real2apparent(
-    original_q_num: int, original_a_num: Optional[int], config: dict, doc_id: int
-) -> Tuple[int, int]:
+    original_q_num: int, original_a_num: Optional[int], config: Configuration, doc_id: int
+) -> Tuple[int, Optional[int]]:
     """Return apparent question number and answer number.
 
     If `a` is None, return only question number.
@@ -100,10 +120,10 @@ def real2apparent(
     # Attention, list index 0 corresponds to question number 1.
     pdf_q_num = questions.index(original_q_num) + 1
     if original_a_num is None:
-        return pdf_q_num
+        return pdf_q_num, None
     for pdf_a_num, (ans_num, is_correct) in enumerate(answers[original_q_num], start=1):
         if ans_num == original_a_num:
-            return (pdf_q_num, pdf_a_num)
+            return pdf_q_num, pdf_a_num
     raise IndexError(f"Answer {original_a_num} not found for question {original_q_num}.")
 
 
@@ -127,7 +147,7 @@ def apparent2real(
 
 
 def is_answer_correct(
-    q_num: int, a_num: int, config: dict, doc_id: int, use_original_num: bool = True
+    q_num: int, a_num: int, config: Configuration, doc_id: int, use_original_num: bool = True
 ) -> bool:
     if use_original_num:
         # q_num and a_num are question and answer number *before* shuffling questions.
@@ -141,7 +161,9 @@ def is_answer_correct(
         return config["ordering"][doc_id]["answers"][original_q_num][a_num - 1][1]
 
 
-def get_correct_answers(config: dict, use_original_num: bool = True) -> Dict[int, Dict[int, Set[int]]]:
+def get_correct_answers(
+    config: Configuration, use_original_num: bool = True
+) -> Dict[int, Dict[int, Set[int]]]:
     """Return a dict containing the set of the correct answers for each question for each document ID.
 
     Correct answers numbers returned are apparent one (i.e. after shuffling).

@@ -13,7 +13,7 @@ from ..parameters import (
     CALIBRATION_SQUARE_POSITION,
     CALIBRATION_SQUARE_SIZE,
 )
-from ..tools.config_parser import get_correct_answers
+from ..tools.config_parser import get_correct_answers, Configuration
 
 
 class IdentifiantError(RuntimeError):
@@ -247,7 +247,7 @@ def student_ID_table(ID_length: int, max_ndigits: int, digits: List[set]) -> str
     return "\n".join(content)
 
 
-def table_for_answers(config: dict, ID: Optional[int] = None) -> str:
+def table_for_answers(config: Configuration, ID: Optional[int] = None) -> str:
     """Generate the table where students select correct answers.
 
     - `config` is a dict generated when compiling test.
@@ -285,7 +285,7 @@ def table_for_answers(config: dict, ID: Optional[int] = None) -> str:
     if ID is not None:
         correct_ans = get_correct_answers(config, use_original_num=False)[ID]
 
-    i = -1
+    # i = -1
     for i in range(n_max_answers):
         name = ascii_letters[i]
         y1 = -i
@@ -389,7 +389,7 @@ def packages_and_macros() -> List[str]:
     ]
 
 
-def answers_and_score(config: dict, name: str, identifier: int, score: int):
+def answers_and_score(config: Configuration, name: str, identifier: int, score: Optional[int]):
     """Generate plain LaTeX code corresponding to score and correct answers."""
     table = table_for_answers(config, identifier)
     if score is not None:

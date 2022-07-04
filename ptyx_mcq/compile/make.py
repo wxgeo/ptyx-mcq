@@ -35,7 +35,7 @@ def generate_config_file(_compiler):
                 if k == "ID-table":
                     if id_table_pos is None:
                         id_table_pos = [float(s.strip("() \n")) for s in v.split(",")]
-                        autoqcm_data["id-table-pos"] = id_table_pos
+                        autoqcm_data["id_table_pos"] = id_table_pos
                     continue
                 page, x, y = [s.strip("p() \n") for s in v.split(",")]
                 d.setdefault(page, {})[k] = [float(x), float(y)]
