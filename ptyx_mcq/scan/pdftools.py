@@ -7,6 +7,7 @@ Created on Fri Oct 23 22:54:07 2020
 """
 
 import subprocess
+from pathlib import Path
 from shutil import rmtree
 from os import listdir, mkdir, rename
 from os.path import join, basename
@@ -47,7 +48,7 @@ def _export_pdf_to_jpg(pdf_path, dest, page=None):
     run(cmd)
 
 
-def extract_pdf_pictures(pdf_file: str, dest: str, page=None):
+def extract_pdf_pictures(pdf_file: Path, dest: Path, page: int=None):
     """Clear `dest` folder, then extract all pages of the pdf files inside."""
     rmtree(dest, ignore_errors=True)
     mkdir(dest)
@@ -105,7 +106,7 @@ def extract_pdf_pictures(pdf_file: str, dest: str, page=None):
 #        print("Info: No new pdf file detected.")
 
 
-def number_of_pages(pdf_path: str) -> int:
+def number_of_pages(pdf_path: Path) -> int:
     """Return the number of pages of the pdf."""
     cmd = ["pdfinfo", pdf_path]
     # An example of pdfinfo output:

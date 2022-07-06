@@ -389,7 +389,7 @@ def packages_and_macros() -> List[str]:
     ]
 
 
-def answers_and_score(config: Configuration, name: str, identifier: int, score: Optional[int]):
+def answers_and_score(config: Configuration, name: str, identifier: int, score: Optional[float]):
     """Generate plain LaTeX code corresponding to score and correct answers."""
     table = table_for_answers(config, identifier)
     if score is not None:

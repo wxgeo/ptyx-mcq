@@ -95,7 +95,7 @@ def dump(path: Union[Path, str], cfg: Configuration) -> None:
         f.write(encode2js(cfg, formatter=fmt))
 
 
-def load(path: Union[Path, str]) -> Dict[str, Dict[str, Any]]:
+def load(path: Union[Path, str]) -> Configuration:
     """Load `path` configuration file (json) and return a dict."""
     with open(path) as f:
         js = f.read()
