@@ -683,7 +683,7 @@ def scan_picture(
     # ~ n_answers = config['answers (max)']
     students = config["students"]
     n_students = len(students)
-    ids = config["ids"]
+    students_ids = config["students_ids"]
 
     # ------------------------------------------------------------------
     #                          CALIBRATION
@@ -814,7 +814,7 @@ def scan_picture(
         # Read student id, then find name
         # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
         #
-        elif ids:
+        elif students_ids:
             ID_length, max_digits, digits = config["id_format"]
             # ~ height = ID_length*cell_size
 
@@ -824,7 +824,7 @@ def scan_picture(
 
             # Scan grid row by row. For each row, the darker cell is retrieved,
             # and the associated character is appended to the ID.
-            all_ID_are_of_the_same_length = len(set(len(ID) for ID in ids)) == 1
+            all_ID_are_of_the_same_length = len(set(len(ID) for ID in students_ids)) == 1
 
             ev = eval_square_color
             for n in range(ID_length):
@@ -876,11 +876,11 @@ def scan_picture(
                         # The blackest one is chosen:
                         digit = black_cells[0][1]
                         student_ID += digit
-            if student_ID in ids:
+            if student_ID in students_ids:
                 print("Student ID:", student_ID)
-                student_name = ids[student_ID]
+                student_name = students_ids[student_ID]
             else:
-                print(f"ID list: {ids!r}")
+                print(f"ID list: {students_ids!r}")
                 print(f"Warning: invalid student id {student_ID!r} !")
                 # ~ color2debug(m)
 

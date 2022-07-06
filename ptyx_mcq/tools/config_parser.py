@@ -1,6 +1,6 @@
 from json import loads, dumps as _dumps, JSONEncoder
 from pathlib import Path
-from typing import Dict, Set, Any, Tuple, Optional, Union, TypeVar, TypedDict, List
+from typing import Dict, Set, Any, Tuple, Optional, Union, TypeVar, TypedDict, List, Literal
 
 T = TypeVar("T")
 
@@ -9,19 +9,20 @@ class OrderingConfiguration(TypedDict):
     questions: List[int]
     answers: Dict[int, List[Tuple[int, bool]]]
 
+QuestionNumberOrDefault = Union[Literal["default"], int]
 
 # TODO: improve typing precision
 class Configuration(TypedDict, total=False):
     ordering: Dict[int, OrderingConfiguration]
-    mode: dict
-    correct: dict
-    incorrect: dict
-    skipped: dict
-    students: list
-    id_table_pos: List[float]
-    id_format: list
-    ids: Dict[str, str]
-    boxes: dict
+    mode: Dict[QuestionNumberOrDefault, str]
+    correct: Dict[QuestionNumberOrDefault, float]
+    incorrect: Dict[QuestionNumberOrDefault, float]
+    skipped: Dict[QuestionNumberOrDefault, float]
+    students: List[str]
+    id_table_pos: Tuple[float, float]
+    id_format: Tuple[int, int, List[List[str]]]
+    students_ids: Dict[str, str]
+    boxes: Dict[int, Dict[int, Dict[str, Tuple[float, float]]]]
     max_score: float
 
 
@@ -59,6 +60,7 @@ def encode2js(o, formatter=(lambda s: s), _level=0) -> str:
             blocks = []
             indent = (_level - 1) * "\t"
             for k, v in o.items():
+                # Warning: all JSON keys must be strings !
                 blocks.append(f'{indent}"{k}": ' + encode2js(v, _level=_level + 1))
             return "{\n%s\n%s}" % (",\n".join(blocks), indent)
     elif isinstance(o, (tuple, set, list)):
@@ -81,11 +83,8 @@ def decodejs(js):
     # Strip '-' from keys and convert them to lower case.
     for key in d:
         new_d[key.strip("-").lower()] = d[key]
-    d = {}
-    # Students ID must be strings.
-    for key in new_d["ids"]:
-        d[str(key)] = new_d["ids"][key]
-    new_d["ids"] = d
+    # Students ID must be kept as strings.
+    new_d["ids"] = {str(key): val for key, val in new_d["ids"].items()}
     return new_d
 
 

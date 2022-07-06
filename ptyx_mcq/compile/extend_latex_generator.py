@@ -27,6 +27,7 @@ from functools import partial
 
 from ptyx.printers import sympy2latex
 from ptyx.latex_generator import LatexGenerator
+from ptyx_mcq.tools.config_parser import Configuration
 
 from .header import (
     packages_and_macros,
@@ -104,7 +105,7 @@ def _detect_ID_format(ids: dict, id_format: str) -> dict:
         max_ndigits = 10
         digits = n * [tuple("0123456789")]
 
-    return {"ids": ids, "id_format": (ID_length, max_ndigits, digits)}
+    return {"students_ids": ids, "id_format": (ID_length, max_ndigits, digits)}
 
 
 class SameAnswerError(RuntimeError):
@@ -171,7 +172,7 @@ class AutoQCMLatexGenerator(LatexGenerator):
                 # 'correct_answers': correct_answers, # {1: [4], 2:[1,5], ...}
                 "students": [],
                 "id_table_pos": None,
-                "ids": {},
+                "students_ids": {},
                 "ordering": {},
                 # {NUM: {'questions': [2,1,3...],
                 #        'answers': {1: [(2, True), (1, False), (3, True)...], ...}}, ...}
@@ -179,6 +180,7 @@ class AutoQCMLatexGenerator(LatexGenerator):
                 "id_format": None,
             },
         }
+        assert set(self.cache["autoqcm"]["data"]).issubset(set(Configuration.__annotations__))
 
     @property
     def autoqcm_data(self):
@@ -464,7 +466,11 @@ class AutoQCMLatexGenerator(LatexGenerator):
                 "name": "names",
                 "student": "names",
                 "students": "names",
-                "id": "ids",
+                "id": "students_ids",
+                "ids": "students_ids",
+                "student_ids": "students_ids",
+                "student_id": "students_ids",
+                "students_id": "students_ids",
                 "package": "sty",
                 "packages": "sty",
                 "id_formats": "id_format",
@@ -514,9 +520,9 @@ class AutoQCMLatexGenerator(LatexGenerator):
                     code = students_checkboxes(students)
                     self.autoqcm_data["students_list"] = students
 
-            if "ids" in config or "id_format" in config:
+            if "students_ids" in config or "id_format" in config:
                 # config['ids'] must be the path of a CSV file.
-                csv = config.pop("ids", None)
+                csv = config.pop("students_ids", None)
                 id_format = config.pop("id_format", None)
 
                 if not self.WITH_ANSWERS:

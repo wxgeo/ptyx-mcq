@@ -171,7 +171,7 @@ class MCQPictureParser:
         if matrix is None:
             assert p is not None
             matrix = self.get_matrix(doc_id, p)
-        student_ids = self.config["ids"]
+        student_ids = self.config["students_ids"]
         student_ID = ""
         print("Name can not be read automatically.")
         print("Please read the name on the picture which will be displayed now.")
@@ -465,8 +465,7 @@ class MCQPictureParser:
         max_score = 0
         # Take a random student test, and calculate max score for it.
         # Maximal score = (number of questions)x(score when answer is correct)
-        for _ in next(iter(cfg["ordering"].values()))["questions"]:
-            q = str(_)  # TODO: unify types in json (int for all questions !)
+        for q in next(iter(cfg["ordering"].values()))["questions"]:
             if cfg["mode"].get(q, default_mode) != "skip":
                 max_score += int(cfg["correct"].get(q, default_correct))
         cfg["max_score"] = max_score
