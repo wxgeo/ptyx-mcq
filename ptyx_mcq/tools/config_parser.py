@@ -9,6 +9,7 @@ class OrderingConfiguration(TypedDict):
     questions: List[int]
     answers: Dict[int, List[Tuple[int, bool]]]
 
+
 QuestionNumberOrDefault = Union[Literal["default"], int]
 
 # TODO: improve typing precision
@@ -79,12 +80,14 @@ def keys2int(d: Dict[str, T]) -> Dict[Union[int, str], T]:
 
 def decodejs(js):
     d = loads(js, object_hook=keys2int)
-    new_d = {}
+    new_d: Configuration = {}
     # Strip '-' from keys and convert them to lower case.
     for key in d:
-        new_d[key.strip("-").lower()] = d[key]
+        new_key = key.strip("-").lower()
+        assert new_key in Configuration.__annotations__
+        new_d[new_key] = d[key]  # type: ignore
     # Students ID must be kept as strings.
-    new_d["ids"] = {str(key): val for key, val in new_d["ids"].items()}
+    new_d["students_ids"] = {str(key): val for key, val in new_d["students_ids"].items()}
     return new_d
 
 

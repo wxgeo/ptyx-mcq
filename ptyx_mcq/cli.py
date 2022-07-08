@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-AutoQCM Command Line Interface
+ptyx MCQ Command Line Interface
 
 @author: Nicolas Pourcelot
 """
@@ -16,7 +16,7 @@ from .scan.scanner import scan
 
 
 def main(args: Optional[list] = None) -> None:
-    """Main entry point, called whenever `autoqcm` command is executed."""
+    """Main entry point, called whenever `mcq` command is executed."""
     parser = ArgumentParser(description="Generate and manage pdf MCQs.")
     subparsers = parser.add_subparsers()
     add_parser = subparsers.add_parser
@@ -58,7 +58,7 @@ def main(args: Optional[list] = None) -> None:
         default=".",
         help=(
             "Path to a directory which must contain "
-            "a .autoqcm.config file and a .scan.pdf file "
+            "a .mcq.config file and a .scan.pdf file "
             "(alternatively, this path may point to any file in this folder)."
         ),
     )
@@ -102,7 +102,7 @@ def main(args: Optional[list] = None) -> None:
 
 
 def new(path: Path) -> None:
-    """Implement `autoqcm new` command."""
+    """Implement `mcq new` command."""
     template = Path(__file__).resolve().parent / "template"
     if path.exists():
         print(f"ERROR: path {path} already exists.", file=sys.stderr)

@@ -328,10 +328,10 @@ def packages_and_macros() -> List[str]:
         \node[fill=gray,shape=rectangle,draw,inner sep=2pt] (char) {{\color{{white}}\textbf{{#1}}}};}}}}
     \newcommand*\whitesquared[1]{{\tikz[baseline=(char.base)]{{
         \node[fill=white,shape=rectangle,draw,inner sep=2pt] (char) {{\color{{black}}\textbf{{#1}}}};}}}}
-    \newcommand*\AutoQCMcircled[1]{{\tikz[baseline=(char.base)]{{
+    \newcommand*\ptyxMCQcircled[1]{{\tikz[baseline=(char.base)]{{
         \node[shape=circle,fill=blue!20!white,draw,inner sep=2pt] (char) {{\textbf{{#1}}}};}}}}
     \makeatletter
-    \newcommand{{\AutoQCMsimfill}}{{%
+    \newcommand{{\ptyxMCQsimfill}}{{%
     \leavevmode \cleaders \hb@xt@ .50em{{\hss $\sim$\hss }}\hfill \kern \z@
     }}
     \makeatother
@@ -373,13 +373,13 @@ def packages_and_macros() -> List[str]:
     \newwrite\mywrite
     \openout\mywrite=\jobname.pos\relax
     \usepackage{enumitem} % To resume an enumeration.
-    \setenumerate[0]{label=\protect\AutoQCMcircled{\arabic*}}
+    \setenumerate[0]{label=\protect\ptyxMCQcircled{\arabic*}}
     \AddEverypageHook{\CustomHeader}
 
-    \newlength{\AutoQCMTabLength}
-    \newcommand{\AutoQCMTab}[2]{%
-      \settowidth{\AutoQCMTabLength}{#1{}#2}
-      \ifdim \AutoQCMTabLength<\textwidth%
+    \newlength{\ptyxMCQTabLength}
+    \newcommand{\ptyxMCQTab}[2]{%
+      \settowidth{\ptyxMCQTabLength}{#1{}#2}
+      \ifdim \ptyxMCQTabLength<\textwidth%
       \begin{tabular}{l@{\,\,}l}#1&#2\end{tabular}%
       \else%
       \begin{tabularx}{\linewidth}{l@{\,\,}X}#1&#2\end{tabularx}%

@@ -1,11 +1,19 @@
-def generate_ptyx_code(text):
-    "This function translates MCQ syntax into proper pTyX code."
+# from enum import Enum, unique
+#
+# @unique
+# class Levels(Enum):
+#     ROOT, QCM, SECTION, QUESTION, VERSION, ANSWERS_BLOCK, NEW_ANSWER = range(7)
+
+
+def generate_ptyx_code(text: str) -> str:
+    """This function translates MCQ syntax into proper pTyX code."""
 
     # TODO: improve ability to customize this part ?
 
     code = []
 
     level_names = ("ROOT", "QCM", "SECTION", "QUESTION", "VERSION", "ANSWERS_BLOCK", "NEW_ANSWER")
+    # noinspection PyTypeChecker
     levels = dict(enumerate(level_names))
     depth = {name: i for i, name in enumerate(level_names)}
     #    stack = StaticStack(levels)
@@ -94,6 +102,7 @@ def generate_ptyx_code(text):
     # silently when generating the pdf files with the answers !
     intro = ["#ASK % (introduction)"]
 
+    answer_num = None
     for _line_ in text.split("\n"):
         line = _line_.strip()
         n = len(line)
@@ -159,6 +168,9 @@ def generate_ptyx_code(text):
             # - incorrect answer
             # + correct answer
 
+            if previous_line is None:
+                raise RuntimeError("No question before answers list !")
+
             # A blank line is used to separate answers groups.
             if previous_line == "" and current_level == "NEW_ANSWER":
                 # This blank line should not appear in final pdf, so remove it.
@@ -172,8 +184,11 @@ def generate_ptyx_code(text):
                     cut_and_paste = code.pop()
                 begin("ANSWERS_BLOCK")
                 if previous_line.startswith("@"):
+                    # noinspection PyUnboundLocalVariable
                     code.append(cut_and_paste)
 
+            if answer_num is None:
+                raise RuntimeError("No question before answers list !")
             answer_num += 1
             begin("NEW_ANSWER", n=answer_num, correct=(line[0] == "+"))
 

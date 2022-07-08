@@ -1,33 +1,35 @@
 """
-Generate pdf file from raw autoqcm file.
+Generate pdf file from raw mcq file.
 """
 import sys
 import traceback
 from pathlib import Path
-from typing import List
+from typing import List, Dict, Tuple
 
 from ptyx.compilation import make_files, make_file
-from ptyx.latex_generator import compiler
+from ptyx.latex_generator import compiler, Compiler
 
 from ..tools.config_parser import dump
 
 
-def generate_config_file(_compiler):
-    autoqcm_data = _compiler.latex_generator.autoqcm_data
+def generate_config_file(_compiler: Compiler) -> None:
+    mcq_data = _compiler.latex_generator.mcq_data
     file_path = _compiler.file_path
     folder = file_path.parent
     name = file_path.stem
     id_table_pos = None
-    for n in autoqcm_data["ordering"]:
+    for n in mcq_data["ordering"]:
         # XXX: what if files are not auto-numbered, but a list
         # of names is provided to Ptyx instead ?
         # (cf. command line options).
-        if len(autoqcm_data["ordering"]) == 1:
+        if len(mcq_data["ordering"]) == 1:
             filename = f"{name}.pos"
         else:
             filename = f"{name}-{n}.pos"
         full_path = folder / ".compile" / name / filename
-        d = autoqcm_data["boxes"][n] = {}
+        # For each page of the document, give the position of every answer's checkbox.
+        checkboxes_positions: Dict[int, Dict[str, Tuple[float, float]]] = {}
+        mcq_data["boxes"][n] = checkboxes_positions
         with open(full_path) as f:
             for line in f:
                 k, v = line.split(": ", 1)
@@ -35,13 +37,13 @@ def generate_config_file(_compiler):
                 if k == "ID-table":
                     if id_table_pos is None:
                         id_table_pos = [float(s.strip("() \n")) for s in v.split(",")]
-                        autoqcm_data["id_table_pos"] = id_table_pos
+                        mcq_data["id_table_pos"] = id_table_pos
                     continue
                 page, x, y = [s.strip("p() \n") for s in v.split(",")]
-                d.setdefault(page, {})[k] = [float(x), float(y)]
+                checkboxes_positions.setdefault(int(page), {})[k] = (float(x), float(y))
 
-    config_file = file_path.with_suffix(".ptyx.autoqcm.config.json")
-    dump(config_file, autoqcm_data)
+    config_file = file_path.with_suffix(".ptyx.mcq.config.json")
+    dump(config_file, mcq_data)
 
 
 def make(
@@ -62,7 +64,7 @@ def make(
         else:
             traceback.print_exc()
         print(
-            "\n\u001b[31;1mERROR: `autoqcm make` failed to compile document (see above for details).\u001b[0m"
+            "\n\u001b[31;1mERROR: `mcq make` failed to compile document (see above for details).\u001b[0m"
         )
         sys.exit(1)
 
@@ -70,7 +72,7 @@ def make(
 def _make(
     path: Path, num: int = 1, start: int = 1, quiet: bool = False, correction_only: bool = False
 ) -> None:
-    """Implement `autoqcm make` command.
+    """Implement `mcq make` command.
 
     If `only_correction` is `True`, only generate correction (useful for fast testing).
     """
@@ -118,13 +120,13 @@ def _make(
         # Generate a document including the different versions of all the questions.
         make_file(
             (output_name.parent / output_name.stem).with_suffix(".all.pdf"),
-            context={"AUTOQCM_KEEP_ALL_VERSIONS": True},
+            context={"MCQ_KEEP_ALL_VERSIONS": True},
             quiet=quiet,
         )
         # Generate a document including the different versions of all the questions
         # with the correct answers checked.
         make_file(
             (output_name.parent / output_name.stem).with_suffix(".all-corr.pdf"),
-            context={"AUTOQCM_KEEP_ALL_VERSIONS": True, "PTYX_WITH_ANSWERS": True},
+            context={"MCQ_KEEP_ALL_VERSIONS": True, "PTYX_WITH_ANSWERS": True},
             quiet=quiet,
         )

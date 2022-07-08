@@ -1,5 +1,5 @@
 """
-Test autoqcm command line interface.
+Test mcq command line interface.
 
 Test new, make and scan subcommands.
 """
@@ -110,15 +110,15 @@ def test_cli():
             ptyxfile.write(ptyxfile_content.replace("\nid format", "\nids=../students.csv\nid format"))
 
         # Test mcq make
-        main(["make", str(path), "-n", "2"])
+        main(["make", str(path), "-n", "2", "-q"])
         assert "new.pdf" in listdir(path)
         assert "new-corr.pdf" in listdir(path)
         # TODO: assert "new.all.pdf" in listdir(path)
 
-        config = load(path / "new.ptyx.autoqcm.config.json")
+        config = load(path / "new.ptyx.mcq.config.json")
         for student_id in STUDENTS:
-            assert student_id in config["ids"], (repr(student_id), repr(config["ids"]))
-            assert config["ids"][student_id] == STUDENTS[student_id]
+            assert student_id in config["students_ids"], (repr(student_id), repr(config["students_ids"]))
+            assert config["students_ids"][student_id] == STUDENTS[student_id]
 
         # Test mcq scan
         images = convert_from_path(path / "new.pdf", dpi=DPI, output_folder=path)

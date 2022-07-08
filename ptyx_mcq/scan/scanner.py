@@ -456,7 +456,7 @@ class MCQPictureParser:
 
     def _load_configuration(self) -> None:
         """Read configuration file, load configuration and calculate maximal score too."""
-        configfile = search_by_extension(self.path, ".autoqcm.config.json")
+        configfile = search_by_extension(self.path, ".mcq.config.json")
         cfg: Configuration = load(configfile)
         self.correct_answers = get_correct_answers(cfg)
         default_mode = cfg["mode"]["default"]
@@ -639,11 +639,11 @@ class MCQPictureParser:
 
     def scan_all(
         self,
-        start: int = 1,
-        end: Union[int, float] = inf,
-        manual_verification: Optional[bool] = None,
-        # ask_for_name: bool = False,
-        reset: bool = False,
+            start: int = 1,
+            end: Union[int, float] = inf,
+            manual_verification: Optional[bool] = None,
+            ask_for_name: bool = False,
+            reset: bool = False,
     ) -> None:
         """Extract information from pdf, calculate scores and annotate documents
         to display correct answers."""
@@ -780,10 +780,10 @@ class MCQPictureParser:
 def scan(
     path: Path,
     reset: bool = False,
-    # ask_for_name: bool = False,
+    ask_for_name: bool = False,
     verify: Literal["auto", "always", "never"] = "auto",
 ) -> None:
-    """Implement `autoqcm scan` command."""
+    """Implement `mcq scan` command."""
     if verify == "always":
         manual_verification: Optional[bool] = True
     elif verify == "never":
@@ -792,6 +792,6 @@ def scan(
         manual_verification = None
     MCQPictureParser(path).scan_all(
         reset=reset,
-        # ask_for_name=ask_for_name,
+        ask_for_name=ask_for_name,
         manual_verification=manual_verification,
     )

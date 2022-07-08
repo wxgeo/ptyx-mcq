@@ -1,11 +1,11 @@
 r"""
-AutoQCM
+ptyx MCQ
 
 This extension enables computer corrected quizzes.
 
 An example:
 
-    #LOAD{autoqcm2}
+    #LOAD{mcq}
     #SEED{8737545887}
 
     ===========================
@@ -62,13 +62,13 @@ One may include some PTYX code of course.
 
 import re
 from pathlib import Path
+from re import Match
 
 from ptyx.extensions import extended_python
+from ptyx.latex_generator import Compiler
 
-from .compile.extend_latex_generator import AutoQCMLatexGenerator
+from .compile.extend_latex_generator import MCQLatexGenerator
 from .compile.generate_ptyx_code import generate_ptyx_code
-
-# from .tools.config_parser import dump
 
 
 # Note for closing tags:
@@ -91,14 +91,14 @@ __tags__ = {
     "ANSWERS_LIST": (2, 0, None),
     # Other tags
     "QCM_HEADER": (1, 0, None),
-    "DEBUG_AUTOQCM": (0, 0, None),
+    "DEBUG_MCQ": (0, 0, None),
     # Deprecated tags
     "L_ANSWERS": (1, 0, None),
 }
-__latex_generator_extension__ = AutoQCMLatexGenerator
+__latex_generator_extension__ = MCQLatexGenerator
 
 
-def main(text, compiler):
+def main(text: str, compiler: Compiler) -> str:
     # Generation algorithm is the following:
     # 1. Parse AutoQCM code, to convert it to plain pTyX code.
     #    Doing this, we now know the number of questions, the number
@@ -110,8 +110,8 @@ def main(text, compiler):
     # 2. Generate syntax tree, and then compile pTyX code many times to generate
     #    one test for each student. For each compilation, keep track of correct
     #    answers.
-    #    All those data are stored in `latex_generator.autoqcm_data['answers']`.
-    #    `latex_generator.autoqcm_data['answers']` is a dict
+    #    All those data are stored in `latex_generator.mcq_data['answers']`.
+    #    `latex_generator.mcq_data['answers']` is a dict
     #    with the following structure:
     #    {1:  [          <-- test n°1 (test id is stored in NUM)
     #         [0,3,5],   <-- 1st question: list of correct answers
@@ -128,7 +128,7 @@ def main(text, compiler):
     remove_comments = compiler.syntax_tree_generator.remove_comments
 
     # First pass, only to include files.
-    def include(match):
+    def include(match: Match) -> str:
         file_found = False
         pattern = match.group(1).strip()
         contents = []

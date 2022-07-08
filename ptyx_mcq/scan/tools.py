@@ -29,7 +29,7 @@ def search_by_extension(directory: Path, ext: str) -> Path:
     return paths[0]
 
 
-def print_framed_msg(msg):
+def print_framed_msg(msg: str) -> None:
     decoration = max(len(line) for line in msg.split("\n")) * "-"
     print(decoration)
     print(msg)
