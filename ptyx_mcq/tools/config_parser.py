@@ -12,6 +12,7 @@ class OrderingConfiguration(TypedDict):
 
 QuestionNumberOrDefault = Union[Literal["default"], int]
 
+
 # TODO: improve typing precision
 class Configuration(TypedDict, total=False):
     ordering: Dict[int, OrderingConfiguration]

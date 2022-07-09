@@ -48,7 +48,7 @@ def _export_pdf_to_jpg(pdf_path, dest, page=None):
     run(cmd)
 
 
-def extract_pdf_pictures(pdf_file: Path, dest: Path, page: int=None):
+def extract_pdf_pictures(pdf_file: Path, dest: Path, page: int = None):
     """Clear `dest` folder, then extract all pages of the pdf files inside."""
     rmtree(dest, ignore_errors=True)
     mkdir(dest)

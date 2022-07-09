@@ -639,11 +639,11 @@ class MCQPictureParser:
 
     def scan_all(
         self,
-            start: int = 1,
-            end: Union[int, float] = inf,
-            manual_verification: Optional[bool] = None,
-            ask_for_name: bool = False,
-            reset: bool = False,
+        start: int = 1,
+        end: Union[int, float] = inf,
+        manual_verification: Optional[bool] = None,
+        ask_for_name: bool = False,
+        reset: bool = False,
     ) -> None:
         """Extract information from pdf, calculate scores and annotate documents
         to display correct answers."""

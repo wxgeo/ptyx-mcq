@@ -63,9 +63,7 @@ def make(
             print(f"\u001b[31m{e.__class__.__name__}:\u001b[0m {e}")
         else:
             traceback.print_exc()
-        print(
-            "\n\u001b[31;1mERROR: `mcq make` failed to compile document (see above for details).\u001b[0m"
-        )
+        print("\n\u001b[31;1mERROR: `mcq make` failed to compile document (see above for details).\u001b[0m")
         sys.exit(1)
 
 

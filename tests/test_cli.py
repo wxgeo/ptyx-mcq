@@ -110,7 +110,7 @@ def test_cli():
             ptyxfile.write(ptyxfile_content.replace("\nid format", "\nids=../students.csv\nid format"))
 
         # Test mcq make
-        main(["make", str(path), "-n", "2", "-q"])
+        main(["make", str(path), "-n", "2"])
         assert "new.pdf" in listdir(path)
         assert "new-corr.pdf" in listdir(path)
         # TODO: assert "new.all.pdf" in listdir(path)

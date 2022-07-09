@@ -53,7 +53,7 @@ def _has_option(node: Node, option: str) -> bool:
     return option in [opt.strip() for opt in node.options.split(",")]
 
 
-def _analyze_IDS(ids: List[str]) -> Tuple[int, int, List[Set[str]]]:
+def _analyze_IDS(ids: List[str]) -> Tuple[int, int, List[Tuple[str, ...]]]:
     """Given a list of IDs (str), return:
     - the length of an ID (or raise an error if they don't have the same size),
     - the maximal number of different digits in an ID caracter,
@@ -74,7 +74,9 @@ def _analyze_IDS(ids: List[str]) -> Tuple[int, int, List[Set[str]]]:
             digits[i].add(digit)
 
     max_ndigits = max(len(set_) for set_ in digits)
-    return ID_length, max_ndigits, digits
+    # Make digits elements immutable (safer...)
+    # Don't use frozenset, as it isn't easily serializable to JSON.
+    return ID_length, max_ndigits, [tuple(s) for s in digits]
 
 
 def _detect_ID_format(ids: dict, id_format: str) -> dict:
@@ -88,15 +90,20 @@ def _detect_ID_format(ids: dict, id_format: str) -> dict:
     - the maximal number of different digits in an ID character,
     - a list of sets corresponding to the different digits used for each ID character.
     """
-    ID_length = None
+    ID_length = max_ndigits = digits = None
+
+    if not ids and not id_format:
+        raise RuntimeError("Unknown format for students' IDs.")
     if ids:
         # Analyze the IDs list even if `id_format` is provided.
         # This enables to check the consistency between the IDs list and the
         # given ID format.
         ID_length, max_ndigits, digits = _analyze_IDS(list(ids))
-    else:
-        if not id_format:
-            raise RuntimeError("Unknown format for students' IDs.")
+
+    if id_format:
+        # Analyze the ID format even if students ids are provided.
+        # This enables to check the consistency between the IDs list and the
+        # given ID format.
         num, ext = id_format.split()
         # Test format syntax
         if ext not in ("digit", "digits"):
@@ -111,8 +118,9 @@ def _detect_ID_format(ids: dict, id_format: str) -> dict:
         # Generate format data
         ID_length = n
         max_ndigits = 10
-        digits = n * [set("0123456789")]
-
+        digits = n * [tuple("0123456789")]
+        assert max_ndigits is not None
+        assert digits is not None
     return {"students_ids": ids, "id_format": (ID_length, max_ndigits, digits)}
 
 
@@ -154,7 +162,9 @@ class MCQLatexGenerator(LatexGenerator):
             answers_list.append(code)
         return code
 
-    def _mcq_shuffle_and_parse_children(self, node: Node, children: list = None, target: Tag = "ITEM") -> None:
+    def _mcq_shuffle_and_parse_children(
+        self, node: Node, children: list = None, target: Tag = "ITEM"
+    ) -> None:
         if self.context.get("MCQ_KEEP_ALL_VERSIONS"):
             self._parse_children(node.children)
         else:
