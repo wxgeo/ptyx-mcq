@@ -8,7 +8,8 @@
 #    Copyright (C) 2009-2020  Nicolas Pourcelot
 
 
-from ptyx.extensions.autoqcm.scan.scanner import scan
 from pathlib import Path
+
+from ptyx_mcq.scan.scanner import scan
 
 scan(path=Path("."))

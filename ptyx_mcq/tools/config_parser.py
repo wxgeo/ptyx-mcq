@@ -22,8 +22,9 @@ class Configuration(TypedDict, total=False):
     skipped: Dict[QuestionNumberOrDefault, float]
     students: List[str]
     id_table_pos: Tuple[float, float]
-    id_format: Tuple[int, int, List[List[str]]]
+    id_format: Tuple[int, int, List[Tuple[str, ...]]]
     students_ids: Dict[str, str]
+    students_list: List[str]
     boxes: Dict[int, Dict[int, Dict[str, Tuple[float, float]]]]
     max_score: float
 

@@ -1,7 +1,7 @@
 import csv
-from os.path import abspath, dirname, isabs, join, expanduser
+from pathlib import Path
 from string import ascii_letters
-from typing import Sequence, List, Optional
+from typing import Sequence, List, Optional, Dict, Union, Tuple
 
 from ..parameters import (
     CELL_SIZE_IN_CM,
@@ -20,15 +20,17 @@ class IdentifiantError(RuntimeError):
     pass
 
 
-def _byte_as_codebar(byte, n=0):
+def _byte_as_codebar(byte: Union[int, str], n=0) -> str:
     """Generate LaTeX code (TikZ) for byte number `n` in ID band.
 
-    - `byte` is a number between 0 and 255, or LaTeX code resulting
+    - `byte` is a number between 0 and 255, or some LaTeX code resulting
       in such a number.
       If the number is above 255, encoding will be wrong.
     - `n` should be incremented at each call, so as not to overwrite
       a previous codebar.
     """
+    if isinstance(byte, int) and byte > 255:
+        raise NotImplementedError("Value can't exceed 255 for one byte.")
     return rf"""
     \n={byte};
     \j={n};
@@ -40,10 +42,10 @@ def _byte_as_codebar(byte, n=0):
             }};"""
 
 
-def ID_band(ID, calibration=True):
+def ID_band(doc_id: int, calibration=True) -> str:
     """Generate top banner of the page to be scanned later.
 
-    `ID` is the integer which identifies a test, each test being different.
+    `doc_id` is the integer which identifies each document.
 
     This top banner is made of:
     - four squares for calibration (top left, top right,
@@ -58,10 +60,11 @@ def ID_band(ID, calibration=True):
     NB:
     - There is no need to provide the page number, since it will be
       handled directly by LaTeX.
-    - Page number above 255 will result in incorrect encoding
-      (256 will be encoded as 0).
+    - Page number can't exceed 255.
+    - Document number can't exceed 65535.
     """
-
+    if doc_id >= 2**16:
+        raise ValueError(f"Document number can't exceed 65535 (current id: {doc_id}).")
     latex = [
         r"""\newcommand\CustomHeader{%
     \begin{tikzpicture}[remember picture,overlay,
@@ -90,12 +93,12 @@ def ID_band(ID, calibration=True):
             \tikzmath {"""
     )
     latex.append(_byte_as_codebar(r"\thepage"))
-    latex.append(_byte_as_codebar(ID % 256, n=1))
-    latex.append(_byte_as_codebar(ID // 256, n=2))
+    latex.append(_byte_as_codebar(doc_id % 256, n=1))
+    latex.append(_byte_as_codebar(doc_id // 256, n=2))
     latex.append(
         rf"""}}
         \node[anchor=west] at  ({{2.5+2*\j}},0.1)
-            {{\scriptsize\textbf{{\#{ID}}}~:~{{\thepage}}/\zpageref{{LastPage}}}};
+            {{\scriptsize\textbf{{\#{doc_id}}}~:~{{\thepage}}/\zpageref{{LastPage}}}};
         \end{{tikzpicture}}}};
 
         \draw[dotted]  ([xshift=-1cm,yshift=-2cm]current page.north east)
@@ -111,19 +114,19 @@ def ID_band(ID, calibration=True):
     return "".join(latex)
 
 
-def extract_ID_NAME_from_csv(csv_path, script_path):
+def extract_students_id_and_name_from_csv(csv_path: Path, script_path: Path) -> Dict[str, str]:
     """`csv_path` is the path of the CSV file who contains students names and ids.
     The first column of the CSV file must contain the ids.
 
     Return a dictionnary containing the students ID and corresponding names.
     """
-    csv_path = expanduser(csv_path)
-    if not isabs(csv_path):
-        csv_path = abspath(join(dirname(script_path), csv_path))
+    csv_path = csv_path.expanduser()
+    if not csv_path.is_absolute():
+        csv_path = (script_path.parent / csv_path).absolute()
     # XXX: support ODS and XLS files ?
     # soffice --convert-to cvs filename.ods
     # https://ask.libreoffice.org/en/question/2641/convert-to-command-line-parameter/
-    ids = {}
+    ids: Dict[str, str] = {}
     # Read CSV file and generate the dictionary {id: "student name"}.
     with open(csv_path) as f:
         dialect = csv.Sniffer().sniff(f.read(1024))
@@ -138,15 +141,16 @@ def extract_ID_NAME_from_csv(csv_path, script_path):
     return ids
 
 
-def extract_NAME_from_csv(csv_path, script_path):
+def extract_students_name_from_csv(csv_path: Path, script_path: Path) -> List[str]:
     """`csv_path` is the path of the CSV file who contains students names.
 
     Return a list of students names.
     """
-    if not isabs(csv_path):
-        csv_path = abspath(join(dirname(script_path), csv_path))
+    csv_path = csv_path.expanduser()
+    if not csv_path.is_absolute():
+        csv_path = (script_path.parent / csv_path).absolute()
 
-    names = []
+    names: List[str] = []
     # Read CSV file and generate the dictionary {id: "student name"}.
     with open(csv_path) as f:
         for row in csv.reader(f):
@@ -154,7 +158,7 @@ def extract_NAME_from_csv(csv_path, script_path):
     return names
 
 
-def students_checkboxes(names: Sequence[str], _n_student=None):
+def students_checkboxes(names: Sequence[str], _n_student=None) -> str:
     """Generate a list of all students, where student can check his name.
 
     `names` is a list of students names.
@@ -201,7 +205,7 @@ def students_checkboxes(names: Sequence[str], _n_student=None):
     return "\n".join(content)
 
 
-def student_ID_table(ID_length: int, max_ndigits: int, digits: List[set]) -> str:
+def student_id_table(ID_length: int, max_ndigits: int, digits: List[Tuple[str, ...]]) -> str:
     """Generate a table where the student will write its identification number.
 
     The table have a row for each digit, where the student check corresponding
@@ -389,7 +393,7 @@ def packages_and_macros() -> List[str]:
     ]
 
 
-def answers_and_score(config: Configuration, name: str, identifier: int, score: Optional[float]):
+def answers_and_score(config: Configuration, name: str, identifier: int, score: Optional[float]) -> str:
     """Generate plain LaTeX code corresponding to score and correct answers."""
     table = table_for_answers(config, identifier)
     if score is not None:

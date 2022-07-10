@@ -24,7 +24,8 @@
 
 
 from functools import partial
-from typing import TypedDict, Optional, Set, List, Tuple
+from pathlib import Path
+from typing import TypedDict, Optional, Set, List, Tuple, Dict
 
 from ptyx.printers import sympy2latex
 from ptyx.latex_generator import LatexGenerator
@@ -35,9 +36,9 @@ from ptyx_mcq.tools.config_parser import Configuration
 from .header import (
     packages_and_macros,
     ID_band,
-    extract_ID_NAME_from_csv,
-    extract_NAME_from_csv,
-    student_ID_table,
+    extract_students_id_and_name_from_csv,
+    extract_students_name_from_csv,
+    student_id_table,
     students_checkboxes,
     IdentifiantError,
 )
@@ -50,7 +51,8 @@ class MCQCache(TypedDict):
 
 
 def _has_option(node: Node, option: str) -> bool:
-    return option in [opt.strip() for opt in node.options.split(",")]
+    options_list = node.options.split(",") if node.options else []
+    return option in [opt.strip() for opt in options_list]
 
 
 def _analyze_IDS(ids: List[str]) -> Tuple[int, int, List[Tuple[str, ...]]]:
@@ -79,7 +81,7 @@ def _analyze_IDS(ids: List[str]) -> Tuple[int, int, List[Tuple[str, ...]]]:
     return ID_length, max_ndigits, [tuple(s) for s in digits]
 
 
-def _detect_ID_format(ids: dict, id_format: str) -> dict:
+def _detect_ID_format(ids: Dict[str, str], id_format: str) -> Configuration:
     """Return IDs and ID format data.
 
     `ids` is a dictionary who contains students names and ids.
@@ -119,8 +121,9 @@ def _detect_ID_format(ids: dict, id_format: str) -> dict:
         ID_length = n
         max_ndigits = 10
         digits = n * [tuple("0123456789")]
-        assert max_ndigits is not None
-        assert digits is not None
+    assert ID_length is not None
+    assert max_ndigits is not None
+    assert digits is not None
     return {"students_ids": ids, "id_format": (ID_length, max_ndigits, digits)}
 
 
@@ -210,7 +213,7 @@ class MCQLatexGenerator(LatexGenerator):
         return self.cache["mcq"]
 
     @property
-    def mcq_data(self):
+    def mcq_data(self) -> Configuration:
         return self.mcq_cache["data"]
 
     def _parse_QCM_tag(self, node: Node) -> None:
@@ -291,7 +294,7 @@ class MCQLatexGenerator(LatexGenerator):
                     "No answers found after a MCQ question !\n"
                     "Question text:\n"
                     "----------------------------------\n"
-                    f"{node.as_text(skip_childs=(0,)).strip()}\n"
+                    f"{node.as_text(skipped_children=(0,)).strip()}\n"
                     "----------------------------------\n"
                 )
         self._parse_children(
@@ -404,7 +407,7 @@ class MCQLatexGenerator(LatexGenerator):
         converted automatically to math mode latex code (1/2 -> '$\frac{1}{2}$').
         """
 
-        def eval_and_format_arg(arg_num):
+        def eval_and_format_arg(arg_num) -> List[str]:
             raw_list = eval(node.arg(arg_num).strip(), self.context)
             if not isinstance(raw_list, (list, tuple)):
                 raise RuntimeError(f"In #ANSWERS_LIST, argument {arg_num + 1} must be a list of answers.")
@@ -535,7 +538,7 @@ class MCQLatexGenerator(LatexGenerator):
                 # the value must be the path of a CSV file.
                 csv = config.pop("names")
                 if not self.WITH_ANSWERS:
-                    students = extract_NAME_from_csv(csv, str(self.compiler.file_path))
+                    students = extract_students_name_from_csv(Path(csv), self.compiler.file_path)
                     code = students_checkboxes(students)
                     self.mcq_data["students_list"] = students
 
@@ -546,7 +549,7 @@ class MCQLatexGenerator(LatexGenerator):
 
                 if not self.WITH_ANSWERS:
                     if csv:
-                        ids = extract_ID_NAME_from_csv(csv, str(self.compiler.file_path))
+                        ids = extract_students_id_and_name_from_csv(Path(csv), self.compiler.file_path)
                     else:
                         ids = {}
 
@@ -557,7 +560,7 @@ class MCQLatexGenerator(LatexGenerator):
                         raise IdentifiantError(f"Error in {csv!r} : {msg!r}")
 
                     self.mcq_data.update(data)
-                    code = student_ID_table(*data["id_format"])
+                    code = student_id_table(*data["id_format"])
 
             if "sty" in config:
                 sty = config.pop("sty")
@@ -587,6 +590,6 @@ class MCQLatexGenerator(LatexGenerator):
         # unique ID.
         n = self.NUM
         calibration = "MCQ__SCORE_FOR_THIS_STUDENT" not in self.context
-        barcode = ID_band(ID=n, calibration=calibration)
+        barcode = ID_band(doc_id=n, calibration=calibration)
 
         self.write("\n".join([header, barcode, check_id_or_name]))

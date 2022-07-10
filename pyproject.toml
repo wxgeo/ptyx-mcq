@@ -55,5 +55,6 @@ whitelist_externals = poetry
 commands =
     poetry install -v
     poetry run pytest tests
+    poetry run mypy ptyx_mcq tests
     poetry run flake8 ptyx_mcq --max-line-length 110 --ignore=E203,W503,W391
 """
