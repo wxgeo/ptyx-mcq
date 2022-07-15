@@ -1,6 +1,7 @@
 from functools import partial
 from math import degrees, atan, hypot
-from typing import Dict, Set, Tuple, TypedDict, Optional
+from pathlib import Path
+from typing import Dict, Set, Tuple, TypedDict, Optional, Union
 
 from PIL import Image
 from numpy import array, flipud, fliplr, dot, amin, amax, zeros, ndarray  # , percentile, clip
@@ -35,6 +36,9 @@ ANSI_REVERSE = "\u001B[45m"
 
 CORNERS = frozenset(("tl", "tr", "bl", "br"))
 CORNER_NAMES = {"tl": "top-left", "tr": "top-right", "bl": "bottom-left", "br": "bottom-right"}
+
+Pixel = Tuple[int, int]
+CornersPositions = Dict[str, Pixel]
 
 # TODO: calibrate grayscale too.
 # At the bottom of the page, display 5 squares:
@@ -248,8 +252,9 @@ def find_corner_square(m: ndarray, size: int, corner: str, max_whiteness: float)
     return i0, j0
 
 
-def orthogonal(corner, positions) -> bool:
-    V, H = corner
+def orthogonal(corner: str, positions: CornersPositions) -> bool:
+    V = corner[0]  # Unpacking a string is disallowed for mypy!
+    H = corner[1]
     corner1 = V + ("l" if H == "r" else "r")
     corner2 = ("t" if V == "b" else "b") + H
     i, j = positions[corner]
@@ -261,7 +266,7 @@ def orthogonal(corner, positions) -> bool:
     return abs(cos_a) < 0.06
 
 
-def area_opposite_corners(positions):
+def area_opposite_corners(positions: CornersPositions) -> Tuple[Pixel, Pixel]:
     i1 = round((positions["tl"][0] + positions["tr"][0]) / 2)
     i2 = round((positions["bl"][0] + positions["br"][0]) / 2)
     j1 = round((positions["tl"][1] + positions["bl"][1]) / 2)
@@ -269,12 +274,14 @@ def area_opposite_corners(positions):
     return (i1, j1), (i2, j2)
 
 
-def detect_four_squares(m: ndarray, square_size, cm, max_alignment_error_cm=0.4, debug=False):
+def detect_four_squares(
+    m: ndarray, square_size, cm, max_alignment_error_cm=0.4, debug=False
+) -> Tuple[CornersPositions, Pixel, Pixel]:
     #    h = w = round(2*(1 + SQUARE_SIZE_IN_CM)*cm)
     max_whiteness = 0.55
     # Make a mutable copy of frozenset CORNERS.
     corners = set(CORNERS)
-    positions = {}
+    positions: CornersPositions = {}
     for corner in CORNERS:
         try:
             i, j = find_corner_square(m, square_size, corner, max_whiteness)
@@ -321,7 +328,8 @@ def detect_four_squares(m: ndarray, square_size, cm, max_alignment_error_cm=0.4,
                 number_of_orthogonal_corners += 1
                 orthogonal_corner = corner
         if number_of_orthogonal_corners == 1:
-            V, H = tuple(orthogonal_corner)  # for mypy support
+            # noinspection PyUnboundLocalVariable
+            V, H = tuple(orthogonal_corner)  # (Unpacking a string is disallowed for mypy!)
             opposite_corner = ("t" if V == "b" else "b") + ("l" if H == "r" else "r")
             print(f"Removing {CORNER_NAMES[opposite_corner]} corner (not orthogonal !)")
             del positions[opposite_corner]
@@ -384,7 +392,7 @@ def detect_four_squares(m: ndarray, square_size, cm, max_alignment_error_cm=0.4,
     return positions, ij1, ij2
 
 
-def find_document_id_band(m, i, j1, j2, square_size):
+def find_document_id_band(m: ndarray, i: int, j1: int, j2: int, square_size: int) -> Pixel:
     """Return the top left corner (coordinates in pixels) of the document ID band first square."""
     margin = square_size
     i1, i2 = i - margin, i + square_size + margin
@@ -400,7 +408,7 @@ def find_document_id_band(m, i, j1, j2, square_size):
     return i3, j3
 
 
-def calibrate(pic, m, debug=False):
+def calibrate(pic: Image.Image, m: ndarray, debug=False) -> Tuple[ndarray, float, float, Pixel, Pixel]:
     """Detect picture resolution and ensure correct orientation."""
     # Ensure that the picture orientation is portrait, not landscape.
     height, width = m.shape
@@ -479,7 +487,13 @@ def calibrate(pic, m, debug=False):
     rotation = (rotation_h + 1.5 * rotation_v) / 2.5
 
     print(f"Rotate picture: {round(rotation, 4)}°")
-    pic, m = transform(pic, "rotate", rotation, resample=Image.Resampling.BICUBIC, expand=True)
+    pic, m = transform(
+        pic,
+        "rotate",
+        rotation,
+        resample=Image.Resampling.BICUBIC,  # type: ignore
+        expand=True,
+    )
 
     (i1, j1), (i2, j2) = positions["tl"], positions["br"]
 
@@ -546,7 +560,7 @@ def calibrate(pic, m, debug=False):
     return m, h_pixels_per_mm, v_pixels_per_mm, positions["tl"], (i3, j3)
 
 
-def edit_answers(m, boxes, answered, config, doc_id, xy2ij, cell_size) -> None:
+def edit_answers(m: ndarray, boxes, answered, config, doc_id, xy2ij, cell_size) -> None:
     print("Please verify answers detection:")
     input("-- Press ENTER --")
     process = color2debug(m, wait=False)
@@ -622,7 +636,7 @@ def edit_answers(m, boxes, answered, config, doc_id, xy2ij, cell_size) -> None:
 
 
 def scan_picture(
-    filename, config: Configuration, manual_verification=None, debug=False
+    filename: Union[str, Path], config: Configuration, manual_verification=None, debug=False
 ) -> Tuple[PicData, ndarray]:
     """Scan picture and return page identifier and list of answers for each question.
 
