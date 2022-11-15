@@ -1,3 +1,4 @@
+.idea/
 .cache
 .tox/
 *.pyc
