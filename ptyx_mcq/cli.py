@@ -8,10 +8,12 @@ ptyx MCQ Command Line Interface
 import shutil
 import sys
 from argparse import ArgumentParser
+from os import unlink
+
 from pathlib import Path
 from typing import Optional
 
-from .compile.make import make
+from .compile.make import make, get_ptyxfile_path
 from .scan.scanner import scan
 
 
@@ -20,7 +22,8 @@ def main(args: Optional[list] = None) -> None:
     parser = ArgumentParser(description="Generate and manage pdf MCQs.")
     subparsers = parser.add_subparsers()
     add_parser = subparsers.add_parser
-    # create the parser for the "init" command
+
+    # create the parser for the "new" command
     new_parser = add_parser("new", help="Create an empty ptyx file.")
     new_parser.add_argument("path", nargs="?", metavar="PATH", type=Path, default="new-mcq")
     new_parser.set_defaults(func=new)
@@ -91,6 +94,11 @@ def main(args: Optional[list] = None) -> None:
 
     scan_parser.set_defaults(func=scan)
 
+    # create the parser for the "clear" command
+    new_parser = add_parser("clear", help="Remove every MCQ data but the ptyx file.")
+    new_parser.add_argument("path", nargs="?", metavar="PATH", type=Path, default=".")
+    new_parser.set_defaults(func=clear)
+
     parsed_args = parser.parse_args(args)
     try:
         # Launch the function corresponding to the given subcommand.
@@ -111,6 +119,31 @@ def new(path: Path) -> None:
         shutil.copytree(template, path)
         print(f"Success: a new MCQ was created at {path}.")
 
+
+def clear(path: Path) -> None:
+    """Implement `mcq clear` command."""
+    try:
+        ptyxfile_path = get_ptyxfile_path(path)
+    except FileNotFoundError:
+        print("\33[31m[Error]\33[0m No ptyx file found.")
+        return
+    filename = ptyxfile_path.name
+    for directory in (".scan", ".compile"):
+        try:
+            shutil.rmtree(directory)
+        except FileNotFoundError:
+            print(f"Info: '{directory}' not found...")
+    for filepath in (
+        ptyxfile_path.with_suffix(".pdf"),
+        ptyxfile_path.with_suffix(".ptyx.autoqcm.config.json"),
+        ptyxfile_path.with_name(f".{filename}.plain-ptyx"),
+        ptyxfile_path.with_name(f"{ptyxfile_path.stem}-corr.pdf"),
+    ):
+        try:
+            unlink(filepath)
+        except FileNotFoundError:
+            print(f"Info: '{filepath}' not found...")
+    print("\33[32m[OK]\33[0m Directory cleared.")
 
 if __name__ == "__main__":
     main()
