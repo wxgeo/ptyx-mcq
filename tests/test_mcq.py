@@ -121,7 +121,6 @@ def test_MCQ_shuffling():
     assert "\n\n" not in latex[e1:e2]
     assert "\n\n" not in latex[e2:e3]
     assert "\n\n" not in latex[e3:e4]
-    return latex
 
 
 def test_include():

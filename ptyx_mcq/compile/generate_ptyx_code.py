@@ -152,7 +152,7 @@ def generate_ptyx_code(text: str) -> str:
 
         elif line.startswith("#ANSWERS_LIST"):
             # End question.
-            # (Usually, questions are closed when seeing answers, ie. lines
+            # (Usually, questions are closed when seeing answers, i.e. lines
             # introduced by '-' or '+').
             code.append(line)
 

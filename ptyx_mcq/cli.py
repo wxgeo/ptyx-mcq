@@ -145,5 +145,6 @@ def clear(path: Path) -> None:
             print(f"Info: '{filepath}' not found...")
     print("\33[32m[OK]\33[0m Directory cleared.")
 
+
 if __name__ == "__main__":
     main()

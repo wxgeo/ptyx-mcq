@@ -279,7 +279,7 @@ class MCQLatexGenerator(LatexGenerator):
         # The question itself is stored to make debugging easier (error messages will
         # display current question).
         # Use `self.current_question` to get current question.
-        def remember_last_question(code, latex_generator):
+        def remember_last_question(code):
             self.current_question = code
             return code
 
@@ -298,7 +298,7 @@ class MCQLatexGenerator(LatexGenerator):
                     "----------------------------------\n"
                 )
         self._parse_children(
-            node.children[1:i], function=partial(remember_last_question, latex_generator=self)
+            node.children[1:i], function=remember_last_question
         )
         # This is the end of the question itself.
 
@@ -411,8 +411,8 @@ class MCQLatexGenerator(LatexGenerator):
             raw_list = eval(node.arg(arg_num).strip(), self.context)
             if not isinstance(raw_list, (list, tuple)):
                 raise RuntimeError(f"In #ANSWERS_LIST, argument {arg_num + 1} must be a list of answers.")
-            formated_list = [(val if isinstance(val, str) else f"${sympy2latex(val)}$") for val in raw_list]
-            return formated_list
+            formatted_list = [(val if isinstance(val, str) else f"${sympy2latex(val)}$") for val in raw_list]
+            return formatted_list
 
         answers = eval_and_format_arg(0)
         correct_answers = eval_and_format_arg(1)
