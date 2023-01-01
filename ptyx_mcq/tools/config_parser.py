@@ -20,6 +20,8 @@ class Configuration(TypedDict, total=False):
     correct: Dict[QuestionNumberOrDefault, float]
     incorrect: Dict[QuestionNumberOrDefault, float]
     skipped: Dict[QuestionNumberOrDefault, float]
+    floor: Dict[QuestionNumberOrDefault, float | None]
+    ceil: Dict[QuestionNumberOrDefault, float | None]
     students: List[str]
     id_table_pos: Tuple[float, float]
     id_format: Tuple[int, int, List[Tuple[str, ...]]]

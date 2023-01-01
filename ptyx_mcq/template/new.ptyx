@@ -1,11 +1,20 @@
 #LOAD{mcq}
+# The following number is used to initalize the pseudorandom numbers generator.
 #SEED{123456}
 
 ===========================
 # Uncomment and edit the following line to load custom LaTeX packages 
 sty=amssymb,amsmath
-# Score for correct answer, incorrect answer and no answer
-scores=1 0 0
+# Score for a correct answer (usually postive)
+correct = 1
+# Score for an incorrect answer (usually negative or null)
+incorrect = 0 
+# Score when the question was left unanswered (usually null)
+skipped = 0
+# Minimal score for a question
+# floor = 0
+# Maximal score for a question
+# ceil = 1
 # Mode must be `all` or  `some`
 mode=all
 # Uncomment and edit the following line to load students ID.
@@ -14,7 +23,7 @@ mode=all
 # ids=~/listings/INE_2021.csv
 id format=8 digits
 ---------------------------
-# You may include here raw LaTeX code, to add it at the end of the LaTeX preamble.
+# You may include here raw LaTeX code, which will be added at the end of the LaTeX preamble.
 
 ===========================
 

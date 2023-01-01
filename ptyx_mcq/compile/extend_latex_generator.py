@@ -193,6 +193,8 @@ class MCQLatexGenerator(LatexGenerator):
                 "correct": {"default": 1},
                 "incorrect": {"default": 0},
                 "skipped": {"default": 0},
+                "floor": {"default": None},
+                "ceil": {"default": None},
                 # 'correct_answers': correct_answers, # {1: [4], 2:[1,5], ...}
                 "students": [],
                 "id_table_pos": None,
@@ -297,9 +299,7 @@ class MCQLatexGenerator(LatexGenerator):
                     f"{node.as_text(skipped_children=(0,)).strip()}\n"
                     "----------------------------------\n"
                 )
-        self._parse_children(
-            node.children[1:i], function=remember_last_question
-        )
+        self._parse_children(node.children[1:i], function=remember_last_question)
         # This is the end of the question itself.
 
         # And then, the answers follow.
@@ -461,7 +461,9 @@ class MCQLatexGenerator(LatexGenerator):
         HEADER raw format is the following:
         ===========================
         sty=my_custom_sty_file
-        scores=1 0 0
+        correct=1
+        incorrect=0
+        skipped=0
         mode=all
         ids=~/my_students_ids_and_names.csv
         names=~/my_students_names.csv
@@ -484,7 +486,6 @@ class MCQLatexGenerator(LatexGenerator):
 
             # {alias: standard key name}
             alias = {
-                "score": "scores",
                 "name": "names",
                 "student": "names",
                 "students": "names",
@@ -499,8 +500,8 @@ class MCQLatexGenerator(LatexGenerator):
                 "ids_formats": "id_format",
                 "ids_format": "id_format",
             }
-            # Read config
-            config = {}
+            # Read config: a dictionary is generated from the key=value entries.
+            config: Dict[str, str] = {}
             remaining_is_raw_latex = False
             for line in node.arg(0).split("\n"):
                 if not remaining_is_raw_latex:
@@ -515,21 +516,9 @@ class MCQLatexGenerator(LatexGenerator):
                 else:
                     raw_latex.append(line)
 
-            if "scores" in config:
-                # Set how many points are won/lost for a correct/incorrect answer.
-                val = config.pop("scores").replace(",", " ")
-                # A correct answer should always give more points than an incorrect one !
-                vals: list = sorted(val.split(), key=float)
-                self.mcq_data["correct"]["default"] = vals[-1]
-                if len(vals) > 3:
-                    raise ValueError(
-                        "`scores` should provide 3 values at most "
-                        "(correct answer / incorrect answer / no answer)."
-                    )
-                if len(vals) >= 2:
-                    self.mcq_data["incorrect"]["default"] = vals[0]
-                    if len(vals) >= 3:
-                        self.mcq_data["skipped"]["default"] = vals[1]
+            for key in ("mode", "correct", "incorrect", "skipped", "floor", "ceil"):
+                if key in config:
+                    self.mcq_data[key]["default"] = config.pop(key)  # type: ignore
 
             if "mode" in config:
                 self.mcq_data["mode"]["default"] = config.pop("mode")
@@ -544,8 +533,8 @@ class MCQLatexGenerator(LatexGenerator):
 
             if "students_ids" in config or "id_format" in config:
                 # config['ids'] must be the path of a CSV file.
-                csv = config.pop("students_ids", None)
-                id_format = config.pop("id_format", None)
+                csv = config.pop("students_ids", "")
+                id_format = config.pop("id_format", "")
 
                 if not self.WITH_ANSWERS:
                     if csv:
@@ -567,6 +556,15 @@ class MCQLatexGenerator(LatexGenerator):
 
             # Config should be empty by now !
             for key in config:
+                if key == "scores":
+                    right, wrong, skipped = config[key].split()
+                    print("Please update your ptyx file header:")
+                    print(f"Replace `scores = {config[key]}` with:")
+                    print(20 * "-")
+                    print(f"correct = {right}")
+                    print(f"incorrect = {wrong}")
+                    print(f"skipped = {skipped}")
+                    print(20 * "-")
                 raise NameError(f"Unknown key {key!r} in the header of the pTyX file.")
 
             check_id_or_name = code if not self.WITH_ANSWERS else ""

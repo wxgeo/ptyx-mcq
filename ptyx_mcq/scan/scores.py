@@ -1,7 +1,5 @@
 from dataclasses import dataclass
-from typing import TypedDict
-
-from ptyx_mcq.tools.config_parser import Configuration
+from math import nan, isnan
 
 
 @dataclass
@@ -23,10 +21,10 @@ class AnswersData:
 class ScoreData:
     correct: float
     skipped: float
-    incorrect: float = None
+    incorrect: float = nan
 
     def __post_init__(self):
-        if self.incorrect is None:
+        if isnan(self.incorrect):
             self.incorrect = -self.correct
 
 

@@ -3,7 +3,9 @@
 
 ===========================
 sty=njeucom,wasysym
-scores=1 0 0
+correct = 1
+incorrect = 0
+skipped = 0
 mode=all
 ===========================
 

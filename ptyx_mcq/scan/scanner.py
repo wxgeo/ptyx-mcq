@@ -45,6 +45,7 @@ from numpy import int8, array, ndarray
 # sys.path.insert(0, join(script_path, '../..'))
 from ptyx.compilation import join_files, compile_latex
 
+from . import scores
 from .amend import amend_all
 from .pdftools import extract_pdf_pictures, PIC_EXTS, number_of_pages
 from .scan_pic import (
@@ -104,7 +105,7 @@ class MCQPictureParser:
         self.files: FilesPaths = {}
         # All data extracted from pdf files.
         self.data: Dict[int, DocumentData] = {}
-        # Additional informations entered manually.
+        # Additional information entered manually.
         self.more_infos: Dict[int, Tuple[str, str]] = {}  # sheet_id: (name, student_id)
         self.config: Configuration = {}
         # Manually verified pages.
@@ -366,28 +367,33 @@ class MCQPictureParser:
             for q in sorted(doc_data["answered"]):
                 answered = set(doc_data["answered"][q])
                 correct_ones = correct_ans[q]
+                all_answers = {ans_num for ans_num, is_ok in cfg["ordering"][doc_id]["answers"][q]}
                 mode = cfg["mode"].get(q, default_mode)
 
-                if mode == "all":
-                    ok = answered == correct_ones
-                elif mode == "some":
-                    # Answer is valid if and only if :
-                    # (proposed ≠ ∅ and proposed ⊆ correct) or (proposed = correct = ∅)
-                    ok = (answered and answered.issubset(correct_ones)) or (not answered and not correct_ones)
-                elif mode == "skip":
+                if mode == "skip":
+                    # Used mostly to skip bogus questions.
                     print(f"Question {q} skipped...")
                     continue
-                else:
-                    raise RuntimeError("Invalid mode (%s) !" % mode)
-                if ok:
-                    earn = float(cfg["correct"].get(q, default_correct))
+
+                try:
+                    func = getattr(scores, mode)
+                except AttributeError:
+                    raise AttributeError(f"Unknown evaluation mode: {mode!r}.")
+
+                ans_data = scores.AnswersData(checked=answered, correct=correct_ones, all=all_answers)
+                scores_data = scores.ScoreData(
+                    correct=float(cfg["correct"].get(q, default_correct)),
+                    skipped=float(cfg["skipped"].get(q, default_skipped)),
+                    incorrect=float(cfg["incorrect"].get(q, default_incorrect)),
+                )
+                earn = func(ans_data, scores_data)
+
+                if earn == scores_data.correct:
                     color = ANSI_GREEN
-                elif not answered:
-                    earn = float(cfg["skipped"].get(q, default_skipped))
-                    color = ANSI_YELLOW
-                else:
-                    earn = float(cfg["incorrect"].get(q, default_incorrect))
+                elif earn == scores_data.incorrect:
                     color = ANSI_RED
+                else:
+                    color = ANSI_YELLOW
                 print(f"-  {color}Rating (Q{q}): {color}{earn:g}{ANSI_RESET}")
                 doc_data["score"] += earn
                 doc_data["score_per_question"][q] = earn
@@ -525,10 +531,10 @@ class MCQPictureParser:
     #        # hashlib.sha512(f.read()).hexdigest()
 
     def _load_all_info(self) -> None:
-        """Load all informations from files."""
+        """Load all information from files."""
         self._load_data()
 
-        # Read manually entered informations (if any).
+        # Read manually entered information (if any).
         self.files["cfg"] = self.dirs["cfg"] / "more_infos.csv"
         if self.files["cfg"].is_file():
             with open(self.files["cfg"], "r", newline="") as csvfile:
