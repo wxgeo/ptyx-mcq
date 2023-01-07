@@ -58,7 +58,7 @@ def proportional(answers: AnswersData, score: ScoreData) -> float:
     """Give the full score if exactly all the correct answers are checked."""
     count_ok = len(answers.checked & answers.correct) + len(answers.unchecked & answers.incorrect)
     proportion = count_ok / len(answers.all)
-    return score.incorrect + proportion * (score.correct - score.incorrect)
+    return round(score.incorrect + proportion * (score.correct - score.incorrect), 2)
 
 
 # def floored_proportional(answers: AnswersData, score: ScoreData) -> float:
@@ -80,14 +80,14 @@ def partial_answers_linear(answers: AnswersData, score: ScoreData) -> float:
     if answers.checked & answers.incorrect:
         return score.incorrect
     else:
-        return _proportion_of_correct(answers) * score.correct
+        return round(_proportion_of_correct(answers) * score.correct, 2)
 
 
 def partial_answers_quadratic(answers: AnswersData, score: ScoreData) -> float:
     if answers.checked & answers.incorrect:
         return score.incorrect
     else:
-        return _proportion_of_correct(answers) ** 2**score.correct
+        return round(_proportion_of_correct(answers) ** 2**score.correct, 2)
 
 
 # def floored_partial_anwers(answers: AnswersData, score: ScoreData) -> float:
