@@ -66,9 +66,10 @@ def ID_band(doc_id: int, calibration=True) -> str:
     if doc_id >= 2**16:
         raise ValueError(f"Document number can't exceed 65535 (current id: {doc_id}).")
     latex = [
-        r"""\newcommand\CustomHeader{%
-    \begin{tikzpicture}[remember picture,overlay,
-                    every node/.style={inner sep=0,outer sep=-0.2}]"""
+        r"\newcommand\CustomHeader{%"
+        "\n    "
+        r"\begin{tikzpicture}[remember picture,overlay,black,"  # Set default color to black !
+        r"every node/.style={inner sep=0,outer sep=-0.2}]"
     ]
     if calibration:
         pos = CALIBRATION_SQUARE_POSITION
