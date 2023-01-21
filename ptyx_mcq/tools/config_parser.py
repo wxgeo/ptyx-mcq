@@ -20,6 +20,8 @@ class Configuration(TypedDict, total=False):
     correct: Dict[QuestionNumberOrDefault, float]
     incorrect: Dict[QuestionNumberOrDefault, float]
     skipped: Dict[QuestionNumberOrDefault, float]
+    # -inf and inf would be sensible defaults for floor and ceil, but unfortunately they aren't supported
+    # by ast.literal_eval().
     floor: Dict[QuestionNumberOrDefault, float | None]
     ceil: Dict[QuestionNumberOrDefault, float | None]
     students: List[str]

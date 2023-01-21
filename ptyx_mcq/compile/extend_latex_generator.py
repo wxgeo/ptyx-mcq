@@ -333,7 +333,7 @@ class MCQLatexGenerator(LatexGenerator):
         functions = []
 
         # TODO(?): functions should be compiled only once for each question block,
-        # not for every answer (though it is probably not be a bottleneck in
+        # not for every answer (though it is probably not a bottleneck in
         # code execution).
         apply = self.context.get("APPLY_TO_ANSWERS")
         if apply:
@@ -519,9 +519,6 @@ class MCQLatexGenerator(LatexGenerator):
             for key in ("mode", "correct", "incorrect", "skipped", "floor", "ceil"):
                 if key in config:
                     self.mcq_data[key]["default"] = config.pop(key)  # type: ignore
-
-            if "mode" in config:
-                self.mcq_data["mode"]["default"] = config.pop("mode")
 
             if "names" in config:
                 # the value must be the path of a CSV file.

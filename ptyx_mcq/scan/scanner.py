@@ -359,6 +359,8 @@ class MCQPictureParser:
         default_correct = cfg["correct"]["default"]
         default_incorrect = cfg["incorrect"]["default"]
         default_skipped = cfg["skipped"]["default"]
+        default_floor = cfg["floor"]["default"]
+        default_ceil = cfg["ceil"]["default"]
 
         for doc_id in self.data:
             correct_ans = self.correct_answers[doc_id]
@@ -387,6 +389,15 @@ class MCQPictureParser:
                     incorrect=float(cfg["incorrect"].get(q, default_incorrect)),
                 )
                 earn = func(ans_data, scores_data)
+
+                floor = cfg["floor"].get(q, default_floor)
+                assert floor is None or isinstance(floor, (float, int))
+                if floor is not None and earn < floor:
+                    earn = floor
+                ceil = cfg["ceil"].get(q, default_ceil)
+                assert ceil is None or isinstance(ceil, (float, int))
+                if ceil is not None and earn > ceil:
+                    earn = ceil
 
                 if earn == scores_data.correct:
                     color = ANSI_GREEN
