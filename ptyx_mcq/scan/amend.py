@@ -5,19 +5,26 @@ Created on Thu Aug 29 14:49:37 2019
 
 @author: nicolas
 """
+
 from os.path import join
+from typing import TYPE_CHECKING
+
 from PIL import ImageDraw, ImageFont
 
-from .square_detection import COLORS
+from .square_detection import Color, Pixel
+
+if TYPE_CHECKING:
+    from ptyx_mcq.scan.scanner import MCQPictureParser
 
 
-def _correct_checkboxes(draw, pos, checked, correct, size):
+def _correct_checkboxes(
+    draw: ImageDraw.ImageDraw, pos: Pixel, checked: bool, correct: bool, size: int
+) -> None:
     i, j = pos
     margin = size // 2
-    red = COLORS["red"]
-    green = COLORS["green"]
     # Draw a blue square around the box (for debugging purpose).
-    draw.rectangle((j, i, j + size, i + size), outline=green)
+    draw.rectangle((j, i, j + size, i + size), outline=Color.green)
+    red = Color.red
     if checked and not correct:
         # Circle checkbox with red pen.
         try:
@@ -31,16 +38,15 @@ def _correct_checkboxes(draw, pos, checked, correct, size):
         draw.line((j + size - 1, i, j, i + size - 1), fill=red, width=2)
 
 
-def _write_score(draw, pos, earn, size):
+def _write_score(draw: ImageDraw.ImageDraw, pos: Pixel, earn: float | str, size: int) -> None:
     i, j = pos
-    red = COLORS["red"]
     fnt = ImageFont.truetype("FreeSerif.ttf", int(0.7 * size))
     if isinstance(earn, float):
         earn = f"{earn:g}"
-    draw.text((j, i), earn, font=fnt, fill=red)
+    draw.text((j, i), earn, font=fnt, fill=Color.red)
 
 
-def amend_all(pic_parser):
+def amend_all(pic_parser: "MCQPictureParser") -> None:
     """Amend answer sheet with scores and correct answers.
 
     `data` is the dict generated when the answer sheet is scanned.
@@ -51,7 +57,7 @@ def amend_all(pic_parser):
         correct_answers = pic_parser.correct_answers[ID]
         pics = {}
         for page, page_data in d["pages"].items():
-            top_left_positions = {}
+            top_left_positions: dict[int, Pixel] = {}
             # Convert to RGB picture.
             pic = pic_parser.get_pic(ID, page).convert("RGB")
             if not page_data["positions"]:

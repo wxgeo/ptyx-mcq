@@ -1,45 +1,60 @@
 import subprocess
 import tempfile
 from os.path import join
+from typing import Literal, Iterator, Iterable, Tuple
 
-from numpy import array, nonzero, transpose, interp, int8
+from numpy import array, nonzero, transpose, int8, ndarray
 from PIL import Image
 
-COLORS = {
-    "red": (255, 0, 0),
-    "green": (0, 255, 0),
-    "blue": (0, 0, 255),
-    "yellow": (255, 255, 0),
-    "magenta": (255, 0, 255),
-    "cyan": (0, 255, 255),
-    "white": (255, 255, 255),
-    "black": (0, 0, 0),
-    "orange": (255, 128, 0),
-    "purple": (128, 128, 0),
-}
+
+class Color:
+    red = (255, 0, 0)
+    green = (0, 255, 0)
+    blue = (0, 0, 255)
+    yellow = (255, 255, 0)
+    magenta = (255, 0, 255)
+    cyan = (0, 255, 255)
+    white = (255, 255, 255)
+    black = (0, 0, 0)
+    orange = (255, 128, 0)
+    purple = (128, 128, 0)
+
 # See also: https://pypi.org/project/webcolors/
 
 
-def top_left_iterator(stop, step=1):
-    """Return an iterator for coordinates starting from top-left corner."""
-    # Pixels are visited starting from top-left corner
-    # in the following order:
-    # 1  3  8  15
-    # 4  2  6  13
-    # 9  7  5  11
-    # 16 14 12 10
-    for n in range(0, stop, step):
-        yield n, n
-        for k in range(n - step, -1, -step):
-            yield k, n
-            yield n, k
+RGB = tuple[int, int, int]
+Pixel = Tuple[int, int]
+FloatPosition = tuple[float, float]
 
 
-def total_grayness(m):
-    return interp(m, [0, 0.2, 0.8, 1], [0, 0.1, 0.9, 1]).sum()
+# def top_left_iterator(stop, step=1):
+#     """Return an iterator for coordinates starting from top-left corner."""
+#     # Pixels are visited starting from top-left corner
+#     # in the following order:
+#     # 1  3  8  15
+#     # 4  2  6  13
+#     # 9  7  5  11
+#     # 16 14 12 10
+#     for n in range(0, stop, step):
+#         yield n, n
+#         for k in range(n - step, -1, -step):
+#             yield k, n
+#             yield n, k
 
 
-def find_black_rectangle(matrix, width=50, height=50, error=0.30, gray_level=0.4, mode="row", debug=False):
+# def total_grayness(m):
+#     return numpy.interp(m, [0, 0.2, 0.8, 1], [0, 0.1, 0.9, 1]).sum()
+
+
+def find_black_rectangle(
+    matrix: ndarray,
+    width: int = 50,
+    height: int = 50,
+    error: float = 0.30,
+    gray_level: float = 0.4,
+    mode: Literal["row", "column"] = "row",
+    debug=False,
+) -> Iterator[Pixel]:
     """Detect a black rectangle of given size (in pixels) in matrix.
 
     The n*m matrix must contain only floats between 0 (white) and 1 (black).
@@ -74,11 +89,12 @@ def find_black_rectangle(matrix, width=50, height=50, error=0.30, gray_level=0.4
     per_line = (1 - error) * width
     per_col = (1 - error) * height
     goal = per_line * height
-    to_avoid = []
+    # List of areas to avoid.
+    to_avoid: list[tuple[int, int, int, int]] = []
     # Find a black pixel, starting from top left corner,
     # and scanning line by line (i.e. from top to bottom).
     if mode == "row":
-        black_pixels = nonzero(m)
+        black_pixels: Iterable = nonzero(m)
     elif mode == "column":
         black_pixels = reversed(nonzero(transpose(array(m))))
     else:
@@ -202,15 +218,26 @@ def find_black_rectangle(matrix, width=50, height=50, error=0.30, gray_level=0.4
             yield i, j
 
 
-def find_black_square(matrix, size, error=0.4, gray_level=0.4, **kw):
+def find_black_square(
+    matrix: ndarray, size: int, error: float = 0.4, gray_level: float = 0.4, **kw
+) -> Iterator[Pixel]:
     return find_black_rectangle(matrix, width=size, height=size, error=error, gray_level=gray_level, **kw)
 
 
-def detect_all_squares(matrix, size=50, error=0.30):
-    return list(find_black_square(matrix, size=size, error=error))
+# def detect_all_squares(matrix, size=50, error=0.30):
+#     return list(find_black_square(matrix, size=size, error=error))
 
 
-def test_square_color(m, i, j, size, proportion=0.3, gray_level=0.75, margin=0, _debug=False):
+def test_square_color(
+    m: ndarray,
+    i: int,
+    j: int,
+    size: int,
+    proportion: float = 0.3,
+    gray_level: float = 0.75,
+    margin: int = 0,
+    _debug=False,
+) -> bool:
     """Return True if square is black, False else.
 
     (i, j) is top left corner of the square, where i is line number
@@ -234,7 +261,7 @@ def test_square_color(m, i, j, size, proportion=0.3, gray_level=0.75, margin=0, 
     return square.sum() > proportion * len(square) ** 2 and core.sum() > proportion * len(core) ** 2
 
 
-def eval_square_color(m, i, j, size, margin=0, _debug=False):
+def eval_square_color(m: ndarray, i: int, j: int, size: int, margin: int = 0, _debug=False) -> float:
     """Return an indicator of blackness, which is a float in range (0, 1).
     The bigger the float returned, the darker the square.
 
@@ -255,7 +282,9 @@ def eval_square_color(m, i, j, size, margin=0, _debug=False):
     return square.sum() / (size - margin) ** 2
 
 
-def adjust_checkbox(m, i, j, size, level1=0.5, level2=0.6, delta=5):
+def adjust_checkbox(
+    m: ndarray, i: int, j: int, size: int, level1: float = 0.5, level2: float = 0.6, delta: int = 5
+):
     # return (i, j)
     # Try to adjust top edge of the checkbox
     i0, j0 = i, j
@@ -274,48 +303,48 @@ def adjust_checkbox(m, i, j, size, level1=0.5, level2=0.6, delta=5):
     return i, j
 
 
-def find_lonely_square(m, size, error=0.4, gray_level=0.4):
-    """Find all black squares surrounded by a white area.
-
-    - `size` is the length of the edge (in pixels).
-    - `error` is the ratio of white pixels allowed in the black square.
-    - `gray_level` is the level above which a pixel is considered to be white.
-       If it is set to 0, only black pixels will be considered black ; if it
-       is close to 1 (max value), almost all pixels are considered black
-       except white ones (for which value is 1.).
-
-    Return an iterator.
-    """
-    s = size
-    for i, j in find_black_square(m, s, error, gray_level):
-        # Test if all surrounding squares are white.
-        # (If not, it could be a false positive, caused by a stain
-        # or by some student writing.)
-        if not any(
-            test_square_color(m, i_, j_, s, proportion=0.5, gray_level=0.5)
-            for i_, j_ in [
-                (i - s, j - s),
-                (i - s, j),
-                (i - s, j + s),
-                (i, j - s),
-                (i, j + s),
-                (i + s, j - s),
-                (i + s, j),
-                (i + s, j + s),
-            ]
-        ):
-            yield i, j
-    # ~ raise LookupError("No lonely black square in the search area.")
+# def find_lonely_square(m: ndarray, size, error=0.4, gray_level=0.4):
+#     """Find all black squares surrounded by a white area.
+#
+#     - `size` is the length of the edge (in pixels).
+#     - `error` is the ratio of white pixels allowed in the black square.
+#     - `gray_level` is the level above which a pixel is considered to be white.
+#        If it is set to 0, only black pixels will be considered black ; if it
+#        is close to 1 (max value), almost all pixels are considered black
+#        except white ones (for which value is 1.).
+#
+#     Return an iterator.
+#     """
+#     s = size
+#     for i, j in find_black_square(m, s, error, gray_level):
+#         # Test if all surrounding squares are white.
+#         # (If not, it could be a false positive, caused by a stain
+#         # or by some student writing.)
+#         if not any(
+#             test_square_color(m, i_, j_, s, proportion=0.5, gray_level=0.5)
+#             for i_, j_ in [
+#                 (i - s, j - s),
+#                 (i - s, j),
+#                 (i - s, j + s),
+#                 (i, j - s),
+#                 (i, j + s),
+#                 (i + s, j - s),
+#                 (i + s, j),
+#                 (i + s, j + s),
+#             ]
+#         ):
+#             yield i, j
+#     # ~ raise LookupError("No lonely black square in the search area.")
 
 
 # noinspection PyDefaultArgument
 def color2debug(
-    array=None,
-    from_=None,
-    to_=None,
-    color="red",
-    display=True,
-    thickness=2,
+    array: ndarray = None,
+    from_: FloatPosition = None,
+    to_: FloatPosition = None,
+    color: RGB = Color.red,
+    display: bool = True,
+    thickness: int = 2,
     fill=False,
     _d={},
     wait=True,
@@ -346,7 +375,6 @@ def color2debug(
     if array is None:
         _d.clear()
         return
-    color = COLORS.get(color, color)
     ID = id(array)
     if ID not in _d:
         # Load image only if not loaded previously.
@@ -367,7 +395,7 @@ def color2debug(
         imin, imax = int(min(i1, i2)), int(max(i1, i2))
         jmin, jmax = int(min(j1, j2)), int(max(j1, j2))
 
-        def set_pix(i, j, color):
+        def set_pix(i: int, j: int, color: RGB) -> None:
             """Set safely pixel color (if `i` or `j` is incorrect, do nothing)."""
             if 0 <= i < height and 0 <= j < width:
                 pix[j, i] = color
@@ -399,9 +427,12 @@ def color2debug(
         with tempfile.TemporaryDirectory() as tmpdirname:
             path = join(tmpdirname, "test.png")
             rgb.save(path)
+            process: subprocess.CompletedProcess | subprocess.Popen
             if wait:
                 process = subprocess.run(["feh", "-F", path])
             else:
                 process = subprocess.Popen(["feh", "-F", path], stdin=subprocess.DEVNULL)
             input("-- pause --\n")
             return process
+
+

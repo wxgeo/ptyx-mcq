@@ -12,6 +12,7 @@ from .square_detection import (
     eval_square_color,
     adjust_checkbox,
     color2debug,
+    Color, Pixel,
 )
 from .tools import round
 from ..parameters import (
@@ -37,7 +38,6 @@ ANSI_REVERSE = "\u001B[45m"
 CORNERS = frozenset(("tl", "tr", "bl", "br"))
 CORNER_NAMES = {"tl": "top-left", "tr": "top-right", "bl": "bottom-left", "br": "bottom-right"}
 
-Pixel = Tuple[int, int]
 CornersPositions = Dict[str, Pixel]
 
 # TODO: calibrate grayscale too.
@@ -113,7 +113,7 @@ def transform(pic: Image.Image, transformation: str, *args, **kw) -> Tuple[Image
     return pic, array(pic) / 255.0
 
 
-def find_black_cell(grid, ll: int, LL: int, detection_level: float):
+def find_black_cell(grid, ll: int, LL: int, detection_level: float) -> tuple[int, int]:
     for k in range(LL + ll):
         # j < ll <=> k - i < ll <=> k - ll < i <=> i >= k - ll + 1
         for i in range(max(0, k - ll + 1), min(k + 1, LL)):
@@ -128,7 +128,7 @@ def find_black_cell(grid, ll: int, LL: int, detection_level: float):
 
 
 # noinspection PyArgumentList
-def find_corner_square(m: ndarray, size: int, corner: str, max_whiteness: float):
+def find_corner_square(m: ndarray, size: int, corner: str, max_whiteness: float) -> tuple[int, int]:
     height, width = m.shape
     V, H = tuple(corner)  # for mypy support
     # First, flip the matrix if needed, so that the corner considered
@@ -138,7 +138,7 @@ def find_corner_square(m: ndarray, size: int, corner: str, max_whiteness: float)
     if H == "r":
         m = fliplr(m)
     area = m[: height // 4, : width // 4]
-    #    color2debug(m, (0, 0), (L//4, l//4), color="blue", display=False)
+    #    color2debug(m, (0, 0), (L//4, l//4), color=Color.blue, display=False)
 
     # Then, split area into a mesh grid.
     # The mesh size is half the size of the searched square.
@@ -241,7 +241,7 @@ def find_corner_square(m: ndarray, size: int, corner: str, max_whiteness: float)
     #    color2debug(m, (i0, j0), (i0 + size, j0 + size))
     if whiteness_measure > max_whiteness:
         print(f"WARNING: Corner square {corner} not found " f"(not dark enough: {whiteness_measure}!)")
-        color2debug(m, (i0, j0), (i0 + size, j0 + size), color="blue", display=False)
+        color2debug(m, (i0, j0), (i0 + size, j0 + size), color=Color.blue, display=False)
         raise LookupError(f"Corner square {corner} not found.")
 
     if V == "b":
@@ -275,7 +275,7 @@ def area_opposite_corners(positions: CornersPositions) -> Tuple[Pixel, Pixel]:
 
 
 def detect_four_squares(
-    m: ndarray, square_size, cm, max_alignment_error_cm=0.4, debug=False
+    m: ndarray, square_size: int, cm: float, max_alignment_error_cm: float = 0.4, debug=False
 ) -> Tuple[CornersPositions, Pixel, Pixel]:
     #    h = w = round(2*(1 + SQUARE_SIZE_IN_CM)*cm)
     max_whiteness = 0.55
@@ -376,7 +376,7 @@ def detect_four_squares(
                 m,
                 (i, j),
                 (i + CALIBRATION_SQUARE_SIZE, j + CALIBRATION_SQUARE_SIZE),
-                color="cyan",
+                color=Color.cyan,
                 display=False,
             )
 
@@ -385,7 +385,7 @@ def detect_four_squares(
     ij1, ij2 = area_opposite_corners(positions)
 
     if debug:
-        color2debug(m, ij1, ij2, color="green")
+        color2debug(m, ij1, ij2, color=Color.green)
     else:
         color2debug()
 
@@ -524,7 +524,7 @@ def calibrate(pic: Image.Image, m: ndarray, debug=False) -> Tuple[ndarray, float
             i = height - 1 - i - calib_square
             j = width - 1 - j - calib_square
             p[corner] = i, j
-            color2debug(m, (i, j), (i + calib_square, j + calib_square), color="green", display=False)
+            color2debug(m, (i, j), (i + calib_square, j + calib_square), color=Color.green, display=False)
         # Replace each tag by the opposite (top-left -> bottom-right).
         p["tl"], p["bl"], p["br"], p["tr"] = p["br"], p["tr"], p["tl"], p["bl"]
         # ~ color2debug(m)
@@ -624,7 +624,7 @@ def edit_answers(m: ndarray, boxes, answered, config, doc_id, xy2ij, cell_size) 
                         (i, j),
                         (i + cell_size, j + cell_size),
                         thickness=5,
-                        color="green",
+                        color=Color.green,
                         display=False,
                     )
 
@@ -869,16 +869,18 @@ def scan_picture(
                         # So, we divide the cell in four squares, and calculate
                         # the mean blackness of the bottom left, bottom right
                         # and top right squares (avoiding the top left one).
-                        blackness = (
+                        square_blackness = (
                             ev(m, i, j + half_cell, half_cell)
                             + ev(m, i + half_cell, j, half_cell)
                             + ev(m, i + half_cell, j + half_cell, half_cell)
                         ) / 3
                         # ~ color2debug(m, (i, j + half_cell), (i + half_cell, j + 2*half_cell), display=True)
-                        black_cells.append((blackness, d))
-                        print("Found:", d, blackness)
+                        black_cells.append((square_blackness, d))
+                        print("Found:", d, square_blackness)
                         # ~ color2debug(m, (imin + i, j), (imin + i + cell_size, j + cell_size))
-                        color2debug(m, (i, j), (i + cell_size, j + cell_size), color="cyan", display=False)
+                        color2debug(
+                            m, (i, j), (i + cell_size, j + cell_size), color=Color.cyan, display=False
+                        )
                     else:
                         color2debug(m, (i, j), (i + cell_size, j + cell_size), display=False)
                 if black_cells:
@@ -999,16 +1001,16 @@ def scan_picture(
 
             if not test_square(proportion=0.4, gray_level=0.9):
                 manual_verification = manual_verification is not False
-                color_square(color="green", thickness=5)
+                color_square(color=Color.green, thickness=5)
             else:
-                color_square(color="blue", thickness=5)
+                color_square(color=Color.blue, thickness=5)
         else:
             # This box was left unchecked.
             c = "□"
             is_ok = not is_answer_correct(q, a, config, test_ID)
             if test_square(proportion=0.2, gray_level=0.95):
                 manual_verification = manual_verification is not False
-                color_square(thickness=2, color="magenta")
+                color_square(thickness=2, color=Color.magenta)
             else:
                 color_square(thickness=2)
 
@@ -1033,7 +1035,9 @@ def scan_picture(
             answered[q].add(a)
             # Change box color for manual verification.
             i, j = positions[(q, a)]
-            color2debug(m, (i, j), (i + cell_size, j + cell_size), color="green", thickness=5, display=False)
+            color2debug(
+                m, (i, j), (i + cell_size, j + cell_size), color=Color.green, thickness=5, display=False
+            )
 
     # If a checkbox is tested as checked, but is much lighter than the darker one,
     # it is very probably a false positive.
@@ -1051,7 +1055,7 @@ def scan_picture(
                 m,
                 (i, j),
                 (i + cell_size, j + cell_size),
-                color="magenta",
+                color=Color.magenta,
                 thickness=5,
                 display=False,
             )

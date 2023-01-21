@@ -15,7 +15,7 @@ from pdf2image import convert_from_path  # type: ignore
 
 from ptyx_mcq.cli import main
 from ptyx_mcq.parameters import CELL_SIZE_IN_CM
-from ptyx_mcq.scan.square_detection import COLORS
+from ptyx_mcq.scan.square_detection import Color, RGB
 from ptyx_mcq.scan.tools import round
 from ptyx_mcq.tools.config_parser import load, is_answer_correct, Configuration
 
@@ -41,10 +41,12 @@ def xy2ij(x: float, y: float) -> Tuple[int, int]:
     return round(i), round(j)
 
 
-def _fill_checkbox(draw: ImageDraw.ImageDraw, pos: tuple, size: float, color: str = "red") -> None:
+def _fill_checkbox(
+    draw: ImageDraw.ImageDraw, pos: tuple, size: float, color: RGB = Color.red
+) -> None:
     i, j = xy2ij(*pos)
     # Draw a blue square around the box (for debugging purpose).
-    draw.rectangle((j, i, j + size, i + size), fill=COLORS[color])
+    draw.rectangle((j, i, j + size, i + size), fill=color)
 
 
 def write_student_id(draw: ImageDraw.ImageDraw, student_id: str, config: Configuration) -> None:
@@ -56,7 +58,7 @@ def write_student_id(draw: ImageDraw.ImageDraw, student_id: str, config: Configu
             draw,
             (x0 + x_shift * CELL_SIZE_IN_CM, y0 - y_shift * CELL_SIZE_IN_CM),
             CELL_SIZE_IN_PX,
-            color="blue",
+            color=Color.blue,
         )
 
 
