@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import re
 
 # --------------------------------------
 #               Compiler
@@ -455,6 +456,64 @@ class MCQLatexGenerator(LatexGenerator):
         print("---------------------------------------------------------------")
         # self.write(data)
 
+    @staticmethod
+    def _parse_sty_list(sty_packages: str) -> str:
+        """Parse LaTeX sty packages list in header."""
+        packages: list[str] = []
+        for package in sty_packages.split(","):
+            package = package.strip()
+            # noinspection RegExpRedundantEscape
+            m = re.match(r"\s*\[(?P<options>(?:\w|\s)+)\](?P<package>.+)", package)
+            if m is None:
+                packages.append(f"{{{package}}}")
+            else:
+                options = m.group('options').strip()
+                package = m.group('package').strip()
+                packages.append(f"[{options}]{{{package}}}")
+        return "\n".join(r"\usepackage" + package for package in packages)
+
+    @staticmethod
+    def _extract_config_from_header(text: str) -> tuple[dict[str, str], list[str]]:
+        def format_key(key_: str) -> str:
+            return key_.strip().replace(" ", "_").lower()
+
+        # {alias: standard key name}
+        alias = {
+            "name": "names",
+            "student": "names",
+            "students": "names",
+            "id": "students_ids",
+            "ids": "students_ids",
+            "student_ids": "students_ids",
+            "student_id": "students_ids",
+            "students_id": "students_ids",
+            "package": "sty",
+            "packages": "sty",
+            "id_formats": "id_format",
+            "ids_formats": "id_format",
+            "ids_format": "id_format",
+        }
+        # Read config: a dictionary is generated from the `key = value` entries.
+        config: Dict[str, str] = {}
+        # After the `key = value` entries, the user may append some raw LaTeX code.
+        raw_latex = []
+        remaining_is_raw_latex = False
+        for line in text.split("\n"):
+            if not remaining_is_raw_latex:
+                if "=" in line:
+                    key, val = line.split("=", maxsplit=1)
+                    # Normalize the key.
+                    key = format_key(key)
+                    key = alias.get(key, key)
+                    config[key] = val.strip()
+                # A line of --- is used as a delimiter between the `key = value` entries
+                # and the optional LaTeX code.
+                if line.startswith("---"):
+                    remaining_is_raw_latex = True
+            else:
+                raw_latex.append(line)
+        return config, raw_latex
+
     def _parse_QCM_HEADER_tag(self, node: Node) -> None:
         """Parse HEADER.
 
@@ -473,7 +532,7 @@ class MCQLatexGenerator(LatexGenerator):
         ===========================
         """
         sty = ""
-        raw_latex = []
+        raw_latex: list[str] = []
         #    if self.WITH_ANSWERS:
         #        self.context['format_ask'] = (lambda s: '')
 
@@ -481,40 +540,7 @@ class MCQLatexGenerator(LatexGenerator):
         if check_id_or_name is None:
             code = ""
 
-            def format_key(key_: str) -> str:
-                return key_.strip().replace(" ", "_").lower()
-
-            # {alias: standard key name}
-            alias = {
-                "name": "names",
-                "student": "names",
-                "students": "names",
-                "id": "students_ids",
-                "ids": "students_ids",
-                "student_ids": "students_ids",
-                "student_id": "students_ids",
-                "students_id": "students_ids",
-                "package": "sty",
-                "packages": "sty",
-                "id_formats": "id_format",
-                "ids_formats": "id_format",
-                "ids_format": "id_format",
-            }
-            # Read config: a dictionary is generated from the key=value entries.
-            config: Dict[str, str] = {}
-            remaining_is_raw_latex = False
-            for line in node.arg(0).split("\n"):
-                if not remaining_is_raw_latex:
-                    if "=" in line:
-                        key, val = line.split("=", maxsplit=1)
-                        # Normalize key.
-                        key = format_key(key)
-                        key = alias.get(key, key)
-                        config[key] = val.strip()
-                    if line.startswith("---"):
-                        remaining_is_raw_latex = True
-                else:
-                    raw_latex.append(line)
+            config, raw_latex = self._extract_config_from_header(node.arg(0))
 
             for key in ("mode", "correct", "incorrect", "skipped", "floor", "ceil"):
                 if key in config:
@@ -545,7 +571,7 @@ class MCQLatexGenerator(LatexGenerator):
                         msg = e.args[0]
                         raise IdentifiantError(f"Error in {csv!r} : {msg!r}")
 
-                    self.mcq_data.update(data)
+                    self.mcq_data.update(data)  # type: ignore
                     code = student_id_table(*data["id_format"])
 
             if "sty" in config:
@@ -574,10 +600,8 @@ class MCQLatexGenerator(LatexGenerator):
 
         header = self.mcq_cache["header"]
         if header is None:
-            # TODO: make packages_and_macros() return a tuple.
-            sty = rf"\usepackage{{{sty}}}" if sty else ""
             header1, header2 = packages_and_macros()
-            header = "\n".join([header1, sty, header2, *raw_latex, r"\begin{document}"])
+            header = "\n".join([header1, self._parse_sty_list(sty), header2, *raw_latex, r"\begin{document}"])
             self.mcq_cache["header"] = header
 
         # Generate barcode

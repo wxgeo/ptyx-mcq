@@ -84,7 +84,7 @@ def keys2int(d: Dict[str, T]) -> Dict[Union[int, str], T]:
     return {(int(k) if k.isdecimal() else k): v for k, v in d.items()}
 
 
-def decodejs(js):
+def decodejs(js: str) -> Configuration:
     d = loads(js, object_hook=keys2int)
     new_d: Configuration = {}
     # Strip '-' from keys and convert them to lower case.

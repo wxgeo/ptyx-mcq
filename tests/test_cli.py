@@ -85,17 +85,17 @@ def simulate_answer(pics: list, config: Configuration):
     return pics
 
 
-def test_cli():
+def test_cli() -> None:
     # Make a temporary directory
-    with tempfile.TemporaryDirectory() as parent:
+    with tempfile.TemporaryDirectory() as _parent:
         # Uncomment following lines to make debugging easier:
         # parent = Path("/tmp")
         # from shutil import rmtree
         # rmtree("/tmp/mcq", ignore_errors=True)
         print(10 * "=")
-        print(parent)
+        print(_parent)
         print(10 * "=")
-        parent = Path(parent)
+        parent = Path(_parent)
         with open(parent / "students.csv", "w", newline="") as csvfile:
             csv.writer(csvfile).writerows(STUDENTS.items())
 

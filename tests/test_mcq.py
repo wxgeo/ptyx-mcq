@@ -173,6 +173,16 @@ def test_unicity_of_answers():
         pass
 
 
+def test_loading_of_sty_files():
+    c = load_ptyx_file("loading-sty-files.txt")
+    c.generate_syntax_tree()
+    latex = c.get_latex()
+    latex_lines = latex.split("\n")
+    for line in (r"\usepackage[table]{xcolor}", r"\usepackage{wasysym}"):
+        if line not in latex_lines:
+            print(repr(latex))
+            assert False, f"Line {line} not found ! (See above)"
+
 @atexit.register
 def cleanup():
     files_found = False

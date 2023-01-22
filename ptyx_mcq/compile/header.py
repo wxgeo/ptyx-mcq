@@ -316,12 +316,12 @@ def table_for_answers(config: Configuration, ID: Optional[int] = None) -> str:
     return "\n".join(content)
 
 
-def packages_and_macros() -> List[str]:
+def packages_and_macros() -> tuple[str, str]:
     """Generate LaTeX default header (loading LaTeX packages and defining some custom macros)."""
     # https://tex.stackexchange.com/questions/37297/how-to-get-element-position-in-latex
     paper_format = f"{PAPER_FORMAT.lower()}paper"
     # LaTeX header is in two part, so as user may insert some customization here.
-    return [
+    return (
         rf"""\documentclass[{paper_format},twoside,10pt]{{article}}
     \PassOptionsToPackage{{utf8}}{{inputenc}}
     \PassOptionsToPackage{{document}}{{ragged2e}}
@@ -391,7 +391,7 @@ def packages_and_macros() -> List[str]:
       \fi%
     }
     """,
-    ]
+    )
 
 
 def answers_and_score(config: Configuration, name: str, identifier: int, score: Optional[float]) -> str:

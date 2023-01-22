@@ -4,13 +4,12 @@
 #SEED{123456}
 
 ===========================
-# Uncomment and edit the following line to load custom LaTeX packages.
-# Use brackets to load them with some options.
-sty = amssymb, amsmath, [table]xcolor
+# Uncomment and edit the following line to load custom LaTeX packages
+sty = [table]xcolor, wasysym
 # Score for a correct answer (usually positive)
 correct = 1
 # Score for an incorrect answer (usually negative or null)
-incorrect = 0 
+incorrect = 0
 # Score when the question was left unanswered (usually null)
 skipped = 0
 # Minimal score for a question
@@ -18,24 +17,27 @@ skipped = 0
 # Maximal score for a question
 # ceil = 1
 # Mode must be `all`, `some`, `proportional`, `partial_answers_linear` or `partial_answers_quadratic`
-mode=all
+mode = partial_answers_quadratic
 # Uncomment and edit the following line to load students ID.
 # This must be a comma separated CSV file with at least 2 columns.
 # Students identifiers must be in the 1st column (without any header).
 # ids=~/listings/INE_2021.csv
-id format=8 digits
 ---------------------------
 # You may include here raw LaTeX code (definition of new LaTeX commands for example).
 # It will be appended to the LaTeX preamble.
+
+\newcommand{\many}{\textbf{\danger\XBox\XBox{}}}
+
 
 ===========================
 
 # You may include raw LaTeX code here as well.
 # It will then be added ** after ** the LaTeX preamble.
 
+Some introduction.
+
 
 <<<<<<<<<<<<<<<<<
 # The following code will include all .txt files recursively found in the `questions/` folder.
--- questions/**/*.txt
+-- exercises/**/*.txt
 >>>>>>>>>>>>>>>>>
- 
