@@ -31,6 +31,7 @@ import tempfile
 from ast import literal_eval
 from hashlib import blake2b
 from math import inf
+from multiprocessing import Pool
 from pathlib import Path
 from shutil import rmtree
 from time import strftime
@@ -634,17 +635,20 @@ class MCQPictureParser:
                 rmtree(path)
 
         # For each new pdf files, extract all pictures
-        for pdfhash, pdfpath in hash2pdf.items():
-            folder = self.dirs["pic"] / pdfhash
-            if not folder.is_dir():
-                extract_pdf_pictures(pdfpath, folder)
-            elif number_of_pages(pdfpath) != len(
-                [f for f in folder.iterdir() if f.suffix.lower() in PIC_EXTS]
-            ):
-                # Extraction was probably interrupted
-                rmtree(folder)
-                folder.mkdir()
-                extract_pdf_pictures(pdfpath, folder)
+        to_extract: list[tuple[Path, Path]] = []
+        with Pool() as pool:
+            for pdfhash, pdfpath in hash2pdf.items():
+                folder = self.dirs["pic"] / pdfhash
+                if not folder.is_dir():
+                    to_extract.append((pdfpath, folder))
+                elif number_of_pages(pdfpath) != len(
+                    [f for f in folder.iterdir() if f.suffix.lower() in PIC_EXTS]
+                ):
+                    # Extraction was probably interrupted
+                    rmtree(folder)
+                    folder.mkdir()
+                    to_extract.append((pdfpath, folder))
+            pool.starmap(extract_pdf_pictures, to_extract)
 
     def _warn(self, *values, sep=" ", end="\n") -> None:
         """Print to stdout and write to log file."""
