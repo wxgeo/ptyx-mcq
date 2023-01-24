@@ -65,6 +65,14 @@ from ..compile.header import answers_and_score
 from ..tools.config_parser import load, get_answers_with_status, Configuration
 
 
+class MissingQuestion(RuntimeError):
+    """Error raised when some questions where not seen when scanning all data."""
+
+
+class MissingConfigurationData(RuntimeError):
+    """Error raised when some configuration data is missing."""
+
+
 class FilesPaths(TypedDict, total=False):
     base: str
     skipped: Path
@@ -129,24 +137,13 @@ class MCQPictureParser:
     def _load_data(self) -> None:
         if self.dirs["data"].is_dir():
             for filename in self.dirs["data"].glob("*/*.scandata"):
-                ID = int(filename.stem)
-                with open(filename) as f:
-                    try:
-                        self.data[ID] = literal_eval(f.read())
-                    except ValueError as e:
-                        # Temporary patch.
-                        # set() is not supported by literal_eval() until Python 3.9
-                        # XXX: remove this once Ubuntu 22.04 will be released.
-                        f.seek(0)
-                        s = f.read()
-                        if sys.version_info < (3, 9) and "set()" in s:
-                            self.data[ID] = eval(s)
-                        else:
-                            print(f"ERROR when reading {filename} :")
-                            raise e
-                    except Exception:
-                        print(f"ERROR when reading {filename} :")
-                        raise
+                doc_id = int(filename.stem)
+                try:
+                    with open(filename) as f:
+                        self.data[doc_id] = literal_eval(f.read())
+                except Exception:
+                    print(f"ERROR when reading {filename} :")
+                    raise
 
     def _store_data(self, pdf_hash: str, doc_id: int, p: int, matrix: ndarray = None) -> None:
         folder = self.dirs["data"] / pdf_hash
@@ -220,8 +217,15 @@ class MCQPictureParser:
         - all questions must have been seen."""
         questions_not_seen = {}
         pages_not_seen = {}
+        ordering = self.config["ordering"]
         for doc_id in self.data:
-            questions = set(self.config["ordering"][doc_id]["questions"])
+            try:
+                doc_ordering = ordering[doc_id]
+            except KeyError:
+                raise MissingConfigurationData(f"No configuration data found for document #{doc_id}.\n"
+                                               "Maybe you recompiled the ptyx file in the while ?\n"
+                                               f"(Launching `mcq make -n {max(self.data)}` might fix it.)")
+            questions = set(doc_ordering["questions"])
             diff = questions - set(self.data[doc_id]["answered"])
             if diff:
                 questions_not_seen[doc_id] = ", ".join(str(q) for q in diff)
@@ -245,7 +249,7 @@ class MCQPictureParser:
         if questions_not_seen:
             # Don't raise an error for pages not found (only a warning in log)
             # if all questions were found, this was probably empty pages.
-            raise RuntimeError("Questions not seen ! (Look at message above).")
+            raise MissingQuestion("Questions not seen ! (Look at message above).")
 
     def _keep_previous_version(self, pic_data: PicData) -> bool:
         """Test if a previous version of the same page exist.
@@ -556,7 +560,6 @@ class MCQPictureParser:
     def _load_all_info(self) -> None:
         """Load all information from files."""
         self._load_data()
-
         # Read manually entered information (if any).
         self.files["cfg"] = self.dirs["cfg"] / "more_infos.csv"
         if self.files["cfg"].is_file():
@@ -683,6 +686,7 @@ class MCQPictureParser:
 
         # Test if the PDF files of the input directory have changed and
         # extract the images from the PDF files if needed.
+        print("Search for previous data...")
         self._update_input_data()
         # Load data from previous run
         self._load_all_info()
@@ -784,7 +788,9 @@ class MCQPictureParser:
         # For every test:
         # - all pages must have been scanned,
         # - all questions must have been seen.
+        print("Test for data integrity...")
         self._test_integrity()
+        print("Everything seems OK.")
 
         # ---------------------------
         # Calculate scores
