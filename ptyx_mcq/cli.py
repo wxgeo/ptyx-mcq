@@ -103,10 +103,12 @@ def main(args: Optional[list] = None) -> None:
     try:
         # Launch the function corresponding to the given subcommand.
         kwargs = vars(parsed_args)
-        kwargs.pop("func")(**kwargs)
+        func = kwargs.pop("func")
     except KeyError:
         # No subcommand passed.
         parser.print_help()
+        return
+    func(**kwargs)
 
 
 def new(path: Path) -> None:
