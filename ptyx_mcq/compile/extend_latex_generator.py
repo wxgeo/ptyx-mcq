@@ -319,13 +319,16 @@ class MCQLatexGenerator(LatexGenerator):
         """
 
         k = int(node.arg(0))
-        arg1 = node.arg(1).strip()
-        if arg1 == "True":
-            is_correct = True
-        elif arg1 == "False":
-            is_correct = False
-        else:
-            raise RuntimeError(f"Second #NEW_ANSWER argument must be True or False, not {arg1!r}.")
+        is_correct: Optional[bool]
+        match arg1 := node.arg(1).strip():
+            case "True":
+                is_correct = True
+            case "False":
+                is_correct = False
+            case "None":
+                is_correct = None
+            case _:
+                raise RuntimeError(f"Second #NEW_ANSWER argument must be True, False or None, not {arg1!r}.")
         n = self.mcq_question_number
 
         self._open_answer(n, k, is_correct)
@@ -375,7 +378,7 @@ class MCQLatexGenerator(LatexGenerator):
         self._parse_children(node.children[2:], function=functions)
         self._close_answer()
 
-    def _open_answer(self, n: int, k: int, is_correct: bool) -> None:
+    def _open_answer(self, n: int, k: int, is_correct: Optional[bool]) -> None:
         # `n` is question number *before* shuffling
         # `k` is answer number *before* shuffling
         # When the pdf with solutions will be generated, incorrect answers
@@ -385,6 +388,8 @@ class MCQLatexGenerator(LatexGenerator):
         cb_id = f"Q{n}-{k}"
         if self.WITH_ANSWERS and is_correct:
             self.write(r"\checkBox{gray}{%s}" % cb_id)
+        elif self.WITH_ANSWERS and is_correct is None:
+            self.write(r"\checkBox{orange!20}{%s}" % cb_id)
         else:
             self.write(r"\checkBox{white}{%s}" % cb_id)
         self.write(r"}{")

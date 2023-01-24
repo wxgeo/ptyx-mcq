@@ -164,9 +164,11 @@ def generate_ptyx_code(text: str) -> str:
             # Declare function to be applied to all answers.
             code.append(f"#{{RAW_CODE={raw};APPLY_TO_ANSWERS={formatting!r};}}")
 
-        elif line.startswith("- ") or line.startswith("+ "):
+        elif line.startswith("- ") or line.startswith("+ ") or line.startswith("! "):
             # - incorrect answer
             # + correct answer
+            # ! neutralized answer (neither really true nor false, this is useful when there was a problem
+            # in an answer).
 
             if previous_line is None:
                 raise RuntimeError("No question before answers list !")
@@ -190,7 +192,16 @@ def generate_ptyx_code(text: str) -> str:
             if answer_num is None:
                 raise RuntimeError("No question before answers list !")
             answer_num += 1
-            begin("NEW_ANSWER", n=answer_num, correct=(line[0] == "+"))
+            match line[0]:
+                case "+":
+                    correct = True
+                case "-":
+                    correct = False
+                case "!":
+                    correct = None
+                case _:
+                    assert False, f"{line[0]} should be either '+', '-' or '!'."
+            begin("NEW_ANSWER", n=answer_num, correct=correct)
 
             code.append(line[2:])
 

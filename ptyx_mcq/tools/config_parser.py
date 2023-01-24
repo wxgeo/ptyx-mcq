@@ -7,7 +7,7 @@ T = TypeVar("T")
 
 class OrderingConfiguration(TypedDict):
     questions: List[int]
-    answers: Dict[int, List[Tuple[int, bool]]]
+    answers: Dict[int, List[Tuple[int, bool | None]]]
 
 
 QuestionNumberOrDefault = Union[Literal["default"], int]
@@ -156,7 +156,7 @@ def apparent2real(
 
 def is_answer_correct(
     q_num: int, a_num: int, config: Configuration, doc_id: int, use_original_num: bool = True
-) -> bool:
+) -> bool | None:
     if use_original_num:
         # q_num and a_num are question and answer number *before* shuffling questions.
         for original_a_num, is_correct in config["ordering"][doc_id]["answers"][q_num]:
@@ -169,12 +169,16 @@ def is_answer_correct(
         return config["ordering"][doc_id]["answers"][original_q_num][a_num - 1][1]
 
 
-def get_correct_answers(
-    config: Configuration, use_original_num: bool = True
+def get_answers_with_status(
+    config: Configuration, *, correct: bool | None, use_original_num: bool = True
 ) -> Dict[int, Dict[int, Set[int]]]:
     """Return a dict containing the set of the correct answers for each question for each document ID.
 
-    Correct answers numbers returned are apparent one (i.e. after shuffling).
+    By default, questions and answers are numbered following their original order of definition
+    in the ptyx file.
+
+    If `use_original_num` is set to `False`, questions numbers and correct answers numbers returned
+    will be apparent ones (i.e. the number that appear in the document, after shuffling).
     """
     correct_answers_by_id = {}
     for doc_id in config["ordering"]:
@@ -187,10 +191,10 @@ def get_correct_answers(
             # `j` is the 'apparent' answer number.
             # `a` is the 'real' answer number, i.e. the answer number before shuffling.
             if use_original_num:
-                correct_answers[q] = {a for (a, _is_correct) in answers[q] if _is_correct}
+                correct_answers[q] = {a for (a, _is_correct) in answers[q] if _is_correct == correct}
             else:
                 correct_answers[i] = {
-                    j for (j, (a, _is_correct)) in enumerate(answers[q], start=1) if _is_correct
+                    j for (j, (a, _is_correct)) in enumerate(answers[q], start=1) if _is_correct == correct
                 }
         correct_answers_by_id[doc_id] = correct_answers
     return correct_answers_by_id

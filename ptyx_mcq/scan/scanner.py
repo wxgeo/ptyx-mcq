@@ -62,7 +62,7 @@ from .scan_pic import (
 )
 from .tools import search_by_extension, print_framed_msg
 from ..compile.header import answers_and_score
-from ..tools.config_parser import load, get_correct_answers, Configuration
+from ..tools.config_parser import load, get_answers_with_status, Configuration
 
 
 class FilesPaths(TypedDict, total=False):
@@ -365,12 +365,22 @@ class MCQPictureParser:
 
         for doc_id in self.data:
             correct_ans = self.correct_answers[doc_id]
+            neutralized_ans = self.neutralized_answers[doc_id]
             print(f'Test {doc_id} - {self.data[doc_id]["name"]}')
             doc_data = self.data[doc_id]
             for q in sorted(doc_data["answered"]):
                 answered = set(doc_data["answered"][q])
                 correct_ones = correct_ans[q]
+                neutralized_ones = neutralized_ans[q]
                 all_answers = {ans_num for ans_num, is_ok in cfg["ordering"][doc_id]["answers"][q]}
+
+                # Neutralized answers must be removed from each set of answers.
+                # (Typically, neutralized answers are answers which were detected faulty during or after the
+                # examination).
+                answered -= neutralized_ones
+                correct_ones -= neutralized_ones
+                all_answers -= neutralized_ones
+
                 mode = cfg["mode"].get(q, default_mode)
 
                 if mode == "skip":
@@ -476,7 +486,8 @@ class MCQPictureParser:
         """Read configuration file, load configuration and calculate maximal score too."""
         configfile = search_by_extension(self.path, ".mcq.config.json")
         cfg: Configuration = load(configfile)
-        self.correct_answers = get_correct_answers(cfg)
+        self.correct_answers = get_answers_with_status(cfg, correct=True)
+        self.neutralized_answers = get_answers_with_status(cfg, correct=None)
         default_mode = cfg["mode"]["default"]
         default_correct = cfg["correct"]["default"]
 
@@ -778,13 +789,7 @@ class MCQPictureParser:
         # ---------------------------
         # Calculate scores
         # ---------------------------
-        # Nota: most of the time, there should be only one correct answer.
-        # Anyway, this code intends to deal with cases where there are more
-        # than one correct answer too.
-        # If mode is set to 'all', student must check *all* correct propositions ;
-        # if not, answer will be considered incorrect. But if mode is set to
-        # 'some', then student has only to check a subset of correct propositions
-        # for his answer to be considered correct.
+        # Calculate the score, taking care of the chosen mode.
         self._calculate_scores()
         print()
 

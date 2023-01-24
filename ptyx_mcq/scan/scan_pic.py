@@ -32,6 +32,7 @@ ANSI_BLUE = "\u001B[34m"
 ANSI_PURPLE = "\u001B[35m"
 ANSI_CYAN = "\u001B[1;36m"
 ANSI_WHITE = "\u001B[37m"
+ANSI_GRAY = "\u001B[90m"
 ANSI_BOLD = "\u001B[1m"
 ANSI_REVERSE = "\u001B[45m"
 
@@ -987,6 +988,8 @@ def scan_picture(
         core_blackness[(q, a)] = eval_square_color(m, i, j, cell_size, margin=7)
         positions[(q, a)] = (i, j)
 
+        answer_is_correct = is_answer_correct(q, a, config, test_ID)
+
         if (
             test_square(proportion=0.2, gray_level=0.65)
             # ~ test_square_color(m, i + 3, j + 3, cell_size - 7, proportion=0.4, gray_level=0.75) or
@@ -996,7 +999,6 @@ def scan_picture(
         ):
             # The student has checked this box.
             c = "■"
-            is_ok = is_answer_correct(q, a, config, test_ID)
             answered[q].add(a)
 
             if not test_square(proportion=0.4, gray_level=0.9):
@@ -1007,14 +1009,23 @@ def scan_picture(
         else:
             # This box was left unchecked.
             c = "□"
-            is_ok = not is_answer_correct(q, a, config, test_ID)
             if test_square(proportion=0.2, gray_level=0.95):
                 manual_verification = manual_verification is not False
                 color_square(thickness=2, color=Color.magenta)
             else:
                 color_square(thickness=2)
 
-        print(f"  {'' if is_ok else ANSI_YELLOW}{c} {a}  {ANSI_RESET}", end="\t")
+        if answer_is_correct is None:
+            # This answer was neutralized (ahem, the teacher probably made a mistake... ;))
+            color = ANSI_GRAY
+        elif c == "□" and answer_is_correct or c == "■" and not answer_is_correct:
+            # Incorrect answer.
+            color = ANSI_YELLOW
+        else:
+            # Great answer !
+            color = ""
+
+        print(f"  {color}{c} {a}  {ANSI_RESET}", end="\t")
         # ~ print('\nCorrect answers:', should_have_answered)
     print()
 

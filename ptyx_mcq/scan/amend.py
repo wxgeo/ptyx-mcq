@@ -18,14 +18,16 @@ if TYPE_CHECKING:
 
 
 def _correct_checkboxes(
-    draw: ImageDraw.ImageDraw, pos: Pixel, checked: bool, correct: bool, size: int
+    draw: ImageDraw.ImageDraw, pos: Pixel, checked: bool, correct: bool | None, size: int
 ) -> None:
     i, j = pos
     margin = size // 2
     # Draw a blue square around the box (for debugging purpose).
     draw.rectangle((j, i, j + size, i + size), outline=Color.green)
     red = Color.red
-    if checked and not correct:
+    if correct is None:
+        draw.rectangle((j, i, j + size, i + size), outline=Color.orange)
+    elif checked and not correct:
         # Circle checkbox with red pen.
         try:
             draw.ellipse((j - margin, i - margin, j + size + margin, i + size + margin), width=2, outline=red)
@@ -47,19 +49,17 @@ def _write_score(draw: ImageDraw.ImageDraw, pos: Pixel, earn: float | str, size:
 
 
 def amend_all(pic_parser: "MCQPictureParser") -> None:
-    """Amend answer sheet with scores and correct answers.
-
-    `data` is the dict generated when the answer sheet is scanned.
-    `ID` is the ID of answer sheet.
+    """Amend all generated documents, adding the scores and indicating the correct answers.
     """
     max_score = pic_parser.config["max_score"]
-    for ID, d in pic_parser.data.items():
-        correct_answers = pic_parser.correct_answers[ID]
+    for doc_id, doc_data in pic_parser.data.items():
+        correct_answers = pic_parser.correct_answers[doc_id]
+        neutralized_answers = pic_parser.neutralized_answers[doc_id]
         pics = {}
-        for page, page_data in d["pages"].items():
+        for page, page_data in doc_data["pages"].items():
             top_left_positions: dict[int, Pixel] = {}
             # Convert to RGB picture.
-            pic = pic_parser.get_pic(ID, page).convert("RGB")
+            pic = pic_parser.get_pic(doc_id, page).convert("RGB")
             if not page_data["positions"]:
                 # The last page of the MCQ may be empty.
                 # `float('+inf')` is used to ensure
@@ -71,7 +71,10 @@ def amend_all(pic_parser: "MCQPictureParser") -> None:
             size = page_data["cell_size"]
             for (q, a), pos in page_data["positions"].items():
                 checked = a in page_data["answered"][q]
-                correct = a in correct_answers[q]
+                if a in neutralized_answers[q]:
+                    correct = None
+                else:
+                    correct = a in correct_answers[q]
                 _correct_checkboxes(draw, pos, checked, correct, size)
                 if q in top_left_positions:
                     i0, j0 = top_left_positions[q]
@@ -80,7 +83,7 @@ def amend_all(pic_parser: "MCQPictureParser") -> None:
                 else:
                     top_left_positions[q] = pos
             for q in top_left_positions:
-                earn = d["score_per_question"][q]
+                earn = doc_data["score_per_question"][q]
                 i, j = top_left_positions[q]
                 _write_score(draw, (i, j - 2 * size), earn, size)
             # We will now sort pages.
@@ -93,9 +96,9 @@ def amend_all(pic_parser: "MCQPictureParser") -> None:
             # Sort pages now.
         _, pages = zip(*sorted(pics.items()))
         draw = ImageDraw.Draw(pages[0])
-        _write_score(draw, (2 * size, 4 * size), f"{d['score']:g}/{max_score:g}", 2 * size)
+        _write_score(draw, (2 * size, 4 * size), f"{doc_data['score']:g}/{max_score:g}", 2 * size)
         pages[0].save(
-            join(pic_parser.dirs["pdf"], f"{d['name']}-{ID}.pdf"),
+            join(pic_parser.dirs["pdf"], f"{doc_data['name']}-{doc_id}.pdf"),
             save_all=True,
             append_images=pages[1:],
         )

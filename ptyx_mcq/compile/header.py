@@ -13,7 +13,7 @@ from ..parameters import (
     CALIBRATION_SQUARE_POSITION,
     CALIBRATION_SQUARE_SIZE,
 )
-from ..tools.config_parser import get_correct_answers, Configuration
+from ..tools.config_parser import get_answers_with_status, Configuration
 
 
 class IdentifiantError(RuntimeError):
@@ -252,7 +252,7 @@ def student_id_table(ID_length: int, max_ndigits: int, digits: List[Tuple[str, .
     return "\n".join(content)
 
 
-def table_for_answers(config: Configuration, ID: Optional[int] = None) -> str:
+def table_for_answers(config: Configuration, doc_id: Optional[int] = None) -> str:
     """Generate the table where students select correct answers.
 
     - `config` is a dict generated when compiling test.
@@ -265,7 +265,7 @@ def table_for_answers(config: Configuration, ID: Optional[int] = None) -> str:
     # Generate the table where students will answer.
     tkzoptions = ["scale=%s" % CELL_SIZE_IN_CM]
 
-    d = config["ordering"][1 if ID is None else ID]
+    d = config["ordering"][1 if doc_id is None else doc_id]
     questions = d["questions"]
     answers = d["answers"]
     n_questions = len(questions)
@@ -287,8 +287,8 @@ def table_for_answers(config: Configuration, ID: Optional[int] = None) -> str:
         write(rf"\draw[ultra thin] ({x1},0) rectangle ({x2},1) ({x3},0.5) " rf"node {{{x1 + 1}}};")
 
     # Find correct answers numbers for each question.
-    if ID is not None:
-        correct_ans = get_correct_answers(config, use_original_num=False)[ID]
+    if doc_id is not None:
+        correct_ans = get_answers_with_status(config, correct=True, use_original_num=False)[doc_id]
 
     # i = -1
     for i in range(n_max_answers):
@@ -301,7 +301,7 @@ def table_for_answers(config: Configuration, ID: Optional[int] = None) -> str:
             x1 = j
             x2 = x1 + 1
             opt = ""
-            if ID is not None and i + 1 in correct_ans[j + 1]:
+            if doc_id is not None and i + 1 in correct_ans[j + 1]:
                 opt = "fill=gray"
             write(rf"\draw [ultra thin,{opt}] ({x1},{y1}) rectangle ({x2},{y2});")
 
