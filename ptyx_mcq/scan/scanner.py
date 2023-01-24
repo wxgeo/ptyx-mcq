@@ -26,7 +26,6 @@
 import csv
 import string
 import subprocess
-import sys
 import tempfile
 from ast import literal_eval
 from hashlib import blake2b
@@ -136,7 +135,8 @@ class MCQPictureParser:
 
     def _load_data(self) -> None:
         if self.dirs["data"].is_dir():
-            for filename in self.dirs["data"].glob("*/*.scandata"):
+            for filename in self.dirs["data"].glob("*.scandata"):
+                print(f"Loading: {filename}")
                 doc_id = int(filename.stem)
                 try:
                     with open(filename) as f:
@@ -146,18 +146,18 @@ class MCQPictureParser:
                     raise
 
     def _store_data(self, pdf_hash: str, doc_id: int, p: int, matrix: ndarray = None) -> None:
-        folder = self.dirs["data"] / pdf_hash
-        folder.mkdir(exist_ok=True)
-        with open(folder / f"{doc_id}.scandata", "w") as f:
+        with open(self.dirs["data"] / f"{pdf_hash}.index", "a") as f:
+            f.write(str(doc_id) + "\n")
+        with open(self.dirs["data"] / f"{doc_id}.scandata", "w") as f:
             f.write(repr(self.data[doc_id]))
         # We will store a compressed version of the matrix.
         # (It would consume too much memory else).
         if matrix is not None:
-            webp = folder / f"{doc_id}-{p}.webp"
+            webp = self.dirs["data"] / f"{doc_id}-{p}.webp"
             Image.fromarray((255 * matrix).astype(int8)).save(str(webp), format="WEBP")
 
     def get_pic(self, doc_id: int, page: int) -> Image.Image:
-        webp = next(self.dirs["data"].glob(f"*/{doc_id}-{page}.webp"))
+        webp = next(self.dirs["data"].glob(f"{doc_id}-{page}.webp"))
         return Image.open(str(webp))
 
     def get_matrix(self, doc_id: int, page: int) -> ndarray:
@@ -630,23 +630,7 @@ class MCQPictureParser:
         """Test if input data has changed, and update it if needed."""
         hash2pdf: Dict[str, Path] = self._generate_current_pdf_hashes()
 
-        def test_path(pth):
-            if not pth.is_dir():
-                raise RuntimeError(
-                    f'Folder "{pth.parent}" should only contain folders.\n'
-                    "You may clean it manually, or remove it with following command:\n"
-                    f'rm -r "{pth.parent}"'
-                )
-
-        # For each removed pdf files, remove corresponding pictures and data
-        for path in self.dirs["pic"].iterdir():
-            test_path(path)
-            if path.name not in hash2pdf:
-                rmtree(path)
-        for path in self.dirs["data"].iterdir():
-            test_path(path)
-            if path.name not in hash2pdf:
-                rmtree(path)
+        self._remove_obsolete_files(hash2pdf)
 
         # For each new pdf files, extract all pictures
         to_extract: list[tuple[Path, Path]] = []
@@ -663,6 +647,27 @@ class MCQPictureParser:
                     folder.mkdir()
                     to_extract.append((pdfpath, folder))
             pool.starmap(extract_pdf_pictures, to_extract)
+
+    def _remove_obsolete_files(self, hash2pdf):
+        """For each removed pdf files, remove corresponding pictures and data."""
+        for path in self.dirs["pic"].iterdir():
+            if not path.is_dir():
+                raise RuntimeError(
+                    f'Folder "{path.parent}" should only contain folders.\n'
+                    "You may clean it manually, or remove it with following command:\n"
+                    f'rm -r "{path.parent}"'
+                )
+            if path.name not in hash2pdf:
+                rmtree(path)
+        for path in self.dirs["data"].glob("*.index"):
+            if path.stem not in hash2pdf:
+                with open(path) as f:
+                    doc_ids = set(f.read().split())
+                for doc_id in doc_ids:
+                    (self.dirs["data"] / f"{doc_id}.scandata").unlink(missing_ok=True)
+                    for webp in self.dirs["data"].glob(f"{doc_id}-*.webp"):
+                        webp.unlink()
+                path.unlink()
 
     def _warn(self, *values, sep=" ", end="\n") -> None:
         """Print to stdout and write to log file."""
