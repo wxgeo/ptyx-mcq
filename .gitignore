@@ -11,6 +11,7 @@
 *.aux
 *.toc
 *.log
+*.directory
 BAZAR/
 *.tex
 *.ptyx
