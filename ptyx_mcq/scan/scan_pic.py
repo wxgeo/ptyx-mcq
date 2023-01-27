@@ -12,7 +12,8 @@ from .square_detection import (
     eval_square_color,
     adjust_checkbox,
     color2debug,
-    Color, Pixel,
+    Color,
+    Pixel,
 )
 from .tools import round
 from ..parameters import (
@@ -149,7 +150,7 @@ def find_corner_square(m: ndarray, size: int, corner: str, max_whiteness: float)
     grid = zeros((LL, ll))
 
     # For each mesh grid cell, we calculate the whiteness of the cell.
-    # (Each pixel value vary from 0 (black) to 1 (white).)
+    # (Each pixel value varies from 0 (black) to 1 (white).)
     for i in range(LL):
         for j in range(ll):
             grid[i, j] = area[i * half : (i + 1) * half, j * half : (j + 1) * half].sum()
@@ -163,7 +164,7 @@ def find_corner_square(m: ndarray, size: int, corner: str, max_whiteness: float)
     # or the ID band.
     # Anyway, even if the core of the black square is not
     # the darkest cell, it should be almost as dark as the darkest.
-    detection_level = darkest + 0.15 * half**2
+    detection_level = darkest + 0.2 * half**2
 
     # Then, we will browse the mesh grid, starting from the top left corner,
     # following oblique lines (North-East->South-West), as follows:
@@ -276,10 +277,35 @@ def area_opposite_corners(positions: CornersPositions) -> Tuple[Pixel, Pixel]:
 
 
 def detect_four_squares(
-    m: ndarray, square_size: int, cm: float, max_alignment_error_cm: float = 0.4, debug=False
+    m: ndarray,
+    square_size: int,
+    cm: float,
+    *,
+    max_alignment_error_cm: float = 0.4,
+    debug=False,
+) -> Tuple[CornersPositions, Pixel, Pixel]:
+    levels = (0.55, 0.60, 0.65)
+    for max_whiteness in levels:
+        print(f"{max_whiteness=}")
+        try:
+            return _detect_four_squares(
+                m, square_size, cm, max_whiteness=max_whiteness, max_alignment_error_cm=2, debug=debug
+            )
+        except CalibrationError as e:
+            if max_whiteness == max(levels):
+                raise e
+
+
+def _detect_four_squares(
+    m: ndarray,
+    square_size: int,
+    cm: float,
+    *,
+    max_alignment_error_cm: float = 0.4,
+    max_whiteness=0.55,
+    debug=False,
 ) -> Tuple[CornersPositions, Pixel, Pixel]:
     #    h = w = round(2*(1 + SQUARE_SIZE_IN_CM)*cm)
-    max_whiteness = 0.55
     # Make a mutable copy of frozenset CORNERS.
     corners = set(CORNERS)
     positions: CornersPositions = {}
@@ -426,8 +452,8 @@ def calibrate(pic: Image.Image, m: ndarray, debug=False) -> Tuple[ndarray, float
     # Unit conversion: 1 inch = 2.54 cm
     print(f"Detect pixels/cm: {cm} (dpi: {2.54*cm})")
 
-    # Evaluate approximatively squares size using image dpi.
-    # Square size is equal to SQUARE_SIZE_IN_CM in theory, but this vary
+    # Evaluate approximately squares size using image dpi.
+    # Square size is equal to SQUARE_SIZE_IN_CM in theory, but this varies
     # in practice depending on printer and scanner parameters (margins...).
     square_size = round(SQUARE_SIZE_IN_CM * cm)
     calib_square = round(CALIBRATION_SQUARE_SIZE * cm)
@@ -462,10 +488,12 @@ def calibrate(pic: Image.Image, m: ndarray, debug=False) -> Tuple[ndarray, float
 
     # Detection algorithm is quite naive:
     # We'll search for a square alternatively in the four corners,
-    # extending the search area and beeing more tolerant if needed.
+    # extending the search area and being more tolerant if needed.
 
     # First pass, to detect rotation.
-    positions, *_ = detect_four_squares(m, calib_square, cm, max_alignment_error_cm=2, debug=debug)
+    positions, *_ = detect_four_squares(
+                m, calib_square, cm, max_alignment_error_cm=2, debug=debug
+            )
     print(positions)
 
     # Now, let's detect the rotation.
@@ -510,7 +538,9 @@ def calibrate(pic: Image.Image, m: ndarray, debug=False) -> Tuple[ndarray, float
     print(f"Detect pixels/cm: {cm}")
 
     # Redetect calibration squares.
+    print("ok")
     positions, (i1, j1), (i2, j2) = detect_four_squares(m, calib_square, cm, debug=debug)
+    print("ok2")
 
     try:
         i3, j3 = find_document_id_band(m, i1, j1, j2, square_size)
@@ -1052,21 +1082,31 @@ def scan_picture(
 
     # If a checkbox is tested as checked, but is much lighter than the darker one,
     # it is very probably a false positive.
-    floor = max(0.2 * max(blackness.values()), max(blackness.values()) - 0.3)
-    core_floor = max(0.2 * max(core_blackness.values()), max(core_blackness.values()) - 0.3)
+    floor = max(0.2 * max(blackness.values()), max(blackness.values()) - 0.4)
+    upper_floor = max(0.2 * max(blackness.values()), max(blackness.values()) - 0.3)
+    core_floor = max(0.2 * max(core_blackness.values()), max(core_blackness.values()) - 0.4)
+    upper_core_floor = max(0.2 * max(core_blackness.values()), max(core_blackness.values()) - 0.3)
     for (q, a) in blackness:  # pylint: disable=dict-iter-missing-items
-        if a in answered[q] and (blackness[(q, a)] < floor or core_blackness[(q, a)] < core_floor):
-            print("False positive detected", (q, a))
-            # This is probably a false positive, but we'd better verify manually.
+        if a in answered[q] and (
+            blackness[(q, a)] < upper_floor or core_blackness[(q, a)] < upper_core_floor
+        ):
             manual_verification = manual_verification is not False
-            answered[q].discard(a)
-            # Change box color for manual verification.
+            if blackness[(q, a)] < floor or core_blackness[(q, a)] < core_floor:
+                print("False positive detected", (q, a), blackness[(q, a)], max(blackness.values()))
+                # This is probably a false positive, but we'd better verify manually.
+                answered[q].discard(a)
+                # Change box color for manual verification.
+                color = Color.magenta
+            else:
+                # Probably note a false positive, but we should verify.
+                # Change box color for manual verification.
+                color = Color.green
             i, j = positions[(q, a)]
             color2debug(
                 m,
                 (i, j),
                 (i + cell_size, j + cell_size),
-                color=Color.magenta,
+                color=color,
                 thickness=5,
                 display=False,
             )
