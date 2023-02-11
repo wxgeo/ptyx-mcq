@@ -11,7 +11,8 @@ from typing import TYPE_CHECKING
 
 from PIL import ImageDraw, ImageFont
 
-from .square_detection import Color, Pixel
+from .square_detection import Pixel
+from .color import Color
 
 if TYPE_CHECKING:
     from ptyx_mcq.scan.scanner import MCQPictureParser
@@ -49,8 +50,7 @@ def _write_score(draw: ImageDraw.ImageDraw, pos: Pixel, earn: float | str, size:
 
 
 def amend_all(pic_parser: "MCQPictureParser") -> None:
-    """Amend all generated documents, adding the scores and indicating the correct answers.
-    """
+    """Amend all generated documents, adding the scores and indicating the correct answers."""
     max_score = pic_parser.config["max_score"]
     for doc_id, doc_data in pic_parser.data.items():
         correct_answers = pic_parser.correct_answers[doc_id]

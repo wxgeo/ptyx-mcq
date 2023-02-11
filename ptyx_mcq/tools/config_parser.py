@@ -12,6 +12,8 @@ class OrderingConfiguration(TypedDict):
 
 QuestionNumberOrDefault = Union[Literal["default"], int]
 
+StudentIdFormat = Tuple[int, int, List[Tuple[str, ...]]]
+
 
 # TODO: improve typing precision
 class Configuration(TypedDict, total=False):
@@ -26,7 +28,7 @@ class Configuration(TypedDict, total=False):
     ceil: Dict[QuestionNumberOrDefault, float | None]
     students: List[str]
     id_table_pos: Tuple[float, float]
-    id_format: Tuple[int, int, List[Tuple[str, ...]]]
+    id_format: StudentIdFormat
     students_ids: Dict[str, str]
     students_list: List[str]
     boxes: Dict[int, Dict[int, Dict[str, Tuple[float, float]]]]

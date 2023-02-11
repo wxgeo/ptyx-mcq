@@ -55,10 +55,10 @@ from .scan_pic import (
     ANSI_CYAN,
     ANSI_GREEN,
     ANSI_RED,
-    color2debug,
     CalibrationError,
     PicData,
 )
+from .visual_debugging import color2debug
 from .tools import search_by_extension, print_framed_msg
 from ..compile.header import answers_and_score
 from ..tools.config_parser import load, get_answers_with_status, Configuration

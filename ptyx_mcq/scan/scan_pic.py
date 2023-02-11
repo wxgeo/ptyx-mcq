@@ -11,10 +11,10 @@ from .square_detection import (
     find_black_square,
     eval_square_color,
     adjust_checkbox,
-    color2debug,
-    Color,
     Pixel,
 )
+from .color import Color
+from .visual_debugging import color2debug
 from .tools import round
 from ..parameters import (
     SQUARE_SIZE_IN_CM,
@@ -22,7 +22,13 @@ from ..parameters import (
     CALIBRATION_SQUARE_POSITION,
     CALIBRATION_SQUARE_SIZE,
 )
-from ..tools.config_parser import real2apparent, apparent2real, is_answer_correct, Configuration
+from ..tools.config_parser import (
+    real2apparent,
+    apparent2real,
+    is_answer_correct,
+    Configuration,
+    StudentIdFormat,
+)
 
 ANSI_RESET = "\u001B[0m"
 ANSI_BLACK = "\u001B[30m"
@@ -711,7 +717,7 @@ def read_doc_id_and_page(m: ndarray, pos: Pixel, f_square_size: float) -> tuple[
         else:
             color2debug(m, (i, j_), (i + square_size, j_ + square_size), color=(0, 0, 255), display=False)
         if test_square_color(m, i, j_, square_size, proportion=0.5, gray_level=0.5):
-            doc_id += 2 ** k
+            doc_id += 2**k
             # ~ print((k, (i3, j)), " -> black")
         # ~ else:
         # ~ print((k, (i3, j)), " -> white")
@@ -729,6 +735,117 @@ def read_doc_id_and_page(m: ndarray, pos: Pixel, f_square_size: float) -> tuple[
     print("Test ID read: %s" % doc_id)
 
     return doc_id, page
+
+
+def read_student_id_and_name(
+    m: ndarray, students_ids: dict[str, str], pos: Pixel, id_format: StudentIdFormat, f_cell_size: float
+) -> tuple[str, str]:
+    student_ID = ""
+    student_name = ""
+    cell_size = round(f_cell_size)
+    half_cell = round(f_cell_size / 2)
+    ID_length, max_digits, digits = id_format
+    # ~ height = ID_length*cell_size
+    i0, j0 = pos
+    #            color2debug(m, (i0, j0), (i0 + cell_size, j0 + cell_size), color=(0,255,0))
+    # Scan grid row by row. For each row, the darker cell is retrieved,
+    # and the associated character is appended to the ID.
+    all_ID_are_of_the_same_length = len(set(len(ID) for ID in students_ids)) == 1
+    ev = eval_square_color
+    for n in range(ID_length):
+        # Top of the row.
+        i = round(i0 + n * f_cell_size)
+        black_cells = []
+        # If a cell is black enough, a couple (indicator_of_blackness, digit)
+        # will be appended to the list `cells`.
+        # After scanning the whole row, we will assume that the blackest
+        # cell of the row will be the one checked by the student,
+        # as long as there is enough difference between the blackest
+        # and the second blackest.
+        digits_for_nth_character = sorted(digits[n])
+        if all_ID_are_of_the_same_length and len(digits_for_nth_character) == 1:
+            # No need to read, there is no choice for this character !
+            student_ID += digits_for_nth_character.pop()
+            continue
+        for k, d in enumerate(digits_for_nth_character):
+            # Left ot the cell.
+            j = round(j0 + (k + 1) * f_cell_size)
+            # ~ val = eval_square_color(m, i, j, cell_size)
+            # ~ print(d, val)
+
+            # ~ color2debug(m, (i + 2, j + 2), (i - 2 + cell_size, j - 2+ cell_size), color=(1,1,0))
+            if test_square_color(m, i, j, cell_size, gray_level=0.8):
+                # To test the blackness, we exclude the top left corner,
+                # which contain the cell number and may alter the result.
+                # So, we divide the cell in four squares, and calculate
+                # the mean blackness of the bottom left, bottom right
+                # and top right squares (avoiding the top left one).
+                square_blackness = (
+                    ev(m, i, j + half_cell, half_cell)
+                    + ev(m, i + half_cell, j, half_cell)
+                    + ev(m, i + half_cell, j + half_cell, half_cell)
+                ) / 3
+                # ~ color2debug(m, (i, j + half_cell), (i + half_cell, j + 2*half_cell), display=True)
+                black_cells.append((square_blackness, d))
+                print("Found:", d, square_blackness)
+                # ~ color2debug(m, (imin + i, j), (imin + i + cell_size, j + cell_size))
+                color2debug(m, (i, j), (i + cell_size, j + cell_size), color=Color.cyan, display=False)
+            else:
+                color2debug(m, (i, j), (i + cell_size, j + cell_size), display=False)
+        if black_cells:
+            black_cells.sort(reverse=True)
+            print(black_cells)
+            # Test if there is enough difference between the blackest
+            # and the second blackest (minimal difference was set empirically).
+            if len(black_cells) == 1 or black_cells[0][0] - black_cells[1][0] > 0.2:
+                # The blackest one is chosen:
+                digit = black_cells[0][1]
+                student_ID += digit
+    if student_ID in students_ids:
+        print("Student ID:", student_ID)
+        student_name = students_ids[student_ID]
+    else:
+        print(f"ID list: {students_ids!r}")
+        print(f"Warning: invalid student id {student_ID!r} !")
+        # ~ color2debug(m)
+    return student_ID, student_name
+
+
+def read_student_name(m: ndarray, students: list[str], TOP: int, f_square_size: float) -> str:
+    # TODO: rewrite this function.
+    # Use .pos file to retrieve exact position of first square
+    # (just like in next section),
+    # instead of scanning a large area to detect first black square.
+    # Exclude the codebar and top squares from the search area.
+    # If rotation correction was well done, we should have i1 ≃ i2 ≃ i3.
+    # Anyway, it's safer to take the max of them.
+    student_name = ""
+    n_students = len(students)
+    square_size = round(f_square_size)
+    vpos = TOP + 2 * square_size
+    search_area = m[vpos : vpos + 4 * square_size, :]
+    i, j0 = find_black_square(search_area, size=square_size, error=0.3, mode="column").__next__()
+    # ~ color2debug((vpos + i, j0), (vpos + i + square_size, j0 + square_size), color=(0,255,0))
+    vpos += i + square_size
+    checked_squares = []
+    for k in range(1, n_students + 1):
+        j = round(j0 + 2 * k * f_square_size)
+        checked_squares.append(test_square_color(search_area, i, j, square_size))
+        # ~ if k > 15:
+        # ~ print(checked_squares)
+        # ~ color2debug((vpos + i, j), (vpos + i + square_size, j + square_size))
+    n = checked_squares.count(True)
+    if n == 0:
+        print("Warning: no student name !")
+    elif n > 1:
+        print("Warning: several students names !")
+        for i, b in enumerate(checked_squares):
+            if b:
+                print(" - ", students[n_students - i - 1])
+    else:
+        student_number = n_students - checked_squares.index(True) - 1
+        student_name = students[student_number]
+    return student_name
 
 
 def scan_picture(
@@ -809,7 +926,6 @@ def scan_picture(
 
     f_cell_size = CELL_SIZE_IN_CM * pixels_per_mm * 10
     cell_size = round(f_cell_size)
-    half_cell = round(f_cell_size / 2)
 
     # Henceforth, we can convert LaTeX position to pixel with a good precision.
     def xy2ij(x, y):
@@ -841,115 +957,15 @@ def scan_picture(
         # ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
         if n_students:
-            # XXX: rewrite this section.
-            # Use .pos file to retrieve exact position of first square
-            # (just like in next section),
-            # instead of scanning a large area to detect first black square.
-
-            # Exclude the codebar and top squares from the search area.
-            # If rotation correction was well done, we should have i1 ≃ i2 ≃ i3.
-            # Anyway, it's safer to take the max of them.
-            vpos = TOP + 2 * square_size
-
-            search_area = m[vpos : vpos + 4 * square_size, :]
-            i, j0 = find_black_square(search_area, size=square_size, error=0.3, mode="column").__next__()
-            # ~ color2debug((vpos + i, j0), (vpos + i + square_size, j0 + square_size), color=(0,255,0))
-            vpos += i + square_size
-
-            checked_squares = []
-            for k in range(1, n_students + 1):
-                j = round(j0 + 2 * k * f_square_size)
-                checked_squares.append(test_square_color(search_area, i, j, square_size))
-                # ~ if k > 15:
-                # ~ print(checked_squares)
-                # ~ color2debug((vpos + i, j), (vpos + i + square_size, j + square_size))
-
-            n = checked_squares.count(True)
-            if n == 0:
-                print("Warning: no student name !")
-            elif n > 1:
-                print("Warning: several students names !")
-                for i, b in enumerate(checked_squares):
-                    if b:
-                        print(" - ", students[n_students - i - 1])
-            else:
-                student_number = n_students - checked_squares.index(True) - 1
-                student_name = students[student_number]
+            student_name = read_student_name(m, students, TOP, f_square_size)
 
         # Read student id, then find name
         # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
         #
         elif students_ids:
-            ID_length, max_digits, digits = config["id_format"]
-            # ~ height = ID_length*cell_size
-
-            i0, j0 = xy2ij(*config["id_table_pos"])
-
-            #            color2debug(m, (i0, j0), (i0 + cell_size, j0 + cell_size), color=(0,255,0))
-
-            # Scan grid row by row. For each row, the darker cell is retrieved,
-            # and the associated character is appended to the ID.
-            all_ID_are_of_the_same_length = len(set(len(ID) for ID in students_ids)) == 1
-
-            ev = eval_square_color
-            for n in range(ID_length):
-                # Top of the row.
-                i = round(i0 + n * f_cell_size)
-                black_cells = []
-                # If a cell is black enough, a couple (indicator_of_blackness, digit)
-                # will be appended to the list `cells`.
-                # After scanning the whole row, we will assume that the blackest
-                # cell of the row will be the one checked by the student,
-                # as long as there is enough difference between the blackest
-                # and the second blackest.
-                digits_for_nth_character = sorted(digits[n])
-                if all_ID_are_of_the_same_length and len(digits_for_nth_character) == 1:
-                    # No need to read, there is no choice for this character !
-                    student_ID += digits_for_nth_character.pop()
-                    continue
-                for k, d in enumerate(digits_for_nth_character):
-                    # Left ot the cell.
-                    j = round(j0 + (k + 1) * f_cell_size)
-                    # ~ val = eval_square_color(m, i, j, cell_size)
-                    # ~ print(d, val)
-
-                    # ~ color2debug(m, (i + 2, j + 2), (i - 2 + cell_size, j - 2+ cell_size), color=(1,1,0))
-                    if test_square_color(m, i, j, cell_size, gray_level=0.8):
-                        # To test the blackness, we exclude the top left corner,
-                        # which contain the cell number and may alter the result.
-                        # So, we divide the cell in four squares, and calculate
-                        # the mean blackness of the bottom left, bottom right
-                        # and top right squares (avoiding the top left one).
-                        square_blackness = (
-                            ev(m, i, j + half_cell, half_cell)
-                            + ev(m, i + half_cell, j, half_cell)
-                            + ev(m, i + half_cell, j + half_cell, half_cell)
-                        ) / 3
-                        # ~ color2debug(m, (i, j + half_cell), (i + half_cell, j + 2*half_cell), display=True)
-                        black_cells.append((square_blackness, d))
-                        print("Found:", d, square_blackness)
-                        # ~ color2debug(m, (imin + i, j), (imin + i + cell_size, j + cell_size))
-                        color2debug(
-                            m, (i, j), (i + cell_size, j + cell_size), color=Color.cyan, display=False
-                        )
-                    else:
-                        color2debug(m, (i, j), (i + cell_size, j + cell_size), display=False)
-                if black_cells:
-                    black_cells.sort(reverse=True)
-                    print(black_cells)
-                    # Test if there is enough difference between the blackest
-                    # and the second blackest (minimal difference was set empirically).
-                    if len(black_cells) == 1 or black_cells[0][0] - black_cells[1][0] > 0.2:
-                        # The blackest one is chosen:
-                        digit = black_cells[0][1]
-                        student_ID += digit
-            if student_ID in students_ids:
-                print("Student ID:", student_ID)
-                student_name = students_ids[student_ID]
-            else:
-                print(f"ID list: {students_ids!r}")
-                print(f"Warning: invalid student id {student_ID!r} !")
-                # ~ color2debug(m)
+            student_ID, student_name = read_student_id_and_name(
+                m, students_ids, xy2ij(*config["id_table_pos"]), config["id_format"], f_cell_size
+            )
 
         else:
             print("No students list.")

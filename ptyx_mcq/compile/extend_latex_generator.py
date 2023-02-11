@@ -472,8 +472,8 @@ class MCQLatexGenerator(LatexGenerator):
             if m is None:
                 packages.append(f"{{{package}}}")
             else:
-                options = m.group('options').strip()
-                package = m.group('package').strip()
+                options = m.group("options").strip()
+                package = m.group("package").strip()
                 packages.append(f"[{options}]{{{package}}}")
         return "\n".join(r"\usepackage" + package for package in packages)
 

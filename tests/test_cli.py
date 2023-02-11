@@ -15,7 +15,7 @@ from pdf2image import convert_from_path  # type: ignore
 
 from ptyx_mcq.cli import main
 from ptyx_mcq.parameters import CELL_SIZE_IN_CM
-from ptyx_mcq.scan.square_detection import Color, RGB
+from ptyx_mcq.scan.color import Color, RGB
 from ptyx_mcq.scan.tools import round
 from ptyx_mcq.tools.config_parser import load, is_answer_correct, Configuration
 

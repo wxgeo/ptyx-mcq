@@ -31,7 +31,7 @@ class ScoreData:
 def some(answers: AnswersData, score: ScoreData) -> float:
     """Return the maximal score if any of the correct answers and no incorrect answer is checked.
 
-     If an incorrect answer is checked, return minimal score."""
+    If an incorrect answer is checked, return minimal score."""
     # Answer is valid if and only if :
     # (proposed ≠ ∅ and proposed ⊆ correct) or (proposed = correct = ∅)
     ok = (answers.checked and answers.checked.issubset(answers.correct)) or (
@@ -46,8 +46,7 @@ def some(answers: AnswersData, score: ScoreData) -> float:
 
 
 def all(answers: AnswersData, score: ScoreData) -> float:
-    """Return the maximal score if all the correct answers are checked, else give the minimal score.
-    """
+    """Return the maximal score if all the correct answers are checked, else give the minimal score."""
     ok = answers.checked == answers.correct
     if ok:
         return score.correct
@@ -105,7 +104,7 @@ def partial_answers_quadratic(answers: AnswersData, score: ScoreData) -> float:
     if answers.checked & answers.incorrect:
         return score.incorrect
     else:
-        return round(_checked_among_correct_proportion(answers) ** 2 ** score.correct, 2)
+        return round(_checked_among_correct_proportion(answers) ** 2**score.correct, 2)
 
 
 # def floored_partial_anwers(answers: AnswersData, score: ScoreData) -> float:
