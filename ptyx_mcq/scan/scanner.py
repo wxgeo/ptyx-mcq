@@ -165,7 +165,7 @@ class MCQPictureParser:
         return array(self.get_pic(doc_id, page).convert("L")) / 255
 
     def _read_name_manually(
-        self, doc_id: int, matrix: ndarray = None, p: int = None, default=None
+        self, doc_id: int, matrix: ndarray = None, p: int = None, default: str = None
     ) -> Tuple[str, str]:
         if matrix is None:
             assert p is not None
@@ -222,9 +222,11 @@ class MCQPictureParser:
             try:
                 doc_ordering = ordering[doc_id]
             except KeyError:
-                raise MissingConfigurationData(f"No configuration data found for document #{doc_id}.\n"
-                                               "Maybe you recompiled the ptyx file in the while ?\n"
-                                               f"(Launching `mcq make -n {max(self.data)}` might fix it.)")
+                raise MissingConfigurationData(
+                    f"No configuration data found for document #{doc_id}.\n"
+                    "Maybe you recompiled the ptyx file in the while ?\n"
+                    f"(Launching `mcq make -n {max(self.data)}` might fix it.)"
+                )
             questions = set(doc_ordering["questions"])
             diff = questions - set(self.data[doc_id]["answered"])
             if diff:
@@ -428,7 +430,16 @@ class MCQPictureParser:
         """Generate CSV files with scores and annotated documents."""
         max_score = self.config["max_score"]
         # Generate CSV file with results.
-        scores = {doc_data["name"]: doc_data["score"] for doc_data in self.data.values()}
+        # TODO: Add ability to change default score ("ABI" for now).
+        scores: Dict[str, float | str] = {name: "ABI" for name in self.config["students_ids"].values()}
+        results: Dict[str, float] = {doc_data["name"]: doc_data["score"] for doc_data in self.data.values()}
+        scores.update(results)
+
+        def format_(num: float | str):
+            if isinstance(num, float):
+                num = round(num, 2)
+            return num
+
         # ~ print(scores)
         scores_path = self.dirs["output"] / "scores.csv"
         print(f"{ANSI_CYAN}SCORES (/{max_score:g}):{ANSI_RESET}")
@@ -436,10 +447,14 @@ class MCQPictureParser:
             writerow = csv.writer(csvfile).writerow
             writerow(("Name", "Score"))
             for name in sorted(scores):
-                print(f" - {name}: {scores[name]:g}")
-                writerow([name, scores[name]])
-        if scores.values():
-            mean = round(sum(scores.values()) / len(scores.values()), 2)
+                score = scores[name]
+                print(f" - {name}: {format_(score)}")
+                # TODO: Add ability to change the notation system.
+                if isinstance(score, float):
+                    score = score / max_score * 20
+                writerow([name, format_(score)])
+        if results:
+            mean = round(sum(results.values()) / len(results), 2)
             print(f"{ANSI_YELLOW}Mean: {mean:g}/{max_score:g}{ANSI_RESET}")
         else:
             print("No score found !")

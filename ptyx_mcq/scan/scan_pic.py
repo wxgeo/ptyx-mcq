@@ -129,8 +129,24 @@ def find_black_cell(grid, ll: int, LL: int, detection_level: float) -> tuple[int
     raise LookupError("Corner square not found.")
 
 
-# noinspection PyArgumentList
-def find_corner_square(m: ndarray, size: int, corner: str, max_whiteness: float) -> tuple[int, int]:
+def find_corner_square(
+    m: ndarray, size: int, corner: str, *, max_whiteness: float = 0.55, tolerance: float = 0.2
+) -> tuple[int, int]:
+    """Find the calibration black square of the given corner.
+
+    The idea of the algorithm is the following:
+        1. Convert the picture into a grid of big pixels of side half the
+           searched square side.
+        2. Search for the first big pixel dark enough, starting from the corner.
+
+    Parameters:
+        - `size` is the size in pixels of the square.
+        - `corner` is the name of the corner (for example, "tb" for top-bottom).
+        - `max_whiteness` is a safeguard value, to avoid false positives (i.e. detecting
+           a black square in a white sheet).
+        - `tolerance` is the maximal relative difference of whiteness between the darkest big pixel of
+           the grid and the found one.
+    """
     height, width = m.shape
     V, H = tuple(corner)  # for mypy support
     # First, flip the matrix if needed, so that the corner considered
@@ -139,7 +155,7 @@ def find_corner_square(m: ndarray, size: int, corner: str, max_whiteness: float)
         m = flipud(m)
     if H == "r":
         m = fliplr(m)
-    area = m[: height // 4, : width // 4]
+    area: ndarray = m[: height // 4, : width // 4]
     #    color2debug(m, (0, 0), (L//4, l//4), color=Color.blue, display=False)
 
     # Then, split area into a mesh grid.
@@ -156,7 +172,7 @@ def find_corner_square(m: ndarray, size: int, corner: str, max_whiteness: float)
             grid[i, j] = area[i * half : (i + 1) * half, j * half : (j + 1) * half].sum()
 
     # This is the darkest cell value.
-    darkest = grid.min()
+    darkest = float(amin(grid))
     # We could directly collect the coordinates of this cell,
     # which are (grid.argmin()//ll, grid.argmin()%ll).
     # However, the search area is large, and we may detect as the
@@ -164,7 +180,7 @@ def find_corner_square(m: ndarray, size: int, corner: str, max_whiteness: float)
     # or the ID band.
     # Anyway, even if the core of the black square is not
     # the darkest cell, it should be almost as dark as the darkest.
-    detection_level = darkest + 0.2 * half**2
+    detection_level = darkest + tolerance * (half**2 - darkest)
 
     # Then, we will browse the mesh grid, starting from the top left corner,
     # following oblique lines (North-East->South-West), as follows:
@@ -281,19 +297,19 @@ def detect_four_squares(
     square_size: int,
     cm: float,
     *,
-    max_alignment_error_cm: float = 0.4,
     debug=False,
 ) -> Tuple[CornersPositions, Pixel, Pixel]:
-    levels = (0.55, 0.60, 0.65)
-    for max_whiteness in levels:
-        print(f"{max_whiteness=}")
+    for tolerance in range(20, 50, 5):
+        print(f"Searching for calibration corners ({tolerance=})...")
         try:
             return _detect_four_squares(
-                m, square_size, cm, max_whiteness=max_whiteness, max_alignment_error_cm=2, debug=debug
+                m, square_size, cm, tolerance=tolerance / 100, max_alignment_error_cm=2, debug=debug
             )
         except CalibrationError as e:
-            if max_whiteness == max(levels):
-                raise e
+            error = e
+    else:
+        # noinspection PyUnboundLocalVariable
+        raise error
 
 
 def _detect_four_squares(
@@ -302,16 +318,17 @@ def _detect_four_squares(
     cm: float,
     *,
     max_alignment_error_cm: float = 0.4,
-    max_whiteness=0.55,
+    tolerance=0.2,
     debug=False,
 ) -> Tuple[CornersPositions, Pixel, Pixel]:
     #    h = w = round(2*(1 + SQUARE_SIZE_IN_CM)*cm)
     # Make a mutable copy of frozenset CORNERS.
     corners = set(CORNERS)
+    # `positions` is used to store the position (in pixels) of the calibration square of each corner.
     positions: CornersPositions = {}
     for corner in CORNERS:
         try:
-            i, j = find_corner_square(m, square_size, corner, max_whiteness)
+            i, j = find_corner_square(m, square_size, corner, tolerance=tolerance)
             # ~ # We may have only detected a part of the square by restricting
             # ~ # the search area, so extend search by the size of the square.
             # ~ i, j = find_corner_square(m, square_size, corner, h + square_size,
@@ -329,22 +346,26 @@ def _detect_four_squares(
     # folded for example), it will be generated from the others.
 
     #    color2debug(m)
+    print(f"Corners detected: {len(positions)}")
     if len(positions) <= 2:
         color2debug(m)
         raise CalibrationError("Only 2 squares found, calibration failed !")
 
     if len(positions) == 4:
-        # If there are 4 squares, and one is less dark than the others,
-        # let's drop it and use only the 3 darkest.
-        # (The 4th square will be generated again using the position of the 3 others).
         for V in "tb":
-            if positions[f"{V}r"][0] - positions[f"{V}l"][0] > max_alignment_error_cm * cm:
+            h_shift = positions[f"{V}r"][0] - positions[f"{V}l"][0]
+            if abs(h_shift) > max_alignment_error_cm * cm:
                 print("Warning: Horizontal alignment problem in corners squares !")
                 debug = True
+            if debug:
+                print(f"horizontal shift ({V}): {h_shift}")
         for H in "lr":
-            if positions[f"b{H}"][1] - positions[f"t{H}"][1] > max_alignment_error_cm * cm:
+            v_shift = positions[f"b{H}"][1] - positions[f"t{H}"][1]
+            if abs(v_shift) > max_alignment_error_cm * cm:
                 print("Warning: Vertical alignment problem in corners squares !")
                 debug = True
+            if debug:
+                print(f"vertical shift ({H}): {v_shift}")
 
     number_of_orthogonal_corners = 0
     # Try to detect false positives.
@@ -354,6 +375,7 @@ def _detect_four_squares(
             if orthogonal(corner, positions):
                 number_of_orthogonal_corners += 1
                 orthogonal_corner = corner
+        print(f"Number of orthogonal corners: {number_of_orthogonal_corners}")
         if number_of_orthogonal_corners == 1:
             # noinspection PyUnboundLocalVariable
             V, H = tuple(orthogonal_corner)  # (Unpacking a string is disallowed for mypy!)
@@ -362,6 +384,9 @@ def _detect_four_squares(
             del positions[opposite_corner]
 
     if len(positions) == 4:
+        # If there are 4 squares, and one is less dark than the others,
+        # let's drop it and use only the 3 darkest.
+        # (The 4th square will be generated again using the position of the 3 others).
         darkness = {}
         for corner, position in positions.items():
             darkness[corner] = eval_square_color(m, *position, square_size)
@@ -376,7 +401,7 @@ def _detect_four_squares(
 
     if len(positions) == 4:
         if number_of_orthogonal_corners <= 2:
-            for (i, j) in positions.values():
+            for i, j in positions.values():
                 color2debug(m, (i, j), (i + square_size, j + square_size), display=False)
             color2debug(m)
             print("number_of_orthogonal_corners =", number_of_orthogonal_corners)
@@ -491,9 +516,7 @@ def calibrate(pic: Image.Image, m: ndarray, debug=False) -> Tuple[ndarray, float
     # extending the search area and being more tolerant if needed.
 
     # First pass, to detect rotation.
-    positions, *_ = detect_four_squares(
-                m, calib_square, cm, max_alignment_error_cm=2, debug=debug
-            )
+    positions, *_ = detect_four_squares(m, calib_square, cm, debug=debug)
     print(positions)
 
     # Now, let's detect the rotation.
@@ -579,7 +602,7 @@ def calibrate(pic: Image.Image, m: ndarray, debug=False) -> Tuple[ndarray, float
     #    cm = 10*(h_pixels_per_mm + 1.5*v_pixels_per_mm)/2.5
 
     print(positions)
-    for (i, j) in positions.values():
+    for i, j in positions.values():
         color2debug(m, (i, j), (i + CALIBRATION_SQUARE_SIZE, j + CALIBRATION_SQUARE_SIZE), display=False)
     color2debug(m, (i3, j3), (i3 + square_size, j3 + square_size), display=False)
     if debug:
@@ -1004,7 +1027,7 @@ def scan_picture(
         q0, a0 = real2apparent(q, a, config, test_ID)
         displayed_questions_numbers[q] = q0
 
-        #        answer_is_correct = (a in correct_answers)
+        # answer_is_correct = (a in correct_answers)
 
         test_square = partial(test_square_color, m, i, j, cell_size, margin=5)
         color_square = partial(color2debug, m, (i, j), (i + cell_size, j + cell_size), display=False)
@@ -1047,15 +1070,15 @@ def scan_picture(
 
         if answer_is_correct is None:
             # This answer was neutralized (ahem, the teacher probably made a mistake... ;))
-            color = ANSI_GRAY
+            term_color = ANSI_GRAY
         elif c == "□" and answer_is_correct or c == "■" and not answer_is_correct:
             # Incorrect answer.
-            color = ANSI_YELLOW
+            term_color = ANSI_YELLOW
         else:
             # Great answer !
-            color = ""
+            term_color = ""
 
-        print(f"  {color}{c} {a}  {ANSI_RESET}", end="\t")
+        print(f"  {term_color}{c} {a}  {ANSI_RESET}", end="\t")
         # ~ print('\nCorrect answers:', should_have_answered)
     print()
 
@@ -1068,7 +1091,7 @@ def scan_picture(
     # Add 0.03 to 1.5*mean, in case mean is almost 0.
     ceil = 1.5 * sum(blackness.values()) / len(blackness) + 0.02
     core_ceil = 1.2 * sum(core_blackness.values()) / len(core_blackness) + 0.01
-    for (q, a) in blackness:  # pylint: disable=dict-iter-missing-items
+    for q, a in blackness:  # pylint: disable=dict-iter-missing-items
         if a not in answered[q] and (blackness[(q, a)] > ceil or core_blackness[(q, a)] > core_ceil):
             print("False negative detected", (q, a))
             # This is probably a false negative, but we'd better verify manually.
@@ -1086,7 +1109,7 @@ def scan_picture(
     upper_floor = max(0.2 * max(blackness.values()), max(blackness.values()) - 0.3)
     core_floor = max(0.2 * max(core_blackness.values()), max(core_blackness.values()) - 0.4)
     upper_core_floor = max(0.2 * max(core_blackness.values()), max(core_blackness.values()) - 0.3)
-    for (q, a) in blackness:  # pylint: disable=dict-iter-missing-items
+    for q, a in blackness:  # pylint: disable=dict-iter-missing-items
         if a in answered[q] and (
             blackness[(q, a)] < upper_floor or core_blackness[(q, a)] < upper_core_floor
         ):

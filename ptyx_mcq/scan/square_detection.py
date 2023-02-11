@@ -350,7 +350,13 @@ def color2debug(
     wait=True,
 ):
     """Display picture with a red (by default) rectangle for debugging.
+    The annotated picture can be displayed immediately (default), or the annotation can be memorized,
+    if `display` is set to `False`.
+    It allows to display several annotations at once.
 
+    Launch this function without argument to clear all previous stored annotations.
+
+    Parameters:
     `array` is an array containing the image data (image must be gray mode,
     each pixel represented by a float from 0 (black) to 1 (white)).
     `from_` represent one corner of the red rectangle.
