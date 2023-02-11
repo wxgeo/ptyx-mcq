@@ -136,7 +136,7 @@ def test_cli() -> None:
             reader = csv.reader(csvfile)
             for row in reader:
                 if row[0] != "Name":
-                    assert float(row[1]) == 2, repr(row)  # Maximal score
+                    assert abs(float(row[1]) - 20) < 1e-10, repr(row)  # Maximal score
                     students.add(row[0])
         assert students == set(STUDENTS.values()), repr(students)
 
