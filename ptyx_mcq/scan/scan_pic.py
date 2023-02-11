@@ -303,7 +303,11 @@ def detect_four_squares(
         print(f"Searching for calibration corners ({tolerance=})...")
         try:
             return _detect_four_squares(
-                m, square_size, cm, tolerance=tolerance / 100, max_alignment_error_cm=2, debug=debug
+                m,
+                square_size,
+                cm,
+                tolerance=tolerance / 100,
+                debug=debug or tolerance > 40,
             )
         except CalibrationError as e:
             error = e
@@ -356,15 +360,11 @@ def _detect_four_squares(
             h_shift = positions[f"{V}r"][0] - positions[f"{V}l"][0]
             if abs(h_shift) > max_alignment_error_cm * cm:
                 print("Warning: Horizontal alignment problem in corners squares !")
-                debug = True
-            if debug:
                 print(f"horizontal shift ({V}): {h_shift}")
         for H in "lr":
             v_shift = positions[f"b{H}"][1] - positions[f"t{H}"][1]
             if abs(v_shift) > max_alignment_error_cm * cm:
                 print("Warning: Vertical alignment problem in corners squares !")
-                debug = True
-            if debug:
                 print(f"vertical shift ({H}): {v_shift}")
 
     number_of_orthogonal_corners = 0
@@ -689,6 +689,17 @@ def edit_answers(m: ndarray, boxes, answered, config, doc_id, xy2ij, cell_size) 
             process = color2debug(m, wait=False)
 
 
+# def read_identifier() -> int:
+#     """Read the document ID.
+#
+#     The document ID is encoded using a homemade barcode.
+#     This code is made of a band of 16 black or white squares.
+#     (Note that the first one is always black and is only used to detect the band).
+#     Example: ■■□■□■□■■□□□■□□■ = 0b100100011010101 =  21897
+#     It allows for 2**15 = 32 768 different values.
+#     """
+
+
 def scan_picture(
     filename: Union[str, Path], config: Configuration, manual_verification=None, debug=False
 ) -> Tuple[PicData, ndarray]:
@@ -785,11 +796,6 @@ def scan_picture(
     # ------------------------------------------------------------------
     #                      READ IDENTIFIER
     # ------------------------------------------------------------------
-    # Now, detect the home made "QR code".
-    # This code is made of a band of 16 black or white squares
-    # (the first one is always black and is only used to detect the band).
-    # ■■□■□■□■■□□□■□□■ = 0b100100011010101 =  21897
-    # 2**15 = 32768 different values.
 
     test_ID = 0
     # Test the color of the 15 following squares,
