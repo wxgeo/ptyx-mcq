@@ -284,35 +284,3 @@ def adjust_checkbox(
     return i, j
 
 
-# def find_lonely_square(m: ndarray, size, error=0.4, gray_level=0.4):
-#     """Find all black squares surrounded by a white area.
-#
-#     - `size` is the length of the edge (in pixels).
-#     - `error` is the ratio of white pixels allowed in the black square.
-#     - `gray_level` is the level above which a pixel is considered to be white.
-#        If it is set to 0, only black pixels will be considered black ; if it
-#        is close to 1 (max value), almost all pixels are considered black
-#        except white ones (for which value is 1.).
-#
-#     Return an iterator.
-#     """
-#     s = size
-#     for i, j in find_black_square(m, s, error, gray_level):
-#         # Test if all surrounding squares are white.
-#         # (If not, it could be a false positive, caused by a stain
-#         # or by some student writing.)
-#         if not any(
-#             test_square_color(m, i_, j_, s, proportion=0.5, gray_level=0.5)
-#             for i_, j_ in [
-#                 (i - s, j - s),
-#                 (i - s, j),
-#                 (i - s, j + s),
-#                 (i, j - s),
-#                 (i, j + s),
-#                 (i + s, j - s),
-#                 (i + s, j),
-#                 (i + s, j + s),
-#             ]
-#         ):
-#             yield i, j
-#     # ~ raise LookupError("No lonely black square in the search area.")

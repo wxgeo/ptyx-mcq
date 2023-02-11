@@ -481,6 +481,7 @@ class MCQPictureParser:
                 writerow([name, student_ID, f"#{doc_id}", score, paths_as_str])
         print(f'Infos stored in "{info_path}"\n')
         amend_all(self)
+        print(f"\n{ANSI_GREEN}Success ! {ANSI_RESET}:)")
 
     def generate_correction(self, display_score: bool = True) -> None:
         """Generate pdf files, with the score and the table of correct answers for each test."""
