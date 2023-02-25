@@ -18,37 +18,6 @@ if TYPE_CHECKING:
     from ptyx_mcq.scan.scanner import MCQPictureParser
 
 
-def _correct_checkboxes(
-    draw: ImageDraw.ImageDraw, pos: Pixel, checked: bool, correct: bool | None, size: int
-) -> None:
-    i, j = pos
-    margin = size // 2
-    # Draw a blue square around the box (for debugging purpose).
-    draw.rectangle((j, i, j + size, i + size), outline=Color.green)
-    red = Color.red
-    if correct is None:
-        draw.rectangle((j, i, j + size, i + size), outline=Color.orange)
-    elif checked and not correct:
-        # Circle checkbox with red pen.
-        try:
-            draw.ellipse((j - margin, i - margin, j + size + margin, i + size + margin), width=2, outline=red)
-        except TypeError:
-            # old PIL versions (<5.1.3)
-            draw.ellipse((j - margin, i - margin, j + size + margin, i + size + margin), outline=red)
-    elif not checked and correct:
-        # Check (cross) the box (with red pen).
-        draw.line((j, i, j + size - 1, i + size - 1), fill=red, width=2)
-        draw.line((j + size - 1, i, j, i + size - 1), fill=red, width=2)
-
-
-def _write_score(draw: ImageDraw.ImageDraw, pos: Pixel, earn: float | str, size: int) -> None:
-    i, j = pos
-    fnt = ImageFont.truetype("FreeSerif.ttf", int(0.7 * size))
-    if isinstance(earn, float):
-        earn = f"{earn:g}"
-    draw.text((j, i), earn, font=fnt, fill=Color.red)
-
-
 def amend_all(pic_parser: "MCQPictureParser") -> None:
     """Amend all generated documents, adding the scores and indicating the correct answers."""
     max_score = pic_parser.config["max_score"]
@@ -110,3 +79,34 @@ def amend_doc(doc_data, doc_id, max_score, pic_parser):
         save_all=True,
         append_images=pages[1:],
     )
+
+
+def _correct_checkboxes(
+    draw: ImageDraw.ImageDraw, pos: Pixel, checked: bool, correct: bool | None, size: int
+) -> None:
+    i, j = pos
+    margin = size // 2
+    # Draw a blue square around the box (for debugging purpose).
+    draw.rectangle((j, i, j + size, i + size), outline=Color.green)
+    red = Color.red
+    if correct is None:
+        draw.rectangle((j, i, j + size, i + size), outline=Color.orange)
+    elif checked and not correct:
+        # Circle checkbox with red pen.
+        try:
+            draw.ellipse((j - margin, i - margin, j + size + margin, i + size + margin), width=2, outline=red)
+        except TypeError:
+            # old PIL versions (<5.1.3)
+            draw.ellipse((j - margin, i - margin, j + size + margin, i + size + margin), outline=red)
+    elif not checked and correct:
+        # Check (cross) the box (with red pen).
+        draw.line((j, i, j + size - 1, i + size - 1), fill=red, width=2)
+        draw.line((j + size - 1, i, j, i + size - 1), fill=red, width=2)
+
+
+def _write_score(draw: ImageDraw.ImageDraw, pos: Pixel, earn: float | str, size: int) -> None:
+    i, j = pos
+    fnt = ImageFont.truetype("FreeSerif.ttf", int(0.7 * size))
+    if isinstance(earn, float):
+        earn = f"{earn:g}"
+    draw.text((j, i), earn, font=fnt, fill=Color.red)
