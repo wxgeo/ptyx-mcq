@@ -86,16 +86,19 @@ def simulate_answer(pics: list, config: Configuration):
 
 
 def test_cli() -> None:
+    # Set `USE_TMP_DIR` to `False` to make the debugging easier.
+    USE_TMP_DIR = False
+    # If `USE_TMP_DIR` is set to `False`, all the generated content can
+    # be retrieved in /tmp/mcq.
+    if not USE_TMP_DIR:
+        from shutil import rmtree
+        rmtree("/tmp/mcq", ignore_errors=True)
     # Make a temporary directory
     with tempfile.TemporaryDirectory() as _parent:
-        # Uncomment following lines to make debugging easier:
-        # parent = Path("/tmp")
-        # from shutil import rmtree
-        # rmtree("/tmp/mcq", ignore_errors=True)
         print(10 * "=")
         print(_parent)
         print(10 * "=")
-        parent = Path(_parent)
+        parent = Path(_parent) if USE_TMP_DIR else Path("/tmp")
         with open(parent / "students.csv", "w", newline="") as csvfile:
             csv.writer(csvfile).writerows(STUDENTS.items())
 
