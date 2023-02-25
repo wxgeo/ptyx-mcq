@@ -70,7 +70,11 @@ def simulate_answer(pics: list, config: Configuration):
     """
     # Convert cell size from cm to pixels
     students_ids = list(STUDENTS)
-    for i, (doc_id, data) in enumerate(config["boxes"].items()):
+    boxes = config["boxes"]
+    for i, (doc_id, data) in enumerate(boxes.items()):
+        if i >= len(students_ids):
+            print(f"Warning: {len(boxes)} documents but only {len(students_ids)} students.")
+            break
         for page, page_data in data.items():
             # Each document has 2 pages, but page 2 should be empty as there are only 2 questions.
             # So we must skip the empty page.
@@ -82,10 +86,11 @@ def simulate_answer(pics: list, config: Configuration):
                 q, a = map(int, q_a[1:].split("-"))
                 if is_answer_correct(q, a, config, doc_id):
                     _fill_checkbox(draw, pos, CELL_SIZE_IN_PX)
-    return pics
+    return pics[:2*len(students_ids)]
 
 
 def test_cli() -> None:
+    NUMBER_OF_DOCUMENTS = 4
     # Set `USE_TMP_DIR` to `False` to make the debugging easier.
     USE_TMP_DIR = False
     # If `USE_TMP_DIR` is set to `False`, all the generated content can
@@ -115,7 +120,7 @@ def test_cli() -> None:
             ptyxfile.write(ptyxfile_content.replace("\nid format", "\nids=../students.csv\nid format"))
 
         # Test mcq make
-        main(["make", str(path), "-n", "2"])
+        main(["make", str(path), "-n", str(NUMBER_OF_DOCUMENTS)])
         assert "new.pdf" in listdir(path)
         assert "new-corr.pdf" in listdir(path)
         # TODO: assert "new.all.pdf" in listdir(path)
@@ -128,6 +133,7 @@ def test_cli() -> None:
         # Test mcq scan
         images = convert_from_path(path / "new.pdf", dpi=DPI, output_folder=path)
         images = simulate_answer(images, config)
+        assert len(images)/2 == min(NUMBER_OF_DOCUMENTS, len(STUDENTS))
         scan_path = path / "scan"
         scan_path.mkdir(exist_ok=True)
         images[0].save(scan_path / "simulate-scan.pdf", save_all=True, append_images=images[1:])
