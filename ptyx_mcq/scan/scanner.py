@@ -43,7 +43,8 @@ from numpy import int8, array, ndarray
 # File `compilation.py` is in ../.., so we have to "hack" `sys.path` a bit.
 # script_path = dirname(abspath(sys._getframe().f_code.co_filename))
 # sys.path.insert(0, join(script_path, '../..'))
-from ptyx.compilation import join_files, compile_latex
+
+# from ptyx.compilation import join_files, compile_latex
 
 from . import scores
 from .amend import amend_all
@@ -60,7 +61,7 @@ from .scan_pic import (
 )
 from .visual_debugging import color2debug
 from .tools import search_by_extension, print_framed_msg
-from ..compile.header import answers_and_score
+# from ..compile.header import answers_and_score
 from ..tools.config_parser import load, get_answers_with_status, Configuration
 
 
@@ -483,24 +484,24 @@ class MCQPictureParser:
         amend_all(self)
         print(f"\n{ANSI_GREEN}Success ! {ANSI_RESET}:)")
 
-    def generate_correction(self, display_score: bool = True) -> None:
-        """Generate pdf files, with the score and the table of correct answers for each test."""
-        pdf_paths: List[Path] = []
-        for doc_id, doc_data in self.data.items():
-            # ~ identifier, answers, name, score, students, ids
-            name = doc_data["name"]
-            score = doc_data["score"]
-            prefix = self.files["base"]
-            path = self.dirs["pdf"] / f"{prefix}-{doc_id}-corr.score"
-            pdf_paths.append(path)
-            print(f"Generating pdf file for student {name} (subject {doc_id}, score {score})...")
-            latex = answers_and_score(self.config, name, doc_id, (score if display_score else None))
-            texfile_name = path.with_suffix(".tex")
-            with open(texfile_name, "w") as texfile:
-                texfile.write(latex)
-                texfile.flush()
-            compile_latex(texfile_name, dest=path, quiet=True)
-        join_files(self.files["results"], pdf_paths, remove_all=True, compress=True)
+    # def generate_correction(self, display_score: bool = True) -> None:
+    #     """Generate pdf files, with the score and the table of correct answers for each test."""
+    #     pdf_paths: List[Path] = []
+    #     for doc_id, doc_data in self.data.items():
+    #         # ~ identifier, answers, name, score, students, ids
+    #         name = doc_data["name"]
+    #         score = doc_data["score"]
+    #         prefix = self.files["base"]
+    #         path = self.dirs["pdf"] / f"{prefix}-{doc_id}-corr.score"
+    #         pdf_paths.append(path)
+    #         print(f"Generating pdf file for student {name} (subject {doc_id}, score {score})...")
+    #         latex = answers_and_score(self.config, name, doc_id, (score if display_score else None))
+    #         texfile_name = path.with_suffix(".tex")
+    #         with open(texfile_name, "w") as texfile:
+    #             texfile.write(latex)
+    #             texfile.flush()
+    #         compile_latex(texfile_name, dest=path, quiet=True)
+    #     join_files(self.files["results"], pdf_paths, remove_all=True, compress=True)
 
     def _load_configuration(self) -> None:
         """Read configuration file, load configuration and calculate maximal score too."""
