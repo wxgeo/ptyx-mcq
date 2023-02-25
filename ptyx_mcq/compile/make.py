@@ -9,11 +9,11 @@ from typing import List, Dict, Tuple
 from ptyx.compilation import make_files, make_file
 from ptyx.latex_generator import compiler, Compiler
 
-from ..tools.config_parser import dump
+from ..tools.config_parser import dump, Configuration
 
 
 def generate_config_file(_compiler: Compiler) -> None:
-    mcq_data = _compiler.latex_generator.mcq_data
+    mcq_data: Configuration = _compiler.latex_generator.mcq_data
     file_path = _compiler.file_path
     folder = file_path.parent
     name = file_path.stem
@@ -36,8 +36,9 @@ def generate_config_file(_compiler: Compiler) -> None:
                 k = k.strip()
                 if k == "ID-table":
                     if id_table_pos is None:
-                        id_table_pos = [float(s.strip("() \n")) for s in v.split(",")]
-                        mcq_data["id_table_pos"] = id_table_pos
+                        id_table_pos = tuple(float(s.strip("() \n")) for s in v.split(","))
+                        assert len(id_table_pos) == 2
+                        mcq_data["id_table_pos"] = id_table_pos  # type: ignore
                     continue
                 page, x, y = [s.strip("p() \n") for s in v.split(",")]
                 checkboxes_positions.setdefault(int(page), {})[k] = (float(x), float(y))
