@@ -121,6 +121,7 @@ def _make(
         fixed_number_of_pages=True,
         quiet=quiet,
         start=start,
+        # cpu_cores=1,
     )
     generate_config_file(compiler)
 

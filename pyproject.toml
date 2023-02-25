@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "ptyx-mcq"
-version = "22.3.1"
+version = "22.4"
 description = "pTyX is a python precompiler for LaTeX."
 authors = ["Nicolas Pourcelot <nicolas.pourcelot@gmail.com>"]
 repository = "https://github.com/wxgeo/ptyx"
@@ -14,7 +14,7 @@ numpy = "^1.23.0"
 Pillow = "^9.2"
 sympy = "^1.10.1"
 pdf2image = "^1.16.0"
-ptyx = "^22.5"
+ptyx = "^22.6"
 types-Pillow = "^9.0.20"
 
 

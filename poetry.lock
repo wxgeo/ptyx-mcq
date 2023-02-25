@@ -832,7 +832,7 @@ test = ["enum34", "ipaddress", "mock", "pywin32", "wmi"]
 
 [[package]]
 name = "ptyx"
-version = "22.5"
+version = "22.6"
 description = "pTyX is a python precompiler for LaTeX."
 category = "main"
 optional = false
@@ -1350,4 +1350,4 @@ test = ["covdefaults (>=2.2.2)", "coverage (>=7.1)", "coverage-enable-subprocess
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.10"
-content-hash = "df644520c04e82c01f6a33d01fed46f9e3418309be53e1c7e8876a5b3d381d39"
+content-hash = "61ab55a0f8b59ac64e5624ad72ab327d6a7d57d7b1621c145a27ef9307a307fe"
