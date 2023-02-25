@@ -34,7 +34,7 @@ from multiprocessing import Pool
 from pathlib import Path
 from shutil import rmtree
 from time import strftime
-from typing import Iterator, Dict, TypedDict, Set, Tuple, List
+from typing import Iterator, TypedDict
 from typing import Union, Literal, Optional
 
 from PIL import Image
@@ -82,15 +82,15 @@ class FilesPaths(TypedDict, total=False):
 
 
 class DocumentData(TypedDict):
-    pages: Dict[int, PicData]
+    pages: dict[int, PicData]
     name: str
     student_ID: str
-    answered: Dict[int, Set[int]]  # {question: set of answers}
+    answered: dict[int, set[int]]  # {question: set of answers}
     score: float
-    score_per_question: Dict[int, float]  # {question: score}
+    score_per_question: dict[int, float]  # {question: score}
 
 
-def pic_names_iterator(data: Dict[int, DocumentData]) -> Iterator[Path]:
+def pic_names_iterator(data: dict[int, DocumentData]) -> Iterator[Path]:
     """Iterate over all pics found in data (i.e. all the pictures already analysed)."""
     for doc_data in data.values():
         for pic_data in doc_data["pages"].values():
@@ -110,27 +110,27 @@ class MCQPictureParser:
     ):
         self.path = Path(path).expanduser().resolve()
         # Main paths.
-        self.dirs: Dict[str, Path] = {}
+        self.dirs: dict[str, Path] = {}
         self.files: FilesPaths = {}
         # All data extracted from pdf files.
-        self.data: Dict[int, DocumentData] = {}
+        self.data: dict[int, DocumentData] = {}
         # Additional information entered manually.
-        self.more_infos: Dict[int, Tuple[str, str]] = {}  # sheet_id: (name, student_id)
+        self.more_infos: dict[int, tuple[str, str]] = {}  # sheet_id: (name, student_id)
         self.config: Configuration = {}
         # Manually verified pages.
-        self.verified: Set[Path] = set()
+        self.verified: set[Path] = set()
         # `name2docID` is used to retrieve the data associated with a name.
         # FORMAT: {name: test ID}
-        self.name2docID: Dict[str, int] = {}
+        self.name2docID: dict[str, int] = {}
         # Set `already_seen` will contain all seen (ID, page) couples.
         # It is used to catch a hypothetical scanning problem:
         # we have to be sure that the same page on the same test is not seen
         # twice.
-        self.already_seen: Set[Tuple[int, int]] = set()
-        self.skipped: Set[Path] = set()
+        self.already_seen: set[tuple[int, int]] = set()
+        self.skipped: set[Path] = set()
         self.warnings = False
         self.logname = strftime("%Y.%m.%d-%H.%M.%S") + ".log"
-        self.correct_answers: Dict[int, Dict[int, Set[int]]] = {}  # {doc_id: {question: set of answers}}
+        self.correct_answers: dict[int, dict[int, set[int]]] = {}  # {doc_id: {question: set of answers}}
         self._generate_paths(input_dir, output_dir)
         self._load_configuration()
 
@@ -167,7 +167,7 @@ class MCQPictureParser:
 
     def _read_name_manually(
         self, doc_id: int, matrix: ndarray = None, p: int = None, default: str = None
-    ) -> Tuple[str, str]:
+    ) -> tuple[str, str]:
         if matrix is None:
             assert p is not None
             matrix = self.get_matrix(doc_id, p)
@@ -432,8 +432,8 @@ class MCQPictureParser:
         max_score = self.config["max_score"]
         # Generate CSV file with results.
         # TODO: Add ability to change default score ("ABI" for now).
-        scores: Dict[str, float | str] = {name: "ABI" for name in self.config["students_ids"].values()}
-        results: Dict[str, float] = {doc_data["name"]: doc_data["score"] for doc_data in self.data.values()}
+        scores: dict[str, float | str] = {name: "ABI" for name in self.config["students_ids"].values()}
+        results: dict[str, float] = {doc_data["name"]: doc_data["score"] for doc_data in self.data.values()}
         scores.update(results)
 
         def format_(num: float | str):
@@ -632,7 +632,7 @@ class MCQPictureParser:
         pic_data, _ = scan_picture(pic_path, self.config, manual_verification=manual_verification)
         print(pic_data)
 
-    def _generate_current_pdf_hashes(self) -> Dict[str, Path]:
+    def _generate_current_pdf_hashes(self) -> dict[str, Path]:
         """Return the hashes of all the pdf files found in `scan/` directory.
 
         Return: {hash: pdf path}
@@ -645,7 +645,7 @@ class MCQPictureParser:
 
     def _update_input_data(self) -> None:
         """Test if input data has changed, and update it if needed."""
-        hash2pdf: Dict[str, Path] = self._generate_current_pdf_hashes()
+        hash2pdf: dict[str, Path] = self._generate_current_pdf_hashes()
 
         self._remove_obsolete_files(hash2pdf)
 

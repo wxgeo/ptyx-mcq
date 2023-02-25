@@ -8,7 +8,6 @@ import csv
 import tempfile
 from os import listdir
 from pathlib import Path
-from typing import Tuple, Set
 
 from PIL import ImageDraw
 from pdf2image import convert_from_path  # type: ignore
@@ -27,7 +26,7 @@ STUDENTS = {"12345678": "Jean Dupond", "34567890": "Martin De La Tour"}
 MAX_ID_LEN = max(len(student_id) for student_id in STUDENTS)
 
 
-def xy2ij(x: float, y: float) -> Tuple[int, int]:
+def xy2ij(x: float, y: float) -> tuple[int, int]:
     """Convert (x, y) position (mm) to pixels (i,j).
 
     (x, y) is the position from the bottom left of the page in mm,
@@ -139,7 +138,7 @@ def test_cli() -> None:
         images[0].save(scan_path / "simulate-scan.pdf", save_all=True, append_images=images[1:])
         main(["scan", str(path)])
 
-        students: Set[str] = set()
+        students: set[str] = set()
         # TODO : store scores outside of .scan folder, in a RESULTS folder !
         with open(path / ".scan/scores.csv") as csvfile:
             reader = csv.reader(csvfile)

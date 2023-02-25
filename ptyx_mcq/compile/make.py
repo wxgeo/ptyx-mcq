@@ -4,7 +4,6 @@ Generate pdf file from raw mcq file.
 import sys
 import traceback
 from pathlib import Path
-from typing import List, Dict, Tuple
 
 from ptyx.compilation import make_files, make_file
 from ptyx.latex_generator import compiler, Compiler
@@ -15,6 +14,7 @@ from ..tools.config_parser import dump, Configuration
 def generate_config_file(_compiler: Compiler) -> None:
     mcq_data: Configuration = _compiler.latex_generator.mcq_data
     file_path = _compiler.file_path
+    assert file_path is not None
     folder = file_path.parent
     name = file_path.stem
     id_table_pos = None
@@ -28,7 +28,7 @@ def generate_config_file(_compiler: Compiler) -> None:
             filename = f"{name}-{n}.pos"
         full_path = folder / ".compile" / name / filename
         # For each page of the document, give the position of every answer's checkbox.
-        checkboxes_positions: Dict[int, Dict[str, Tuple[float, float]]] = {}
+        checkboxes_positions: dict[int, dict[str, tuple[float, float]]] = {}
         mcq_data["boxes"][n] = checkboxes_positions
         with open(full_path) as f:
             for line in f:
@@ -62,7 +62,7 @@ def get_ptyxfile_path(path: Path) -> Path:
         if not path.is_file():
             raise FileNotFoundError(f"File '{path}' not found.")
     else:
-        all_ptyx_files: List[Path] = list(path.glob("*.ptyx"))
+        all_ptyx_files: list[Path] = list(path.glob("*.ptyx"))
         if len(all_ptyx_files) == 0:
             raise FileNotFoundError(f"No .ptyx file found in '{path}'.")
         elif len(all_ptyx_files) > 1:
