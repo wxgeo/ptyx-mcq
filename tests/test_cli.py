@@ -88,8 +88,22 @@ def simulate_answer(pics: list, config: Configuration):
     return pics[:2*len(students_ids)]
 
 
+def test_many_docs():
+    NUMBER_OF_DOCUMENTS = 10
+    with tempfile.TemporaryDirectory() as _parent:
+        parent = Path(_parent)
+        path = parent / "mcq"
+        # Test mcq new
+        main(["new", str(path)])
+        assert "new.ptyx" in listdir(path)
+        # Test mcq make
+        main(["make", str(path), "-n", str(NUMBER_OF_DOCUMENTS)])
+        assert "new.pdf" in listdir(path)
+        assert "new-corr.pdf" in listdir(path)
+
+
 def test_cli() -> None:
-    NUMBER_OF_DOCUMENTS = 4
+    NUMBER_OF_DOCUMENTS = 2
     # Set `USE_TMP_DIR` to `False` to make the debugging easier.
     USE_TMP_DIR = False
     # If `USE_TMP_DIR` is set to `False`, all the generated content can
