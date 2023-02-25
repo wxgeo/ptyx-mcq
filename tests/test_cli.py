@@ -9,6 +9,7 @@ import tempfile
 from os import listdir
 from pathlib import Path
 
+import pytest
 from PIL import ImageDraw
 from pdf2image import convert_from_path  # type: ignore
 
@@ -88,8 +89,9 @@ def simulate_answer(pics: list, config: Configuration):
     return pics[:2*len(students_ids)]
 
 
+@pytest.mark.slow
 def test_many_docs():
-    NUMBER_OF_DOCUMENTS = 10
+    NUMBER_OF_DOCUMENTS = 40
     with tempfile.TemporaryDirectory() as _parent:
         parent = Path(_parent)
         path = parent / "mcq"
