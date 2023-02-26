@@ -6,27 +6,8 @@ Created on Tue Oct 27 22:40:40 2020
 @author: nicolas
 """
 import builtins
-from os.path import expanduser
-from pathlib import Path
 import pickle
-
-
-def search_by_extension(directory: Path, ext: str) -> Path:
-    """Search for a file with extension `ext` in given directory.
-
-    Search is NOT case sensible.
-    If no or more than one file is found, an error is raised.
-    """
-    ext = ext.lower()
-    paths = [pth for pth in directory.glob("*") if pth.name.lower().endswith(ext)]
-    if not paths:
-        raise FileNotFoundError(f"No {ext!r} file found in that directory: {directory} ! ")
-    elif len(paths) > 1:
-        raise RuntimeError(
-            f"Several {ext!r} file found in that directory: {directory} ! "
-            "Keep only one of them and delete all the others (or rename their extensions)."
-        )
-    return paths[0]
+from os.path import expanduser
 
 
 def print_framed_msg(msg: str) -> None:

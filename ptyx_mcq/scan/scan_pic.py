@@ -1,11 +1,12 @@
 from functools import partial
 from math import degrees, atan, hypot
 from pathlib import Path
-from typing import Dict, Set, Tuple, TypedDict, Optional, Union
+from typing import Dict, Set, Tuple, Union
 
 from PIL import Image
 from numpy import array, flipud, fliplr, dot, amin, amax, zeros, ndarray  # , percentile, clip
 
+from .document_data import PicData
 from .square_detection import (
     test_square_color,
     find_black_square,
@@ -61,25 +62,6 @@ CornersPositions = Dict[str, Pixel]
 #     score: int
 #     score_per_question: dict
 #     pic_path: str
-
-
-class PicData(TypedDict):
-    # ID of the document:
-    ID: int
-    # page number:
-    page: int
-    name: str
-    student_ID: str
-    # answers checked by the student for each question:
-    answered: Dict[int, Set[int]]
-    # Position of each checkbox in the page:
-    positions: Dict[Tuple[int, int], Tuple[int, int]]
-    cell_size: int
-    # Translation table ({question number before shuffling: after shuffling})
-    questions_nums: Dict[int, int]
-    # Manual verification by the user ?
-    verified: Optional[bool]
-    pic_path: str
 
 
 class CalibrationError(RuntimeError):

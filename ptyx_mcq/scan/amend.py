@@ -6,36 +6,37 @@ Created on Thu Aug 29 14:49:37 2019
 @author: nicolas
 """
 from os.path import join
-from typing import TYPE_CHECKING
+# from typing import TYPE_CHECKING
 
 from PIL import ImageDraw, ImageFont
 from PIL.Image import Image
+from ptyx_mcq.scan.data_storage import DataStorage
 
 from .square_detection import Pixel
 from .color import Color
 
-if TYPE_CHECKING:
-    from ptyx_mcq.scan.scanner import MCQPictureParser
+# if TYPE_CHECKING:
+#     from ptyx_mcq.scan.scanner import MCQPictureParser
 
 
-def amend_all(pic_parser: "MCQPictureParser") -> None:
+def amend_all(data_storage: DataStorage) -> None:
     """Amend all generated documents, adding the scores and indicating the correct answers."""
-    max_score = pic_parser.config["max_score"]
-    N = len(pic_parser.data)
-    for i, (doc_id, doc_data) in enumerate(pic_parser.data.items(), start=1):
+    max_score = data_storage.config["max_score"]
+    N = len(data_storage.data)
+    for i, (doc_id, doc_data) in enumerate(data_storage.data.items(), start=1):
         print(f"Generating the amended pdf files: {i}/{N}...", end="\r")
-        amend_doc(doc_data, doc_id, max_score, pic_parser)
+        amend_doc(doc_data, doc_id, max_score, data_storage)
     print("Generating the amended pdf files: OK" + len(f"{N}/{N}...") * " ")
 
 
-def amend_doc(doc_data, doc_id, max_score, pic_parser):
-    correct_answers = pic_parser.correct_answers[doc_id]
-    neutralized_answers = pic_parser.neutralized_answers[doc_id]
+def amend_doc(doc_data, doc_id, max_score, data_storage):
+    correct_answers = data_storage.correct_answers[doc_id]
+    neutralized_answers = data_storage.neutralized_answers[doc_id]
     pics = {}
     for page, page_data in doc_data["pages"].items():
         top_left_positions: dict[int, Pixel] = {}
         # Convert to RGB picture.
-        pic = pic_parser.get_pic(doc_id, page).convert("RGB")
+        pic = data_storage.get_pic(doc_id, page).convert("RGB")
         if not page_data["positions"]:
             # The last page of the MCQ may be empty.
             # `float('+inf')` is used to ensure
@@ -75,7 +76,7 @@ def amend_doc(doc_data, doc_id, max_score, pic_parser):
     draw = ImageDraw.Draw(pages[0])
     _write_score(draw, (2 * size, 4 * size), f"{doc_data['score']:g}/{max_score:g}", 2 * size)
     pages[0].save(
-        join(pic_parser.dirs["pdf"], f"{doc_data['name']}-{doc_id}.pdf"),
+        join(data_storage.dirs.pdf, f"{doc_data['name']}-{doc_id}.pdf"),
         save_all=True,
         append_images=pages[1:],
     )
