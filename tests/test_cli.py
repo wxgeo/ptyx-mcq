@@ -188,5 +188,6 @@ def test_cli() -> None:
         for endpath in paths_to_be_kept:
             assert (pth := path / endpath).exists(), pth
 
+
 if __name__ == "__main__":
     test_cli()

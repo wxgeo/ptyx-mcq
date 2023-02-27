@@ -183,6 +183,7 @@ def test_loading_of_sty_files():
             print(repr(latex))
             assert False, f"Line {line} not found ! (See above)"
 
+
 @atexit.register
 def cleanup():
     files_found = False

@@ -282,5 +282,3 @@ def adjust_checkbox(
         else:
             j = j0
     return i, j
-
-
