@@ -127,23 +127,27 @@ def clear(path: Path) -> None:
     try:
         ptyxfile_path = get_ptyxfile_path(path)
     except FileNotFoundError:
+        print(f"Searching for a ptyx file in '{path}' ({path.resolve()}) failed !")
         print("\33[31m[Error]\33[0m No ptyx file found.")
         return
     filename = ptyxfile_path.name
+    root = ptyxfile_path.parent
     for directory in (".scan", ".compile"):
         try:
-            shutil.rmtree(directory)
-        except FileNotFoundError:
+            shutil.rmtree(root / directory)
+        except FileNotFoundError as e:
+            print(f"Warning: {e}")
             print(f"Info: '{directory}' not found...")
     for filepath in (
         ptyxfile_path.with_suffix(".pdf"),
-        ptyxfile_path.with_suffix(".ptyx.autoqcm.config.json"),
+        ptyxfile_path.with_suffix(".ptyx.mcq.config.json"),
         ptyxfile_path.with_name(f".{filename}.plain-ptyx"),
         ptyxfile_path.with_name(f"{ptyxfile_path.stem}-corr.pdf"),
     ):
         try:
             unlink(filepath)
-        except FileNotFoundError:
+        except FileNotFoundError as e:
+            print(f"Warning: {e}")
             print(f"Info: '{filepath}' not found...")
     print("\33[32m[OK]\33[0m Directory cleared.")
 

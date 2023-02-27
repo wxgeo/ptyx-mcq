@@ -41,9 +41,7 @@ def xy2ij(x: float, y: float) -> tuple[int, int]:
     return round(i), round(j)
 
 
-def _fill_checkbox(
-    draw: ImageDraw.ImageDraw, pos: tuple, size: float, color: RGB = Color.red
-) -> None:
+def _fill_checkbox(draw: ImageDraw.ImageDraw, pos: tuple, size: float, color: RGB = Color.red) -> None:
     i, j = xy2ij(*pos)
     # Draw a blue square around the box (for debugging purpose).
     draw.rectangle((j, i, j + size, i + size), fill=color)
@@ -86,7 +84,7 @@ def simulate_answer(pics: list, config: Configuration):
                 q, a = map(int, q_a[1:].split("-"))
                 if is_answer_correct(q, a, config, doc_id):
                     _fill_checkbox(draw, pos, CELL_SIZE_IN_PX)
-    return pics[:2*len(students_ids)]
+    return pics[: 2 * len(students_ids)]
 
 
 @pytest.mark.slow
@@ -112,6 +110,7 @@ def test_cli() -> None:
     # be retrieved in /tmp/mcq.
     if not USE_TMP_DIR:
         from shutil import rmtree
+
         rmtree("/tmp/mcq", ignore_errors=True)
     # Make a temporary directory
     with tempfile.TemporaryDirectory() as _parent:
@@ -124,7 +123,9 @@ def test_cli() -> None:
 
         path = parent / "mcq"
 
-        # Test mcq new
+        # ----------------
+        # Test `mcq new`
+        # ----------------
         main(["new", str(path)])
         assert "new.ptyx" in listdir(path)
 
@@ -134,7 +135,9 @@ def test_cli() -> None:
             assert "\nid format" in ptyxfile_content
             ptyxfile.write(ptyxfile_content.replace("\nid format", "\nids=../students.csv\nid format"))
 
-        # Test mcq make
+        # ----------------
+        # Test `mcq make`
+        # ----------------
         main(["make", str(path), "-n", str(NUMBER_OF_DOCUMENTS)])
         assert "new.pdf" in listdir(path)
         assert "new-corr.pdf" in listdir(path)
@@ -145,10 +148,12 @@ def test_cli() -> None:
             assert student_id in config["students_ids"], (repr(student_id), repr(config["students_ids"]))
             assert config["students_ids"][student_id] == STUDENTS[student_id]
 
-        # Test mcq scan
+        # ----------------
+        # Test `mcq scan`
+        # ----------------
         images = convert_from_path(path / "new.pdf", dpi=DPI, output_folder=path)
         images = simulate_answer(images, config)
-        assert len(images)/2 == min(NUMBER_OF_DOCUMENTS, len(STUDENTS))
+        assert len(images) / 2 == min(NUMBER_OF_DOCUMENTS, len(STUDENTS))
         scan_path = path / "scan"
         scan_path.mkdir(exist_ok=True)
         images[0].save(scan_path / "simulate-scan.pdf", save_all=True, append_images=images[1:])
@@ -163,7 +168,25 @@ def test_cli() -> None:
                     assert abs(float(row[1]) - 20) < 1e-10, repr(row)  # Maximal score
                     students.add(row[0])
         assert students == set(STUDENTS.values()), repr(students)
-
+        # ----------------
+        # Test `mcq clear`
+        # ----------------
+        paths_to_be_removed = [
+            ".scan",
+            "new.pdf",
+            "new.ptyx.mcq.config.json",
+        ]
+        paths_to_be_kept = [
+            "new.ptyx",
+            "scan/simulate-scan.pdf",
+        ]
+        for endpath in paths_to_be_removed + paths_to_be_kept:
+            assert (pth := path / endpath).exists(), pth
+        main(["clear", str(path)])
+        for endpath in paths_to_be_removed:
+            assert not (pth := path / endpath).exists(), pth
+        for endpath in paths_to_be_kept:
+            assert (pth := path / endpath).exists(), pth
 
 if __name__ == "__main__":
     test_cli()
