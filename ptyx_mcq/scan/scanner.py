@@ -32,6 +32,7 @@ from pathlib import Path
 from typing import Union, Literal, Optional
 
 from numpy import ndarray
+from ptyx_mcq.printing import print_success
 
 from . import scores
 from .amend import amend_all
@@ -587,3 +588,4 @@ def scan(
         ask_for_name=ask_for_name,
         manual_verification=manual_verification,
     )
+    print_success("Done ! :)")

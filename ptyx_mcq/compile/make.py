@@ -7,6 +7,7 @@ from pathlib import Path
 
 from ptyx.compilation import make_files, make_file
 from ptyx.latex_generator import compiler, Compiler
+from ptyx_mcq.printing import print_error, print_success
 
 from ..tools.config_parser import dump, Configuration
 
@@ -77,10 +78,7 @@ def make(
     """Wrapper for _make(), so that `argparse` module don't intercept exceptions."""
     try:
         _make(path, num, start, quiet, correction_only)
-        print(
-            "\n\u001b[32;1mCongratulations ! Document was successfully generated "
-            f"in {num} version(s).\u001b[0m"
-        )
+        print_success(f"Document was successfully generated in {num} version(s).")
     except Exception as e:  # noqa
         if hasattr(e, "msg"):
             traceback.print_tb(e.__traceback__)
@@ -88,7 +86,8 @@ def make(
             print(f"\u001b[31m{e.__class__.__name__}:\u001b[0m {e}")
         else:
             traceback.print_exc()
-        print("\n\u001b[31;1mERROR: `mcq make` failed to compile document (see above for details).\u001b[0m")
+        print()
+        print_error("`mcq make` failed to compile document (see above for details).")
         sys.exit(1)
 
 

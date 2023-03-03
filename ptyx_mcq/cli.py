@@ -13,6 +13,8 @@ from os import unlink
 from pathlib import Path
 from typing import Optional
 
+from ptyx_mcq.printing import print_success, print_error
+
 from .compile.make import make, get_ptyxfile_path
 from .scan.scanner import scan
 
@@ -115,11 +117,11 @@ def new(path: Path) -> None:
     """Implement `mcq new` command."""
     template = Path(__file__).resolve().parent / "template"
     if path.exists():
-        print(f"ERROR: path {path} already exists.", file=sys.stderr)
+        print_error(f"Path {path} already exists.")
         sys.exit(1)
     else:
         shutil.copytree(template, path)
-        print(f"Success: a new MCQ was created at {path}.")
+        print_success(f"A new MCQ was created at {path}.")
 
 
 def clear(path: Path) -> None:
@@ -128,7 +130,7 @@ def clear(path: Path) -> None:
         ptyxfile_path = get_ptyxfile_path(path)
     except FileNotFoundError:
         print(f"Searching for a ptyx file in '{path}' ({path.resolve()}) failed !")
-        print("\33[31m[Error]\33[0m No ptyx file found.")
+        print_error("No ptyx file found.")
         return
     filename = ptyxfile_path.name
     root = ptyxfile_path.parent
@@ -149,7 +151,7 @@ def clear(path: Path) -> None:
         except FileNotFoundError as e:
             print(f"Warning: {e}")
             print(f"Info: '{filepath}' not found...")
-    print("\33[32m[OK]\33[0m Directory cleared.")
+    print_success("Directory cleared.")
 
 
 if __name__ == "__main__":
