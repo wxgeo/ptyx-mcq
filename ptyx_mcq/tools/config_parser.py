@@ -1,55 +1,86 @@
-from json import loads, dumps as _dumps, JSONEncoder
+from dataclasses import dataclass, asdict, field
+import json
 from pathlib import Path
-from typing import Dict, Set, Any, Tuple, Optional, Union, TypeVar, TypedDict, List, Literal
+from typing import Any, TypeVar, TypedDict, Literal
 
 T = TypeVar("T")
 
 
 class OrderingConfiguration(TypedDict):
-    questions: List[int]
-    answers: Dict[int, List[Tuple[int, bool | None]]]
+    questions: list[int]
+    answers: dict[int, list[tuple[int, bool | None]]]
 
 
-QuestionNumberOrDefault = Union[Literal["default"], int]
+QuestionNumberOrDefault = Literal["default"] | int
 
-StudentIdFormat = Tuple[int, int, List[Tuple[str, ...]]]
-
-
-# TODO: improve typing precision
-class Configuration(TypedDict, total=False):
-    ordering: Dict[int, OrderingConfiguration]
-    mode: Dict[QuestionNumberOrDefault, str]
-    correct: Dict[QuestionNumberOrDefault, float]
-    incorrect: Dict[QuestionNumberOrDefault, float]
-    skipped: Dict[QuestionNumberOrDefault, float]
-    # -inf and inf would be sensible defaults for floor and ceil, but unfortunately they aren't supported
-    # by ast.literal_eval().
-    floor: Dict[QuestionNumberOrDefault, float | None]
-    ceil: Dict[QuestionNumberOrDefault, float | None]
-    students: List[str]
-    id_table_pos: Tuple[float, float]
-    id_format: StudentIdFormat
-    students_ids: Dict[str, str]
-    students_list: List[str]
-    boxes: Dict[int, Dict[int, Dict[str, Tuple[float, float]]]]
-    max_score: float
+StudentIdFormat = tuple[int, int, list[tuple[str, ...]]]
 
 
-class CustomJSONEncoder(JSONEncoder):
+class CustomJSONEncoder(json.JSONEncoder):
     def default(self, obj: Any) -> Any:
         # Save sets as tuples.
         if isinstance(obj, set):
             return tuple(obj)
         # Let the base class default method raise the TypeError
-        return JSONEncoder.default(self, obj)
+        return json.JSONEncoder.default(self, obj)
 
 
-def dumps(o: Any) -> str:
-    return _dumps(o, ensure_ascii=False, cls=CustomJSONEncoder)
+# # Default configuration:
+# "mode": {"default": "some"},
+# "correct": {"default": 1},
+# "incorrect": {"default": 0},
+# "skipped": {"default": 0},
+# "floor": {"default": None},
+# "ceil": {"default": None},
+# # 'correct_answers': correct_answers, # {1: [4], 2:[1,5], ...}
+# "students": [],
+# "id_table_pos": None,
+# "students_ids": {},
+# "ordering": {},
+# # {NUM: {'questions': [2,1,3...],
+# #        'answers': {1: [(2, True), (1, False), (3, True)...], ...}}, ...}
+# "boxes": {},  # {NUM: {'tag': 'p4, (23.456, 34.667)', ...}, ...}
+# "id_format": None,
 
 
-def fmt(s: str) -> str:
-    return s.upper().center(40, "-")
+# TODO: improve typing precision
+@dataclass(kw_only=True, slots=True)
+class Configuration:
+    mode: dict[QuestionNumberOrDefault, str]  # = field(default_factory=lambda: {"default": "some"})
+    correct: dict[QuestionNumberOrDefault, float]  # = field(default_factory=lambda: {"default": 1})
+    incorrect: dict[QuestionNumberOrDefault, float]  # = field(default_factory=lambda: {"default": 0})
+    skipped: dict[QuestionNumberOrDefault, float]  # = field(default_factory=lambda: {"default": 0})
+    floor: dict[QuestionNumberOrDefault, float | None]  # = field(default_factory=lambda: {"default": None})
+    ceil: dict[QuestionNumberOrDefault, float | None]  # = field(default_factory=dict)
+    id_format: StudentIdFormat | None = None
+    students_ids: dict[str, str] = field(default_factory=dict)
+    students_list: list[str] = field(default_factory=list)
+    ordering: dict[int, OrderingConfiguration] = field(default_factory=dict)
+    # ordering: {NUM: {'questions': [2,1,3...],
+    #                  'answers': {1: [(2, True), (1, False), (3, True)...], ...}}, ...}
+    boxes: dict[int, dict[int, dict[str, tuple[float, float]]]] = field(default_factory=dict)
+    # boxes: {NUM: {'tag': 'p4, (23.456, 34.667)', ...}, ...}
+    id_table_pos: tuple[float, float] | None = None
+    max_score: float | None = None
+
+    def dump(self, path: Path | str) -> None:
+        """Dump `cfg` dict to `path` as json."""
+        with open(path, "w") as f:
+            f.write(encode2js(self.as_dict(), formatter=(lambda s: s.upper().center(40, "-"))))
+
+    def as_dict(self):
+        return asdict(self)
+
+    #
+    # def update(self, d:dict[str, Any]) -> None:
+    #     self.__dict__.update(d)
+
+    @classmethod
+    def load(cls, path: Path | str) -> "Configuration":
+        """Load `path` configuration file (json) and return a dict."""
+        with open(path) as f:
+            js = f.read()
+        return Configuration(**decodejs(js))
 
 
 def encode2js(o, formatter=(lambda s: s), _level=0) -> str:
@@ -57,6 +88,10 @@ def encode2js(o, formatter=(lambda s: s), _level=0) -> str:
 
     If `formatter` is set, it must be a function used to format first-level
     keys of `o`."""
+
+    def _dumps(o_: Any) -> str:
+        return json.dumps(o_, ensure_ascii=False, cls=CustomJSONEncoder)
+
     if _level == 0 and not isinstance(o, dict):
         raise NotImplementedError
     if isinstance(o, dict):
@@ -75,20 +110,20 @@ def encode2js(o, formatter=(lambda s: s), _level=0) -> str:
     elif isinstance(o, (tuple, set, list)):
         assert _level != 0
         if _level == 1:
-            return "[\n%s\n]" % ",\n".join(dumps(v) for v in o)
+            return "[\n%s\n]" % ",\n".join(_dumps(v) for v in o)
         else:
-            return dumps(o)
+            return _dumps(o)
     else:
-        return dumps(o)
+        return _dumps(o)
 
 
-def keys2int(d: Dict[str, T]) -> Dict[Union[int, str], T]:
+def keys2int(d: dict[str, T]) -> dict[int | str, T]:
     return {(int(k) if k.isdecimal() else k): v for k, v in d.items()}
 
 
-def decodejs(js: str) -> Configuration:
-    d = loads(js, object_hook=keys2int)
-    new_d: Configuration = {}
+def decodejs(js: str) -> dict[str, Any]:
+    d = json.loads(js, object_hook=keys2int)
+    new_d: dict[str, Any] = {}
     # Strip '-' from keys and convert them to lower case.
     for key in d:
         new_key = key.strip("-").lower()
@@ -99,22 +134,9 @@ def decodejs(js: str) -> Configuration:
     return new_d
 
 
-def dump(path: Union[Path, str], cfg: Configuration) -> None:
-    """Dump `cfg` dict to `path` as json."""
-    with open(path, "w") as f:
-        f.write(encode2js(cfg, formatter=fmt))
-
-
-def load(path: Union[Path, str]) -> Configuration:
-    """Load `path` configuration file (json) and return a dict."""
-    with open(path) as f:
-        js = f.read()
-    return decodejs(js)
-
-
 def real2apparent(
-    original_q_num: int, original_a_num: Optional[int], config: Configuration, doc_id: int
-) -> Tuple[int, Optional[int]]:
+    original_q_num: int, original_a_num: int | None, config: Configuration, doc_id: int
+) -> tuple[int, int | None]:
     """Return apparent question number and answer number.
 
     If `a` is None, return only question number.
@@ -124,8 +146,8 @@ def real2apparent(
 
     Arguments `q` and `a` are real question and answer numbers, that is
     the ones before questions and answers were shuffled."""
-    questions = config["ordering"][doc_id]["questions"]
-    answers = config["ordering"][doc_id]["answers"]
+    questions = config.ordering[doc_id]["questions"]
+    answers = config.ordering[doc_id]["answers"]
     # Apparent question number (ie. after shuffling).
     # Attention, list index 0 corresponds to question number 1.
     pdf_q_num = questions.index(original_q_num) + 1
@@ -138,14 +160,14 @@ def real2apparent(
 
 
 def apparent2real(
-    pdf_q_num: int, pdf_a_num: Optional[int], config: dict, doc_id: int
-) -> Tuple[int, Optional[int]]:
+    pdf_q_num: int, pdf_a_num: int | None, config: Configuration, doc_id: int
+) -> tuple[int, int | None]:
     """Return real question number and answer number.
 
     If `a` is None, return only question number.
     """
-    questions = config["ordering"][doc_id]["questions"]
-    answers = config["ordering"][doc_id]["answers"]
+    questions = config.ordering[doc_id]["questions"]
+    answers = config.ordering[doc_id]["answers"]
     # Real question number (ie. before shuffling).
     # Attention, first question is numbered 1, corresponding to list index 0.
     original_q_num = questions[pdf_q_num - 1]
@@ -161,19 +183,19 @@ def is_answer_correct(
 ) -> bool | None:
     if use_original_num:
         # q_num and a_num are question and answer number *before* shuffling questions.
-        for original_a_num, is_correct in config["ordering"][doc_id]["answers"][q_num]:
+        for original_a_num, is_correct in config.ordering[doc_id]["answers"][q_num]:
             if original_a_num == a_num:
                 return is_correct
         raise IndexError(f"Answer {a_num} not found.")
     else:
         # q_num and a_num are question and answer number *after* shuffling questions.
-        original_q_num = config["ordering"][doc_id]["questions"][q_num - 1]
-        return config["ordering"][doc_id]["answers"][original_q_num][a_num - 1][1]
+        original_q_num = config.ordering[doc_id]["questions"][q_num - 1]
+        return config.ordering[doc_id]["answers"][original_q_num][a_num - 1][1]
 
 
 def get_answers_with_status(
     config: Configuration, *, correct: bool | None, use_original_num: bool = True
-) -> Dict[int, Dict[int, Set[int]]]:
+) -> dict[int, dict[int, set[int]]]:
     """Return a dict containing the set of the correct answers for each question for each document ID.
 
     By default, questions and answers are numbered following their original order of definition
@@ -183,10 +205,10 @@ def get_answers_with_status(
     will be apparent ones (i.e. the number that appear in the document, after shuffling).
     """
     correct_answers_by_id = {}
-    for doc_id in config["ordering"]:
+    for doc_id in config.ordering:
         correct_answers = {}
-        questions = config["ordering"][doc_id]["questions"]
-        answers = config["ordering"][doc_id]["answers"]
+        questions = config.ordering[doc_id]["questions"]
+        answers = config.ordering[doc_id]["answers"]
         for i, q in enumerate(questions, start=1):
             # `i` is the 'apparent' question number.
             # `q` is the 'real' question number, i.e. the question number before shuffling.

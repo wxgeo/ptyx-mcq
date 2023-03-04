@@ -890,9 +890,9 @@ def scan_picture(
     #     config: Configuration = load(config)
     # ~ n_questions = config['questions']
     # ~ n_answers = config['answers (max)']
-    students = config["students"]
+    students = config.students_list
     n_students = len(students)
-    students_ids = config["students_ids"]
+    students_ids = config.students_ids
 
     # ------------------------------------------------------------------
     #                          CALIBRATION
@@ -945,8 +945,10 @@ def scan_picture(
         # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
         #
         elif students_ids:
+            assert config.id_table_pos is not None
+            assert config.id_format is not None
             student_ID, student_name = read_student_id_and_name(
-                m, students_ids, xy2ij(*config["id_table_pos"]), config["id_format"], f_cell_size
+                m, students_ids, xy2ij(*config.id_table_pos), config.id_format, f_cell_size
             )
 
         else:
@@ -981,7 +983,7 @@ def scan_picture(
     }
 
     try:
-        boxes = config["boxes"][doc_id][page]
+        boxes = config.boxes[doc_id][page]
     except KeyError:
         print(
             f"WARNING: ID {doc_id!r} - page {page!r} not found in config file !\n"
@@ -990,16 +992,16 @@ def scan_picture(
         return pic_data, m
 
     # ordering = config['ordering'][doc_id]
-    mode = config["mode"]
+    mode = config.mode
     #    correct_answers = config['correct_answers']
 
     # Detect the answers.
     print("\n=== Reading answers ===")
     print(f"Mode: *{mode['default']}* correct answers must be checked.")
     print("Rating:")
-    print(f"• {config['correct']['default']} for correctly answered question,")
-    print(f"• {config['incorrect']['default']} for wrongly answered question,")
-    print(f"• {config['skipped']['default']} for unanswered question.")
+    print(f"• {config.correct['default']} for correctly answered question,")
+    print(f"• {config.incorrect['default']} for wrongly answered question,")
+    print(f"• {config.skipped['default']} for unanswered question.")
     print("Scanning...\n")
 
     # Using the config file to obtain correct answers list allows some easy customization

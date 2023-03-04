@@ -17,7 +17,7 @@ from ptyx_mcq.cli import main
 from ptyx_mcq.parameters import CELL_SIZE_IN_CM
 from ptyx_mcq.scan.color import Color, RGB
 from ptyx_mcq.scan.tools import round
-from ptyx_mcq.tools.config_parser import load, is_answer_correct, Configuration
+from ptyx_mcq.tools.config_parser import Configuration, is_answer_correct
 
 DPI = 200
 PX_PER_CM = DPI / 2.54
@@ -48,7 +48,8 @@ def _fill_checkbox(draw: ImageDraw.ImageDraw, pos: tuple, size: float, color: RG
 
 
 def write_student_id(draw: ImageDraw.ImageDraw, student_id: str, config: Configuration) -> None:
-    x0, y0 = config["id_table_pos"]
+    assert config.id_table_pos is not None
+    x0, y0 = config.id_table_pos
     for i, digit in enumerate(student_id.zfill(MAX_ID_LEN)):
         x_shift = 10 + 10 * int(digit)
         y_shift = 10 * i
@@ -68,7 +69,7 @@ def simulate_answer(pics: list, config: Configuration):
     """
     # Convert cell size from cm to pixels
     students_ids = list(STUDENTS)
-    boxes = config["boxes"]
+    boxes = config.boxes
     for i, (doc_id, data) in enumerate(boxes.items()):
         if i >= len(students_ids):
             print(f"Warning: {len(boxes)} documents but only {len(students_ids)} students.")
@@ -143,10 +144,10 @@ def test_cli() -> None:
         assert "new-corr.pdf" in listdir(path)
         # TODO: assert "new.all.pdf" in listdir(path)
 
-        config = load(path / "new.ptyx.mcq.config.json")
+        config = Configuration.load(path / "new.ptyx.mcq.config.json")
         for student_id in STUDENTS:
-            assert student_id in config["students_ids"], (repr(student_id), repr(config["students_ids"]))
-            assert config["students_ids"][student_id] == STUDENTS[student_id]
+            assert student_id in config.students_ids, (repr(student_id), repr(config.students_ids))
+            assert config.students_ids[student_id] == STUDENTS[student_id]
 
         # ----------------
         # Test `mcq scan`

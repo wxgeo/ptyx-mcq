@@ -12,6 +12,7 @@ from os.path import join
 from PIL import ImageDraw, ImageFont
 from PIL.Image import Image
 from ptyx_mcq.scan.data_storage import DataStorage
+from .document_data import DocumentData
 
 from .square_detection import Pixel
 from .color import Color
@@ -22,7 +23,8 @@ from .color import Color
 
 def amend_all(data_storage: DataStorage) -> None:
     """Amend all generated documents, adding the scores and indicating the correct answers."""
-    max_score = data_storage.config["max_score"]
+    max_score = data_storage.config.max_score
+    assert max_score is not None
     N = len(data_storage.data)
     for i, (doc_id, doc_data) in enumerate(data_storage.data.items(), start=1):
         print(f"Generating the amended pdf files: {i}/{N}...", end="\r")
@@ -30,7 +32,7 @@ def amend_all(data_storage: DataStorage) -> None:
     print("Generating the amended pdf files: OK" + len(f"{N}/{N}...") * " ")
 
 
-def amend_doc(doc_data, doc_id, max_score, data_storage):
+def amend_doc(doc_data: DocumentData, doc_id: int, max_score: float, data_storage: DataStorage) -> None:
     correct_answers = data_storage.correct_answers[doc_id]
     neutralized_answers = data_storage.neutralized_answers[doc_id]
     pics = {}
@@ -73,7 +75,7 @@ def amend_doc(doc_data, doc_id, max_score, data_storage):
         pics[q_num] = pic
         # Sort pages now.
     pages: list[Image]
-    _, pages = zip(*sorted(pics.items()))
+    _, pages = zip(*sorted(pics.items()))  # type: ignore
     draw = ImageDraw.Draw(pages[0])
     _write_score(draw, (2 * size, 4 * size), f"{doc_data['score']:g}/{max_score:g}", 2 * size)
     pages[0].save(

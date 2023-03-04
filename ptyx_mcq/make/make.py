@@ -9,7 +9,7 @@ from ptyx.compilation import make_files, make_file
 from ptyx.latex_generator import compiler, Compiler
 
 from ptyx_mcq.tools.io_tools import print_error, print_success, get_file_or_sysexit
-from ptyx_mcq.tools.config_parser import dump, Configuration
+from ptyx_mcq.tools.config_parser import Configuration
 
 
 def generate_config_file(_compiler: Compiler) -> None:
@@ -18,34 +18,33 @@ def generate_config_file(_compiler: Compiler) -> None:
     assert file_path is not None
     folder = file_path.parent
     name = file_path.stem
-    id_table_pos = None
-    for n in mcq_data["ordering"]:
+    id_table_pos: tuple[float, float] | None = None
+    for n in mcq_data.ordering:
         # XXX: what if files are not auto-numbered, but a list
         # of names is provided to Ptyx instead ?
         # (cf. command line options).
-        if len(mcq_data["ordering"]) == 1:
+        if len(mcq_data.ordering) == 1:
             filename = f"{name}.pos"
         else:
             filename = f"{name}-{n}.pos"
         full_path = folder / ".compile" / name / filename
         # For each page of the document, give the position of every answer's checkbox.
         checkboxes_positions: dict[int, dict[str, tuple[float, float]]] = {}
-        mcq_data["boxes"][n] = checkboxes_positions
+        mcq_data.boxes[n] = checkboxes_positions
         with open(full_path) as f:
             for line in f:
                 k, v = line.split(": ", 1)
                 k = k.strip()
                 if k == "ID-table":
                     if id_table_pos is None:
-                        id_table_pos = tuple(float(s.strip("() \n")) for s in v.split(","))
-                        assert len(id_table_pos) == 2
-                        mcq_data["id_table_pos"] = id_table_pos  # type: ignore
+                        x, y = (float(s.strip("() \n")) for s in v.split(","))
+                        id_table_pos = x, y
+                        mcq_data.id_table_pos = id_table_pos
                     continue
-                page, x, y = [s.strip("p() \n") for s in v.split(",")]
-                checkboxes_positions.setdefault(int(page), {})[k] = (float(x), float(y))
+                page_, x_, y_ = [s.strip("p() \n") for s in v.split(",")]
+                checkboxes_positions.setdefault(int(page_), {})[k] = (float(x_), float(y_))
 
-    config_file = file_path.with_suffix(".ptyx.mcq.config.json")
-    dump(config_file, mcq_data)
+    mcq_data.dump(file_path.with_suffix(".ptyx.mcq.config.json"))
 
 
 def make(

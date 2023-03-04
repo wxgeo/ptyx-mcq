@@ -102,7 +102,7 @@ class MCQPictureParser:
         if matrix is None:
             assert p is not None
             matrix = self.data_storage.get_matrix(doc_id, p)
-        student_ids = self.config["students_ids"]
+        student_ids = self.config.students_ids
         student_ID = ""
         print("Name can not be read automatically.")
         print("Please read the name on the picture which will be displayed now.")
@@ -145,7 +145,7 @@ class MCQPictureParser:
         - all questions must have been seen."""
         questions_not_seen = {}
         pages_not_seen = {}
-        ordering = self.config["ordering"]
+        ordering = self.config.ordering
         for doc_id in self.data:
             try:
                 doc_ordering = ordering[doc_id]
@@ -161,7 +161,7 @@ class MCQPictureParser:
                 questions_not_seen[doc_id] = ", ".join(str(q) for q in diff)
             # All tests may not have the same number of pages, since
             # page breaking will occur at a different place for each test.
-            pages = set(self.config["boxes"][doc_id])
+            pages = set(self.config.boxes[doc_id])
             diff = pages - set(self.data[doc_id]["pages"])
             if diff:
                 pages_not_seen[doc_id] = ", ".join(str(p) for p in diff)
@@ -289,12 +289,12 @@ class MCQPictureParser:
 
     def _calculate_scores(self) -> None:
         cfg = self.config
-        default_mode = cfg["mode"]["default"]
-        default_correct = cfg["correct"]["default"]
-        default_incorrect = cfg["incorrect"]["default"]
-        default_skipped = cfg["skipped"]["default"]
-        default_floor = cfg["floor"]["default"]
-        default_ceil = cfg["ceil"]["default"]
+        default_mode = cfg.mode["default"]
+        default_correct = cfg.correct["default"]
+        default_incorrect = cfg.incorrect["default"]
+        default_skipped = cfg.skipped["default"]
+        default_floor = cfg.floor["default"]
+        default_ceil = cfg.ceil["default"]
 
         for doc_id in self.data:
             correct_ans = self.data_storage.correct_answers[doc_id]
@@ -305,7 +305,7 @@ class MCQPictureParser:
                 answered = set(doc_data["answered"][q])
                 correct_ones = correct_ans[q]
                 neutralized_ones = neutralized_ans[q]
-                all_answers = {ans_num for ans_num, is_ok in cfg["ordering"][doc_id]["answers"][q]}
+                all_answers = {ans_num for ans_num, is_ok in cfg.ordering[doc_id]["answers"][q]}
 
                 # Neutralized answers must be removed from each set of answers.
                 # (Typically, neutralized answers are answers which were detected faulty during or after the
@@ -314,7 +314,7 @@ class MCQPictureParser:
                 correct_ones -= neutralized_ones
                 all_answers -= neutralized_ones
 
-                mode = cfg["mode"].get(q, default_mode)
+                mode = cfg.mode.get(q, default_mode)
 
                 if mode == "skip":
                     # Used mostly to skip bogus questions.
@@ -328,17 +328,17 @@ class MCQPictureParser:
 
                 ans_data = scores.AnswersData(checked=answered, correct=correct_ones, all=all_answers)
                 scores_data = scores.ScoreData(
-                    correct=float(cfg["correct"].get(q, default_correct)),
-                    skipped=float(cfg["skipped"].get(q, default_skipped)),
-                    incorrect=float(cfg["incorrect"].get(q, default_incorrect)),
+                    correct=float(cfg.correct.get(q, default_correct)),
+                    skipped=float(cfg.skipped.get(q, default_skipped)),
+                    incorrect=float(cfg.incorrect.get(q, default_incorrect)),
                 )
                 earn = func(ans_data, scores_data)
 
-                floor = cfg["floor"].get(q, default_floor)
+                floor = cfg.floor.get(q, default_floor)
                 assert floor is None or isinstance(floor, (float, int))
                 if floor is not None and earn < floor:
                     earn = floor
-                ceil = cfg["ceil"].get(q, default_ceil)
+                ceil = cfg.ceil.get(q, default_ceil)
                 assert ceil is None or isinstance(ceil, (float, int))
                 if ceil is not None and earn > ceil:
                     earn = ceil
@@ -355,10 +355,10 @@ class MCQPictureParser:
 
     def generate_output(self) -> None:
         """Generate CSV files with scores and annotated documents."""
-        max_score = self.config["max_score"]
+        max_score = self.config.max_score
         # Generate CSV file with results.
         # TODO: Add ability to change default score ("ABI" for now).
-        scores_: dict[str, float | str] = {name: "ABI" for name in self.config["students_ids"].values()}
+        scores_: dict[str, float | str] = {name: "ABI" for name in self.config.students_ids.values()}
         results: dict[str, float] = {doc_data["name"]: doc_data["score"] for doc_data in self.data.values()}
         scores_.update(results)
 

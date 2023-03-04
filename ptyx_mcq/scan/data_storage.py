@@ -12,7 +12,7 @@ from numpy import ndarray, array, int8
 from ptyx_mcq.scan.paths_handler import PathsHandler, DirsPaths, FilesPaths
 from ptyx_mcq.scan.pdftools import number_of_pages, extract_pdf_pictures, PIC_EXTS
 from ptyx_mcq.scan.document_data import DocumentData
-from ptyx_mcq.tools.config_parser import Configuration, load, get_answers_with_status
+from ptyx_mcq.tools.config_parser import Configuration, get_answers_with_status
 
 
 def pic_names_iterator(data: dict[int, DocumentData]) -> Iterator[Path]:
@@ -33,14 +33,13 @@ class DataStorage:
         self.data: dict[int, DocumentData] = {}
         # Additional information entered manually.
         self.more_infos: dict[int, tuple[str, str]] = {}  # sheet_id: (name, student_id)
-        self.config: Configuration = {}
         # Manually verified pages.
         self.verified: set[Path] = set()
         self.skipped: set[Path] = set()
         self.correct_answers: dict[int, dict[int, set[int]]] = {}  # {doc_id: {question: set of answers}}
         self.neutralized_answers: dict[int, dict[int, set[int]]] = {}
         # self.paths.make_dirs()
-        self.load_configuration()
+        self.config: Configuration = self.get_configuration(self.paths.configfile)
 
     @property
     def dirs(self) -> DirsPaths:
@@ -80,22 +79,22 @@ class DataStorage:
     def absolute_pic_path(self, pic_path: str | Path):
         return self.dirs.pic / pic_path
 
-    def load_configuration(self) -> None:
+    def get_configuration(self, path: Path) -> Configuration:
         """Read configuration file, load configuration and calculate maximal score too."""
-        cfg: Configuration = load(self.paths.configfile)
+        cfg: Configuration = Configuration.load(path)
         self.correct_answers = get_answers_with_status(cfg, correct=True)
         self.neutralized_answers = get_answers_with_status(cfg, correct=None)
-        default_mode = cfg["mode"]["default"]
-        default_correct = cfg["correct"]["default"]
+        default_mode = cfg.mode["default"]
+        default_correct = cfg.correct["default"]
 
         max_score = 0
         # Take a random student test, and calculate max score for it.
         # Maximal score = (number of questions)x(score when answer is correct)
-        for q in next(iter(cfg["ordering"].values()))["questions"]:
-            if cfg["mode"].get(q, default_mode) != "skip":
-                max_score += int(cfg["correct"].get(q, default_correct))
-        cfg["max_score"] = max_score
-        self.config = cfg
+        for q in next(iter(cfg.ordering.values()))["questions"]:
+            if cfg.mode.get(q, default_mode) != "skip":
+                max_score += int(cfg.correct.get(q, default_correct))
+        cfg.max_score = max_score
+        return cfg
 
     def reload(self, reset=False) -> None:
         """Load all information from files."""

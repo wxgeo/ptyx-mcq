@@ -82,7 +82,12 @@ def _analyze_IDS(ids: List[str]) -> Tuple[int, int, List[Tuple[str, ...]]]:
     return ID_length, max_ndigits, [tuple(s) for s in digits]
 
 
-def _detect_ID_format(ids: Dict[str, str], id_format: str) -> Configuration:
+class IdFormat(TypedDict):
+    students_ids: dict[str, str]
+    id_format: tuple[int, int, list[tuple[str, ...]]]
+
+
+def _detect_ID_format(ids: Dict[str, str], id_format: str) -> IdFormat:
     """Return IDs and ID format data.
 
     `ids` is a dictionary who contains students names and ids.
@@ -188,26 +193,17 @@ class MCQLatexGenerator(LatexGenerator):
         self.cache["mcq"] = {
             "header": None,
             "check_id_or_name": None,
-            "data": {
-                # Default configuration:
-                "mode": {"default": "some"},
-                "correct": {"default": 1},
-                "incorrect": {"default": 0},
-                "skipped": {"default": 0},
-                "floor": {"default": None},
-                "ceil": {"default": None},
-                # 'correct_answers': correct_answers, # {1: [4], 2:[1,5], ...}
-                "students": [],
-                "id_table_pos": None,
-                "students_ids": {},
-                "ordering": {},
-                # {NUM: {'questions': [2,1,3...],
-                #        'answers': {1: [(2, True), (1, False), (3, True)...], ...}}, ...}
-                "boxes": {},  # {NUM: {'tag': 'p4, (23.456, 34.667)', ...}, ...}
-                "id_format": None,
-            },
+            "data": Configuration(
+                mode={"default": "some"},
+                correct={"default": 1},
+                incorrect={"default": 0},
+                skipped={"default": 0},
+                # -inf and inf would be sensible defaults for floor and ceil,
+                # but unfortunately they aren't supported by ast.literal_eval().
+                floor={"default": None},
+                ceil={"default": None},
+            ),
         }
-        assert set(self.cache["mcq"]["data"]).issubset(set(Configuration.__annotations__))
 
     @property
     def mcq_cache(self) -> MCQCache:
@@ -223,7 +219,7 @@ class MCQLatexGenerator(LatexGenerator):
         self.write("\n")  # A new line is mandatory here if there is no text before MCQ.
         # ~ self.mcq_correct_answers = []
         self.current_question = ""
-        self.mcq_data["ordering"][self.NUM] = {"questions": [], "answers": {}}
+        self.mcq_data.ordering[self.NUM] = {"questions": [], "answers": {}}
         #    self.mcq_data['answers'] = {}
         # ~ self.mcq_data['question_num'] =
         # Global context for all the MCQ.
@@ -270,7 +266,7 @@ class MCQLatexGenerator(LatexGenerator):
         self.mcq_question_number = n
         # This list is used to test that the same answer is not proposed twice.
         self.mcq_answers: List[str] = []
-        data = self.mcq_data["ordering"][self.NUM]
+        data = self.mcq_data.ordering[self.NUM]
         data["questions"].append(n)
         data["answers"][n] = []
         self.context["APPLY_TO_ANSWERS"] = None
@@ -393,7 +389,7 @@ class MCQLatexGenerator(LatexGenerator):
         else:
             self.write(r"\checkBox{white}{%s}" % cb_id)
         self.write(r"}{")
-        data = self.mcq_data["ordering"][self.NUM]
+        data = self.mcq_data.ordering[self.NUM]
         data["answers"][n].append((k, is_correct))
 
     def _close_answer(self) -> None:
@@ -549,7 +545,7 @@ class MCQLatexGenerator(LatexGenerator):
 
             for key in ("mode", "correct", "incorrect", "skipped", "floor", "ceil"):
                 if key in config:
-                    self.mcq_data[key]["default"] = config.pop(key)  # type: ignore
+                    getattr(self.mcq_data, key)["default"] = config.pop(key)
 
             if "names" in config:
                 # the value must be the path of a CSV file.
@@ -557,7 +553,7 @@ class MCQLatexGenerator(LatexGenerator):
                 if not self.WITH_ANSWERS:
                     students = extract_students_name_from_csv(Path(csv), self.compiler.file_path)
                     code = students_checkboxes(students)
-                    self.mcq_data["students_list"] = students
+                    self.mcq_data.students_list = students
 
             if "students_ids" in config or "id_format" in config:
                 # config['ids'] must be the path of a CSV file.
@@ -576,7 +572,8 @@ class MCQLatexGenerator(LatexGenerator):
                         msg = e.args[0]
                         raise IdentifiantError(f"Error in {csv!r} : {msg!r}")
 
-                    self.mcq_data.update(data)  # type: ignore
+                    self.mcq_data.id_format = data["id_format"]
+                    self.mcq_data.students_ids = data["students_ids"]
                     code = student_id_table(*data["id_format"])
 
             if "sty" in config:

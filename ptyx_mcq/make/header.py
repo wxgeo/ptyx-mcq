@@ -265,7 +265,7 @@ def table_for_answers(config: Configuration, doc_id: Optional[int] = None) -> st
     # Generate the table where students will answer.
     tkzoptions = ["scale=%s" % CELL_SIZE_IN_CM]
 
-    d = config["ordering"][1 if doc_id is None else doc_id]
+    d = config.ordering[1 if doc_id is None else doc_id]
     questions = d["questions"]
     answers = d["answers"]
     n_questions = len(questions)
@@ -398,7 +398,7 @@ def answers_and_score(config: Configuration, name: str, identifier: int, score: 
     """Generate plain LaTeX code corresponding to score and correct answers."""
     table = table_for_answers(config, identifier)
     if score is not None:
-        max_score = config["max_score"]
+        max_score = config.max_score
         score_latex = (
             r"""\begin{tikzpicture}
             \node[draw,very thick,rectangle, rounded corners,red!70!black] (0,0) {
