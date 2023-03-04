@@ -3,7 +3,7 @@ from pathlib import Path
 from shutil import rmtree
 from time import strftime
 
-from ptyx_mcq.io_tools import get_file_or_sysexit
+from ptyx_mcq.tools.io_tools import get_file_or_sysexit
 
 
 @dataclass

@@ -32,14 +32,14 @@ from pathlib import Path
 from typing import Union, Literal, Optional
 
 from numpy import ndarray
-from ptyx_mcq.io_tools import print_success
 
-from . import scores
-from .amend import amend_all
-from .data_storage import DataStorage
-from .document_data import DocumentData, PicData
-from .pdftools import PIC_EXTS
-from .scan_pic import (
+from ptyx_mcq.tools.io_tools import print_success
+from ptyx_mcq.scan import scores
+from ptyx_mcq.scan.amend import amend_all
+from ptyx_mcq.scan.data_storage import DataStorage
+from ptyx_mcq.scan.document_data import DocumentData, PicData
+from ptyx_mcq.scan.pdftools import PIC_EXTS
+from ptyx_mcq.scan.scan_pic import (
     scan_picture,
     ANSI_YELLOW,
     ANSI_RESET,
@@ -48,8 +48,8 @@ from .scan_pic import (
     ANSI_RED,
     CalibrationError,
 )
-from .tools import print_framed_msg
-from .visual_debugging import color2debug
+from ptyx_mcq.scan.tools import print_framed_msg
+from ptyx_mcq.scan.visual_debugging import color2debug
 
 
 # File `compilation.py` is in ../.., so we have to "hack" `sys.path` a bit.

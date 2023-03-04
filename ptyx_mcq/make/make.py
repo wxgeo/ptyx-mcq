@@ -7,9 +7,9 @@ from pathlib import Path
 
 from ptyx.compilation import make_files, make_file
 from ptyx.latex_generator import compiler, Compiler
-from ptyx_mcq.io_tools import print_error, print_success, get_file_or_sysexit
 
-from ..tools.config_parser import dump, Configuration
+from ptyx_mcq.tools.io_tools import print_error, print_success, get_file_or_sysexit
+from ptyx_mcq.tools.config_parser import dump, Configuration
 
 
 def generate_config_file(_compiler: Compiler) -> None:

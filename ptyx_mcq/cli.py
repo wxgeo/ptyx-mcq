@@ -13,7 +13,7 @@ from os import unlink
 from pathlib import Path
 from typing import Optional
 
-from ptyx_mcq.io_tools import print_success, print_error, get_file_or_sysexit
+from ptyx_mcq.tools.io_tools import print_success, print_error, get_file_or_sysexit
 
 from .make.make import make
 from .scan.scan import scan
