@@ -20,7 +20,7 @@ types-Pillow = "^9.0.20"
 
 [tool.poetry.dev-dependencies]
 pytest = "^7"
-mypy = "^0.991"
+mypy = "^1.0"
 flake8 = "^6"
 black = "^22.1.0"
 tox = "^4.1.2"
