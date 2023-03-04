@@ -7,7 +7,7 @@ from pathlib import Path
 
 from ptyx.compilation import make_files, make_file
 from ptyx.latex_generator import compiler, Compiler
-from ptyx_mcq.printing import print_error, print_success
+from ptyx_mcq.io_tools import print_error, print_success, get_file_or_sysexit
 
 from ..tools.config_parser import dump, Configuration
 
@@ -48,30 +48,6 @@ def generate_config_file(_compiler: Compiler) -> None:
     dump(config_file, mcq_data)
 
 
-def get_ptyxfile_path(path: Path) -> Path:
-    """Get the path of the ptyx file corresponding to the given `path`.
-
-    If `path` is already the path of a ptyx file, just return `path` unchanged.
-    Else, `path` must be a directory which contains a single ptyx file, and the path
-    of this ptyx file is returned.
-
-    Raise `FileNotFoundError` if `path` is neither a directory nor a ptyx file, or if `path`
-    is a directory but contains no ptyx file or several ptyx files.
-    """
-    path = path.resolve()
-    if path.suffix == ".ptyx":
-        if not path.is_file():
-            raise FileNotFoundError(f"File '{path}' not found.")
-    else:
-        all_ptyx_files: list[Path] = list(path.glob("*.ptyx"))
-        if len(all_ptyx_files) == 0:
-            raise FileNotFoundError(f"No .ptyx file found in '{path}'.")
-        elif len(all_ptyx_files) > 1:
-            raise FileNotFoundError(f"Several .ptyx file found in '{path}', I don't know which one to chose.")
-        path = all_ptyx_files[0]
-    return path
-
-
 def make(
     path: Path, num: int = 1, start: int = 1, quiet: bool = False, correction_only: bool = False
 ) -> None:
@@ -87,7 +63,7 @@ def make(
         else:
             traceback.print_exc()
         print()
-        print_error("`mcq make` failed to compile document (see above for details).")
+        print_error("`mcq make` failed to build document (see above for details).")
         sys.exit(1)
 
 
@@ -99,7 +75,7 @@ def _make(
     If `only_correction` is `True`, only generate correction (useful for fast testing).
     """
     assert isinstance(num, int)
-    ptyx_filename = get_ptyxfile_path(path)
+    ptyx_filename = get_file_or_sysexit(path, extension=".ptyx")
     # Read pTyX file.
     print(f"Reading {ptyx_filename}...")
     compiler.read_file(ptyx_filename)

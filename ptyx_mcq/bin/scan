@@ -10,6 +10,6 @@
 
 from pathlib import Path
 
-from ptyx_mcq.scan.scanner import scan
+from ptyx_mcq.scan.scan import scan
 
 scan(path=Path("."))

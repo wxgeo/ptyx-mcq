@@ -32,7 +32,7 @@ from pathlib import Path
 from typing import Union, Literal, Optional
 
 from numpy import ndarray
-from ptyx_mcq.printing import print_success
+from ptyx_mcq.io_tools import print_success
 
 from . import scores
 from .amend import amend_all
@@ -57,7 +57,7 @@ from .visual_debugging import color2debug
 # sys.path.insert(0, join(script_path, '../..'))
 # from ptyx.compilation import join_files, compile_latex
 
-# from ..compile.header import answers_and_score
+# from ..make.header import answers_and_score
 
 
 class MissingQuestion(RuntimeError):

@@ -3,23 +3,7 @@ from pathlib import Path
 from shutil import rmtree
 from time import strftime
 
-
-def search_by_extension(directory: Path, ext: str) -> Path:
-    """Search for a file with extension `ext` in given directory.
-
-    Search is NOT case sensible.
-    If no or more than one file is found, an error is raised.
-    """
-    ext = ext.lower()
-    paths = [pth for pth in directory.glob("*") if pth.name.lower().endswith(ext)]
-    if not paths:
-        raise FileNotFoundError(f"No {ext!r} file found in that directory: {directory} ! ")
-    elif len(paths) > 1:
-        raise RuntimeError(
-            f"Several {ext!r} file found in that directory: {directory} ! "
-            "Keep only one of them and delete all the others (or rename their extensions)."
-        )
-    return paths[0]
+from ptyx_mcq.io_tools import get_file_or_sysexit
 
 
 @dataclass
@@ -52,13 +36,7 @@ class PathsHandler:
     output_dir: Path
 
     def __init__(self, config_path: Path, input_dir: Path = None, output_dir: Path = None):
-        config_path = config_path.expanduser().resolve()
-        if config_path.is_dir():
-            self.configfile = search_by_extension(config_path, ".ptyx.mcq.config.json")
-        elif config_path.is_file():
-            self.configfile = config_path.with_suffix(".ptyx.mcq.config.json")
-            if not self.configfile.is_file():
-                raise FileNotFoundError(f"File '{self.configfile}' not found.")
+        self.configfile = get_file_or_sysexit(config_path, extension=".ptyx.mcq.config.json")
 
         root = self.configfile.parent
 

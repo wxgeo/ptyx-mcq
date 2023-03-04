@@ -13,10 +13,10 @@ from os import unlink
 from pathlib import Path
 from typing import Optional
 
-from ptyx_mcq.printing import print_success, print_error
+from ptyx_mcq.io_tools import print_success, print_error, get_file_or_sysexit
 
-from .compile.make import make, get_ptyxfile_path
-from .scan.scanner import scan
+from .make.make import make
+from .scan.scan import scan
 
 
 def main(args: Optional[list] = None) -> None:
@@ -127,11 +127,11 @@ def new(path: Path) -> None:
 def clear(path: Path) -> None:
     """Implement `mcq clear` command."""
     try:
-        ptyxfile_path = get_ptyxfile_path(path)
+        ptyxfile_path = get_file_or_sysexit(path, extension=".ptyx")
     except FileNotFoundError:
         print(f"Searching for a ptyx file in '{path}' ({path.resolve()}) failed !")
         print_error("No ptyx file found.")
-        return
+        sys.exit(1)
     filename = ptyxfile_path.name
     root = ptyxfile_path.parent
     for directory in (".scan", ".compile"):
@@ -152,6 +152,14 @@ def clear(path: Path) -> None:
             print(f"Warning: {e}")
             print(f"Info: '{filepath}' not found...")
     print_success("Directory cleared.")
+
+
+def update(path: Path) -> None:
+    # TODO: implement.
+    ptyx_file = get_file_or_sysexit(path, extension=".ptyx")
+    config_file = get_file_or_sysexit(path, extension=".ptyx.mcq.config.json")
+
+    raise NotImplementedError
 
 
 if __name__ == "__main__":

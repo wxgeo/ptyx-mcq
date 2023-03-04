@@ -67,8 +67,8 @@ from re import Match
 from ptyx.extensions import extended_python
 from ptyx.latex_generator import Compiler
 
-from .compile.extend_latex_generator import MCQLatexGenerator
-from .compile.generate_ptyx_code import generate_ptyx_code
+from .make.extend_latex_generator import MCQLatexGenerator
+from .make.generate_ptyx_code import generate_ptyx_code
 
 
 # Note for closing tags:
