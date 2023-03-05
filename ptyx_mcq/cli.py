@@ -13,6 +13,7 @@ from os import unlink
 from pathlib import Path
 from typing import Optional
 
+from ptyx_mcq.tools.config_parser import Configuration
 from ptyx_mcq.tools.io_tools import print_success, print_error, get_file_or_sysexit
 
 from .make.make import make
@@ -158,7 +159,9 @@ def update(path: Path) -> None:
     # TODO: implement.
     ptyx_file = get_file_or_sysexit(path, extension=".ptyx")
     config_file = get_file_or_sysexit(path, extension=".ptyx.mcq.config.json")
-
+    config = Configuration.load(config_file)
+    config.ordering
+    config.dump(config_file.with_suffix(".ptyx.mcq.config.json"))
     raise NotImplementedError
 
 

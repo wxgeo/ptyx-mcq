@@ -13,7 +13,15 @@ from ..parameters import (
     CALIBRATION_SQUARE_POSITION,
     CALIBRATION_SQUARE_SIZE,
 )
-from ..tools.config_parser import get_answers_with_status, Configuration
+from ..tools.config_parser import (
+    get_answers_with_status,
+    Configuration,
+    DocumentId,
+    ApparentAnswerNumber,
+    ApparentQuestionNumber,
+    StudentName,
+    StudentId,
+)
 
 
 class IdentifiantError(RuntimeError):
@@ -115,7 +123,7 @@ def ID_band(doc_id: int, calibration=True) -> str:
     return "".join(latex)
 
 
-def extract_students_id_and_name_from_csv(csv_path: Path, script_path: Path) -> Dict[str, str]:
+def extract_students_id_and_name_from_csv(csv_path: Path, script_path: Path) -> Dict[StudentId, StudentName]:
     """`csv_path` is the path of the CSV file who contains students names and ids.
     The first column of the CSV file must contain the ids.
 
@@ -127,22 +135,22 @@ def extract_students_id_and_name_from_csv(csv_path: Path, script_path: Path) -> 
     # XXX: support ODS and XLS files ?
     # soffice --convert-to cvs filename.ods
     # https://ask.libreoffice.org/en/question/2641/convert-to-command-line-parameter/
-    ids: Dict[str, str] = {}
+    ids: Dict[StudentId, StudentName] = {}
     # Read CSV file and generate the dictionary {id: "student name"}.
     with open(csv_path) as f:
         dialect = csv.Sniffer().sniff(f.read(1024))
         f.seek(0)
         for row in csv.reader(f, dialect):
-            id_, *row = row
-            id_ = id_.strip()
-            name = " ".join(item.strip() for item in row)
-            if id_ in ids and ids[id_] != name:
-                raise RuntimeError(f"Error: same ID {id_!r} for different students in {csv_path!r} !")
-            ids[id_] = name
+            first_cell, *row = row
+            studient_id = StudentId(first_cell.strip())
+            name = StudentName(" ".join(item.strip() for item in row))
+            if studient_id in ids and ids[studient_id] != name:
+                raise RuntimeError(f"Error: same ID {studient_id!r} for different students in {csv_path!r} !")
+            ids[studient_id] = name
     return ids
 
 
-def extract_students_name_from_csv(csv_path: Path, script_path: Path) -> List[str]:
+def extract_students_name_from_csv(csv_path: Path, script_path: Path) -> List[StudentName]:
     """`csv_path` is the path of the CSV file who contains students names.
 
     Return a list of students names.
@@ -151,11 +159,11 @@ def extract_students_name_from_csv(csv_path: Path, script_path: Path) -> List[st
     if not csv_path.is_absolute():
         csv_path = (script_path.parent / csv_path).absolute()
 
-    names: List[str] = []
+    names: List[StudentName] = []
     # Read CSV file and generate the dictionary {id: "student name"}.
     with open(csv_path) as f:
         for row in csv.reader(f):
-            names.append(" ".join(item.strip() for item in row))
+            names.append(StudentName(" ".join(item.strip() for item in row)))
     return names
 
 
@@ -252,7 +260,7 @@ def student_id_table(ID_length: int, max_ndigits: int, digits: List[Tuple[str, .
     return "\n".join(content)
 
 
-def table_for_answers(config: Configuration, doc_id: Optional[int] = None) -> str:
+def table_for_answers(config: Configuration, doc_id: Optional[DocumentId] = None) -> str:
     """Generate the table where students select correct answers.
 
     - `config` is a dict generated when compiling test.
@@ -265,7 +273,7 @@ def table_for_answers(config: Configuration, doc_id: Optional[int] = None) -> st
     # Generate the table where students will answer.
     tkzoptions = ["scale=%s" % CELL_SIZE_IN_CM]
 
-    d = config.ordering[1 if doc_id is None else doc_id]
+    d = config.ordering[DocumentId(1) if doc_id is None else doc_id]
     questions = d["questions"]
     answers = d["answers"]
     n_questions = len(questions)
@@ -301,7 +309,10 @@ def table_for_answers(config: Configuration, doc_id: Optional[int] = None) -> st
             x1 = j
             x2 = x1 + 1
             opt = ""
-            if doc_id is not None and i + 1 in correct_ans[j + 1]:
+            if (
+                doc_id is not None
+                and ApparentAnswerNumber(i + 1) in correct_ans[ApparentQuestionNumber(j + 1)]
+            ):
                 opt = "fill=gray"
             write(rf"\draw [ultra thin,{opt}] ({x1},{y1}) rectangle ({x2},{y2});")
 
@@ -394,7 +405,9 @@ def packages_and_macros() -> tuple[str, str]:
     )
 
 
-def answers_and_score(config: Configuration, name: str, identifier: int, score: Optional[float]) -> str:
+def answers_and_score(
+    config: Configuration, name: str, identifier: DocumentId, score: Optional[float]
+) -> str:
     """Generate plain LaTeX code corresponding to score and correct answers."""
     table = table_for_answers(config, identifier)
     if score is not None:

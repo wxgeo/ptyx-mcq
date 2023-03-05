@@ -33,11 +33,12 @@ from typing import Union, Literal, Optional
 
 from numpy import ndarray
 
+from ptyx_mcq.tools.config_parser import StudentId, StudentName, DocumentId
 from ptyx_mcq.tools.io_tools import print_success
 from ptyx_mcq.scan import scores
 from ptyx_mcq.scan.amend import amend_all
 from ptyx_mcq.scan.data_storage import DataStorage
-from ptyx_mcq.scan.document_data import DocumentData, PicData
+from ptyx_mcq.scan.document_data import DocumentData, PicData, Page
 from ptyx_mcq.scan.pdftools import PIC_EXTS
 from ptyx_mcq.scan.scan_pic import (
     scan_picture,
@@ -79,12 +80,12 @@ class MCQPictureParser:
     ):
         # `name2docID` is used to retrieve the data associated with a name.
         # FORMAT: {name: test ID}
-        self.name2docID: dict[str, int] = {}
+        self.name2docID: dict[StudentName, DocumentId] = {}
         # Set `already_seen` will contain all seen (ID, page) couples.
         # It is used to catch a hypothetical scanning problem:
         # we have to be sure that the same page on the same test is not seen
         # twice.
-        self.already_seen: set[tuple[int, int]] = set()
+        self.already_seen: set[tuple[DocumentId, Page]] = set()
         self.warnings = False
         self.data_storage = DataStorage(Path(path), input_dir=input_dir, output_dir=output_dir)
 
@@ -97,8 +98,8 @@ class MCQPictureParser:
         return self.data_storage.data
 
     def _read_name_manually(
-        self, doc_id: int, matrix: ndarray = None, p: int = None, default: str = None
-    ) -> tuple[str, str]:
+        self, doc_id: DocumentId, matrix: ndarray = None, p: Page = None, default: str = None
+    ) -> tuple[StudentName, StudentId]:
         if matrix is None:
             assert p is not None
             matrix = self.data_storage.get_matrix(doc_id, p)
@@ -124,7 +125,7 @@ class MCQPictureParser:
                 name = default
             if student_ids:
                 if name in student_ids:
-                    name, student_ID = student_ids[name], name
+                    name, student_ID = student_ids[StudentId(name)], name
                 elif any((digit in name) for digit in string.digits):
                     # This is not a student name !
                     print("Unknown ID.")
@@ -137,7 +138,7 @@ class MCQPictureParser:
         process.terminate()
         # Keep track of manually entered information (will be useful if the scan has to be run again later !)
         self.data_storage.store_additional_info(doc_id=doc_id, name=name, student_ID=student_ID)
-        return name, student_ID
+        return StudentName(name), StudentId(student_ID)
 
     def _test_integrity(self) -> None:
         """For every test:
@@ -243,9 +244,11 @@ class MCQPictureParser:
 
         return action == "f"
 
-    def _extract_name(self, doc_id: int, doc_data: DocumentData, matrix: ndarray, ask: bool = False) -> None:
+    def _extract_name(
+        self, doc_id: DocumentId, doc_data: DocumentData, matrix: ndarray, ask: bool = False
+    ) -> None:
         # TODO: what is matrix type ?
-        pic_data = doc_data["pages"][1]
+        pic_data = doc_data["pages"][Page(1)]
         # (a) The first page should contain the name
         #     ‾ ‾ ‾ ‾ ‾ ‾ ‾ ‾ ‾ ‾ ‾ ‾ ‾ ‾ ‾ ‾ ‾ ‾ ‾ ‾
         # However, if the name was already set (using `more_infos`),
@@ -275,7 +278,7 @@ class MCQPictureParser:
             # Remove twin name from name2doc_id, and get the corresponding previous test ID.
             ID0 = self.name2docID.pop(name)
             # Ask for a new name.
-            name0, student_ID0 = self._read_name_manually(ID0, p=1, default=name)
+            name0, student_ID0 = self._read_name_manually(ID0, p=Page(1), default=name)
             # Update all infos.
             self.name2docID[name0] = ID0
             self.data[ID0]["name"] = name0
@@ -521,7 +524,7 @@ class MCQPictureParser:
 
             # 2) Gather data
             #    ‾‾‾‾‾‾‾‾‾‾‾
-            name, student_ID = self.data_storage.more_infos.get(doc_id, ("", ""))
+            name, student_ID = self.data_storage.more_infos.get(doc_id, (StudentName(""), StudentId("")))
             doc_data: DocumentData = data.setdefault(
                 doc_id,
                 DocumentData(

@@ -9,13 +9,20 @@ from typing import Iterator
 from PIL import Image
 from numpy import ndarray, array, int8
 
+from ptyx_mcq.scan.document_data import DocumentData
 from ptyx_mcq.scan.paths_handler import PathsHandler, DirsPaths, FilesPaths
 from ptyx_mcq.scan.pdftools import number_of_pages, extract_pdf_pictures, PIC_EXTS
-from ptyx_mcq.scan.document_data import DocumentData
-from ptyx_mcq.tools.config_parser import Configuration, get_answers_with_status
+from ptyx_mcq.tools.config_parser import (
+    Configuration,
+    get_answers_with_status,
+    DocumentId,
+    StudentName,
+    StudentId,
+    OriginalQuestionAnswersDict,
+)
 
 
-def pic_names_iterator(data: dict[int, DocumentData]) -> Iterator[Path]:
+def pic_names_iterator(data: dict[DocumentId, DocumentData]) -> Iterator[Path]:
     """Iterate over all pics found in data (i.e. all the pictures already analysed)."""
     for doc_data in data.values():
         for pic_data in doc_data["pages"].values():
@@ -30,14 +37,14 @@ class DataStorage:
     def __init__(self, config_path: Path, input_dir: Path = None, output_dir: Path = None):
         self.paths = PathsHandler(config_path=config_path, input_dir=input_dir, output_dir=output_dir)
         # All data extracted from pdf files.
-        self.data: dict[int, DocumentData] = {}
+        self.data: dict[DocumentId, DocumentData] = {}
         # Additional information entered manually.
-        self.more_infos: dict[int, tuple[str, str]] = {}  # sheet_id: (name, student_id)
+        self.more_infos: dict[DocumentId, tuple[StudentName, StudentId]] = {}
         # Manually verified pages.
         self.verified: set[Path] = set()
         self.skipped: set[Path] = set()
-        self.correct_answers: dict[int, dict[int, set[int]]] = {}  # {doc_id: {question: set of answers}}
-        self.neutralized_answers: dict[int, dict[int, set[int]]] = {}
+        self.correct_answers: dict[DocumentId, OriginalQuestionAnswersDict] = {}
+        self.neutralized_answers: dict[DocumentId, OriginalQuestionAnswersDict] = {}
         # self.paths.make_dirs()
         self.config: Configuration = self.get_configuration(self.paths.configfile)
 
@@ -110,7 +117,7 @@ class DataStorage:
         if self.dirs.data.is_dir():
             for filename in self.dirs.data.glob("*.scandata"):
                 print(f"Loading: {filename}")
-                doc_id = int(filename.stem)
+                doc_id = DocumentId(int(filename.stem))
                 try:
                     with open(filename) as f:
                         self.data[doc_id] = literal_eval(f.read())
@@ -125,11 +132,11 @@ class DataStorage:
                 reader = csv.reader(csvfile)
                 for row in reader:
                     try:
-                        sheet_ID, name, student_ID = row
+                        doc_id, name, student_id = row
                     except ValueError:
-                        sheet_ID, name = row
-                        student_ID = ""
-                    self.more_infos[int(sheet_ID)] = (name, student_ID)
+                        doc_id, name = row
+                        student_id = ""
+                    self.more_infos[DocumentId(int(doc_id))] = (StudentName(name), StudentId(student_id))
                 print("Retrieved infos:", self.more_infos)
 
     def _load_manually_verified_pages_list(self):
@@ -151,7 +158,7 @@ class DataStorage:
                 for path in sorted(self.skipped):
                     print(f"    • {path}")
 
-    def store_doc_data(self, pdf_hash: str, doc_id: int, p: int, matrix: ndarray = None) -> None:
+    def store_doc_data(self, pdf_hash: str, doc_id: DocumentId, p: int, matrix: ndarray = None) -> None:
         with open(self.dirs.data / f"{pdf_hash}.index", "a") as f:
             f.write(str(doc_id) + "\n")
         with open(self.dirs.data / f"{doc_id}.scandata", "w") as f:

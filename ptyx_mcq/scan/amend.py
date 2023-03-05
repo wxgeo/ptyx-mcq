@@ -16,6 +16,8 @@ from .document_data import DocumentData
 
 from .square_detection import Pixel
 from .color import Color
+from ..tools.config_parser import DocumentId, OriginalQuestionNumber
+
 
 # if TYPE_CHECKING:
 #     from ptyx_mcq.scan.scanner import MCQPictureParser
@@ -32,12 +34,14 @@ def amend_all(data_storage: DataStorage) -> None:
     print("Generating the amended pdf files: OK" + len(f"{N}/{N}...") * " ")
 
 
-def amend_doc(doc_data: DocumentData, doc_id: int, max_score: float, data_storage: DataStorage) -> None:
+def amend_doc(
+    doc_data: DocumentData, doc_id: DocumentId, max_score: float, data_storage: DataStorage
+) -> None:
     correct_answers = data_storage.correct_answers[doc_id]
     neutralized_answers = data_storage.neutralized_answers[doc_id]
     pics = {}
     for page, page_data in doc_data["pages"].items():
-        top_left_positions: dict[int, Pixel] = {}
+        top_left_positions: dict[OriginalQuestionNumber, Pixel] = {}
         # Convert to RGB picture.
         pic = data_storage.get_pic(doc_id, page).convert("RGB")
         if not page_data["positions"]:

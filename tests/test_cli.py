@@ -17,13 +17,23 @@ from ptyx_mcq.cli import main
 from ptyx_mcq.parameters import CELL_SIZE_IN_CM
 from ptyx_mcq.scan.color import Color, RGB
 from ptyx_mcq.scan.tools import round
-from ptyx_mcq.tools.config_parser import Configuration, is_answer_correct
+from ptyx_mcq.tools.config_parser import (
+    Configuration,
+    is_answer_correct,
+    OriginalQuestionNumber,
+    OriginalAnswerNumber,
+    StudentId,
+    StudentName,
+)
 
 DPI = 200
 PX_PER_CM = DPI / 2.54
 PX_PER_MM = PX_PER_CM / 10
 CELL_SIZE_IN_PX = CELL_SIZE_IN_CM * PX_PER_CM
-STUDENTS = {"12345678": "Jean Dupond", "34567890": "Martin De La Tour"}
+STUDENTS = {
+    StudentId("12345678"): StudentName("Jean Dupond"),
+    StudentId("34567890"): StudentName("Martin De La Tour"),
+}
 MAX_ID_LEN = max(len(student_id) for student_id in STUDENTS)
 
 
@@ -82,7 +92,9 @@ def simulate_answer(pics: list, config: Configuration):
             draw = ImageDraw.Draw(pic)
             write_student_id(draw, students_ids[i], config)
             for q_a, pos in page_data.items():
-                q, a = map(int, q_a[1:].split("-"))
+                q_str, a_str = q_a[1:].split("-")
+                q = OriginalQuestionNumber(int(q_str))
+                a = OriginalAnswerNumber(int(a_str))
                 if is_answer_correct(q, a, config, doc_id):
                     _fill_checkbox(draw, pos, CELL_SIZE_IN_PX)
     return pics[: 2 * len(students_ids)]

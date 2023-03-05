@@ -32,7 +32,13 @@ from ptyx.printers import sympy2latex
 from ptyx.latex_generator import LatexGenerator
 from ptyx.syntax_tree import Node, Tag
 
-from ptyx_mcq.tools.config_parser import Configuration
+from ptyx_mcq.tools.config_parser import (
+    Configuration,
+    OriginalQuestionNumber,
+    OriginalAnswerNumber,
+    StudentId,
+    StudentName,
+)
 
 from .header import (
     packages_and_macros,
@@ -83,11 +89,11 @@ def _analyze_IDS(ids: List[str]) -> Tuple[int, int, List[Tuple[str, ...]]]:
 
 
 class IdFormat(TypedDict):
-    students_ids: dict[str, str]
+    students_ids: dict[StudentId, StudentName]
     id_format: tuple[int, int, list[tuple[str, ...]]]
 
 
-def _detect_ID_format(ids: Dict[str, str], id_format: str) -> IdFormat:
+def _detect_ID_format(ids: Dict[StudentId, StudentName], id_format: str) -> IdFormat:
     """Return IDs and ID format data.
 
     `ids` is a dictionary who contains students names and ids.
@@ -262,7 +268,7 @@ class MCQLatexGenerator(LatexGenerator):
 
         Tag usage: #VERSION{num}
         """
-        n = int(node.arg(0))
+        n = OriginalQuestionNumber(int(node.arg(0)))
         self.mcq_question_number = n
         # This list is used to test that the same answer is not proposed twice.
         self.mcq_answers: List[str] = []
@@ -314,7 +320,7 @@ class MCQLatexGenerator(LatexGenerator):
         Tag usage: #NEW_VERSION{num}{is_answer_correct}
         """
 
-        k = int(node.arg(0))
+        k = OriginalAnswerNumber(int(node.arg(0)))
         is_correct: Optional[bool]
         match arg1 := node.arg(1).strip():
             case "True":
@@ -374,7 +380,9 @@ class MCQLatexGenerator(LatexGenerator):
         self._parse_children(node.children[2:], function=functions)
         self._close_answer()
 
-    def _open_answer(self, n: int, k: int, is_correct: Optional[bool]) -> None:
+    def _open_answer(
+        self, n: OriginalQuestionNumber, k: OriginalAnswerNumber, is_correct: Optional[bool]
+    ) -> None:
         # `n` is question number *before* shuffling
         # `k` is answer number *before* shuffling
         # When the pdf with solutions will be generated, incorrect answers
@@ -436,7 +444,7 @@ class MCQLatexGenerator(LatexGenerator):
         self.write("\n\n" r"\begin{minipage}{\textwidth}" "\n")
         n = self.mcq_question_number
         for k, ans in enumerate(answers, 1):
-            self._open_answer(n, k, ans in correct_answers)
+            self._open_answer(n, OriginalAnswerNumber(k), ans in correct_answers)
             self.write(ans)
             self._close_answer()
         self.write("\n\n\\end{minipage}")

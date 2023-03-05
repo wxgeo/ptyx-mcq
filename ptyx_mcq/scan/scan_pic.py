@@ -6,7 +6,7 @@ from typing import Dict, Set, Tuple, Union
 from PIL import Image
 from numpy import array, flipud, fliplr, dot, amin, amax, zeros, ndarray  # , percentile, clip
 
-from .document_data import PicData
+from .document_data import PicData, Page
 from .square_detection import (
     test_square_color,
     find_black_square,
@@ -29,6 +29,14 @@ from ..tools.config_parser import (
     is_answer_correct,
     Configuration,
     StudentIdFormat,
+    ApparentQuestionNumber,
+    ApparentAnswerNumber,
+    OriginalQuestionNumber,
+    OriginalAnswerNumber,
+    DocumentId,
+    StudentName,
+    StudentId,
+    OriginalQuestionAnswersDict,
 )
 
 ANSI_RESET = "\u001B[0m"
@@ -617,7 +625,7 @@ def edit_answers(m: ndarray, boxes, answered, config, doc_id, xy2ij, cell_size) 
             if ans == "0":
                 break
             try:
-                q0 = int(ans)
+                q0 = ApparentQuestionNumber(int(ans))
             except ValueError:
                 continue
             q, _ = apparent2real(q0, None, config, doc_id)
@@ -631,7 +639,7 @@ def edit_answers(m: ndarray, boxes, answered, config, doc_id, xy2ij, cell_size) 
             checked = answered[q]
             try:
                 for val in ans.split():
-                    op, a0 = val[0], int(val[1:])
+                    op, a0 = val[0], ApparentAnswerNumber(int(val[1:]))
                     q, a = apparent2real(q0, a0, config, doc_id)
                     if op == "+":
                         if a in checked:
@@ -651,14 +659,16 @@ def edit_answers(m: ndarray, boxes, answered, config, doc_id, xy2ij, cell_size) 
             answered[q] = checked
             process.terminate()
             # Color answers
-            valid_answers: Dict[int, Set[int]] = {}
+            valid_answers: Dict[OriginalQuestionNumber, Set[OriginalAnswerNumber]] = {}
             for key, pos in boxes.items():
                 # ~ should_have_answered = set() # for debugging only.
                 i, j = xy2ij(*pos)
                 i, j = adjust_checkbox(m, i, j, cell_size)
                 # `q` and `a` are real questions and answers numbers, that is,
                 # questions and answers numbers before shuffling.
-                q, a = (int(_) for _ in key[1:].split("-"))
+                q_str, a_str = key[1:].split("-")
+                q = OriginalQuestionNumber(int(q_str))
+                a = OriginalAnswerNumber(int(a_str))
                 valid_answers.setdefault(q, set()).add(a)
                 if a in answered[q]:
                     color2debug(
@@ -677,7 +687,7 @@ def edit_answers(m: ndarray, boxes, answered, config, doc_id, xy2ij, cell_size) 
             process = color2debug(m, wait=False)
 
 
-def read_doc_id_and_page(m: ndarray, pos: Pixel, f_square_size: float) -> tuple[int, int]:
+def read_doc_id_and_page(m: ndarray, pos: Pixel, f_square_size: float) -> tuple[DocumentId, Page]:
     """Read the document ID and the page number.
 
     The document ID is encoded using a homemade barcode.
@@ -716,12 +726,16 @@ def read_doc_id_and_page(m: ndarray, pos: Pixel, f_square_size: float) -> tuple[
     doc_id = doc_id // 256
     print("Test ID read: %s" % doc_id)
 
-    return doc_id, page
+    return DocumentId(doc_id), Page(page)
 
 
 def read_student_id_and_name(
-    m: ndarray, students_ids: dict[str, str], pos: Pixel, id_format: StudentIdFormat, f_cell_size: float
-) -> tuple[str, str]:
+    m: ndarray,
+    students_ids: dict[StudentId, StudentName],
+    pos: Pixel,
+    id_format: StudentIdFormat,
+    f_cell_size: float,
+) -> tuple[StudentId, StudentName]:
     student_ID = ""
     student_name = ""
     cell_size = round(f_cell_size)
@@ -785,15 +799,15 @@ def read_student_id_and_name(
                 student_ID += digit
     if student_ID in students_ids:
         print("Student ID:", student_ID)
-        student_name = students_ids[student_ID]
+        student_name = students_ids[StudentId(student_ID)]
     else:
         print(f"ID list: {students_ids!r}")
         print(f"Warning: invalid student id {student_ID!r} !")
         # ~ color2debug(m)
-    return student_ID, student_name
+    return StudentId(student_ID), StudentName(student_name)
 
 
-def read_student_name(m: ndarray, students: list[str], TOP: int, f_square_size: float) -> str:
+def read_student_name(m: ndarray, students: list[StudentName], TOP: int, f_square_size: float) -> StudentName:
     # TODO: rewrite this function.
     # Use .pos file to retrieve exact position of first square
     # (just like in next section),
@@ -801,7 +815,7 @@ def read_student_name(m: ndarray, students: list[str], TOP: int, f_square_size: 
     # Exclude the codebar and top squares from the search area.
     # If rotation correction was well done, we should have i1 ≃ i2 ≃ i3.
     # Anyway, it's safer to take the max of them.
-    student_name = ""
+    student_name = StudentName("")
     n_students = len(students)
     square_size = round(f_square_size)
     vpos = TOP + 2 * square_size
@@ -931,8 +945,8 @@ def scan_picture(
     #                  IDENTIFY STUDENT (OPTIONAL)
     # ------------------------------------------------------------------
 
-    student_name = ""
-    student_ID = ""
+    student_name = StudentName("")
+    student_ID = StudentId("")
 
     if page == 1:
         # Read student name directly
@@ -960,9 +974,9 @@ def scan_picture(
     #                      READ ANSWERS
     # ------------------------------------------------------------------
 
-    answered: Dict[int, Set[int]] = {}
-    positions: Dict[Tuple[int, int], Tuple[int, int]] = {}
-    displayed_questions_numbers: Dict[int, int] = {}
+    answered: OriginalQuestionAnswersDict = {}
+    positions: Dict[Tuple[OriginalQuestionNumber, OriginalAnswerNumber], Tuple[int, int]] = {}
+    displayed_questions_numbers: Dict[OriginalQuestionNumber, ApparentQuestionNumber] = {}
     pic_data: PicData = {
         # ID of the test:
         "ID": doc_id,  # int
@@ -1018,7 +1032,9 @@ def scan_picture(
         i, j = adjust_checkbox(m, i, j, cell_size)
         # `q` and `a` are real questions and answers numbers, that is,
         # questions and answers numbers before shuffling.
-        q, a = map(int, key[1:].split("-"))
+        q_str, a_str = key[1:].split("-")
+        q = OriginalQuestionNumber(int(q_str))
+        a = OriginalAnswerNumber(int(a_str))
         # `q0` and `a0` keep track of apparent question and answers numbers,
         # which will be used on output to make debugging easier.
         q0, a0 = real2apparent(q, a, config, doc_id)

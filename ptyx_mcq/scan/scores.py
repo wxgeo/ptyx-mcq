@@ -1,12 +1,14 @@
 from dataclasses import dataclass
 from math import nan, isnan
 
+from ptyx_mcq.tools.config_parser import OriginalAnswerNumber
+
 
 @dataclass
 class AnswersData:
-    checked: set[int]
-    correct: set[int]
-    all: set[int]
+    checked: set[OriginalAnswerNumber]
+    correct: set[OriginalAnswerNumber]
+    all: set[OriginalAnswerNumber]
 
     @property
     def unchecked(self):

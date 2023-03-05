@@ -1,17 +1,30 @@
+import typing
 from dataclasses import dataclass, asdict, field
 import json
 from pathlib import Path
-from typing import Any, TypeVar, TypedDict, Literal
+from typing import Any, TypeVar, TypedDict, Literal, NewType
 
 T = TypeVar("T")
 
+DocumentId = NewType("DocumentId", int)
+StudentId = NewType("StudentId", str)
+StudentName = NewType("StudentName", str)
+
+OriginalQuestionNumber = NewType("OriginalQuestionNumber", int)
+ApparentQuestionNumber = NewType("ApparentQuestionNumber", int)
+QuestionNumber = OriginalQuestionNumber | ApparentQuestionNumber
+
+OriginalAnswerNumber = NewType("OriginalAnswerNumber", int)
+ApparentAnswerNumber = NewType("ApparentAnswerNumber", int)
+AnswerNumber = OriginalAnswerNumber | ApparentAnswerNumber
+
 
 class OrderingConfiguration(TypedDict):
-    questions: list[int]
-    answers: dict[int, list[tuple[int, bool | None]]]
+    questions: list[OriginalQuestionNumber]
+    answers: dict[OriginalQuestionNumber, list[tuple[OriginalAnswerNumber, bool | None]]]
 
 
-QuestionNumberOrDefault = Literal["default"] | int
+QuestionNumberOrDefault = Literal["default"] | OriginalQuestionNumber
 
 StudentIdFormat = tuple[int, int, list[tuple[str, ...]]]
 
@@ -53,12 +66,12 @@ class Configuration:
     floor: dict[QuestionNumberOrDefault, float | None]  # = field(default_factory=lambda: {"default": None})
     ceil: dict[QuestionNumberOrDefault, float | None]  # = field(default_factory=dict)
     id_format: StudentIdFormat | None = None
-    students_ids: dict[str, str] = field(default_factory=dict)
-    students_list: list[str] = field(default_factory=list)
-    ordering: dict[int, OrderingConfiguration] = field(default_factory=dict)
+    students_ids: dict[StudentId, StudentName] = field(default_factory=dict)
+    students_list: list[StudentName] = field(default_factory=list)
+    ordering: dict[DocumentId, OrderingConfiguration] = field(default_factory=dict)
     # ordering: {NUM: {'questions': [2,1,3...],
     #                  'answers': {1: [(2, True), (1, False), (3, True)...], ...}}, ...}
-    boxes: dict[int, dict[int, dict[str, tuple[float, float]]]] = field(default_factory=dict)
+    boxes: dict[DocumentId, dict[int, dict[str, tuple[float, float]]]] = field(default_factory=dict)
     # boxes: {NUM: {'tag': 'p4, (23.456, 34.667)', ...}, ...}
     id_table_pos: tuple[float, float] | None = None
     max_score: float | None = None
@@ -128,15 +141,18 @@ def decodejs(js: str) -> dict[str, Any]:
     for key in d:
         new_key = key.strip("-").lower()
         assert new_key in Configuration.__annotations__
-        new_d[new_key] = d[key]  # type: ignore
+        new_d[new_key] = d[key]
     # Students ID must be kept as strings.
     new_d["students_ids"] = {str(key): val for key, val in new_d["students_ids"].items()}
     return new_d
 
 
 def real2apparent(
-    original_q_num: int, original_a_num: int | None, config: Configuration, doc_id: int
-) -> tuple[int, int | None]:
+    original_q_num: OriginalQuestionNumber,
+    original_a_num: OriginalAnswerNumber | None,
+    config: Configuration,
+    doc_id: DocumentId,
+) -> tuple[ApparentQuestionNumber, ApparentAnswerNumber | None]:
     """Return apparent question number and answer number.
 
     If `a` is None, return only question number.
@@ -150,18 +166,21 @@ def real2apparent(
     answers = config.ordering[doc_id]["answers"]
     # Apparent question number (ie. after shuffling).
     # Attention, list index 0 corresponds to question number 1.
-    pdf_q_num = questions.index(original_q_num) + 1
+    pdf_q_num = ApparentQuestionNumber(questions.index(original_q_num) + 1)
     if original_a_num is None:
         return pdf_q_num, None
     for pdf_a_num, (ans_num, is_correct) in enumerate(answers[original_q_num], start=1):
         if ans_num == original_a_num:
-            return pdf_q_num, pdf_a_num
+            return pdf_q_num, ApparentAnswerNumber(pdf_a_num)
     raise IndexError(f"Answer {original_a_num} not found for question {original_q_num}.")
 
 
 def apparent2real(
-    pdf_q_num: int, pdf_a_num: int | None, config: Configuration, doc_id: int
-) -> tuple[int, int | None]:
+    pdf_q_num: ApparentQuestionNumber,
+    pdf_a_num: ApparentAnswerNumber | None,
+    config: Configuration,
+    doc_id: DocumentId,
+) -> tuple[OriginalQuestionNumber, OriginalAnswerNumber | None]:
     """Return real question number and answer number.
 
     If `a` is None, return only question number.
@@ -178,12 +197,38 @@ def apparent2real(
     return original_q_num, original_a_num
 
 
+@typing.overload
 def is_answer_correct(
-    q_num: int, a_num: int, config: Configuration, doc_id: int, use_original_num: bool = True
+    q_num: OriginalQuestionNumber,
+    a_num: OriginalAnswerNumber,
+    config: Configuration,
+    doc_id: DocumentId,
+    use_original_num: Literal[True] = True,
+):
+    """Function signature when `use_original_num` is `True`."""
+
+
+@typing.overload
+def is_answer_correct(
+    q_num: ApparentQuestionNumber,
+    a_num: ApparentAnswerNumber,
+    config: Configuration,
+    doc_id: DocumentId,
+    use_original_num: Literal[False],
+):
+    """Function signature when `use_original_num` is `False`."""
+
+
+def is_answer_correct(
+    q_num: QuestionNumber,
+    a_num: AnswerNumber,
+    config: Configuration,
+    doc_id: DocumentId,
+    use_original_num: bool = True,
 ) -> bool | None:
     if use_original_num:
         # q_num and a_num are question and answer number *before* shuffling questions.
-        for original_a_num, is_correct in config.ordering[doc_id]["answers"][q_num]:
+        for original_a_num, is_correct in config.ordering[doc_id]["answers"][OriginalQuestionNumber(q_num)]:
             if original_a_num == a_num:
                 return is_correct
         raise IndexError(f"Answer {a_num} not found.")
@@ -193,9 +238,28 @@ def is_answer_correct(
         return config.ordering[doc_id]["answers"][original_q_num][a_num - 1][1]
 
 
+OriginalQuestionAnswersDict = dict[OriginalQuestionNumber, set[OriginalAnswerNumber]]
+ApparentQuestionAnswersDict = dict[ApparentQuestionNumber, set[ApparentAnswerNumber]]
+QuestionToAnswerDict = OriginalQuestionAnswersDict | ApparentQuestionAnswersDict
+
+
+@typing.overload
+def get_answers_with_status(
+    config: Configuration, *, correct: bool | None, use_original_num: Literal[True] = True
+) -> dict[DocumentId, OriginalQuestionAnswersDict]:
+    """Function signature when `use_original_num` is `True`."""
+
+
+@typing.overload
+def get_answers_with_status(
+    config: Configuration, *, correct: bool | None, use_original_num: Literal[False]
+) -> dict[DocumentId, ApparentQuestionAnswersDict]:
+    """Function signature when `use_original_num` is `False`."""
+
+
 def get_answers_with_status(
     config: Configuration, *, correct: bool | None, use_original_num: bool = True
-) -> dict[int, dict[int, set[int]]]:
+) -> dict[DocumentId, OriginalQuestionAnswersDict] | dict[DocumentId, ApparentQuestionAnswersDict]:
     """Return a dict containing the set of the correct answers for each question for each document ID.
 
     By default, questions and answers are numbered following their original order of definition
@@ -204,9 +268,34 @@ def get_answers_with_status(
     If `use_original_num` is set to `False`, questions numbers and correct answers numbers returned
     will be apparent ones (i.e. the number that appear in the document, after shuffling).
     """
-    correct_answers_by_id = {}
+    if use_original_num:
+        return _get_original_num_answers_with_status(config, correct=correct)
+    else:
+        return _get_apparent_num_answers_with_status(config, correct=correct)
+
+
+def _get_original_num_answers_with_status(
+    config: Configuration, *, correct: bool | None
+) -> dict[DocumentId, OriginalQuestionAnswersDict]:
+    correct_answers_by_id: dict[DocumentId, OriginalQuestionAnswersDict] = {}
     for doc_id in config.ordering:
-        correct_answers = {}
+        correct_answers: OriginalQuestionAnswersDict = {}
+        questions = config.ordering[doc_id]["questions"]
+        answers = config.ordering[doc_id]["answers"]
+        for q in questions:
+            # `q` is the 'real' question number, i.e. the question number before shuffling.
+            # `a` is the 'real' answer number, i.e. the answer number before shuffling.
+            correct_answers[q] = {a for (a, _is_correct) in answers[q] if _is_correct == correct}
+        correct_answers_by_id[doc_id] = correct_answers
+    return correct_answers_by_id
+
+
+def _get_apparent_num_answers_with_status(
+    config: Configuration, *, correct: bool | None
+) -> dict[DocumentId, ApparentQuestionAnswersDict]:
+    correct_answers_by_id: dict[DocumentId, ApparentQuestionAnswersDict] = {}
+    for doc_id in config.ordering:
+        correct_answers: ApparentQuestionAnswersDict = {}
         questions = config.ordering[doc_id]["questions"]
         answers = config.ordering[doc_id]["answers"]
         for i, q in enumerate(questions, start=1):
@@ -214,11 +303,10 @@ def get_answers_with_status(
             # `q` is the 'real' question number, i.e. the question number before shuffling.
             # `j` is the 'apparent' answer number.
             # `a` is the 'real' answer number, i.e. the answer number before shuffling.
-            if use_original_num:
-                correct_answers[q] = {a for (a, _is_correct) in answers[q] if _is_correct == correct}
-            else:
-                correct_answers[i] = {
-                    j for (j, (a, _is_correct)) in enumerate(answers[q], start=1) if _is_correct == correct
-                }
+            correct_answers[ApparentQuestionNumber(i)] = {
+                ApparentAnswerNumber(j)
+                for (j, (a, _is_correct)) in enumerate(answers[q], start=1)
+                if _is_correct == correct
+            }
         correct_answers_by_id[doc_id] = correct_answers
     return correct_answers_by_id
