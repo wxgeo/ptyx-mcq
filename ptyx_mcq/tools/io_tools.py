@@ -31,7 +31,7 @@ def print_info(msg: str) -> None:
     custom_print(msg, "blue", "Info", bold=False)
 
 
-def get_file_or_sysexit(path: Path, *, extension) -> Path:
+def get_file_or_sysexit(path: Path, *, extension: str) -> Path:
     """Get the path of the ptyx file corresponding to the given `path`.
 
     If the file is not found, exit calling `sys.exit(1)`.

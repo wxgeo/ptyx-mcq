@@ -29,6 +29,10 @@ QuestionNumberOrDefault = Literal["default"] | OriginalQuestionNumber
 StudentIdFormat = tuple[int, int, list[tuple[str, ...]]]
 
 
+class InvalidConfigurationKey(KeyError):
+    """Error raised when an unknown key appears in a configuration file."""
+
+
 class CustomJSONEncoder(json.JSONEncoder):
     def default(self, obj: Any) -> Any:
         # Save sets as tuples.
@@ -93,7 +97,14 @@ class Configuration:
         """Load `path` configuration file (json) and return a dict."""
         with open(path) as f:
             js = f.read()
-        return Configuration(**decodejs(js))
+        try:
+            return Configuration(**decodejs(js))
+        except InvalidConfigurationKey as e:
+            raise InvalidConfigurationKey(
+                f"Error when loading '{path}' configuration file. {e.args[0]}\n"
+                "The configuration file may be old, and keys must then be updated manually.\n"
+                f"Valid keys are: {', '.join(Configuration.__annotations__)}."
+            )
 
 
 def encode2js(o, formatter=(lambda s: s), _level=0) -> str:
@@ -140,7 +151,8 @@ def decodejs(js: str) -> dict[str, Any]:
     # Strip '-' from keys and convert them to lower case.
     for key in d:
         new_key = key.strip("-").lower()
-        assert new_key in Configuration.__annotations__
+        if new_key not in Configuration.__annotations__:
+            raise InvalidConfigurationKey(f"Unknown key: {new_key!r}.")
         new_d[new_key] = d[key]
     # Students ID must be kept as strings.
     new_d["students_ids"] = {str(key): val for key, val in new_d["students_ids"].items()}

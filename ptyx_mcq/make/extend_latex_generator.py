@@ -149,6 +149,10 @@ class SameAnswerError(RuntimeError):
 class MCQLatexGenerator(LatexGenerator):
     """Extension of LatexGenerator handling new tags."""
 
+    def reset(self):
+        super().reset()
+        self._mcq_reset_cache()
+
     def _test_singularity_and_append(self, code: str, answers_list: list) -> str:
         code = code.strip()
         if code in answers_list:

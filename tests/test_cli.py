@@ -100,6 +100,28 @@ def simulate_answer(pics: list, config: Configuration):
     return pics[: 2 * len(students_ids)]
 
 
+def write_students_id_to_csv(path: Path, students: dict[StudentId, StudentName]) -> Path:
+    with open(csv_path := path / "students.csv", "w", newline="") as csvfile:
+        csv.writer(csvfile).writerows(students.items())
+    return csv_path
+
+
+def read_students_scores(path: Path) -> dict[StudentName, str]:
+    students: dict[StudentName, str] = {}
+    # TODO : store scores outside of .scan folder, in a RESULTS folder !
+    with open(score_path := path / ".scan/scores.csv") as csvfile:
+        reader = csv.reader(csvfile)
+        for row in reader:
+            match row:
+                case ["Name", "Score"]:
+                    pass  # Header row
+                case [name, score]:
+                    students[StudentName(name)] = score
+                case _:
+                    raise ValueError(f"Invalid format in '{score_path}': {row!r}.")
+    return students
+
+
 @pytest.mark.slow
 def test_many_docs():
     NUMBER_OF_DOCUMENTS = 40
@@ -131,8 +153,7 @@ def test_cli() -> None:
         print(_parent)
         print(10 * "=")
         parent = Path(_parent) if USE_TMP_DIR else Path("/tmp")
-        with open(parent / "students.csv", "w", newline="") as csvfile:
-            csv.writer(csvfile).writerows(STUDENTS.items())
+        write_students_id_to_csv(parent, STUDENTS)
 
         path = parent / "mcq"
 
@@ -172,15 +193,45 @@ def test_cli() -> None:
         images[0].save(scan_path / "simulate-scan.pdf", save_all=True, append_images=images[1:])
         main(["scan", str(path)])
 
-        students: set[str] = set()
         # TODO : store scores outside of .scan folder, in a RESULTS folder !
-        with open(path / ".scan/scores.csv") as csvfile:
-            reader = csv.reader(csvfile)
-            for row in reader:
-                if row[0] != "Name":
-                    assert abs(float(row[1]) - 20) < 1e-10, repr(row)  # Maximal score
-                    students.add(row[0])
-        assert students == set(STUDENTS.values()), repr(students)
+        students_scores: dict[StudentName, str] = read_students_scores(path)
+        for score in students_scores.values():
+            assert abs(float(score) - 20) < 1e-10, repr(score)  # Maximal score
+        assert set(students_scores) == set(STUDENTS.values()), repr(students_scores)
+
+        # -----------------
+        # Test `mcq update`
+        # -----------------
+        STUDENTS[StudentId("12345678")] = StudentName(new_student_name := "Julien Durand")
+        csv_path = write_students_id_to_csv(parent, STUDENTS)
+        with open(csv_path) as f:
+            assert new_student_name in f.read()
+        # Invert correct and incorrect answers for testing update.
+        with open(path / "questions/question1.txt", encoding="utf8") as f:
+            file_content = f.read()
+        with open(path / "questions/question1.txt", "w", encoding="utf8") as f:
+            f.write(file_content.replace("+", "§").replace("-", "+").replace("§", "-"))
+
+        main(["update", str(path)])
+        config = Configuration.load(path / "new.ptyx.mcq.config.json")
+        assert new_student_name in config.students_ids.values(), repr(path / "new.ptyx.mcq.config.json")
+        main(["scan", str(path)])
+        old_students_scores = students_scores.copy()
+        students_scores = read_students_scores(path)
+        # Names are not updated yet, since they are stored in `.scandata` cache files.
+        # Updating names requires clearing cache
+        for student in students_scores:
+            if student != new_student_name:
+                assert float(students_scores[student]) < float(old_students_scores[student])
+            else:
+                # TODO: add configuration option for default value.
+                assert students_scores[student] == "ABI"
+        # Names are  Updating names requires clearing cache,
+        # through `--reset` option.
+        main(["scan", "--reset", str(path)])
+        students_scores = read_students_scores(path)
+        assert set(students_scores) == set(STUDENTS.values()), repr(students_scores)
+
         # ----------------
         # Test `mcq clear`
         # ----------------

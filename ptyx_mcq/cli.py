@@ -13,10 +13,12 @@ from os import unlink
 from pathlib import Path
 from typing import Optional
 
+from ptyx.latex_generator import compiler
+
 from ptyx_mcq.tools.config_parser import Configuration
 from ptyx_mcq.tools.io_tools import print_success, print_error, get_file_or_sysexit
 
-from .make.make import make
+from .make.make import make, parse_ptyx_file
 from .scan.scan import scan
 
 
@@ -102,6 +104,11 @@ def main(args: Optional[list] = None) -> None:
     new_parser.add_argument("path", nargs="?", metavar="PATH", type=Path, default=".")
     new_parser.set_defaults(func=clear)
 
+    # create the parser for the "update" command
+    new_parser = add_parser("update", help="Update mcq configuration file.")
+    new_parser.add_argument("path", nargs="?", metavar="PATH", type=Path, default=".")
+    new_parser.set_defaults(func=update)
+
     parsed_args = parser.parse_args(args)
     try:
         # Launch the function corresponding to the given subcommand.
@@ -156,13 +163,47 @@ def clear(path: Path) -> None:
 
 
 def update(path: Path) -> None:
-    # TODO: implement.
-    ptyx_file = get_file_or_sysexit(path, extension=".ptyx")
     config_file = get_file_or_sysexit(path, extension=".ptyx.mcq.config.json")
     config = Configuration.load(config_file)
-    config.ordering
-    config.dump(config_file.with_suffix(".ptyx.mcq.config.json"))
-    raise NotImplementedError
+    parse_ptyx_file(path)
+    # Compile ptyx file to LaTeX, to update information, but without compiling
+    # LaTeX, which is slow (don't generate pdf files again).
+    for doc_id in config.ordering:
+        compiler.get_latex(PTYX_NUM=doc_id)
+    # Update configuration
+    data: Configuration = compiler.latex_generator.mcq_data
+    # Test compatibility of `data` with `config`:
+    # The number of questions and their ordering should not have change,
+    # the same holds for the answers (but their labelling as correct
+    # or incorrect is allowed to change).
+    if not same_questions_and_answers_numbers(data, config):
+        cmd = f"mcq make {path}"
+        sep = len(cmd) * "-"
+        cmd = f"{sep}\n{cmd}\n{sep}\n"
+        print_error("Questions or answers changed.\n" "You must run a full compilation:\n" + cmd)
+
+    # Get back the positions of checkboxes from last full compilation.
+    data.id_table_pos = config.id_table_pos
+    data.boxes = config.boxes
+    data.dump(config_file.parent / (config_file.name.split(".")[0] + ".ptyx.mcq.config.json"))
+    print_success("Configuration file was successfully updated.")
+
+
+def same_questions_and_answers_numbers(config1: Configuration, config2: Configuration) -> bool:
+    if list(config1.ordering) != list(config2.ordering):
+        return False
+    for doc_id in config1.ordering:
+        ordering1 = config1.ordering[doc_id]
+        ordering2 = config2.ordering[doc_id]
+        if ordering1["questions"] != ordering2["questions"]:
+            return False
+        if list(ordering1["answers"]) != list(ordering2["answers"]):
+            return False
+
+        for q in ordering1["answers"]:
+            if [a for a, _ in ordering1["answers"][q]] != [a for a, _ in ordering2["answers"][q]]:
+                return False
+    return True
 
 
 if __name__ == "__main__":

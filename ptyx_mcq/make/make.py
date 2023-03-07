@@ -74,17 +74,7 @@ def _make(
     If `only_correction` is `True`, only generate correction (useful for fast testing).
     """
     assert isinstance(num, int)
-    ptyx_filename = get_file_or_sysexit(path, extension=".ptyx")
-    # Read pTyX file.
-    print(f"Reading {ptyx_filename}...")
-    compiler.read_file(ptyx_filename)
-    # Parse #INCLUDE tags, load extensions if needed, read seed.
-    compiler.preparse()
-
-    # Generate syntax tree.
-    # The syntax tree is generated only once, and will then be used
-    # for all the following compilations.
-    compiler.generate_syntax_tree()
+    ptyx_filename = parse_ptyx_file(path)
 
     # Compile and generate output files (tex or pdf)
     output_name, nums = make_files(
@@ -122,3 +112,18 @@ def _make(
             context={"MCQ_KEEP_ALL_VERSIONS": True, "PTYX_WITH_ANSWERS": True},
             quiet=quiet,
         )
+
+
+def parse_ptyx_file(path):
+    ptyx_filename = get_file_or_sysexit(path, extension=".ptyx")
+    # Read pTyX file.
+    print(f"Reading {ptyx_filename}...")
+    compiler.reset()
+    compiler.read_file(ptyx_filename)
+    # Parse #INCLUDE tags, load extensions if needed, read seed.
+    compiler.preparse()
+    # Generate syntax tree.
+    # The syntax tree is generated only once, and will then be used
+    # for all the following compilations.
+    compiler.generate_syntax_tree()
+    return ptyx_filename
