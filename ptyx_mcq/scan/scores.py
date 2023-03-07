@@ -30,58 +30,90 @@ class ScoreData:
             self.incorrect = -self.correct
 
 
-def some(answers: AnswersData, score: ScoreData) -> float:
-    """Return the maximal score if any of the correct answers and no incorrect answer is checked.
+class ScoresStrategies:
+    @classmethod
+    def get_modes_list(cls) -> list[str]:
+        assert hasattr(cls, current_func := "get_modes_list"), "Please update function name here."
+        return [name for name in vars(cls) if not name.startswith("_") and name != current_func]
 
-    If an incorrect answer is checked, return minimal score."""
-    # Answer is valid if and only if :
-    # (proposed ≠ ∅ and proposed ⊆ correct) or (proposed = correct = ∅)
-    ok = (answers.checked and answers.checked.issubset(answers.correct)) or (
-        not answers.checked and not answers.correct
-    )
-    if ok:
-        return score.correct
-    elif not answers.checked:
-        return score.skipped
-    else:
-        return score.incorrect
+    @staticmethod
+    def some(answers: AnswersData, score: ScoreData) -> float:
+        """Return the maximal score if any of the correct answers and no incorrect answer is checked.
+
+        If an incorrect answer is checked, return minimal score."""
+        # Answer is valid if and only if :
+        # (proposed ≠ ∅ and proposed ⊆ correct) or (proposed = correct = ∅)
+        ok = (answers.checked and answers.checked.issubset(answers.correct)) or (
+            not answers.checked and not answers.correct
+        )
+        if ok:
+            return score.correct
+        elif not answers.checked:
+            return score.skipped
+        else:
+            return score.incorrect
+
+    @staticmethod
+    def all(answers: AnswersData, score: ScoreData) -> float:
+        """Return the maximal score if all the correct answers are checked, else give the minimal score."""
+        ok = answers.checked == answers.correct
+        if ok:
+            return score.correct
+        elif not answers.checked:
+            return score.skipped
+        else:
+            return score.incorrect
+
+    @staticmethod
+    def proportional(answers: AnswersData, score: ScoreData) -> float:
+        """Returned score is a pondered mean of minimal and maximal scores.
+
+        Minimal and maximal scores are defined respectively in the header of the ptyx file
+        with `correct` and `incorrect` keywords.
+
+        The score returned is (1 - k) * minimal_score + k * maximal_score,
+        where k is the proportion of correct answers (i.e. boxes left blank when proposed answer
+        was incorrect and boxes checked when proposed answer was correct).
+        """
+        count_ok = len(answers.checked & answers.correct) + len(answers.unchecked & answers.incorrect)
+        proportion = count_ok / len(answers.all)
+        return round(score.incorrect + proportion * (score.correct - score.incorrect), 2)
+
+    @staticmethod
+    def partial_answers_linear(answers: AnswersData, score: ScoreData) -> float:
+        """Return 0 if an incorrect answer was checked, else the proportion of correct answers"""
+        if answers.checked & answers.incorrect:
+            return score.incorrect
+        else:
+            return round(_checked_among_correct_proportion(answers) * score.correct, 2)
+
+    @staticmethod
+    def partial_answers_quadratic(answers: AnswersData, score: ScoreData) -> float:
+        if answers.checked & answers.incorrect:
+            return score.incorrect
+        else:
+            return round(_checked_among_correct_proportion(answers) ** 2 * score.correct, 2)
+
+    @staticmethod
+    def correct_minus_incorrect_linear(answers: AnswersData, score: ScoreData) -> float:
+        ratio = max(
+            0.0,
+            (len(answers.checked & answers.correct) - len(answers.checked & answers.incorrect))
+            / len(answers.correct),
+        )
+        assert 0 <= ratio <= 1
+        return round(ratio * score.correct, 2)
 
 
-def all(answers: AnswersData, score: ScoreData) -> float:
-    """Return the maximal score if all the correct answers are checked, else give the minimal score."""
-    ok = answers.checked == answers.correct
-    if ok:
-        return score.correct
-    elif not answers.checked:
-        return score.skipped
-    else:
-        return score.incorrect
-
-
-def proportional(answers: AnswersData, score: ScoreData) -> float:
-    """Returned score is a pondered mean of minimal and maximal scores.
-
-    Minimal and maximal scores are defined respectively in the header of the ptyx file
-    with `correct` and `incorrect` keywords.
-
-    The score returned is (1 - k) * minimal_score + k * maximal_score,
-    where k is the proportion of correct answers (i.e. boxes left blank when proposed answer
-    was incorrect and boxes checked when proposed answer was correct).
-    """
-    count_ok = len(answers.checked & answers.correct) + len(answers.unchecked & answers.incorrect)
-    proportion = count_ok / len(answers.all)
-    return round(score.incorrect + proportion * (score.correct - score.incorrect), 2)
-
-
-# def floored_proportional(answers: AnswersData, score: ScoreData) -> float:
-#     return max(0, proportional(answers, score))
-
-
-# def floored_half_proportional(answers: AnswersData, score: ScoreData) -> float:
-#     if (answers.checked == answers.correct):
-#         return score.correct
-#     else:
-#         return 0.5*floored_proportional(answers, score)
+    @staticmethod
+    def correct_minus_incorrect_quadratic(answers: AnswersData, score: ScoreData) -> float:
+        ratio = max(
+            0.0,
+            (len(answers.checked & answers.correct) - len(answers.checked & answers.incorrect))
+            / len(answers.correct),
+        )
+        assert 0 <= ratio <= 1
+        return round(ratio**2 * score.correct, 2)
 
 
 def _checked_among_correct_proportion(answers: AnswersData) -> float:
@@ -94,23 +126,3 @@ def _checked_among_correct_proportion(answers: AnswersData) -> float:
     return len(answers.checked & answers.correct) / len(answers.correct)
 
 
-def partial_answers_linear(answers: AnswersData, score: ScoreData) -> float:
-    """Return 0 if an incorrect answer was checked, else the proportion of correct answers"""
-    if answers.checked & answers.incorrect:
-        return score.incorrect
-    else:
-        return round(_checked_among_correct_proportion(answers) * score.correct, 2)
-
-
-def partial_answers_quadratic(answers: AnswersData, score: ScoreData) -> float:
-    if answers.checked & answers.incorrect:
-        return score.incorrect
-    else:
-        return round(_checked_among_correct_proportion(answers) ** 2**score.correct, 2)
-
-
-# def floored_partial_anwers(answers: AnswersData, score: ScoreData) -> float:
-#     return max(0, partial_answers(answers, score))
-
-
-modes = (some, all, proportional, partial_answers_linear, partial_answers_quadratic)

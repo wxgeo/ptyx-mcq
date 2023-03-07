@@ -325,7 +325,7 @@ class MCQPictureParser:
                     continue
 
                 try:
-                    func = getattr(scores, mode)
+                    func = getattr(scores.ScoresStrategies, mode)
                 except AttributeError:
                     raise AttributeError(f"Unknown evaluation mode: {mode!r}.")
 
