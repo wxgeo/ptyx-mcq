@@ -44,7 +44,7 @@ def amend_doc(
         top_left_positions: dict[OriginalQuestionNumber, Pixel] = {}
         # Convert to RGB picture.
         pic = data_storage.get_pic(doc_id, page).convert("RGB")
-        if not page_data["positions"]:
+        if not page_data.positions:
             # The last page of the MCQ may be empty.
             # `float('+inf')` is used to ensure
             # it will be the last page when sorting.
@@ -52,9 +52,9 @@ def amend_doc(
             continue
         # Drawing context
         draw = ImageDraw.Draw(pic)
-        size = page_data["cell_size"]
-        for (q, a), pos in page_data["positions"].items():
-            checked = a in page_data["answered"][q]
+        size = page_data.cell_size
+        for (q, a), pos in page_data.positions.items():
+            checked = a in page_data.answered[q]
             if a in neutralized_answers[q]:
                 correct = None
             else:
@@ -75,7 +75,7 @@ def amend_doc(
         # the smaller questions numbers is the first one, and so on.
         # However, be careful to use displayed questions numbers,
         # since `q` is the question number *before shuffling*.
-        q_num = page_data["questions_nums"][q]
+        q_num = page_data.questions_nums[q]
         pics[q_num] = pic
         # Sort pages now.
     pages: list[Image]

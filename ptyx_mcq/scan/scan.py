@@ -191,8 +191,8 @@ class MCQPictureParser:
         As a precaution, we should signal the problem to the user, and ask him
         what he wants to do.
         """
-        doc_id = pic_data["ID"]
-        p = pic_data["page"]
+        doc_id = pic_data.doc_id
+        p = pic_data.page
 
         # This page has never been seen before, everything is OK.
         if (doc_id, p) not in self.already_seen:
@@ -200,9 +200,9 @@ class MCQPictureParser:
             return False
 
         # This is problematic: it seems like the same page has been seen twice.
-        lastpic_path = pic_data["pic_path"]
+        lastpic_path = pic_data.pic_path
         lastpic = self.data_storage.relative_pic_path(lastpic_path)
-        firstpic_path = self.data[doc_id]["pages"][p]["pic_path"]
+        firstpic_path = self.data[doc_id]["pages"][p].pic_path
         firstpic = self.data_storage.relative_pic_path(firstpic_path)
         assert isinstance(lastpic_path, str)
         assert isinstance(firstpic_path, str)
@@ -256,7 +256,7 @@ class MCQPictureParser:
         if not doc_data["name"]:
             # Store the name read (except if ask not to do so).
             if not ask:
-                doc_data["name"] = pic_data["name"]
+                doc_data["name"] = pic_data.name
 
         name = doc_data["name"]
 
@@ -398,7 +398,7 @@ class MCQPictureParser:
                 doc_data["student_ID"],
                 doc_id,
                 doc_data["score"],
-                [doc_data["pages"][p]["pic_path"] for p in doc_data["pages"]],
+                [doc_data["pages"][p].pic_path for p in doc_data["pages"]],
             )
             for doc_id, doc_data in self.data.items()
         ]
@@ -502,7 +502,7 @@ class MCQPictureParser:
                 )
                 # `pic_data` FORMAT is specified in `scan_pic.py`.
                 # (Search for `pic_data =` in `scan_pic.py`).
-                pic_data["pic_path"] = str(pic_path)
+                pic_data.pic_path = str(pic_path)
                 print()
 
             except CalibrationError:
@@ -511,13 +511,13 @@ class MCQPictureParser:
                 self.data_storage.store_skipped_pic(pic_path)
                 continue
 
-            if pic_data["verified"]:
+            if pic_data.verified:
                 # If the page has been manually verified, keep track of it,
                 # so it won't be verified next time if a second pass is needed.
                 self.data_storage.store_verified_pic(pic_path)
 
-            doc_id = pic_data["ID"]
-            page = pic_data["page"]
+            doc_id = pic_data.doc_id
+            page = pic_data.page
 
             if self._keep_previous_version(pic_data):
                 continue
@@ -533,9 +533,9 @@ class MCQPictureParser:
             )
             doc_data["pages"][page] = pic_data
 
-            for q in pic_data["answered"]:
+            for q in pic_data.answered:
                 ans = doc_data["answered"].setdefault(q, set())
-                ans |= pic_data["answered"][q]
+                ans |= pic_data.answered[q]
                 # Simplify: doc_data["answered"][q] = set(pic_data["answered"][q])
 
             # 3) 1st page of the test => retrieve the student name

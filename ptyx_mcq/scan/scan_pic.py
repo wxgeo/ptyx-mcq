@@ -977,24 +977,22 @@ def scan_picture(
     answered: OriginalQuestionAnswersDict = {}
     positions: Dict[Tuple[OriginalQuestionNumber, OriginalAnswerNumber], Tuple[int, int]] = {}
     displayed_questions_numbers: Dict[OriginalQuestionNumber, ApparentQuestionNumber] = {}
-    pic_data: PicData = {
-        # ID of the test:
-        "ID": doc_id,  # int
-        # page number:
-        "page": page,  # int
-        "name": student_name,  # str
-        "student_ID": student_ID,  # str
+    pic_data = PicData(
+        doc_id=doc_id,  # ID of the test
+        page=page,  # page number
+        name=student_name,
+        student_ID=student_ID,
         # answers checked by the student for each question:
-        "answered": answered,
+        answered=answered,
         # Position of each checkbox in the page:
-        "positions": positions,
-        "cell_size": cell_size,  # int
+        positions=positions,
+        cell_size=cell_size,
         # Translation table ({question number before shuffling: after shuffling})
-        "questions_nums": displayed_questions_numbers,
+        questions_nums=displayed_questions_numbers,
         # Manual verification by the user ?
-        "verified": None,  # bool|None
-        "pic_path": "",
-    }
+        verified=None,  # bool|None
+        pic_path="",
+    )
 
     try:
         boxes = config.boxes[doc_id][page]
@@ -1157,7 +1155,7 @@ def scan_picture(
     else:
         color2debug()
 
-    pic_data["verified"] = manual_verification
+    pic_data.verified = manual_verification
     # Keep matrix separate from other output data, as it is often not wanted
     # when debugging.
     return pic_data, m

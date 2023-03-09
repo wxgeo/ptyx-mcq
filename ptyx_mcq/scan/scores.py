@@ -104,7 +104,6 @@ class ScoresStrategies:
         assert 0 <= ratio <= 1
         return round(ratio * score.correct, 2)
 
-
     @staticmethod
     def correct_minus_incorrect_quadratic(answers: AnswersData, score: ScoreData) -> float:
         ratio = max(
@@ -124,5 +123,3 @@ def _checked_among_correct_proportion(answers: AnswersData) -> float:
     if len(answers.correct) == 0:
         return float(len(answers.checked) == 0)
     return len(answers.checked & answers.correct) / len(answers.correct)
-
-

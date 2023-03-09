@@ -1,5 +1,4 @@
 import csv
-from ast import literal_eval
 from hashlib import blake2b
 from multiprocessing import Pool
 from pathlib import Path
@@ -9,7 +8,7 @@ from typing import Iterator
 from PIL import Image
 from numpy import ndarray, array, int8
 
-from ptyx_mcq.scan.document_data import DocumentData
+from ptyx_mcq.scan.document_data import DocumentData, PicData
 from ptyx_mcq.scan.paths_handler import PathsHandler, DirsPaths, FilesPaths
 from ptyx_mcq.scan.pdftools import number_of_pages, extract_pdf_pictures, PIC_EXTS
 from ptyx_mcq.tools.config_parser import (
@@ -20,13 +19,14 @@ from ptyx_mcq.tools.config_parser import (
     StudentId,
     OriginalQuestionAnswersDict,
 )
+from ptyx_mcq.tools.extend_literal_eval import extended_literal_eval
 
 
 def pic_names_iterator(data: dict[DocumentId, DocumentData]) -> Iterator[Path]:
     """Iterate over all pics found in data (i.e. all the pictures already analysed)."""
     for doc_data in data.values():
         for pic_data in doc_data["pages"].values():
-            path = Path(pic_data["pic_path"])
+            path = Path(pic_data.pic_path)
             # return pdfhash/picnumber.png
             yield path.relative_to(path.parent.parent)
 
@@ -120,7 +120,7 @@ class DataStorage:
                 doc_id = DocumentId(int(filename.stem))
                 try:
                     with open(filename) as f:
-                        self.data[doc_id] = literal_eval(f.read())
+                        self.data[doc_id] = extended_literal_eval(f.read(), {"PicData": PicData})
                 except Exception:
                     print(f"ERROR when reading {filename} :")
                     raise

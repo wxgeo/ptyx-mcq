@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from typing import TypedDict, Dict, Tuple, Optional, NewType
 
 from ptyx_mcq.tools.config_parser import (
@@ -13,9 +14,10 @@ from ptyx_mcq.tools.config_parser import (
 Page = NewType("Page", int)
 
 
-class PicData(TypedDict):
+@dataclass(kw_only=True)
+class PicData:
     # ID of the document:
-    ID: DocumentId
+    doc_id: DocumentId
     # page number:
     page: Page
     name: StudentName
