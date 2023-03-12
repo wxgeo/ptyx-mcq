@@ -1,12 +1,12 @@
 from functools import partial
 from math import degrees, atan, hypot
 from pathlib import Path
-from typing import Dict, Set, Tuple, Union
 
 from PIL import Image
 from numpy import array, flipud, fliplr, dot, amin, amax, zeros, ndarray  # , percentile, clip
 
-from .document_data import PicData, Page
+from .color import Color
+from .document_data import PicData, Page, DetectionStatus
 from .square_detection import (
     test_square_color,
     find_black_square,
@@ -14,9 +14,8 @@ from .square_detection import (
     adjust_checkbox,
     Pixel,
 )
-from .color import Color
-from .visual_debugging import color2debug
 from .tools import round
+from .visual_debugging import ArrayViewer
 from ..parameters import (
     SQUARE_SIZE_IN_CM,
     CELL_SIZE_IN_CM,
@@ -25,18 +24,14 @@ from ..parameters import (
 )
 from ..tools.config_parser import (
     real2apparent,
-    apparent2real,
     is_answer_correct,
     Configuration,
     StudentIdFormat,
-    ApparentQuestionNumber,
-    ApparentAnswerNumber,
     OriginalQuestionNumber,
     OriginalAnswerNumber,
     DocumentId,
     StudentName,
     StudentId,
-    OriginalQuestionAnswersDict,
 )
 
 ANSI_RESET = "\u001B[0m"
@@ -55,7 +50,7 @@ ANSI_REVERSE = "\u001B[45m"
 CORNERS = frozenset(("tl", "tr", "bl", "br"))
 CORNER_NAMES = {"tl": "top-left", "tr": "top-right", "bl": "bottom-left", "br": "bottom-right"}
 
-CornersPositions = Dict[str, Pixel]
+CornersPositions = dict[str, Pixel]
 
 # TODO: calibrate grayscale too.
 # At the bottom of the page, display 5 squares:
@@ -98,7 +93,7 @@ class CalibrationError(RuntimeError):
 #    return array(im)/255
 
 
-def transform(pic: Image.Image, transformation: str, *args, **kw) -> Tuple[Image.Image, ndarray]:
+def transform(pic: Image.Image, transformation: str, *args, **kw) -> tuple[Image.Image, ndarray]:
     """Return a transformed version of `pic` and its matrix."""
     # cf. http://stackoverflow.com/questions/5252170/
     # specify-image-filling-color-when-rotating-in-python-with-pil-and-setting-expand
@@ -126,7 +121,13 @@ def find_black_cell(grid, ll: int, LL: int, detection_level: float) -> tuple[int
 
 
 def find_corner_square(
-    m: ndarray, size: int, corner: str, *, max_whiteness: float = 0.55, tolerance: float = 0.2
+    m: ndarray,
+    size: int,
+    corner: str,
+    *,
+    max_whiteness: float = 0.55,
+    tolerance: float = 0.2,
+    viewer: ArrayViewer,
 ) -> tuple[int, int]:
     """Find the calibration black square of the given corner.
 
@@ -255,7 +256,7 @@ def find_corner_square(
     #    color2debug(m, (i0, j0), (i0 + size, j0 + size))
     if whiteness_measure > max_whiteness:
         print(f"WARNING: Corner square {corner} not found " f"(not dark enough: {whiteness_measure}!)")
-        color2debug(m, (i0, j0), (i0 + size, j0 + size), color=Color.blue, display=False)
+        viewer.add_square((i0, j0), size, color=Color.blue)
         raise LookupError(f"Corner square {corner} not found.")
 
     if V == "b":
@@ -280,7 +281,7 @@ def orthogonal(corner: str, positions: CornersPositions) -> bool:
     return abs(cos_a) < 0.06
 
 
-def area_opposite_corners(positions: CornersPositions) -> Tuple[Pixel, Pixel]:
+def area_opposite_corners(positions: CornersPositions) -> tuple[Pixel, Pixel]:
     i1 = round((positions["tl"][0] + positions["tr"][0]) / 2)
     i2 = round((positions["bl"][0] + positions["br"][0]) / 2)
     j1 = round((positions["tl"][1] + positions["bl"][1]) / 2)
@@ -294,7 +295,7 @@ def detect_four_squares(
     cm: float,
     *,
     debug=False,
-) -> Tuple[CornersPositions, Pixel, Pixel]:
+) -> tuple[CornersPositions, Pixel, Pixel]:
     for tolerance in range(20, 50, 5):
         print(f"Searching for calibration corners ({tolerance=})...")
         try:
@@ -320,7 +321,8 @@ def _detect_four_squares(
     max_alignment_error_cm: float = 0.4,
     tolerance=0.2,
     debug=False,
-) -> Tuple[CornersPositions, Pixel, Pixel]:
+) -> tuple[CornersPositions, Pixel, Pixel]:
+    viewer = ArrayViewer(m)
     #    h = w = round(2*(1 + SQUARE_SIZE_IN_CM)*cm)
     # Make a mutable copy of frozenset CORNERS.
     corners = set(CORNERS)
@@ -328,12 +330,12 @@ def _detect_four_squares(
     positions: CornersPositions = {}
     for corner in CORNERS:
         try:
-            i, j = find_corner_square(m, square_size, corner, tolerance=tolerance)
+            i, j = find_corner_square(m, square_size, corner, tolerance=tolerance, viewer=viewer)
             # ~ # We may have only detected a part of the square by restricting
             # ~ # the search area, so extend search by the size of the square.
             # ~ i, j = find_corner_square(m, square_size, corner, h + square_size,
             # ~ w + square_size, tolerance, whiteness)
-            color2debug(m, (i, j), (i + square_size, j + square_size), display=False)
+            viewer.add_square((i, j), square_size)
             positions[corner] = i, j
             corners.remove(corner)
         except LookupError:
@@ -348,7 +350,7 @@ def _detect_four_squares(
     #    color2debug(m)
     print(f"Corners detected: {len(positions)}")
     if len(positions) <= 2:
-        color2debug(m)
+        viewer.display()
         raise CalibrationError("Only 2 squares found, calibration failed !")
 
     if len(positions) == 4:
@@ -398,8 +400,8 @@ def _detect_four_squares(
     if len(positions) == 4:
         if number_of_orthogonal_corners <= 2:
             for i, j in positions.values():
-                color2debug(m, (i, j), (i + square_size, j + square_size), display=False)
-            color2debug(m)
+                viewer.add_square((i, j), square_size)
+            viewer.display()
             print("number_of_orthogonal_corners =", number_of_orthogonal_corners)
             raise CalibrationError("Something wrong with the corners !")
 
@@ -420,44 +422,40 @@ def _detect_four_squares(
 
             # Calculate the last corner (ABCD parallelogram <=> Vec{AB} = \Vec{DC})
             positions[corner] = (i, j)
-            color2debug(
-                m,
-                (i, j),
-                (i + CALIBRATION_SQUARE_SIZE, j + CALIBRATION_SQUARE_SIZE),
-                color=Color.cyan,
-                display=False,
-            )
+            viewer.add_square((i, j), square_size, color=Color.cyan)
 
             # For example: positions['bl'] = positions['br'][0], positions['tl'][1]
 
     ij1, ij2 = area_opposite_corners(positions)
 
     if debug:
-        color2debug(m, ij1, ij2, color=Color.green)
-    else:
-        color2debug()
+        viewer.add_area(ij1, ij2, color=Color.green)
+        viewer.display()
 
     return positions, ij1, ij2
 
 
-def find_document_id_band(m: ndarray, i: int, j1: int, j2: int, square_size: int) -> Pixel:
+def find_document_id_band(
+    m: ndarray, i: int, j1: int, j2: int, square_size: int, viewer: ArrayViewer
+) -> Pixel:
     """Return the top left corner (coordinates in pixels) of the document ID band first square."""
     margin = square_size
     i1, i2 = i - margin, i + square_size + margin
     j1, j2 = j1 + 3 * square_size, j2 - 2 * square_size
-    color2debug(m, (i1, j1), (i2, j2), display=False)
+    viewer.add_area((i1, j1), (i2, j2))
     search_area = m[i1:i2, j1:j2]
     i3, j3 = find_black_square(
         search_area, size=square_size, error=0.3, gray_level=0.5, mode="column", debug=False
     ).__next__()
     i3 += i1
     j3 += j1
-    color2debug(m, (i3, j3), (i3 + square_size, j3 + square_size), display=False)
+    viewer.add_square((i3, j3), square_size)
     return i3, j3
 
 
-def calibrate(pic: Image.Image, m: ndarray, debug=False) -> Tuple[ndarray, float, float, Pixel, Pixel]:
+def calibrate(pic: Image.Image, m: ndarray, debug=False) -> tuple[ndarray, float, float, Pixel, Pixel]:
     """Detect picture resolution and ensure correct orientation."""
+    viewer = ArrayViewer(m)  # for debugging
     # Ensure that the picture orientation is portrait, not landscape.
     height, width = m.shape
     print(f"Picture dimensions : {height}px x {width}px.")
@@ -562,7 +560,7 @@ def calibrate(pic: Image.Image, m: ndarray, debug=False) -> Tuple[ndarray, float
     print("ok2")
 
     try:
-        i3, j3 = find_document_id_band(m, i1, j1, j2, square_size)
+        i3, j3 = find_document_id_band(m, i1, j1, j2, square_size, viewer)
     except StopIteration:
         # Orientation probably incorrect.
         print("Reversed page detected: 180° rotation.")
@@ -574,7 +572,7 @@ def calibrate(pic: Image.Image, m: ndarray, debug=False) -> Tuple[ndarray, float
             i = height - 1 - i - calib_square
             j = width - 1 - j - calib_square
             p[corner] = i, j
-            color2debug(m, (i, j), (i + calib_square, j + calib_square), color=Color.green, display=False)
+            viewer.add_square((i, j), calib_square, color=Color.green)
         # Replace each tag by the opposite (top-left -> bottom-right).
         p["tl"], p["bl"], p["br"], p["tr"] = p["br"], p["tr"], p["tl"], p["bl"]
         # ~ color2debug(m)
@@ -582,11 +580,11 @@ def calibrate(pic: Image.Image, m: ndarray, debug=False) -> Tuple[ndarray, float
         # Redetect calibration squares.
         # ~ positions, (i1, j1), (i2, j2) = detect_four_squares(m, square_size, cm, debug=debug)
         try:
-            i3, j3 = find_document_id_band(m, i1, j1, j2, square_size)
+            i3, j3 = find_document_id_band(m, i1, j1, j2, square_size, viewer)
         except StopIteration:
             print("ERROR: Can't find identification band, displaying search areas in red.")
             print(i1, j1, i2, j2)
-            color2debug(m)
+            viewer.display()
             raise CalibrationError("Can't find identification band !")
 
     # Distance between the top left corners of the left and right squares is:
@@ -599,95 +597,18 @@ def calibrate(pic: Image.Image, m: ndarray, debug=False) -> Tuple[ndarray, float
 
     print(positions)
     for i, j in positions.values():
-        color2debug(m, (i, j), (i + CALIBRATION_SQUARE_SIZE, j + CALIBRATION_SQUARE_SIZE), display=False)
-    color2debug(m, (i3, j3), (i3 + square_size, j3 + square_size), display=False)
+        viewer.add_square((i, j), calib_square)
+    viewer.add_square((i3, j3), square_size)
     if debug:
-        color2debug(m)
-    else:
-        color2debug()
+        viewer.display()
     # ~ input('- pause -')
 
     return m, h_pixels_per_mm, v_pixels_per_mm, positions["tl"], (i3, j3)
 
 
-def edit_answers(m: ndarray, boxes, answered, config, doc_id, xy2ij, cell_size) -> None:
-    print("Please verify answers detection:")
-    input("-- Press ENTER --")
-    process = color2debug(m, wait=False)
-    while True:
-        ans = input("Is this correct ? [(y)es/(N)o]")
-        if ans.lower() in ("y", "yes"):
-            process.terminate()
-            break
-
-        while True:
-            ans = input("Write a question number, or 0 to escape:")
-            if ans == "0":
-                break
-            try:
-                q0 = ApparentQuestionNumber(int(ans))
-            except ValueError:
-                continue
-            q, _ = apparent2real(q0, None, config, doc_id)
-            if q not in answered:
-                print("Invalid question number.")
-                continue
-
-            ans = input(
-                "Add or remove answers (Example: +2 -1 -4 to add answer 2, " "and remove answers 1 et 4):"
-            )
-            checked = answered[q]
-            try:
-                for val in ans.split():
-                    op, a0 = val[0], ApparentAnswerNumber(int(val[1:]))
-                    q, a = apparent2real(q0, a0, config, doc_id)
-                    if op == "+":
-                        if a in checked:
-                            print(f"Warning: {a0} already in answers.")
-                        else:
-                            checked.add(a)
-                    elif op == "-":
-                        if a in checked:
-                            checked.remove(a)
-                        else:
-                            print(f"Warning: {a0} not in answers.")
-                    else:
-                        print(f"Invalid operation: {val!r}")
-            except ValueError:
-                print("Invalid answer number.")
-                continue
-            answered[q] = checked
-            process.terminate()
-            # Color answers
-            valid_answers: Dict[OriginalQuestionNumber, Set[OriginalAnswerNumber]] = {}
-            for key, pos in boxes.items():
-                # ~ should_have_answered = set() # for debugging only.
-                i, j = xy2ij(*pos)
-                i, j = adjust_checkbox(m, i, j, cell_size)
-                # `q` and `a` are real questions and answers numbers, that is,
-                # questions and answers numbers before shuffling.
-                q_str, a_str = key[1:].split("-")
-                q = OriginalQuestionNumber(int(q_str))
-                a = OriginalAnswerNumber(int(a_str))
-                valid_answers.setdefault(q, set()).add(a)
-                if a in answered[q]:
-                    color2debug(
-                        m,
-                        (i, j),
-                        (i + cell_size, j + cell_size),
-                        thickness=5,
-                        color=Color.green,
-                        display=False,
-                    )
-
-            for q in answered:
-                if answered[q] - valid_answers[q]:
-                    answered[q] &= valid_answers[q]
-                    print("Warning: invalid answers numbers were dropped.")
-            process = color2debug(m, wait=False)
-
-
-def read_doc_id_and_page(m: ndarray, pos: Pixel, f_square_size: float) -> tuple[DocumentId, Page]:
+def read_doc_id_and_page(
+    m: ndarray, pos: Pixel, f_square_size: float, viewer: ArrayViewer
+) -> tuple[DocumentId, Page]:
     """Read the document ID and the page number.
 
     The document ID is encoded using a homemade barcode.
@@ -705,9 +626,9 @@ def read_doc_id_and_page(m: ndarray, pos: Pixel, f_square_size: float) -> tuple[
     for k in range(24):
         j_ = round(j + (k + 1) * f_square_size)
         if k % 2:
-            color2debug(m, (i, j_), (i + square_size, j_ + square_size), display=False)
+            viewer.add_square((i, j_), square_size)
         else:
-            color2debug(m, (i, j_), (i + square_size, j_ + square_size), color=(0, 0, 255), display=False)
+            viewer.add_square((i, j_), square_size, color=Color.blue)
         if test_square_color(m, i, j_, square_size, proportion=0.5, gray_level=0.5):
             doc_id += 2**k
             # ~ print((k, (i3, j)), " -> black")
@@ -735,6 +656,7 @@ def read_student_id_and_name(
     pos: Pixel,
     id_format: StudentIdFormat,
     f_cell_size: float,
+    viewer: ArrayViewer,
 ) -> tuple[StudentId, StudentName]:
     student_ID = ""
     student_name = ""
@@ -785,9 +707,9 @@ def read_student_id_and_name(
                 black_cells.append((square_blackness, d))
                 print("Found:", d, square_blackness)
                 # ~ color2debug(m, (imin + i, j), (imin + i + cell_size, j + cell_size))
-                color2debug(m, (i, j), (i + cell_size, j + cell_size), color=Color.cyan, display=False)
+                viewer.add_square((i, j), cell_size, color=Color.cyan)
             else:
-                color2debug(m, (i, j), (i + cell_size, j + cell_size), display=False)
+                viewer.add_square((i, j), cell_size)
         if black_cells:
             black_cells.sort(reverse=True)
             print(black_cells)
@@ -845,8 +767,8 @@ def read_student_name(m: ndarray, students: list[StudentName], TOP: int, f_squar
 
 
 def scan_picture(
-    filename: Union[str, Path], config: Configuration, manual_verification=None, debug=False
-) -> Tuple[PicData, ndarray]:
+    filename: str | Path, config: Configuration, manual_verification=None, debug=False
+) -> tuple[PicData, ndarray]:
     """Scan picture and return page identifier and list of answers for each question.
 
     - `filename` is a path pointing to a PNG file.
@@ -871,7 +793,7 @@ def scan_picture(
             'positions': dict[tuple[int, int], tuple[int, int]],
             'cell_size': int,
             # Translation table ({question number before shuffling: after shuffling})
-            'questions_nums': dict[int, int],
+            'questions_nums_conversion': dict[int, int],
             # Manual verification by the user ?
             'verified': bool|None}
         * an array representing the current picture.
@@ -881,18 +803,20 @@ def scan_picture(
     pic: Image.Image = Image.open(filename).convert("L")
     # noinspection PyTypeChecker
     m: ndarray = array(pic) / 255.0
+    viewer = ArrayViewer(m)
     # Increase contrast if needed (the lightest pixel must be white,
     # the darkest must be black).
     min_val = amin(m)
     max_val = amax(m)
     if debug:
-        color2debug(m, display=True)
+        viewer.display()
         print(f"Old range: {min_val} - {max_val}")
     if min_val > 0 or max_val < 255 and max_val - min_val > 0.2:
         m = (m - min_val) / (max_val - min_val)
+        viewer.array = m
         if debug:
             print(f"New range: {amin(m)} - {amax(m)}")
-            color2debug(m, display=True)
+            viewer.display()
     else:
         print(f"Warning: not enough contrast in picture {filename!r} !")
 
@@ -939,7 +863,7 @@ def scan_picture(
     # ------------------------------------------------------------------
     #                      READ IDENTIFIER
     # ------------------------------------------------------------------
-    doc_id, page = read_doc_id_and_page(m, (i, j), f_square_size)
+    doc_id, page = read_doc_id_and_page(m, (i, j), f_square_size, viewer)
 
     # ------------------------------------------------------------------
     #                  IDENTIFY STUDENT (OPTIONAL)
@@ -962,7 +886,7 @@ def scan_picture(
             assert config.id_table_pos is not None
             assert config.id_format is not None
             student_ID, student_name = read_student_id_and_name(
-                m, students_ids, xy2ij(*config.id_table_pos), config.id_format, f_cell_size
+                m, students_ids, xy2ij(*config.id_table_pos), config.id_format, f_cell_size, viewer
             )
 
         else:
@@ -974,25 +898,26 @@ def scan_picture(
     #                      READ ANSWERS
     # ------------------------------------------------------------------
 
-    answered: OriginalQuestionAnswersDict = {}
-    positions: Dict[Tuple[OriginalQuestionNumber, OriginalAnswerNumber], Tuple[int, int]] = {}
-    displayed_questions_numbers: Dict[OriginalQuestionNumber, ApparentQuestionNumber] = {}
     pic_data = PicData(
         doc_id=doc_id,  # ID of the test
         page=page,  # page number
         name=student_name,
         student_ID=student_ID,
         # answers checked by the student for each question:
-        answered=answered,
+        answered={},
         # Position of each checkbox in the page:
-        positions=positions,
+        positions={},
         cell_size=cell_size,
         # Translation table ({question number before shuffling: after shuffling})
-        questions_nums=displayed_questions_numbers,
-        # Manual verification by the user ?
-        verified=None,  # bool|None
+        questions_nums_conversion={},
         pic_path="",
+        needs_review=False,
+        detection_status={},
     )
+    answered = pic_data.answered
+    positions = pic_data.positions
+    displayed_questions_numbers = pic_data.questions_nums_conversion
+    detection_status = pic_data.detection_status
 
     try:
         boxes = config.boxes[doc_id][page]
@@ -1009,7 +934,7 @@ def scan_picture(
 
     # Detect the answers.
     print("\n=== Reading answers ===")
-    print(f"Mode: *{mode['default']}* correct answers must be checked.")
+    print(f"Mode of evaluation: {mode['default']!r}.")
     print("Rating:")
     print(f"• {config.correct['default']} for correctly answered question,")
     print(f"• {config.incorrect['default']} for wrongly answered question,")
@@ -1041,7 +966,7 @@ def scan_picture(
         # answer_is_correct = (a in correct_answers)
 
         test_square = partial(test_square_color, m, i, j, cell_size, margin=5)
-        color_square = partial(color2debug, m, (i, j), (i + cell_size, j + cell_size), display=False)
+        # color_square = partial(viewer.add_square, (i, j), cell_size)
 
         if q not in answered:
             answered[q] = set()
@@ -1066,18 +991,16 @@ def scan_picture(
             answered[q].add(a)
 
             if not test_square(proportion=0.4, gray_level=0.9):
-                manual_verification = manual_verification is not False
-                color_square(color=Color.green, thickness=5)
+                detection_status[(q, a)] = DetectionStatus.PROBABLY_CHECKED
             else:
-                color_square(color=Color.blue, thickness=5)
+                detection_status[(q, a)] = DetectionStatus.CHECKED
         else:
             # This box was left unchecked.
             c = "□"
             if test_square(proportion=0.2, gray_level=0.95):
-                manual_verification = manual_verification is not False
-                color_square(thickness=2, color=Color.magenta)
+                detection_status[(q, a)] = DetectionStatus.PROBABLY_UNCHECKED
             else:
-                color_square(thickness=2)
+                detection_status[(q, a)] = DetectionStatus.UNCHECKED
 
         if answer_is_correct is None:
             # This answer was neutralized (ahem, the teacher probably made a mistake... ;))
@@ -1108,11 +1031,7 @@ def scan_picture(
             # This is probably a false negative, but we'd better verify manually.
             manual_verification = manual_verification is not False
             answered[q].add(a)
-            # Change box color for manual verification.
-            i, j = positions[(q, a)]
-            color2debug(
-                m, (i, j), (i + cell_size, j + cell_size), color=Color.green, thickness=5, display=False
-            )
+            detection_status[(q, a)] = DetectionStatus.PROBABLY_CHECKED
 
     # If a checkbox is tested as checked, but is much lighter than the darker one,
     # it is very probably a false positive.
@@ -1130,32 +1049,19 @@ def scan_picture(
                 # This is probably a false positive, but we'd better verify manually.
                 answered[q].discard(a)
                 # Change box color for manual verification.
-                color = Color.magenta
+                detection_status[(q, a)] = DetectionStatus.PROBABLY_UNCHECKED
             else:
                 # Probably note a false positive, but we should verify.
                 # Change box color for manual verification.
-                color = Color.green
-            i, j = positions[(q, a)]
-            color2debug(
-                m,
-                (i, j),
-                (i + cell_size, j + cell_size),
-                color=color,
-                thickness=5,
-                display=False,
-            )
+                detection_status[(q, a)] = DetectionStatus.PROBABLY_CHECKED
 
-    # ~ color2debug(m, (0,0), (0,0), display=True)
-    # ~ print(f'\nScore: {ANSI_REVERSE}{score:g}{ANSI_RESET}\n')
-    if manual_verification is True:
-        print(doc_id, page)
-        edit_answers(m, boxes, answered, config, doc_id, xy2ij, cell_size)
-    elif debug:
-        color2debug(m)
-    else:
-        color2debug()
+    if debug:
+        viewer.display()
 
-    pic_data.verified = manual_verification
+    pic_data.needs_review = (
+        DetectionStatus.PROBABLY_CHECKED in detection_status.values()
+        or DetectionStatus.PROBABLY_UNCHECKED in detection_status.values()
+    )
     # Keep matrix separate from other output data, as it is often not wanted
     # when debugging.
     return pic_data, m

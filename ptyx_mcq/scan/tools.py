@@ -10,13 +10,6 @@ import pickle
 from os.path import expanduser
 
 
-def print_framed_msg(msg: str) -> None:
-    decoration = max(len(line) for line in msg.split("\n")) * "-"
-    print(decoration)
-    print(msg)
-    print(decoration)
-
-
 def tmp_store(obj):
     """For debugging."""
     with open(expanduser("~/tmp.pickle"), "wb") as f:

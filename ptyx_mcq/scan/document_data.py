@@ -1,5 +1,6 @@
 from dataclasses import dataclass
-from typing import TypedDict, Dict, Tuple, Optional, NewType
+from enum import Enum, auto
+from typing import TypedDict, NewType
 
 from ptyx_mcq.tools.config_parser import (
     DocumentId,
@@ -14,6 +15,16 @@ from ptyx_mcq.tools.config_parser import (
 Page = NewType("Page", int)
 
 
+class DetectionStatus(Enum):
+    CHECKED = auto()
+    UNCHECKED = auto()
+    PROBABLY_CHECKED = auto()
+    PROBABLY_UNCHECKED = auto()
+
+    def __repr__(self):
+        return self.name
+
+
 @dataclass(kw_only=True)
 class PicData:
     # ID of the document:
@@ -25,12 +36,12 @@ class PicData:
     # answers checked by the student for each question:
     answered: OriginalQuestionAnswersDict
     # Position of each checkbox in the page:
-    positions: Dict[Tuple[OriginalQuestionNumber, OriginalAnswerNumber], Tuple[int, int]]
+    positions: dict[tuple[OriginalQuestionNumber, OriginalAnswerNumber], tuple[int, int]]
     cell_size: int
     # Translation table ({question number before shuffling: after shuffling})
-    questions_nums: Dict[OriginalQuestionNumber, ApparentQuestionNumber]
-    # Manual verification by the user ?
-    verified: Optional[bool]
+    questions_nums_conversion: dict[OriginalQuestionNumber, ApparentQuestionNumber]
+    needs_review: bool
+    detection_status: dict[tuple[OriginalQuestionNumber, OriginalAnswerNumber], DetectionStatus]
     pic_path: str
 
 

@@ -4,7 +4,6 @@ from numpy import array, nonzero, transpose, ndarray
 
 from ptyx_mcq.scan.visual_debugging import color2debug
 
-
 Pixel = Tuple[int, int]
 
 
@@ -61,10 +60,10 @@ def find_black_rectangle(
             f"`find_black_rectangle` parameters: width={width}, "
             f"height={height}, error={error}, gray_level={gray_level}"
         )
-        color2debug(matrix, display=True)
+        color2debug(matrix)
     m = array(matrix, copy=False) < gray_level
     if debug:
-        color2debug(1 - m, display=True)
+        color2debug(1 - m)
     # Black pixels are represented by False, white ones by True.
     # pic_height, pic_width = m.shape
     per_line = (1 - error) * width
@@ -96,7 +95,7 @@ def find_black_rectangle(
         if debug:
             print(f"Total: {total} | Goal: {goal}")
             if total >= goal / 5:
-                color2debug(matrix, (i, j), (i + height, j + width), display=True)
+                color2debug(matrix, (i, j), (i + height, j + width))
         # ~ print(f'Black pixels ratio: {total}/{width*height} ; Min: {goal}.')
         # ~ input('- pause -')
         #        print("Detection: %s found (minimum was %s)." % (total, goal))

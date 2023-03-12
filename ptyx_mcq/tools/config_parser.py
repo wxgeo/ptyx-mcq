@@ -187,6 +187,25 @@ def real2apparent(
     raise IndexError(f"Answer {original_a_num} not found for question {original_q_num}.")
 
 
+@typing.overload
+def apparent2real(
+    pdf_q_num: ApparentQuestionNumber,
+    pdf_a_num: None,
+    config: Configuration,
+    doc_id: DocumentId,
+) -> tuple[OriginalQuestionNumber, None]:
+    """Signature when pdf_a_num is None."""
+
+@typing.overload
+def apparent2real(
+    pdf_q_num: ApparentQuestionNumber,
+    pdf_a_num: ApparentAnswerNumber,
+    config: Configuration,
+    doc_id: DocumentId,
+) -> tuple[OriginalQuestionNumber, OriginalAnswerNumber]:
+    """Signature when pdf_a_num is not None."""
+
+
 def apparent2real(
     pdf_q_num: ApparentQuestionNumber,
     pdf_a_num: ApparentAnswerNumber | None,

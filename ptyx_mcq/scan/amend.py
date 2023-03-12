@@ -75,7 +75,7 @@ def amend_doc(
         # the smaller questions numbers is the first one, and so on.
         # However, be careful to use displayed questions numbers,
         # since `q` is the question number *before shuffling*.
-        q_num = page_data.questions_nums[q]
+        q_num = page_data.questions_nums_conversion[q]
         pics[q_num] = pic
         # Sort pages now.
     pages: list[Image]

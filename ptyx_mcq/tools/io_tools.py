@@ -97,3 +97,8 @@ def get_file_with_extension(path: Path, *, extension) -> Path:
 #             "Keep only one of them and delete all the others (or rename their extensions)."
 #         )
 #     return paths[0]
+def print_framed_msg(msg: str) -> None:
+    decoration = max(len(line) for line in msg.split("\n")) * "-"
+    print(decoration)
+    print(msg)
+    print(decoration)

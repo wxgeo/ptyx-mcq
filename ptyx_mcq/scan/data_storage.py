@@ -8,7 +8,7 @@ from typing import Iterator
 from PIL import Image
 from numpy import ndarray, array, int8
 
-from ptyx_mcq.scan.document_data import DocumentData, PicData
+from ptyx_mcq.scan.document_data import DocumentData, PicData, DetectionStatus
 from ptyx_mcq.scan.paths_handler import PathsHandler, DirsPaths, FilesPaths
 from ptyx_mcq.scan.pdftools import number_of_pages, extract_pdf_pictures, PIC_EXTS
 from ptyx_mcq.tools.config_parser import (
@@ -47,6 +47,10 @@ class DataStorage:
         self.neutralized_answers: dict[DocumentId, OriginalQuestionAnswersDict] = {}
         # self.paths.make_dirs()
         self.config: Configuration = self.get_configuration(self.paths.configfile)
+
+    # def student_name_to_doc_id_dict(self) -> dict[StudentName, DocumentId]:
+    #     """`student_name_to_doc_id` is used to retrieve the data associated with a name."""
+    #     return {doc_data["name"]: doc_id for doc_id, doc_data in self.data.items()}
 
     @property
     def dirs(self) -> DirsPaths:
@@ -120,7 +124,16 @@ class DataStorage:
                 doc_id = DocumentId(int(filename.stem))
                 try:
                     with open(filename) as f:
-                        self.data[doc_id] = extended_literal_eval(f.read(), {"PicData": PicData})
+                        self.data[doc_id] = extended_literal_eval(
+                            f.read(),
+                            {
+                                "PicData": PicData,
+                                "CHECKED": DetectionStatus.CHECKED,
+                                "UNCHECKED": DetectionStatus.UNCHECKED,
+                                "PROBABLY_CHECKED": DetectionStatus.PROBABLY_CHECKED,
+                                "PROBABLY_UNCHECKED": DetectionStatus.PROBABLY_UNCHECKED,
+                            },
+                        )
                 except Exception:
                     print(f"ERROR when reading {filename} :")
                     raise
