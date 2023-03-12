@@ -33,7 +33,7 @@ from typing import Union, Literal, Optional
 from ptyx_mcq.scan import scores
 from ptyx_mcq.scan.amend import amend_all
 from ptyx_mcq.scan.conflict_solver import ConflictSolver
-from ptyx_mcq.scan.data_storage import DataStorage
+from ptyx_mcq.scan.data_manager import DataStorage
 from ptyx_mcq.scan.document_data import DocumentData, PicData, Page
 from ptyx_mcq.scan.pdftools import PIC_EXTS
 from ptyx_mcq.scan.scan_pic import (

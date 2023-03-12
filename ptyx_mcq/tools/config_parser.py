@@ -196,6 +196,7 @@ def apparent2real(
 ) -> tuple[OriginalQuestionNumber, None]:
     """Signature when pdf_a_num is None."""
 
+
 @typing.overload
 def apparent2real(
     pdf_q_num: ApparentQuestionNumber,

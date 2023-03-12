@@ -3,7 +3,7 @@ import subprocess
 from pathlib import Path
 
 from ptyx_mcq.scan.color import Color, RGB
-from ptyx_mcq.scan.data_storage import DataStorage
+from ptyx_mcq.scan.data_manager import DataStorage
 from ptyx_mcq.scan.document_data import Page, DetectionStatus
 from ptyx_mcq.scan.visual_debugging import ArrayViewer
 from ptyx_mcq.tools.config_parser import (

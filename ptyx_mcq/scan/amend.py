@@ -11,7 +11,7 @@ from os.path import join
 
 from PIL import ImageDraw, ImageFont
 from PIL.Image import Image
-from ptyx_mcq.scan.data_storage import DataStorage
+from ptyx_mcq.scan.data_manager import DataStorage
 from .document_data import DocumentData
 
 from .square_detection import Pixel
