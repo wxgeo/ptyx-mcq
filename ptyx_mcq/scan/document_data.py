@@ -25,6 +25,14 @@ class DetectionStatus(Enum):
         return self.name
 
 
+class RevisionStatus(Enum):
+    MARKED_AS_CHECKED = auto()
+    MARKED_AS_UNCHECKED = auto()
+
+    def __repr__(self):
+        return self.name
+
+
 @dataclass(kw_only=True)
 class PicData:
     # ID of the document:
@@ -42,6 +50,7 @@ class PicData:
     questions_nums_conversion: dict[OriginalQuestionNumber, ApparentQuestionNumber]
     needs_review: bool
     detection_status: dict[tuple[OriginalQuestionNumber, OriginalAnswerNumber], DetectionStatus]
+    revision_status: dict[tuple[OriginalQuestionNumber, OriginalAnswerNumber], RevisionStatus]
     pic_path: str
 
 

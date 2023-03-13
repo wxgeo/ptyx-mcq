@@ -913,6 +913,7 @@ def scan_picture(
         pic_path="",
         needs_review=False,
         detection_status={},
+        revision_status={},
     )
     answered = pic_data.answered
     positions = pic_data.positions

@@ -94,49 +94,6 @@ class MCQPictureParser:
     def data(self):
         return self.data_storage.data
 
-    # def _read_name_manually(
-    #     self, doc_id: DocumentId, matrix: ndarray = None, p: Page = None, default: str = None
-    # ) -> tuple[StudentName, StudentId]:
-    #     if matrix is None:
-    #         assert p is not None
-    #         matrix = self.data_storage.get_matrix(doc_id, p)
-    #     student_ids = self.config.students_ids
-    #     student_ID = ""
-    #     print("Name can not be read automatically.")
-    #     print("Please read the name on the picture which will be displayed now.")
-    #     input("-- Press enter --")
-    #     #    subprocess.run(["display", "-resize", "1920x1080", pic_path])
-    #     # TODO: use first letters of students name to find student.
-    #     # (ask again if not found, or if several names match first letters)
-    #     process = None
-    #     while True:
-    #         nlines = matrix.shape[1]
-    #         # Don't relaunch process if it is still alive.
-    #         # (process.poll() is not None for dead processes.)
-    #         if process is None or process.poll() is not None:
-    #             process = color2debug(matrix[0 : int(3 / 4 * nlines), :], wait=False)
-    #         name = input("Student name or ID:").strip()
-    #         if not name:
-    #             if default is None:
-    #                 continue
-    #             name = default
-    #         if student_ids:
-    #             if name in student_ids:
-    #                 name, student_ID = student_ids[StudentId(name)], name
-    #             elif any((digit in name) for digit in string.digits):
-    #                 # This is not a student name !
-    #                 print("Unknown ID.")
-    #                 continue
-    #         print("Name: %s" % name)
-    #         if input("Is it correct ? (Y/n)").lower() not in ("y", "yes", ""):
-    #             continue
-    #         if name:
-    #             break
-    #     process.terminate()
-    #     # Keep track of manually entered information (will be useful if the scan has to be run again later !)
-    #     self.data_storage.store_additional_info(doc_id=doc_id, name=name, student_ID=student_ID)
-    #     return StudentName(name), StudentId(student_ID)
-
     def _test_integrity(self) -> None:
         """For every test:
         - all pages must have been scanned,
@@ -241,51 +198,6 @@ class MCQPictureParser:
 
         return action == "f"
 
-    # def _extract_name(
-    #     self, doc_id: DocumentId, doc_data: DocumentData, matrix: ndarray, ask: bool = False
-    # ) -> None:
-    #     # TODO: what is matrix type ?
-    #     pic_data = doc_data["pages"][Page(1)]
-    #     # (a) The first page should contain the name
-    #     #     ‾ ‾ ‾ ‾ ‾ ‾ ‾ ‾ ‾ ‾ ‾ ‾ ‾ ‾ ‾ ‾ ‾ ‾ ‾ ‾
-    #     # However, if the name was already set (using `more_infos`),
-    #     # don't overwrite it.
-    #     if not doc_data["name"]:
-    #         # Store the name read (except if ask not to do so).
-    #         if not ask:
-    #             doc_data["name"] = pic_data.name
-    #
-    #     name = doc_data["name"]
-    #
-    #     # (b) Update name manually if it was not found
-    #     #     ‾ ‾ ‾ ‾ ‾ ‾ ‾ ‾ ‾ ‾ ‾ ‾ ‾ ‾ ‾ ‾ ‾ ‾ ‾ ‾ ‾
-    #
-    #     if not name:
-    #         name = self._read_name_manually(doc_id, matrix)[0]
-    #
-    #     # (c) A name must not appear twice
-    #     #     ‾ ‾ ‾ ‾ ‾ ‾ ‾ ‾ ‾ ‾ ‾ ‾ ‾ ‾ ‾
-    #     while name in self.name2docID:
-    #         print(f"Test #{self.name2docID[name]}: {name}")
-    #         print(f"Test #{doc_id}: {name}")
-    #         print_framed_msg(
-    #             f"Error : 2 tests for same student ({name}) !\n"
-    #             "Please modify at least one name (enter nothing to keep a name)."
-    #         )
-    #         # Remove twin name from name2doc_id, and get the corresponding previous test ID.
-    #         ID0 = self.name2docID.pop(name)
-    #         # Ask for a new name.
-    #         name0, student_ID0 = self._read_name_manually(ID0, p=Page(1), default=name)
-    #         # Update all infos.
-    #         self.name2docID[name0] = ID0
-    #         self.data[ID0]["name"] = name0
-    #         self.data[ID0]["student_ID"] = student_ID0
-    #         # Ask for a new name for new test too.
-    #         name = self._read_name_manually(doc_id, matrix, default=name)[0]
-    #
-    #     assert name, "Name should not be left empty at this stage !"
-    #     self.name2docID[name] = doc_id
-    #     doc_data["name"] = name
 
     def _calculate_scores(self) -> None:
         cfg = self.config
@@ -549,10 +461,14 @@ class MCQPictureParser:
             # Store work in progress, so we can resume process if something fails...
             self.data_storage.store_doc_data(pic_path.parent.name, doc_id, page, matrix)
 
+        print("Scan successful.")
+
         # ---------------------------
         # Resolve detected problems
         # ---------------------------
-        self.resolve_conflicts()
+        # Resolve conflicts manually: unknown student ID, ambiguous answer...
+        print("\nAnalyzing collected data:")
+        ConflictSolver(self.data_storage).resolve_conflicts()
 
         # ---------------------------
         # Test integrity
@@ -575,10 +491,6 @@ class MCQPictureParser:
         # Time to synthesize & store all those informations !
         # ---------------------------------------------------
         self.generate_output()
-
-    def resolve_conflicts(self):
-        """Resolve conflicts manually: unknown student ID, ambiguous answer..."""
-        ConflictSolver(self.data_storage).resolve_conflicts()
 
 
 def scan(

@@ -4,7 +4,7 @@ from pathlib import Path
 
 from ptyx_mcq.scan.color import Color, RGB
 from ptyx_mcq.scan.data_manager import DataStorage
-from ptyx_mcq.scan.document_data import Page, DetectionStatus
+from ptyx_mcq.scan.document_data import Page, DetectionStatus, RevisionStatus
 from ptyx_mcq.scan.visual_debugging import ArrayViewer
 from ptyx_mcq.tools.config_parser import (
     DocumentId,
@@ -14,7 +14,7 @@ from ptyx_mcq.tools.config_parser import (
     StudentName,
     StudentId,
 )
-from ptyx_mcq.tools.io_tools import print_framed_msg
+from ptyx_mcq.tools.io_tools import print_framed_msg, print_warning
 
 
 class ConflictSolver:
@@ -24,13 +24,17 @@ class ConflictSolver:
 
     def resolve_conflicts(self):
         """Resolve conflicts manually: unknown student ID, ambiguous answer..."""
+        print("Searching for missing names...")
         self.review_missing_names()
+        print("Searching for duplicate names...")
         self.review_duplicate_names()
+        print("Searching for ambiguous answers...")
         self.review_answers()
 
     def review_missing_names(self):
         for doc_id, doc_data in self.data.items():
             if doc_data["name"] == "":
+                print_warning(f"No student name for document {doc_id}.")
                 student_name, student_id = self.enter_name_and_id(doc_id)
                 doc_data["name"] = student_name
                 doc_data["student_ID"] = student_id
@@ -41,8 +45,15 @@ class ConflictSolver:
         for doc_id, doc_data in self.data.items():
             name = doc_data["name"]
             if name in name_to_doc_id:
+                matching_doc_id = name_to_doc_id[name]
+                matching_doc_data = self.data[matching_doc_id]
+                print_warning(f"Same student name on documents {doc_id} and {matching_doc_id}: {name!r}.")
                 self.resolve_duplicate_name_conflict(name, doc_id, name_to_doc_id)
-            name_to_doc_id[name] = doc_id
+                self.data_storage.more_infos[doc_id] = doc_data["name"], doc_data["student_ID"]
+                self.data_storage.more_infos[matching_doc_id] = (
+                    matching_doc_data["name"],
+                    matching_doc_data["student_ID"],
+                )
 
     def resolve_duplicate_name_conflict(
         self, name: StudentName, doc_id: DocumentId, name_to_doc_id: dict[StudentName, DocumentId]
@@ -55,13 +66,13 @@ class ConflictSolver:
                 "Please modify at least one name (enter nothing to keep a name)."
             )
             # Remove twin name from name2doc_id, and get the corresponding previous test ID.
-            ID0 = name_to_doc_id.pop(name)
+            doc_id0 = name_to_doc_id.pop(name)
             # Ask for a new name.
-            name0, student_ID0 = self.enter_name_and_id(ID0, default=name)
+            name0, student_id0 = self.enter_name_and_id(doc_id0, default=name)
             # Update all infos.
-            name_to_doc_id[name0] = ID0
-            self.data[ID0]["name"] = name0
-            self.data[ID0]["student_ID"] = student_ID0
+            name_to_doc_id[name0] = doc_id0
+            self.data[doc_id0]["name"] = name0
+            self.data[doc_id0]["student_ID"] = student_id0
             # Ask for a new name for new test too.
             name = self.enter_name_and_id(doc_id)[0]
 
@@ -112,6 +123,7 @@ class ConflictSolver:
         for doc_id, doc_data in self.data.items():
             for page, pic_data in doc_data["pages"].items():
                 if pic_data.needs_review:
+                    print_warning(f"Ambiguous answers for student {doc_data['name']}.")
                     self.edit_answers(doc_id, page)
                     self.data_storage.store_verified_pic(Path(pic_data.pic_path))
 
@@ -120,23 +132,25 @@ class ConflictSolver:
         array = self.data_storage.get_matrix(doc_id, page)
         viewer = ArrayViewer(array)
         pic_data = self.data[doc_id]["pages"][page]
-        colors: dict[DetectionStatus | None, RGB] = {
+        colors: dict[DetectionStatus | RevisionStatus, RGB] = {
             DetectionStatus.CHECKED: Color.blue,
             DetectionStatus.PROBABLY_CHECKED: Color.green,
             DetectionStatus.PROBABLY_UNCHECKED: Color.magenta,
-            DetectionStatus.UNCHECKED: Color.red,
+            DetectionStatus.UNCHECKED: Color.pink,
+            RevisionStatus.MARKED_AS_CHECKED: Color.cyan,
+            RevisionStatus.MARKED_AS_UNCHECKED: Color.red,
         }
-        thicknesses: dict[DetectionStatus | None, int] = {
+        thicknesses: dict[DetectionStatus | RevisionStatus, int] = {
             DetectionStatus.CHECKED: 2,
             DetectionStatus.PROBABLY_CHECKED: 5,
             DetectionStatus.PROBABLY_UNCHECKED: 5,
             DetectionStatus.UNCHECKED: 2,
+            RevisionStatus.MARKED_AS_CHECKED: 5,
+            RevisionStatus.MARKED_AS_UNCHECKED: 5,
         }
         for (q, a), (i, j) in pic_data.positions.items():
-            status = pic_data.detection_status.get((q, a))
-            color = colors.get(status, Color.cyan if a in pic_data.answered[q] else Color.pink)
-            thickness = thicknesses.get(status, 5)
-            viewer.add_square((i, j), pic_data.cell_size, color=color, thickness=thickness)
+            status = pic_data.revision_status.get((q, a), pic_data.detection_status[(q, a)])
+            viewer.add_square((i, j), pic_data.cell_size, color=colors[status], thickness=thicknesses[status])
         return viewer.display(wait=False)
 
     def edit_answers(self, doc_id: DocumentId, page: Page) -> None:
@@ -146,6 +160,7 @@ class ConflictSolver:
         # m = self.data_storage.get_matrix(doc_id, page)
         # cell_size = pic_data.cell_size
         answered = pic_data.answered
+        revision_status = pic_data.revision_status
         print("Please verify answers detection:")
         input("-- Press ENTER --")
 
@@ -173,9 +188,11 @@ class ConflictSolver:
                                 print(f"Warning: {a0} already in answers.")
                             else:
                                 checked.add(a)
+                                revision_status[(q, a)] = RevisionStatus.MARKED_AS_CHECKED
                         elif op == "-":
                             if a in checked:
                                 checked.remove(a)
+                                revision_status[(q, a)] = RevisionStatus.MARKED_AS_UNCHECKED
                             else:
                                 print(f"Warning: {a0} not in answers.")
                         else:

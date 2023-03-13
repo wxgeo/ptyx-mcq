@@ -8,7 +8,7 @@ from typing import Iterator
 from PIL import Image
 from numpy import ndarray, array, int8
 
-from ptyx_mcq.scan.document_data import DocumentData, PicData, DetectionStatus
+from ptyx_mcq.scan.document_data import DocumentData, PicData, DetectionStatus, RevisionStatus
 from ptyx_mcq.scan.paths_handler import PathsHandler, DirsPaths, FilesPaths
 from ptyx_mcq.scan.pdftools import number_of_pages, extract_pdf_pictures, PIC_EXTS
 from ptyx_mcq.tools.config_parser import (
@@ -132,6 +132,8 @@ class DataStorage:
                                 "UNCHECKED": DetectionStatus.UNCHECKED,
                                 "PROBABLY_CHECKED": DetectionStatus.PROBABLY_CHECKED,
                                 "PROBABLY_UNCHECKED": DetectionStatus.PROBABLY_UNCHECKED,
+                                "MARKED_AS_CHECKED": RevisionStatus.MARKED_AS_CHECKED,
+                                "MARKED_AS_UNCHECKED": RevisionStatus.MARKED_AS_UNCHECKED,
                             },
                         )
                 except Exception:
