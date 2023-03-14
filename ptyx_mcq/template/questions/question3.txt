@@ -34,3 +34,7 @@ The value of $#a#*#b$ is~:
 # Note that:
 # - each answer must appear only once
 # - each correct answer must appear in answer list.
+
+# If some answers must be neutralized (i.e. ignored), maybe because there was an error
+# in their content, you may add a neutralized_answers list, just like this:
+# #ANSWERS_LIST[neutralized_answers]{all_answers}{correct_answers}

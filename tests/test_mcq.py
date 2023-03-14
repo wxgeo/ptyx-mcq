@@ -11,7 +11,7 @@ import atexit
 
 from ptyx.latex_generator import Compiler, Node
 from ptyx_mcq.make.extend_latex_generator import SameAnswerError
-
+from ptyx_mcq.tools.config_parser import Configuration, DocumentId, OriginalQuestionNumber
 
 TEST_DIR = Path(__file__).parent.resolve()
 # TMP_PDF: List[Path] = []
@@ -182,6 +182,17 @@ def test_loading_of_sty_files():
         if line not in latex_lines:
             print(repr(latex))
             assert False, f"Line {line} not found ! (See above)"
+
+
+def test_neutralized_questions():
+    c = load_ptyx_file("test_neutralized_questions.ptyx")
+    c.generate_syntax_tree()
+    c.get_latex()
+    data: Configuration = c.latex_generator.mcq_data
+    answers = data.ordering[DocumentId(0)]["answers"]
+    assert sorted(answers[OriginalQuestionNumber(1)]) == [(1, True), (2, None), (3, False)]
+    assert sorted(answers[OriginalQuestionNumber(2)]) == [(1, False), (2, True), (3, None)]
+
 
 
 @atexit.register

@@ -421,15 +421,16 @@ class MCQLatexGenerator(LatexGenerator):
         converted automatically to math mode latex code (1/2 -> '$\frac{1}{2}$').
         """
 
-        def eval_and_format_arg(arg_num) -> List[str]:
-            raw_list = eval(node.arg(arg_num).strip(), self.context)
+        def eval_and_format(arg: str) -> List[str]:
+            raw_list = eval(arg.strip(), self.context)
             if not isinstance(raw_list, (list, tuple)):
-                raise RuntimeError(f"In #ANSWERS_LIST, argument {arg_num + 1} must be a list of answers.")
+                raise RuntimeError(f"In #ANSWERS_LIST, argument {arg!r} must be a list of answers.")
             formatted_list = [(val if isinstance(val, str) else f"${sympy2latex(val)}$") for val in raw_list]
             return formatted_list
 
-        answers = eval_and_format_arg(0)
-        correct_answers = eval_and_format_arg(1)
+        answers = eval_and_format(node.arg(0))
+        correct_answers = eval_and_format(node.arg(1))
+        neutralized_answers = eval_and_format(node.options) if node.options else []
 
         # Test that arguments seem correct
         # (they must be a list of unique answers, and answers must include the correct ones).
@@ -437,6 +438,11 @@ class MCQLatexGenerator(LatexGenerator):
             if ans not in answers:
                 raise RuntimeError(
                     f"#ANSWERS_LIST: correct answer {ans!r} is not in proposed answers list {answers!r}!"
+                )
+        for ans in neutralized_answers:
+            if ans not in answers:
+                raise RuntimeError(
+                    f"#ANSWERS_LIST: neutralized answer {ans!r} is not in proposed answers list {answers!r}!"
                 )
 
         for ans in answers:
@@ -448,7 +454,9 @@ class MCQLatexGenerator(LatexGenerator):
         self.write("\n\n" r"\begin{minipage}{\textwidth}" "\n")
         n = self.mcq_question_number
         for k, ans in enumerate(answers, 1):
-            self._open_answer(n, OriginalAnswerNumber(k), ans in correct_answers)
+            self._open_answer(
+                n, OriginalAnswerNumber(k), None if ans in neutralized_answers else (ans in correct_answers)
+            )
             self.write(ans)
             self._close_answer()
         self.write("\n\n\\end{minipage}")
