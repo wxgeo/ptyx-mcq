@@ -343,8 +343,8 @@ class MCQLatexGenerator(LatexGenerator):
         functions = []
 
         # TODO(?): functions should be compiled only once for each question block,
-        # not for every answer (though it is probably not a bottleneck in
-        # code execution).
+        #  not for every answer (though it is probably not a bottleneck in
+        #  code execution).
         apply = self.context.get("APPLY_TO_ANSWERS")
         if apply:
             # Apply template or function to every answer.

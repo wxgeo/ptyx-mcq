@@ -194,7 +194,6 @@ def test_neutralized_questions():
     assert sorted(answers[OriginalQuestionNumber(2)]) == [(1, False), (2, True), (3, None)]
 
 
-
 @atexit.register
 def cleanup():
     files_found = False

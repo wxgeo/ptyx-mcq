@@ -113,6 +113,7 @@ class IncludeParser:
     until another `-- ROOT:` directive occurs (search directory may be changed
     several times).
     """
+
     def __init__(self, compiler: Compiler):
         self.compiler = compiler
         self.root: Path = compiler.dir_path
@@ -125,8 +126,10 @@ class IncludeParser:
                 path = (self.compiler.dir_path / path).resolve()
             print_info(f"Directory for files inclusion changed to '{path}'.")
             if not path.is_dir():
-                raise FileNotFoundError(f"Directory '{self.root}' not found.\n"
-                                        f"HINT: Change \"-- {pattern}\" in {self.compiler.file_path}.")
+                raise FileNotFoundError(
+                    f"Directory '{self.root}' not found.\n"
+                    f'HINT: Change "-- {pattern}" in {self.compiler.file_path}.'
+                )
             self.root = path
             return "\n"
         else:
@@ -149,10 +152,10 @@ class IncludeParser:
             for line in file_content.split("\n"):
                 lines.append(line)
                 if (
-                        line.startswith("* ")
-                        or line.startswith("> ")
-                        or line.startswith("OR ")
-                        or line.rstrip() in ("*", ">", "OR")
+                    line.startswith("* ")
+                    or line.startswith("> ")
+                    or line.startswith("OR ")
+                    or line.rstrip() in ("*", ">", "OR")
                 ):
                     prettified_path = path.parent / f"\u001b[36m{path.name}\u001b[0m"
                     lines.append(f'#PRINT{{\u001b[36mIMPORTING\u001b[0m "{prettified_path}"}}')

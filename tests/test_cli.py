@@ -186,10 +186,10 @@ def test_cli() -> None:
         # -----------------------------------
         # Test `mcq new PATH -i INCLUDE_PATH`
         # -----------------------------------
-        path2 = parent/"mcq-2"
+        path2 = parent / "mcq-2"
         main(["new", str(path2), "-i", str(path / "questions")])
         assert "new.ptyx" in listdir(path)
-        assert not (path2/"questions").exists()
+        assert not (path2 / "questions").exists()
 
         # --------------------------------------
         # Test `mcq make PATH --correction-only`
