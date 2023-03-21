@@ -147,6 +147,7 @@ def test_cli() -> None:
         from shutil import rmtree
 
         rmtree("/tmp/mcq", ignore_errors=True)
+        rmtree("/tmp/mcq-2", ignore_errors=True)
     # Make a temporary directory
     with tempfile.TemporaryDirectory() as _parent:
         print(10 * "=")
@@ -181,6 +182,22 @@ def test_cli() -> None:
         for student_id in STUDENTS:
             assert student_id in config.students_ids, (repr(student_id), repr(config.students_ids))
             assert config.students_ids[student_id] == STUDENTS[student_id]
+
+        # -----------------------------------
+        # Test `mcq new PATH -i INCLUDE_PATH`
+        # -----------------------------------
+        path2 = parent/"mcq-2"
+        main(["new", str(path2), "-i", str(path / "questions")])
+        assert "new.ptyx" in listdir(path)
+        assert not (path2/"questions").exists()
+
+        # --------------------------------------
+        # Test `mcq make PATH --correction-only`
+        # --------------------------------------
+
+        main(["make", str(path2), "--correction-only"])
+        with open(path2 / ".compile/new/new-corr.tex", encoding="utf8") as f:
+            assert f.read().count(r"\checkBox") > 10  # TODO: give a precise number.
 
         # ----------------
         # Test `mcq scan`

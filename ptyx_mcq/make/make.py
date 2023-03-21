@@ -87,7 +87,8 @@ def _make(
         start=start,
         # cpu_cores=1,
     )
-    generate_config_file(compiler)
+    if not correction_only:
+        generate_config_file(compiler)
 
     # Keep track of the seed used.
     seed_value = compiler.seed

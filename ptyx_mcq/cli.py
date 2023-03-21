@@ -5,6 +5,7 @@ ptyx MCQ Command Line Interface
 
 @author: Nicolas Pourcelot
 """
+import re
 import shutil
 import sys
 from argparse import ArgumentParser
@@ -31,6 +32,13 @@ def main(args: Optional[list] = None) -> None:
     # create the parser for the "new" command
     new_parser = add_parser("new", help="Create an empty ptyx file.")
     new_parser.add_argument("path", nargs="?", metavar="PATH", type=Path, default="new-mcq")
+    new_parser.add_argument(
+        "--include",
+        "-i",
+        metavar="INCLUDE_PATH",
+        type=Path,
+        help="Include all files from this path in the generated .ptyx file.",
+    )
     new_parser.set_defaults(func=new)
 
     # create the parser for the "make" command
@@ -121,7 +129,7 @@ def main(args: Optional[list] = None) -> None:
     func(**kwargs)
 
 
-def new(path: Path) -> None:
+def new(path: Path, include: Path = None) -> None:
     """Implement `mcq new` command."""
     template = Path(__file__).resolve().parent / "template"
     if path.exists():
@@ -129,6 +137,31 @@ def new(path: Path) -> None:
         sys.exit(1)
     else:
         shutil.copytree(template, path)
+        if include is not None:
+            # No need to have a questions directory template,
+            # since questions' files will be explicitly listed.
+            assert (path / "questions").is_dir()
+            shutil.rmtree(path / "questions")
+            # Edit the .ptyx file, to replace default code with the list of the questions' files.
+            ptyx_path = (path / "new.ptyx").resolve()
+            assert ptyx_path.is_file(), ptyx_path
+            with open(ptyx_path, encoding="utf8") as f:
+                content = f.read()
+            lines = [f"-- ROOT: {include.resolve()}"]
+            for include_path in include.glob("**/*.txt"):
+                lines.append(f"-- {include_path.relative_to(include)}")
+            assert "-- questions/**/*.txt" in content
+            start = "<<<<<<<<<<<<<<<<<"
+            end = ">>>>>>>>>>>>>>>>>"
+            files_listing = "\n".join(lines)
+            content = re.sub(
+                f"{start}(.+){end}",
+                f"{start}\n{files_listing}\n{end}",
+                content,
+                flags=re.MULTILINE | re.DOTALL,
+            )
+            with open(ptyx_path, "w", encoding="utf8") as f:
+                f.write(content)
         print_success(f"A new MCQ was created at {path}.")
 
 

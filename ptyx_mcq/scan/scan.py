@@ -198,7 +198,6 @@ class MCQPictureParser:
 
         return action == "f"
 
-
     def _calculate_scores(self) -> None:
         cfg = self.config
         default_mode = cfg.mode["default"]

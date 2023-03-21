@@ -114,7 +114,7 @@ def generate_ptyx_code(text: str) -> str:
 
             intro.append("#END % (introduction)")
             code.extend(intro)
-            print("Parsing QCM...\n")
+            print("Parsing MCQ...\n")
             print("STRUCTURE:\n")
             begin("QCM")
             before_QCM = False
