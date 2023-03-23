@@ -229,7 +229,7 @@ def test_cli() -> None:
         with open(path / "questions/question1.txt", "w", encoding="utf8") as f:
             f.write(file_content.replace("+", "§").replace("-", "+").replace("§", "-"))
 
-        main(["update", str(path)])
+        main(["update-config", str(path)])
         config = Configuration.load(path / "new.ptyx.mcq.config.json")
         assert new_student_name in config.students_ids.values(), repr(path / "new.ptyx.mcq.config.json")
         main(["scan", str(path)])

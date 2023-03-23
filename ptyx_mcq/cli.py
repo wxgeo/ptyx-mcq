@@ -112,10 +112,15 @@ def main(args: Optional[list] = None) -> None:
     new_parser.add_argument("path", nargs="?", metavar="PATH", type=Path, default=".")
     new_parser.set_defaults(func=clear)
 
-    # create the parser for the "update" command
-    new_parser = add_parser("update", help="Update mcq configuration file.")
+    # create the parser for the "update-config" command
+    new_parser = add_parser("update-config", help="Update mcq configuration file.")
     new_parser.add_argument("path", nargs="?", metavar="PATH", type=Path, default=".")
-    new_parser.set_defaults(func=update)
+    new_parser.set_defaults(func=update_config)
+
+    # create the parser for the "update-include" command
+    new_parser = add_parser("update-include", help="Update included files.")
+    new_parser.add_argument("path", nargs="?", metavar="PATH", type=Path, default=".")
+    new_parser.set_defaults(func=update_include)
 
     parsed_args = parser.parse_args(args)
     try:
@@ -195,7 +200,7 @@ def clear(path: Path) -> None:
     print_success("Directory cleared.")
 
 
-def update(path: Path) -> None:
+def update_config(path: Path) -> None:
     config_file = get_file_or_sysexit(path, extension=".ptyx.mcq.config.json")
     config = Configuration.load(config_file)
     parse_ptyx_file(path)
@@ -237,6 +242,10 @@ def same_questions_and_answers_numbers(config1: Configuration, config2: Configur
             if [a for a, _ in ordering1["answers"][q]] != [a for a, _ in ordering2["answers"][q]]:
                 return False
     return True
+
+
+def update_include(path: Path) -> None:
+    raise NotImplementedError
 
 
 if __name__ == "__main__":
