@@ -4,7 +4,7 @@ from typing import Match
 
 from ptyx.latex_generator import Compiler
 
-from ptyx_mcq import print_info, print_warning
+from ptyx_mcq.tools.io_tools import print_info, print_warning
 
 
 class IncludeParser:

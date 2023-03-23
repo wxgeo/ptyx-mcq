@@ -16,9 +16,8 @@ from typing import Optional
 
 from ptyx.latex_generator import compiler
 
-from ptyx_mcq.tools.config_parser import Configuration
-from ptyx_mcq.tools.io_tools import print_success, print_error, get_file_or_sysexit
-
+from .tools.config_parser import Configuration
+from .tools.io_tools import print_success, print_error, get_file_or_sysexit
 from .make.make import make, parse_ptyx_file
 from .scan.scan import scan
 
