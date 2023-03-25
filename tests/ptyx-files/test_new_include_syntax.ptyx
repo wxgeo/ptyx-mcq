@@ -6,12 +6,13 @@
 
 ======= Mathematics ===========
 
-!-- exercises/ex1.txt
--- exercises/ex2.txt
+!-- exercises/ex1.ex
+-- exercises/ex2.ex
 -- ROOT: other_exercises/a subfolder with a space in its name
--- ex3.txt
+-- ex3.ex
 -- ROOT: other_exercises
--- ex4 has spaces in its name, and other str@#g€ things too !.txt
+-- ex4 has spaces in its name, and other str@#g€ things too !.ex
+-- some/invalid/path.ex
 
 ======= Litterature ==========
 

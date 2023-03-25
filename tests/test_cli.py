@@ -224,9 +224,9 @@ def test_cli() -> None:
         with open(csv_path) as f:
             assert new_student_name in f.read()
         # Invert correct and incorrect answers for testing update.
-        with open(path / "questions/question1.txt", encoding="utf8") as f:
+        with open(path / "questions/question1.ex", encoding="utf8") as f:
             file_content = f.read()
-        with open(path / "questions/question1.txt", "w", encoding="utf8") as f:
+        with open(path / "questions/question1.ex", "w", encoding="utf8") as f:
             f.write(file_content.replace("+", "§").replace("-", "+").replace("§", "-"))
 
         main(["update-config", str(path)])

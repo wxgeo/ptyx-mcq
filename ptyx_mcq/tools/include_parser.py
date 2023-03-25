@@ -1,8 +1,16 @@
 import re
+from enum import auto, Enum
 from pathlib import Path
 from typing import Match
 
 from ptyx_mcq.tools.io_tools import print_info, print_warning
+
+
+class IncludeStatus(Enum):
+    OK = auto()
+    DISABLED = auto()
+    NOT_FOUND = auto()
+    AUTOMATICALLY_ADDED = auto()
 
 
 class IncludeParser:
@@ -33,7 +41,7 @@ class IncludeParser:
 
     # Store all include paths.
     # Format: {ROOT folder: {relative path: include enabled (True)|disabled (False)|invalid (None)}}
-    includes: dict[str, dict[str, bool | None]]
+    includes: dict[str, dict[str, IncludeStatus]]
     _root: Path
 
     def __init__(self, default_path: Path):
@@ -71,15 +79,15 @@ class IncludeParser:
                         contents.append(self._include_file(path))
                 if file_found:
                     # Include enabled
-                    includes[str(pattern)] = True
+                    includes[str(pattern)] = IncludeStatus.OK
                 else:
                     # Invalid include
-                    includes[str(pattern)] = None
+                    includes[str(pattern)] = IncludeStatus.NOT_FOUND
                     print_warning(f"No file corresponding to {pattern!r} in '{self._root}'!")
                 return "\n\n" + "\n\n".join(contents) + "\n\n"
             else:
                 # Include disabled
-                includes[str(pattern)] = False
+                includes[str(pattern)] = IncludeStatus.DISABLED
                 return "\n"
 
     def _include_file(self, path: Path) -> str:
@@ -108,3 +116,44 @@ class IncludeParser:
         """"""
         self._reset()
         return re.sub(r"^!?-- (.+)$", self._parse_include, text, flags=re.MULTILINE)
+
+    def update(self, ptyxfile_path: Path):
+        self.parse(ptyxfile_path.read_text(encoding="utf8"))
+        updated_includes: dict[str, dict[str, IncludeStatus]] = {}
+        for directory, indexed_files in self.includes.items():
+            found = set(str(path) for path in Path(directory).glob("**/*.mcq"))
+            indexed = updated_includes[directory] = {}
+            for pattern, state in indexed_files.items():
+                for path in Path(directory).glob(pattern):
+                    str_path = str(path)
+                    if str_path in found:
+                        indexed[str_path] = state
+                    else:
+                        indexed[str_path] = IncludeStatus.NOT_FOUND
+            for str_path in found:
+                if str_path not in indexed:
+                    indexed[str_path] = IncludeStatus.AUTOMATICALLY_ADDED
+        self._rewrite_file(ptyxfile_path, updated_includes)
+
+    def _rewrite_file(self, ptyxfile_path: Path, includes: dict[str, dict[str, IncludeStatus]]):
+        lines = []
+        with open(ptyxfile_path, encoding="utf8") as f:
+            for line in f:
+                if line.startswith(">>>"):  # `>>>` marks the end of the MCQ
+                    # Insert all include directives just before the end of the MCQ.
+                    for folder, paths in includes.items():
+                        lines.append(f"-- ROOT: {folder}")
+                        for path, status in paths.items():
+                            match status:
+                                case IncludeStatus.OK:
+                                    lines.append(f"-- {path}")
+                                case IncludeStatus.DISABLED:
+                                    lines.append(f"!-- {path}")
+                                case IncludeStatus.NOT_FOUND:
+                                    lines.append(f"# Invalid path:\n!-- {path}")
+                                case IncludeStatus.AUTOMATICALLY_ADDED:
+                                    lines.append(f"# New path detected:\n-- {path}")
+                if not re.match(r"!?-- ", line):
+                    lines.append(line)
+        with open(ptyxfile_path, "w", encoding="utf8") as f:
+            f.write("\n".join(lines))

@@ -10,16 +10,16 @@ import shutil
 import sys
 from argparse import ArgumentParser
 from os import unlink
-
 from pathlib import Path
 from typing import Optional
 
 from ptyx.latex_generator import compiler
 
-from .tools.config_parser import Configuration
-from .tools.io_tools import print_success, print_error, get_file_or_sysexit
+from ptyx_mcq import IncludeParser
 from .make.make import make, parse_ptyx_file
 from .scan.scan import scan
+from .tools.config_parser import Configuration
+from .tools.io_tools import print_success, print_error, get_file_or_sysexit
 
 
 def main(args: Optional[list] = None) -> None:
@@ -112,14 +112,14 @@ def main(args: Optional[list] = None) -> None:
     new_parser.set_defaults(func=clear)
 
     # create the parser for the "update-config" command
-    new_parser = add_parser("update-config", help="Update mcq configuration file.")
-    new_parser.add_argument("path", nargs="?", metavar="PATH", type=Path, default=".")
-    new_parser.set_defaults(func=update_config)
+    update_config_parser = add_parser("update-config", help="Update mcq configuration file.")
+    update_config_parser.add_argument("path", nargs="?", metavar="PATH", type=Path, default=".")
+    update_config_parser.set_defaults(func=update_config)
 
     # create the parser for the "update-include" command
-    new_parser = add_parser("update-include", help="Update included files.")
-    new_parser.add_argument("path", nargs="?", metavar="PATH", type=Path, default=".")
-    new_parser.set_defaults(func=update_include)
+    update_include_parser = add_parser("update-include", help="Update included files.")
+    update_include_parser.add_argument("path", nargs="?", metavar="PATH", type=Path, default=".")
+    update_include_parser.set_defaults(func=update_include)
 
     parsed_args = parser.parse_args(args)
     try:
@@ -152,9 +152,9 @@ def new(path: Path, include: Path = None) -> None:
             with open(ptyx_path, encoding="utf8") as f:
                 content = f.read()
             lines = [f"-- ROOT: {include.resolve()}"]
-            for include_path in include.glob("**/*.txt"):
+            for include_path in include.glob("**/*.ex"):
                 lines.append(f"-- {include_path.relative_to(include)}")
-            assert "-- questions/**/*.txt" in content
+            assert "-- questions/**/*.ex" in content
             start = "<<<<<<<<<<<<<<<<<"
             end = ">>>>>>>>>>>>>>>>>"
             files_listing = "\n".join(lines)
@@ -171,12 +171,7 @@ def new(path: Path, include: Path = None) -> None:
 
 def clear(path: Path) -> None:
     """Implement `mcq clear` command."""
-    try:
-        ptyxfile_path = get_file_or_sysexit(path, extension=".ptyx")
-    except FileNotFoundError:
-        print(f"Searching for a ptyx file in '{path}' ({path.resolve()}) failed !")
-        print_error("No ptyx file found.")
-        sys.exit(1)
+    ptyxfile_path = get_file_or_sysexit(path, extension=".ptyx")
     filename = ptyxfile_path.name
     root = ptyxfile_path.parent
     for directory in (".scan", ".compile"):
@@ -245,7 +240,9 @@ def same_questions_and_answers_numbers(config1: Configuration, config2: Configur
 
 def update_include(path: Path) -> None:
     # This
-    raise NotImplementedError
+    ptyxfile_path = get_file_or_sysexit(path, extension=".ptyx")
+    root = ptyxfile_path.parent
+    IncludeParser(root).update(ptyxfile_path)
 
 
 if __name__ == "__main__":

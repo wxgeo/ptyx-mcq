@@ -128,10 +128,10 @@ def test_include():
     c = load_ptyx_file("test_include.ptyx")
     # Test for support of:
     # - no star at all at the beginning of the question (must be automatically added)
-    with open("ptyx-files/exercises/ex1.txt") as f:
+    with open("ptyx-files/exercises/ex1.ex") as f:
         assert not f.read().startswith("*")
     # - a line break after the star. This should be Ok too.
-    with open("ptyx-files/exercises/ex2.txt") as f:
+    with open("ptyx-files/exercises/ex2.ex") as f:
         assert f.read().startswith("*\n")
     c.generate_syntax_tree()
     latex = c.get_latex()

@@ -39,5 +39,5 @@ Some introduction.
 
 <<<<<<<<<<<<<<<<<
 # The following code will include all .txt files recursively found in the `questions/` folder.
--- exercises/**/*.txt
+-- exercises/**/*.ex
 >>>>>>>>>>>>>>>>>

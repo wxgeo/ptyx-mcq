@@ -35,7 +35,7 @@ id format=8 digits
 
 
 <<<<<<<<<<<<<<<<<
-# The following code will include all .txt files recursively found in the `questions/` folder.
--- questions/**/*.txt
+# The following code will include all .ex files recursively found in the `questions/` folder.
+-- questions/**/*.ex
 >>>>>>>>>>>>>>>>>
  

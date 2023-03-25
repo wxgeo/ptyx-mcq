@@ -1,5 +1,5 @@
 from pathlib import Path
-from ptyx_mcq.tools.include_parser import IncludeParser
+from ptyx_mcq.tools.include_parser import IncludeParser, IncludeStatus
 
 TEST_DIR = Path(__file__).parent.resolve()
 
@@ -11,13 +11,14 @@ def test_include_parser():
     parser.parse(content)
     assert parser.includes == {
         f"{TEST_DIR}/ptyx-files": {
-            "exercises/ex1.txt": False,
-            "exercises/ex2.txt": True,
+            "exercises/ex1.ex": IncludeStatus.DISABLED,
+            "exercises/ex2.ex": IncludeStatus.OK,
         },
         f"{TEST_DIR}/ptyx-files/other_exercises/a subfolder with a space in its name": {
-            "ex3.txt": True
+            "ex3.ex": IncludeStatus.OK,
         },
         f"{TEST_DIR}/ptyx-files/other_exercises": {
-            "ex4 has spaces in its name, and other str@#g€ things too !.txt": True
+            "ex4 has spaces in its name, and other str@#g€ things too !.ex": IncludeStatus.OK,
+            "some/invalid/path.ex": IncludeStatus.NOT_FOUND,
         },
     }
