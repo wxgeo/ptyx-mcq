@@ -13,7 +13,6 @@
 *.directory
 BAZAR/
 *.tex
-*.ptyx
 *.plain-ptyx
 *.pdf
 *.csv

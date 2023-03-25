@@ -1,0 +1,36 @@
+#LOAD{mcq}
+#SEED{123456}
+
+===========================
+sty = amssymb, amsmath, [table]xcolor
+correct = 1
+incorrect = 0
+skipped = 0
+mode=all
+id format=8 digits
+---------------------------
+===========================
+
+
+
+<<<<<<<<<<<<<<<<<
+*
+........................................
+let a, b in -5..5 with a*b < 0
+
+all_answers = [a*b, a*b + 1, a*b + 2]
+
+correct_answers = [a*b, a*b + 1]
+neutralized_answers = [a*b + 1]
+........................................
+
+
+The value of $#a#*#b$ is~:
+
+#ANSWERS_LIST[neutralized_answers]{all_answers}{correct_answers}
+
+* $1+2=$
+- 4
++ 3
+! $\mathrm{i}^2+4$  # neutralized answer
+>>>>>>>>>>>>>>>>>

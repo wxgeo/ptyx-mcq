@@ -22,7 +22,7 @@ def load_ptyx_file(filename):
     generate a plain ptyx file.
 
     Return the `Compiler` instance."""
-    path = TEST_DIR / filename
+    path = TEST_DIR / "ptyx-files" / filename
     c = Compiler()
     c.read_file(path)
     c.preparse()
@@ -128,10 +128,10 @@ def test_include():
     c = load_ptyx_file("test_include.ptyx")
     # Test for support of:
     # - no star at all at the beginning of the question (must be automatically added)
-    with open("exercises/ex1.txt") as f:
+    with open("ptyx-files/exercises/ex1.txt") as f:
         assert not f.read().startswith("*")
     # - a line break after the star. This should be Ok too.
-    with open("exercises/ex2.txt") as f:
+    with open("ptyx-files/exercises/ex2.txt") as f:
         assert f.read().startswith("*\n")
     c.generate_syntax_tree()
     latex = c.get_latex()
@@ -174,7 +174,7 @@ def test_unicity_of_answers():
 
 
 def test_loading_of_sty_files():
-    c = load_ptyx_file("loading-sty-files.txt")
+    c = load_ptyx_file("loading-sty-files.ptyx")
     c.generate_syntax_tree()
     latex = c.get_latex()
     latex_lines = latex.split("\n")
@@ -198,7 +198,7 @@ def test_neutralized_questions():
 def cleanup():
     files_found = False
     # Remove .ptyx.plain-ptyx files generated during tests.
-    for tmp_filename in TEST_DIR.glob("*.ptyx.plain-ptyx"):
+    for tmp_filename in (TEST_DIR / "ptyx-files").glob("*.ptyx.plain-ptyx"):
         tmp_filename.unlink()
         files_found = True
     assert files_found
