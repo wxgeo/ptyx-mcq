@@ -1,0 +1,34 @@
+#LOAD{mcq}
+#SEED{38887}
+
+
+<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+
+======= Mathematics ===========
+
+!-- exercises/ex1.txt
+-- exercises/ex2.txt
+-- ROOT: other_exercises/a subfolder with a space in its name
+-- ex3.txt
+-- ROOT: other_exercises
+-- ex4 has spaces in its name, and other str@#g€ things too !.txt
+
+======= Litterature ==========
+
+* Jean de la Fontaine was a famous french
+- pop singer
+- dancer
++ writer
+- detective
+- cheese maker
+
+* Where is Brian ?
+- in the bathroom
+- in the living room
++ in the kitchen
+
+- who's Brian ?
+
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+

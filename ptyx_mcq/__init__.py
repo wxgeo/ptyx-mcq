@@ -121,7 +121,7 @@ def main(text: str, compiler: Compiler) -> str:
     #         ],
     #    }
 
-    text = IncludeParser(compiler).parse(text)
+    text = IncludeParser(compiler.dir_path).parse(text)
 
     # Call extended_python extension.
     text = extended_python.main(text, compiler)

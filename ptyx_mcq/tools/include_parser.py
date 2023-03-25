@@ -2,8 +2,6 @@ import re
 from pathlib import Path
 from typing import Match
 
-from ptyx.latex_generator import Compiler
-
 from ptyx_mcq.tools.io_tools import print_info, print_warning
 
 
@@ -33,41 +31,65 @@ class IncludeParser:
     several times).
     """
 
-    def __init__(self, compiler: Compiler):
-        self.compiler = compiler
-        self.root: Path = compiler.dir_path
-        self.includes: list[Path] = []
+    # Store all include paths.
+    # Format: {ROOT folder: {relative path: include enabled (True)|disabled (False)|invalid (None)}}
+    includes: dict[str, dict[str, bool | None]]
+    _root: Path
+
+    def __init__(self, default_path: Path):
+        self.default_path = default_path
+        self._reset()
+
+    def _reset(self):
+        self._root = self.default_path
+        self.includes = {}
 
     def _parse_include(self, match: Match) -> str:
+        include_enabled = match.group(0)[0] != "!"
         pattern = match.group(1).strip()
         if pattern.startswith("ROOT:"):
-            path = Path(pattern[5:].strip()).expanduser()
-            if not path.is_absolute():
-                path = (self.compiler.dir_path / path).resolve()
-            print_info(f"Directory for files inclusion changed to '{path}'.")
-            if not path.is_dir():
-                raise FileNotFoundError(
-                    f"Directory '{self.root}' not found.\n"
-                    f'HINT: Change "-- {pattern}" in {self.compiler.file_path}.'
-                )
-            self.root = path
+            if include_enabled:
+                path = Path(pattern[5:].strip()).expanduser()
+                if not path.is_absolute():
+                    path = (self.default_path / path).resolve()
+                print_info(f"Directory for files inclusion changed to '{path}'.")
+                if not path.is_dir():
+                    raise FileNotFoundError(
+                        f"Directory '{self._root}' not found.\n"
+                        f'HINT: Change "-- {pattern}" line in your ptyx file.'
+                    )
+                self._root = path
             return "\n"
-        elif pattern[0] != "!":
-            file_found = False
-            contents = []
-            for path in sorted(self.root.glob(pattern)):
-                if path.is_file():
-                    file_found = True
-                    contents.append(self._include_file(path))
-            if not file_found:
-                print_warning(f"No file corresponding to {pattern!r} in '{self.root}'!")
-            return "\n\n" + "\n\n".join(contents) + "\n\n"
+        else:
+            includes = self.includes.setdefault(str(self._root), {})
+            if include_enabled:
+                file_found = False
+                contents = []
+                for path in sorted(self._root.glob(pattern)):
+                    if path.is_file():
+                        file_found = True
+                        contents.append(self._include_file(path))
+                if file_found:
+                    # Include enabled
+                    includes[str(pattern)] = True
+                else:
+                    # Invalid include
+                    includes[str(pattern)] = None
+                    print_warning(f"No file corresponding to {pattern!r} in '{self._root}'!")
+                return "\n\n" + "\n\n".join(contents) + "\n\n"
+            else:
+                # Include disabled
+                includes[str(pattern)] = False
+                return "\n"
 
     def _include_file(self, path: Path) -> str:
-        self.includes.append(path)
         lines: list[str] = []
         with open(path) as file:
-            file_content = self.compiler.syntax_tree_generator.remove_comments(file.read().strip())
+            file_content = file.read().strip()
+            # Remove comments
+            file_content = re.sub("( # .+)|(^# .+\n)", "", file_content, flags=re.MULTILINE)
+            # Each exercise must start with a star. Since each included file is supposed to be an exercise,
+            # add the initial star if missing.
             if file_content[:2].strip() != "*":
                 file_content = "*\n" + file_content
             for line in file_content.split("\n"):
@@ -84,4 +106,5 @@ class IncludeParser:
 
     def parse(self, text: str) -> str:
         """"""
+        self._reset()
         return re.sub(r"^!?-- (.+)$", self._parse_include, text, flags=re.MULTILINE)
