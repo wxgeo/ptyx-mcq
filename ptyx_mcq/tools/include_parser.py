@@ -11,7 +11,17 @@ class IncludeParser:
     """Parser used to include files in a ptyx file.
 
     Ptyx-mcq accept the following syntax to include a file:
-    -- path/to/file
+
+        -- path/to/file
+
+    There must be at least one space after the two dashed.
+
+    To disable an include, add a `!` just before the dashes:
+
+        !-- path/to/file
+
+    (You may also simply comment the line using the `#` character with a space after,
+    which is the usual syntax to comment pTyX code, but this is less convenient).
 
     By default, when relative, paths to files refer to the directory where the ptyx file
     is located.
@@ -42,7 +52,7 @@ class IncludeParser:
                 )
             self.root = path
             return "\n"
-        else:
+        elif pattern[0] != "!":
             file_found = False
             contents = []
             for path in sorted(self.root.glob(pattern)):
@@ -73,4 +83,5 @@ class IncludeParser:
         return "\n".join(lines)
 
     def parse(self, text: str) -> str:
-        return re.sub(r"^-- (.+)$", self._parse_include, text, flags=re.MULTILINE)
+        """"""
+        return re.sub(r"^!?-- (.+)$", self._parse_include, text, flags=re.MULTILINE)

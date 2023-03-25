@@ -1,11 +1,7 @@
 pTyX MCQ Extension
 ==================
 
-***Disclaimer:*** installation is broken for now (work in progress...)
-
-If you're interested, **please wait a few months** before it becomes fully usable.
-
-(For now, the following document is only a draft documenting future usage.)
+MCQ generation (PDF files) and automatic marking of scanned students answers.
 
 Overview
 --------
@@ -16,8 +12,9 @@ I developed and used pTyX to make several versions of a same test in exams,
 for my student, to discourage cheating.
 Since it uses sympy library, pTyX has symbolic calculus abilities too.
 
-The `pTyX MCQ extension` makes it easy to use pTyX to generate Multiple Choice Questions as pdf documents.
-The students MCQ can then be scanned and automatically corrected and scored.
+The `pTyX MCQ extension` makes it easy to use pTyX to generate Multiple Choice Questions 
+in the form of pdf documents.
+The students MCQ can then be scanned and automatically corrected and marked.
 
 Installation
 ------------
@@ -38,10 +35,13 @@ To generate a template, run:
 
     $ mcq new new_folder
 
-This will generate a `new_folder/new.ptyx` file, which is the main configuration file.
+This will generate a `new_folder` folder with a `new.ptyx` file inside,
+which is the main configuration file.
 
 This will also create a `new_folder/questions/` folder, where you should put all the exercises, 
 as `.txt` files. 
+
+A few text files are already included as examples.
 
 See the next section (*MCQ file format*) for more information about those files format.
 

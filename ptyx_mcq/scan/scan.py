@@ -510,4 +510,4 @@ def scan(
         ask_for_name=ask_for_name,
         manual_verification=manual_verification,
     )
-    print_success("Done ! :)")
+    print_success("Students' marks successfully generated. :)")
