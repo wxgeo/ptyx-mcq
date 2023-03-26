@@ -12,6 +12,9 @@ class IncludeStatus(Enum):
     NOT_FOUND = auto()
     AUTOMATICALLY_ADDED = auto()
 
+    def __repr__(self):
+        return f"{self.__class__.__name__}.{self.name}"
+
 
 class IncludeParser:
     """Parser used to include files in a ptyx file.
@@ -63,7 +66,7 @@ class IncludeParser:
                 print_info(f"Directory for files inclusion changed to '{path}'.")
                 if not path.is_dir():
                     raise FileNotFoundError(
-                        f"Directory '{self._root}' not found.\n"
+                        f"Directory '{path}' not found.\n"
                         f'HINT: Change "-- {pattern}" line in your ptyx file.'
                     )
                 self._root = path
@@ -118,22 +121,45 @@ class IncludeParser:
         return re.sub(r"^!?-- (.+)$", self._parse_include, text, flags=re.MULTILINE)
 
     def update(self, ptyxfile_path: Path):
+        """Track all the `.ex` files and update pTyX file to include all the `.ex` files found.
+
+        The `.ex` files are searched:
+            - in the same directory as the `.pTyX` file
+            - in any directory manually added via a `-- ROOT: /my/path` directive.
+        """
         self.parse(ptyxfile_path.read_text(encoding="utf8"))
-        updated_includes: dict[str, dict[str, IncludeStatus]] = {}
+        new_includes: dict[str, dict[str, IncludeStatus]] = {}
+        # Several patterns may refer to the same file: keep track of the files already indexed,
+        # using their absolute path.
+        already_indexed: set[Path] = set()
         for directory, indexed_files in self.includes.items():
-            found = set(str(path) for path in Path(directory).glob("**/*.mcq"))
-            indexed = updated_includes[directory] = {}
-            for pattern, state in indexed_files.items():
-                for path in Path(directory).glob(pattern):
-                    str_path = str(path)
-                    if str_path in found:
-                        indexed[str_path] = state
-                    else:
-                        indexed[str_path] = IncludeStatus.NOT_FOUND
-            for str_path in found:
-                if str_path not in indexed:
-                    indexed[str_path] = IncludeStatus.AUTOMATICALLY_ADDED
-        self._rewrite_file(ptyxfile_path, updated_includes)
+            directory_path = Path(directory)
+            new_directory_index = new_includes[directory] = {}
+            # `index_files` is a dict. Its format is: {
+            #   "a relative path or pattern to one or several indexed file": the status of the indexed files
+            #   }
+            indexed_ex_files: dict[Path, IncludeStatus] = {
+                path: status
+                for pattern, status in indexed_files.items()
+                for path in directory_path.glob(pattern)
+                if path not in already_indexed
+            }
+            already_indexed.update(indexed_ex_files)
+
+            for ex_file_path, status in indexed_ex_files.items():
+                ex_file = str(ex_file_path.relative_to(directory_path))
+                new_directory_index[ex_file] = status
+
+        for directory, indexed_files in self.includes.items():
+            directory_path = Path(directory)
+            # Search for new `.ex` files to index:
+            for ex_file_path in directory_path.glob("**/*.ex"):
+                if ex_file_path not in already_indexed:
+                    already_indexed.add(ex_file_path)
+                    ex_file = str(ex_file_path.relative_to(directory_path))
+                    new_includes[directory][ex_file] = IncludeStatus.AUTOMATICALLY_ADDED
+        self.includes = new_includes
+        self._rewrite_file(ptyxfile_path, new_includes)
 
     def _rewrite_file(self, ptyxfile_path: Path, includes: dict[str, dict[str, IncludeStatus]]):
         lines = []
@@ -142,7 +168,7 @@ class IncludeParser:
                 if line.startswith(">>>"):  # `>>>` marks the end of the MCQ
                     # Insert all include directives just before the end of the MCQ.
                     for folder, paths in includes.items():
-                        lines.append(f"-- ROOT: {folder}")
+                        lines.append(f"\n-- ROOT: {folder}")
                         for path, status in paths.items():
                             match status:
                                 case IncludeStatus.OK:
@@ -154,6 +180,6 @@ class IncludeParser:
                                 case IncludeStatus.AUTOMATICALLY_ADDED:
                                     lines.append(f"# New path detected:\n-- {path}")
                 if not re.match(r"!?-- ", line):
-                    lines.append(line)
+                    lines.append(line.rstrip())
         with open(ptyxfile_path, "w", encoding="utf8") as f:
             f.write("\n".join(lines))
