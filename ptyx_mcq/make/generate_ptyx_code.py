@@ -3,9 +3,10 @@
 # @unique
 # class Levels(Enum):
 #     ROOT, QCM, SECTION, QUESTION, VERSION, ANSWERS_BLOCK, NEW_ANSWER = range(7)
+from typing import Iterable
 
 
-def generate_ptyx_code(text: str) -> str:
+def generate_ptyx_code(text: str, additional_header_lines: Iterable[str]=()) -> str:
     """This function translates MCQ syntax into proper pTyX code."""
 
     # TODO: improve ability to customize this part ?
@@ -95,6 +96,7 @@ def generate_ptyx_code(text: str) -> str:
     previous_line = None
     before_QCM = True
     is_header = False
+    is_header_raw_code = False
     header = ["#QCM_HEADER{"]
     question_num = 0
 
@@ -108,10 +110,15 @@ def generate_ptyx_code(text: str) -> str:
         n = len(line)
 
         if n >= 3 and all(c == "<" for c in line):  # <<<
-            # start MCQ
+            # MCQ start tag detected.
+            # First, we must close the header.
+            if not is_header_raw_code:
+                header.append("}{")
+            header.extend(additional_header_lines)
             header.append("}")
             code.extend(header)
-
+            is_header = is_header_raw_code = False
+            # Now, let's start the MCQ body.
             intro.append("#END % (introduction)")
             code.extend(intro)
             print("Parsing MCQ...\n")
@@ -124,7 +131,13 @@ def generate_ptyx_code(text: str) -> str:
                 # Enter (or leave) header section.
                 is_header = not is_header
             elif is_header:
-                header.append(_line_)
+                if line.startswith("---") and not is_header_raw_code:
+                    # A line of --- is used as a delimiter between the `key = value` entries
+                    # and the optional LaTeX code.
+                    is_header_raw_code = True
+                    header.append("}{")
+                else:
+                    header.append(_line_)
             else:
                 intro.append(_line_)
 

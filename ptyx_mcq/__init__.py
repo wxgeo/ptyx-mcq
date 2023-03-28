@@ -59,9 +59,11 @@ An example:
 One may include some PTYX code of course.
 
     """
+import re
 
 from ptyx.extensions import extended_python
 from ptyx.latex_generator import Compiler
+from ptyx_mcq.tools.io_tools import print_error
 
 from .make.extend_latex_generator import MCQLatexGenerator
 from .make.generate_ptyx_code import generate_ptyx_code
@@ -86,12 +88,29 @@ __tags__ = {
     "NEW_ANSWER": (2, 0, ["NEW_ANSWER", "END_ANSWERS_BLOCK"]),
     "ANSWERS_LIST": (2, 0, None),
     # Other tags
-    "QCM_HEADER": (1, 0, None),
+    "QCM_HEADER": (2, 0, None),
     "DEBUG_MCQ": (0, 0, None),
     # Deprecated tags
     "L_ANSWERS": (1, 0, None),
 }
 __latex_generator_extension__ = MCQLatexGenerator
+
+
+def autodetect_smallgraphlib(text: str) -> list[str]:
+    smallgraphlib_detected = (
+        re.search("(^import smallgraphlib)|(^from smallgraphlib import)", text, re.MULTILINE) is not None
+    )
+    if smallgraphlib_detected:
+        try:
+            # noinspection PyUnresolvedReferences
+            from smallgraphlib.tikz_export import TikzPrinter
+            preamble_additions = TikzPrinter.latex_preamble_additions()
+            preamble_additions.remove(r"\usepackage{tikz}")
+            return preamble_additions
+        except ImportError:
+            print_error("This file tries to import `smallgraphlib` library, but it is not installed.\n"
+                        "You can install it with the following command:\npip install smallgraphlib")
+    return []
 
 
 def main(text: str, compiler: Compiler) -> str:
@@ -122,10 +141,11 @@ def main(text: str, compiler: Compiler) -> str:
     #    }
 
     text = IncludeParser(compiler.dir_path).parse(text)
+    additional_header_lines = autodetect_smallgraphlib(text)
 
     # Call extended_python extension.
     text = extended_python.main(text, compiler)
 
-    code = generate_ptyx_code(text)
+    code = generate_ptyx_code(text, additional_header_lines=additional_header_lines)
     assert isinstance(code, str)
     return code

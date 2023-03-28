@@ -494,7 +494,7 @@ class MCQLatexGenerator(LatexGenerator):
         return "\n".join(r"\usepackage" + package for package in packages)
 
     @staticmethod
-    def _extract_config_from_header(text: str) -> tuple[dict[str, str], list[str]]:
+    def _extract_config_from_header(text: str) -> dict[str, str]:
         def format_key(key_: str) -> str:
             return key_.strip().replace(" ", "_").lower()
 
@@ -517,23 +517,14 @@ class MCQLatexGenerator(LatexGenerator):
         # Read config: a dictionary is generated from the `key = value` entries.
         config: Dict[str, str] = {}
         # After the `key = value` entries, the user may append some raw LaTeX code.
-        raw_latex = []
-        remaining_is_raw_latex = False
         for line in text.split("\n"):
-            if not remaining_is_raw_latex:
-                if "=" in line:
-                    key, val = line.split("=", maxsplit=1)
-                    # Normalize the key.
-                    key = format_key(key)
-                    key = alias.get(key, key)
-                    config[key] = val.strip()
-                # A line of --- is used as a delimiter between the `key = value` entries
-                # and the optional LaTeX code.
-                if line.startswith("---"):
-                    remaining_is_raw_latex = True
-            else:
-                raw_latex.append(line)
-        return config, raw_latex
+            if "=" in line:
+                key, val = line.split("=", maxsplit=1)
+                # Normalize the key.
+                key = format_key(key)
+                key = alias.get(key, key)
+                config[key] = val.strip()
+        return config
 
     def _parse_QCM_HEADER_tag(self, node: Node) -> None:
         """Parse HEADER.
@@ -553,7 +544,7 @@ class MCQLatexGenerator(LatexGenerator):
         ===========================
         """
         sty = ""
-        raw_latex: list[str] = []
+        raw_latex = ""
         #    if self.WITH_ANSWERS:
         #        self.context['format_ask'] = (lambda s: '')
 
@@ -561,7 +552,8 @@ class MCQLatexGenerator(LatexGenerator):
         if check_id_or_name is None:
             code = ""
 
-            config, raw_latex = self._extract_config_from_header(node.arg(0))
+            config = self._extract_config_from_header(node.arg(0))
+            raw_latex = node.arg(1)
 
             for key in ("mode", "correct", "incorrect", "skipped", "floor", "ceil"):
                 if key in config:
@@ -623,7 +615,7 @@ class MCQLatexGenerator(LatexGenerator):
         header = self.mcq_cache["header"]
         if header is None:
             header1, header2 = packages_and_macros()
-            header = "\n".join([header1, self._parse_sty_list(sty), header2, *raw_latex, r"\begin{document}"])
+            header = "\n".join([header1, self._parse_sty_list(sty), header2, raw_latex, r"\begin{document}"])
             self.mcq_cache["header"] = header
 
         # Generate barcode

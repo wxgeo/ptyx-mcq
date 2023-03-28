@@ -111,7 +111,7 @@ class IncludeParser:
                     or line.startswith("OR ")
                     or line.rstrip() in ("*", ">", "OR")
                 ):
-                    prettified_path = path.parent / f"\u001b[36m{path.name}\u001b[0m"
+                    prettified_path = path.parent / f"\u001b[36m{path.name.replace('#', '##')}\u001b[0m"
                     lines.append(f'#PRINT{{\u001b[36mIMPORTING\u001b[0m "{prettified_path}"}}')
         return "\n".join(lines)
 

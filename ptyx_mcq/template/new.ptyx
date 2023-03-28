@@ -26,7 +26,8 @@ mode=all
 id format=8 digits
 ---------------------------
 # You may include here raw LaTeX code (definition of new LaTeX commands for example).
-# It will be appended to the LaTeX preamble.
+# It will be appended to the LaTeX preamble. Example:
+# \usetikzlibrary{arrows.meta}
 
 ===========================
 
