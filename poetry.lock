@@ -987,14 +987,14 @@ use-chardet-on-py3 = ["chardet (>=3.0.2,<6)"]
 
 [[package]]
 name = "smallgraphlib"
-version = "0.6.2"
+version = "0.6.3"
 description = "Simple library for handling small graphs, including Tikz code generation."
 category = "main"
 optional = false
 python-versions = ">=3.10,<4.0"
 files = [
-    {file = "smallgraphlib-0.6.2-py3-none-any.whl", hash = "sha256:13176f9ec338729eb68d8be4a12346d0de44b118638a8889d15fe04b13798c70"},
-    {file = "smallgraphlib-0.6.2.tar.gz", hash = "sha256:464bcb654ccc0434b21dc7fc65a467e4210bfd5115ab0cd14928ba8d4b4441a4"},
+    {file = "smallgraphlib-0.6.3-py3-none-any.whl", hash = "sha256:90b41c3c524ee846b931cb85dcf937e79b8d585a844922deeca2fb1afa2e5084"},
+    {file = "smallgraphlib-0.6.3.tar.gz", hash = "sha256:2021048d4854c370aca12d9b1e5210e63ee36dae77c6bbd94ecb33e17ac4ece0"},
 ]
 
 [[package]]
@@ -1314,4 +1314,4 @@ test = ["covdefaults (>=2.2.2)", "coverage (>=7.1)", "coverage-enable-subprocess
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.10"
-content-hash = "d4e77a9a686e79eb6eb5c08b22aec338e2dd00a0780907ae7f8d0315b0418b42"
+content-hash = "ffbea9cf29097f027e7ab925e6474927d9eac5444557b41b9ad6762fa337f9e6"
