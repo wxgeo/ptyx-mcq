@@ -104,12 +104,15 @@ def autodetect_smallgraphlib(text: str) -> list[str]:
         try:
             # noinspection PyUnresolvedReferences
             from smallgraphlib.tikz_export import TikzPrinter
+
             preamble_additions = TikzPrinter.latex_preamble_additions()
             preamble_additions.remove(r"\usepackage{tikz}")
             return preamble_additions
         except ImportError:
-            print_error("This file tries to import `smallgraphlib` library, but it is not installed.\n"
-                        "You can install it with the following command:\npip install smallgraphlib")
+            print_error(
+                "This file tries to import `smallgraphlib` library, but it is not installed.\n"
+                "You can install it with the following command:\npip install smallgraphlib"
+            )
     return []
 
 

@@ -52,6 +52,7 @@ def test_update_include():
             },
         }
 
+
 @pytest.mark.xfail
 def test_latex_code():
     path = TEST_DIR / "ptyx-files/test_new_include_syntax.ptyx"

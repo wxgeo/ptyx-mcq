@@ -6,7 +6,7 @@
 from typing import Iterable
 
 
-def generate_ptyx_code(text: str, additional_header_lines: Iterable[str]=()) -> str:
+def generate_ptyx_code(text: str, additional_header_lines: Iterable[str] = ()) -> str:
     """This function translates MCQ syntax into proper pTyX code."""
 
     # TODO: improve ability to customize this part ?
