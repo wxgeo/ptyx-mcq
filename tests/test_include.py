@@ -1,6 +1,10 @@
 import shutil
 import tempfile
 from pathlib import Path
+
+import pytest
+from ptyx.latex_generator import Compiler
+
 from ptyx_mcq.tools.include_parser import IncludeParser, IncludeStatus
 
 TEST_DIR = Path(__file__).parent.resolve()
@@ -38,7 +42,7 @@ def test_update_include():
             f"{tmpdirname}/ptyx-files": {
                 "exercises/ex1.ex": Status.DISABLED,
                 "exercises/ex2.ex": Status.OK,
-                "other_exercises/a subfolder with a space in its name/ex5.ex": Status.AUTOMATICALLY_ADDED,
+                "other_exercises/a subfolder with a space in its name/ex5 - smallgraphlib import.ex": Status.AUTOMATICALLY_ADDED,
             },
             f"{tmpdirname}/ptyx-files/other_exercises/a subfolder with a space in its name": {
                 "ex3.ex": Status.OK
@@ -48,7 +52,14 @@ def test_update_include():
             },
         }
 
-        # content = ptyx_file.read_text()
+@pytest.mark.xfail
+def test_latex_code():
+    path = TEST_DIR / "ptyx-files/test_new_include_syntax.ptyx"
+    c = Compiler()
+    latex = c.parse(path=path)
+    for line in latex.split():
+        assert not line.startswith("-- "), line
+        assert not line.startswith("!-- "), line
 
 
 #         assert f"""
@@ -58,7 +69,7 @@ def test_update_include():
 # # New path detected:
 # -- {tmpdirname}/ptyx-files/other_exercises/a subfolder with a space in its name/ex3.ex
 # # New path detected:
-# -- {tmpdirname}/ptyx-files/other_exercises/a subfolder with a space in its name/ex5.ex
+# -- {tmpdirname}/ptyx-files/other_exercises/a subfolder with a space in its name/ex5 - smallgraphlib import.ex
 # # New path detected:
 # -- {tmpdirname}/ptyx-files/other_exercises/ex4 has spaces in its name, and other str@#g€ things too !.ex
 # """ in content
@@ -67,15 +78,15 @@ def test_update_include():
 # -- ROOT: {tmpdirname}/ptyx-files/other_exercises/a subfolder with a space in its name
 # -- {tmpdirname}/ptyx-files/other_exercises/a subfolder with a space in its name/ex3.ex
 # # New path detected:
-# -- {tmpdirname}/ptyx-files/other_exercises/a subfolder with a space in its name/ex5.ex
+# -- {tmpdirname}/ptyx-files/other_exercises/a subfolder with a space in its name/ex5 - smallgraphlib import.ex
 # """in content
 #
 #     assert f"""
 # -- ROOT: {tmpdirname}/ptyx-files/other_exercises
 # -- {tmpdirname}/ptyx-files/other_exercises/ex4 has spaces in its name, and other str@#g€ things too !.ex
 # # New path detected:
-# -- {tmpdirname}/ptyx-files/other_exercises/a subfolder with a space in its name/ex5.ex
+# -- {tmpdirname}/ptyx-files/other_exercises/a subfolder with a space in its name/ex5 - smallgraphlib import.ex
 # # New path detected:
-# -- {tmpdirname}/ptyx-files/other_exercises/a subfolder with a space in its name/ex5.ex
+# -- {tmpdirname}/ptyx-files/other_exercises/a subfolder with a space in its name/ex5 - smallgraphlib import.ex
 # """ in content
 #

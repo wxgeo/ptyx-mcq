@@ -1,0 +1,78 @@
+#LOAD{mcq}
+#SEED{3830117}
+
+===========================
+sty=njeucom,wasysym
+correct=1 
+incorrect=0 
+skipped=0
+floor=0
+ceil=1
+mode=all
+===========================
+
+
+<<<<<<<<<<<<<<<<<
+
+* questionA
+
+- ansA1
++ ansA2
+
+* questionB
++ ansB1
+- ansB2
+
+
+* questionC
+
+- ansC1
++ ansC2
+
+* questionD
+
+- ansD1
+- ansD2
+
+> questionE (must follow D)
+
+- ansE0
+
+- ansE1
+- ansE2
+- ansE3
+
++ ansE4
+
+> questionF (must follow E)
+- ansF1
+- ansF2
+
+
++ ansF3 is lonely
+
+> questionG (must follow F)
+
+- ansG1
++ ansG2
+
+
+> questionH (must follow G)
+
++ ansH1
+- ansH2
+
+
+> questionI (must follow H)
+- ansI1
++ ansI2
+
+
+* questionJ
+- ansJ1
+- ansJ2
+
+
+
+
+>>>>>>>>>>>>>>>>>
