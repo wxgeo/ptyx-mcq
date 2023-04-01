@@ -20,9 +20,14 @@ from ast import parse
 def extended_literal_eval(node_or_string, names: dict = None):
     """
     Safely evaluate an expression node or a string containing a Python
-    expression.  The string or node provided may only consist of the following
-    Python literal structures: strings, bytes, numbers, tuples, lists, dicts,
-    sets, booleans, and None.
+    expression.
+
+    In python's `ast.literal_eval()`, the string or node provided
+    may only consist of the following Python literal structures:
+    strings, bytes, numbers, tuples, lists, dicts, sets, booleans, and None.
+
+    This extends `ast.literal_eval()` by providing a `names` dictionary.
+    To add support to `MyClass(...)`, you have to pass `names={"MyClass": MyClass}`.
     """
     if names is None:
         names = {}

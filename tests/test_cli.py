@@ -5,6 +5,7 @@ Test new, make and scan subcommands.
 """
 
 import csv
+import shutil
 import tempfile
 from os import listdir
 from pathlib import Path
@@ -35,6 +36,8 @@ STUDENTS = {
     StudentId("34567890"): StudentName("Martin De La Tour"),
 }
 MAX_ID_LEN = max(len(student_id) for student_id in STUDENTS)
+
+TEST_DIR = Path(__file__).parent.resolve()
 
 
 def xy2ij(x: float, y: float) -> tuple[int, int]:
@@ -161,7 +164,7 @@ def test_cli() -> None:
         # ----------------
         # Test `mcq new`
         # ----------------
-        main(["new", str(path)])
+        main(["new", str(path), "--template", "original"])
         assert "new.ptyx" in listdir(path)
 
         with open(path / "new.ptyx") as ptyxfile:
@@ -268,6 +271,15 @@ def test_cli() -> None:
             assert not (pth := path / endpath).exists(), pth
         for endpath in paths_to_be_kept:
             assert (pth := path / endpath).exists(), pth
+
+
+@pytest.mark.xfail
+def test_previous_scan_data_loading():
+    shutil.rmtree("/tmp/ptyx-mcq/", ignore_errors=True)
+    path = "/tmp/ptyx-mcq/caching_test"
+    shutil.copytree(TEST_DIR / "caching_test", path)
+    main(["scan", str(path)])
+
 
 
 if __name__ == "__main__":

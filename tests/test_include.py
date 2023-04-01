@@ -55,6 +55,7 @@ def test_update_include():
 
 @pytest.mark.xfail
 def test_latex_code():
+    # Bug: "#" in file name results in a #PRINT{...#...} and #PRINT{} doesn't handle correctly hashtags.
     path = TEST_DIR / "ptyx-files/test_new_include_syntax.ptyx"
     c = Compiler()
     latex = c.parse(path=path)

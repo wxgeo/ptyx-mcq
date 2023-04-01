@@ -13,6 +13,7 @@ from os import unlink
 from pathlib import Path
 from typing import Optional
 
+from platformdirs import PlatformDirs
 from ptyx.latex_generator import compiler
 
 from ptyx_mcq import IncludeParser
@@ -37,6 +38,18 @@ def main(args: Optional[list] = None) -> None:
         metavar="INCLUDE_PATH",
         type=Path,
         help="Include all files from this path in the generated .ptyx file.",
+    )
+    new_parser.add_argument(
+        "--template",
+        "-t",
+        metavar="TEMPLATE_NAME",
+        type=str,
+        default="",
+        help=(
+            "Specify the name of the template to use.\nIf not specified, search for a template named "
+            "'default' in the user config directory, or use the default template.\n"
+            "One may force the use of the default template by writing 'original'."
+        ),
     )
     new_parser.set_defaults(func=new)
 
@@ -77,13 +90,11 @@ def main(args: Optional[list] = None) -> None:
             "(alternatively, this path may point to any file in this folder)."
         ),
     )
-
     scan_parser.add_argument(
         "--reset",
         action="store_true",
         help="Delete all cached data." "The scanning process will restart from the beginning.",
     )
-
     scan_parser.add_argument(
         "--verify",
         "--manual-verification",
@@ -96,20 +107,18 @@ def main(args: Optional[list] = None) -> None:
         "Default is `auto`, i.e. only ask for manual verification "
         "in case of ambiguity.",
     )
-
     scan_parser.add_argument(
         "--ask-for-name",
         action="store_true",
         default=False,
         help="For each first page, display a picture of " "the top of the page and ask for the student name.",
     )
-
     scan_parser.set_defaults(func=scan)
 
     # create the parser for the "clear" command
-    new_parser = add_parser("clear", help="Remove every MCQ data but the ptyx file.")
-    new_parser.add_argument("path", nargs="?", metavar="PATH", type=Path, default=".")
-    new_parser.set_defaults(func=clear)
+    clear_parser = add_parser("clear", help="Remove every MCQ data but the ptyx file.")
+    clear_parser.add_argument("path", nargs="?", metavar="PATH", type=Path, default=".")
+    clear_parser.set_defaults(func=clear)
 
     # create the parser for the "update-config" command
     update_config_parser = add_parser("update-config", help="Update mcq configuration file.")
@@ -120,6 +129,18 @@ def main(args: Optional[list] = None) -> None:
     update_include_parser = add_parser("update-include", help="Update included files.")
     update_include_parser.add_argument("path", nargs="?", metavar="PATH", type=Path, default=".")
     update_include_parser.set_defaults(func=update_include)
+
+    # create the parser for the "create_template" command
+    create_template_parser = add_parser("create-template", help="Create a customisable user template.")
+    create_template_parser.add_argument(
+        "name",
+        nargs="?",
+        metavar="NAME",
+        type=str,
+        default="default",
+        help="The template name must be a valid directory name.",
+    )
+    create_template_parser.set_defaults(func=create_template)
 
     parsed_args = parser.parse_args(args)
     try:
@@ -133,14 +154,30 @@ def main(args: Optional[list] = None) -> None:
     func(**kwargs)
 
 
-def new(path: Path, include: Path = None) -> None:
+def new(path: Path, include: Path = None, template="") -> None:
     """Implement `mcq new` command."""
-    template = Path(__file__).resolve().parent / "template"
+    # Select the template to use.
+    # Default template:
+    template_path = Path(__file__).resolve().parent / "templates/original"
+    # Directory of the eventual user templates:
+    user_templates_path = PlatformDirs().user_config_path / "ptyx-mcq/templates"
+    if template == "":
+        # Search for a default user-defined template.
+        user_default_template_path = user_templates_path / "default"
+        if user_default_template_path.is_dir():
+            template_path = user_default_template_path
+    elif template != "original":
+        template_path = user_templates_path / template
+    if not template_path.is_dir():
+        print_error(f"I can't use template {template!r}: '{template_path}' directory not found.")
+        sys.exit(1)
+
+    # Create the new MCQ.
     if path.exists():
         print_error(f"Path {path} already exists.")
         sys.exit(1)
     else:
-        shutil.copytree(template, path)
+        shutil.copytree(template_path, path)
         if include is not None:
             # No need to have a questions directory template,
             # since questions' files will be explicitly listed.
@@ -239,10 +276,24 @@ def same_questions_and_answers_numbers(config1: Configuration, config2: Configur
 
 
 def update_include(path: Path) -> None:
-    # This
+    """Update the list of included files."""
     ptyxfile_path = get_file_or_sysexit(path, extension=".ptyx")
     root = ptyxfile_path.parent
     IncludeParser(root).update(ptyxfile_path)
+
+
+def create_template(name: str = "default") -> None:
+    """Create default user template."""
+    if name == "original":
+        print_error(f"Name {name!r} is reserved, please choose another template name.")
+        sys.exit(1)
+    user_template = PlatformDirs().user_config_path / f"ptyx-mcq/templates/{name}"
+    if user_template.is_dir():
+        print_error(f"Folder {user_template} already exist.")
+        sys.exit(1)
+    default_template = Path(__file__).resolve().parent / "templates/original"
+    shutil.copytree(default_template, user_template)
+    print_success(f"Template created at {user_template}. Edit the inner files to customize it.")
 
 
 if __name__ == "__main__":
