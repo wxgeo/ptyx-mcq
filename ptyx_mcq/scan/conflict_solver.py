@@ -32,6 +32,11 @@ class ConflictSolver:
         self.review_answers()
 
     def review_missing_names(self):
+        # First, complete missing information with previous scan data, if any.
+        for doc_id, (student_name, student_id) in self.data_storage.more_infos.items():
+            self.data[doc_id]["name"] = student_name
+            self.data[doc_id]["student_ID"] = student_id
+        # Search for any missing information remaining.
         for doc_id, doc_data in self.data.items():
             if doc_data["name"] == "":
                 print_warning(f"No student name for document {doc_id}.")
@@ -122,7 +127,8 @@ class ConflictSolver:
     def review_answers(self):
         for doc_id, doc_data in self.data.items():
             for page, pic_data in doc_data["pages"].items():
-                if pic_data.needs_review:
+                if pic_data.needs_review and Path(pic_data.pic_path) not in self.data_storage.verified:
+                    # The answers are ambiguous and were not already manually verified in a previous scan.
                     print_warning(f"Ambiguous answers for student {doc_data['name']}.")
                     self.edit_answers(doc_id, page)
                     self.data_storage.store_verified_pic(Path(pic_data.pic_path))

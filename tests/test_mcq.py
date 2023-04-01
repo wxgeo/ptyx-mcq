@@ -10,6 +10,7 @@ from pathlib import Path
 import atexit
 
 from ptyx.latex_generator import Compiler, Node
+
 from ptyx_mcq.make.extend_latex_generator import SameAnswerError
 from ptyx_mcq.tools.config_parser import Configuration, DocumentId, OriginalQuestionNumber
 

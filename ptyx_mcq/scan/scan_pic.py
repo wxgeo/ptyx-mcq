@@ -910,10 +910,10 @@ def scan_picture(
         cell_size=cell_size,
         # Translation table ({question number before shuffling: after shuffling})
         questions_nums_conversion={},
-        pic_path="",
         needs_review=False,
         detection_status={},
         revision_status={},
+        pic_path="",
     )
     answered = pic_data.answered
     positions = pic_data.positions

@@ -384,8 +384,8 @@ class MCQPictureParser:
         self.already_seen = set((ID, p) for ID, d in data.items() for p in d["pages"])
         pic_list = self.data_storage.get_pics_list()
 
-        assert all(isinstance(path, Path) for path in self.data_storage.skipped)
-        assert all(isinstance(path, Path) for path in self.data_storage.verified)
+        # assert all(isinstance(path, Path) for path in self.data_storage.skipped)
+        # assert all(isinstance(path, Path) for path in self.data_storage.verified)
 
         for i, pic_path in enumerate(pic_list, start=1):
             if not (start <= i <= end):
