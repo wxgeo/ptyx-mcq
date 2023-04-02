@@ -190,7 +190,7 @@ def test_cli() -> None:
         # Test `mcq new PATH -i INCLUDE_PATH`
         # -----------------------------------
         path2 = parent / "mcq-2"
-        main(["new", str(path2), "-i", str(path / "questions")])
+        main(["new", str(path2), "-i", str(path / "questions"), "-t", "original"])
         assert "new.ptyx" in listdir(path)
         assert not (path2 / "questions").exists()
 
@@ -279,7 +279,6 @@ def test_previous_scan_data_loading():
     path = "/tmp/ptyx-mcq/caching_test"
     shutil.copytree(TEST_DIR / "caching_test", path)
     main(["scan", str(path)])
-
 
 
 if __name__ == "__main__":

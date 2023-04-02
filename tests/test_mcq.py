@@ -214,10 +214,13 @@ def test_verbatim_code():
     c = load_ptyx_file("test_verbatim_code.ptyx")
     c.generate_syntax_tree()
     latex = c.get_latex()
-    extract = (r"\ptyxMCQTab{\checkBox{white}{Q1-1}}{\texttt{public~double~getNorm()~\{"
-    r"\linebreak\phantom{}~~~~int~i,~sum~=~0;\linebreak\phantom{}~~~~for~(i=0;~i<counts.length;~i++)"
-               "~\{\linebreak\phantom{}~~~~~~~~sum~+=~counts[i]*counts[i];~\}\linebreak\phantom{}"
-               "~~~~return~Math.sqrt(sum);~\}}}")
+    extract = (
+        r"\begin{minipage}{.45\linewidth}\ptyxMCQTab{\checkBox{white}{Q1-1}}{"
+        r"\texttt{public~double~getNorm()~\{\linebreak\phantom{}~~~~int~i,~sum~=~0;"
+        r"\linebreak\phantom{}~~~~for~(i=0;~i<counts.length;~i++)"
+        r"~\{\linebreak\phantom{}~~~~~~~~sum~+=~counts[i]*counts[i];~\}\linebreak\phantom{}"
+        r"~~~~return~Math.sqrt(sum);~\}}}\end{minipage}\quad"
+    )
     assert extract in latex
 
 

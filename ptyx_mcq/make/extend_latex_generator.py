@@ -281,6 +281,7 @@ class MCQLatexGenerator(LatexGenerator):
         data["answers"][n] = []
         self.context["APPLY_TO_ANSWERS"] = None
         self.context["RAW_CODE"] = None
+        self.context["ANSWER_WIDTH"] = None
         self.write(r"\pagebreak[3]\item\filbreak")
         self.write(r"\setcounter{answerNumber}{0}")
 
@@ -321,7 +322,7 @@ class MCQLatexGenerator(LatexGenerator):
     def _parse_NEW_ANSWER_tag(self, node: Node) -> None:
         """A new answer.
 
-        Tag usage: #NEW_VERSION{num}{is_answer_correct}
+        Tag usage: #NEW_ANSWER{num}{is_answer_correct}
         """
 
         k = OriginalAnswerNumber(int(node.arg(0)))
@@ -376,7 +377,7 @@ class MCQLatexGenerator(LatexGenerator):
                 s = s.replace("<!ø5P3C14Lø?>", "{}")
                 # Use \phantom{} after \linebreak to preserve spaces at the beginning of the line.
                 s = s.replace("\n", "\\linebreak\\phantom{}")
-                s = s.replace("\t", 4*" ")
+                s = s.replace("\t", 4 * " ")
                 s = s.replace(" ", "~")
                 return rf"\texttt{{{s}}}"
 
@@ -399,6 +400,11 @@ class MCQLatexGenerator(LatexGenerator):
         # When the pdf with solutions will be generated, incorrect answers
         # will be preceded by a white square, while correct ones will
         # be preceded by a gray one.
+        if width := self.context.get("ANSWER_WIDTH"):
+            if re.fullmatch(r"\d+.?\d*|\.\d+", width):
+                # Default unit is `\linewidth`.
+                width += r"\linewidth"
+            self.write(r"\begin{minipage}{%s}" % width)
         self.write(r"\ptyxMCQTab{")
         cb_id = f"Q{n}-{k}"
         if self.WITH_ANSWERS and is_correct:
@@ -412,8 +418,11 @@ class MCQLatexGenerator(LatexGenerator):
         data["answers"][n].append((k, is_correct))
 
     def _close_answer(self) -> None:
-        # Close 'AutoQCMTab{' written by `_parse_NEW_ANSWER_tag()`.
-        self.write(r"}\quad" "\n")
+        # Close '\ptyxMCQTab{' written by `_open_answer()`.
+        self.write("}")
+        if self.context.get("ANSWER_WIDTH"):
+            self.write(r"\end{minipage}")
+        self.write(r"\quad" "\n")
 
     def _parse_ANSWERS_LIST_tag(self, node: Node) -> None:
         """This tag generates answers from a python list.
