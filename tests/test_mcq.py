@@ -210,6 +210,17 @@ def test_smallgraphlib_import_detection():
             assert 0 <= position < begin_document, line
 
 
+def test_verbatim_code():
+    c = load_ptyx_file("test_verbatim_code.ptyx")
+    c.generate_syntax_tree()
+    latex = c.get_latex()
+    extract = (r"\ptyxMCQTab{\checkBox{white}{Q1-1}}{\texttt{public~double~getNorm()~\{"
+    r"\linebreak\phantom{}~~~~int~i,~sum~=~0;\linebreak\phantom{}~~~~for~(i=0;~i<counts.length;~i++)"
+               "~\{\linebreak\phantom{}~~~~~~~~sum~+=~counts[i]*counts[i];~\}\linebreak\phantom{}"
+               "~~~~return~Math.sqrt(sum);~\}}}")
+    assert extract in latex
+
+
 @atexit.register
 def cleanup():
     files_found = False

@@ -363,6 +363,9 @@ class MCQLatexGenerator(LatexGenerator):
             # Try to emulate verbatim (which is not allowed inside
             # a macro argument in LaTeX).
             def escape(s):
+                # Strip the first \n, to avoid beginning with a \linebreak.
+                if s.startswith("\n"):
+                    s = s[1:]
                 # Replace \ first !
                 s = s.replace("\\", r"\textbackslash<!ø5P3C14Lø?>")
                 s = s.replace("~", r"\textasciitilde<!ø5P3C14Lø?>")
@@ -371,6 +374,10 @@ class MCQLatexGenerator(LatexGenerator):
                 for char in "#$%&_{}":
                     s = s.replace(char, rf"\{char}")
                 s = s.replace("<!ø5P3C14Lø?>", "{}")
+                # Use \phantom{} after \linebreak to preserve spaces at the beginning of the line.
+                s = s.replace("\n", "\\linebreak\\phantom{}")
+                s = s.replace("\t", 4*" ")
+                s = s.replace(" ", "~")
                 return rf"\texttt{{{s}}}"
 
             functions.append(escape)
