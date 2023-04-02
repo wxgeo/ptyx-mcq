@@ -3,7 +3,10 @@
 # @unique
 # class Levels(Enum):
 #     ROOT, QCM, SECTION, QUESTION, VERSION, ANSWERS_BLOCK, NEW_ANSWER = range(7)
+import sys
 from typing import Iterable
+
+from ptyx_mcq import print_error
 
 
 def generate_ptyx_code(text: str, additional_header_lines: Iterable[str] = ()) -> str:
@@ -55,7 +58,13 @@ def generate_ptyx_code(text: str, additional_header_lines: Iterable[str] = ()) -
             if "title" in kw:
                 content.append("[%s]" % kw["title"])
         elif level == "VERSION":
-            content.append("{%s}" % kw["n"])
+            try:
+                content.append("{%s}" % kw["n"])
+            except KeyError:
+                print_error(
+                    "Unable to compile document. Maybe a missing `*` at the beginning of the question?"
+                )
+                sys.exit(1)
         elif level == "NEW_ANSWER":
             content.append("{%s}{%s}" % (kw["n"], kw["correct"]))
 
