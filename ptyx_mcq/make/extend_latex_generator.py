@@ -31,6 +31,7 @@ from typing import TypedDict, Optional, Set, List, Tuple, Dict
 from ptyx.printers import sympy2latex
 from ptyx.latex_generator import LatexGenerator
 from ptyx.syntax_tree import Node, Tag
+from ptyx.utilities import latex_verbatim
 
 from ptyx_mcq.tools.config_parser import (
     Configuration,
@@ -363,25 +364,7 @@ class MCQLatexGenerator(LatexGenerator):
         if self.context.get("RAW_CODE"):
             # Try to emulate verbatim (which is not allowed inside
             # a macro argument in LaTeX).
-            def escape(s):
-                # Strip the first \n, to avoid beginning with a \linebreak.
-                if s.startswith("\n"):
-                    s = s[1:]
-                # Replace \ first !
-                s = s.replace("\\", r"\textbackslash<!ø5P3C14Lø?>")
-                s = s.replace("~", r"\textasciitilde<!ø5P3C14Lø?>")
-                s = s.replace("^", r"\textasciicircum<!ø5P3C14Lø?>")
-                s = s.replace("'", r"\textquotesingle<!ø5P3C14Lø?>")
-                for char in "#$%&_{}":
-                    s = s.replace(char, rf"\{char}")
-                s = s.replace("<!ø5P3C14Lø?>", "{}")
-                # Use \phantom{} after \linebreak to preserve spaces at the beginning of the line.
-                s = s.replace("\n", "\\linebreak\\phantom{}")
-                s = s.replace("\t", 4 * " ")
-                s = s.replace(" ", "~")
-                return rf"\texttt{{{s}}}"
-
-            functions.append(escape)
+            functions.append(latex_verbatim)
 
         if not self.context.get("ALLOW_SAME_ANSWER_TWICE"):
             # This function is used to verify that each answer is unique.
