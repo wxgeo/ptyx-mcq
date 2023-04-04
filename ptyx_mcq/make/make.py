@@ -57,7 +57,7 @@ def make(
     except Exception as e:  # noqa
         if hasattr(e, "msg"):
             traceback.print_tb(e.__traceback__)
-            print(e.msg)  # type: ignore
+            print(e.msg)
             print(f"\u001b[31m{e.__class__.__name__}:\u001b[0m {e}")
         else:
             traceback.print_exc()

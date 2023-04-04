@@ -15,12 +15,12 @@ Pillow = "^9.2"
 sympy = "^1.10.1"
 pdf2image = "^1.16.0"
 ptyx = "^23.2"
-types-Pillow = "^9.0.20"
 smallgraphlib = "^0.6.3"
 platformdirs = "^3.2.0"
 
 
 [tool.poetry.dev-dependencies]
+types-Pillow = "^9.0.20"
 pytest = "^7"
 mypy = "^1.0"
 flake8 = "^6"
@@ -41,7 +41,7 @@ mcq = "ptyx_mcq"
 implicit_optional = true
 warn_redundant_casts = true
 # enable_error_code = true
-# warn_unused_ignores = true
+warn_unused_ignores = true
 
 
 

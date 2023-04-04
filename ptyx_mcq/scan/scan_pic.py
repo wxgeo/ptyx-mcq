@@ -537,7 +537,7 @@ def calibrate(pic: Image.Image, m: ndarray, debug=False) -> tuple[ndarray, float
         pic,
         "rotate",
         rotation,
-        resample=Image.Resampling.BICUBIC,  # type: ignore
+        resample=Image.Resampling.BICUBIC,
         expand=True,
     )
 
