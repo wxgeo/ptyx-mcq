@@ -26,7 +26,7 @@ import re
 
 from functools import partial
 from pathlib import Path
-from typing import TypedDict, Optional, Set, List, Tuple, Dict
+from typing import TypedDict, Optional, Set, List, Tuple, Dict, Callable
 
 from ptyx.printers import sympy2latex
 from ptyx.latex_generator import LatexGenerator
@@ -50,12 +50,28 @@ from .header import (
     students_checkboxes,
     IdentifiantError,
 )
+from ..tools.io_tools import print_warning
 
 
 class MCQCache(TypedDict):
     header: Optional[str]
     check_id_or_name: Optional[str]
     data: Configuration
+
+
+def _handle_multiline_answers(s):
+    s = s.strip()
+    if "\n" in s:
+        if "\n\n" in s:
+            print_warning("Blank line detected in the following answer:")
+            print(10 * "-")
+            print(s)
+            print(10 * "-")
+            print_warning("This may be caused by a missing `*` before the next question.")
+        s = s.replace("\n", r"\\")
+        return r"\begin{tabular}[t]{l}" + s + r"\end{tabular}"
+    else:
+        return s
 
 
 def _has_option(node: Node, option: str) -> bool:
@@ -342,7 +358,7 @@ class MCQLatexGenerator(LatexGenerator):
         self._open_answer(n, k, is_correct)
         # Functions to apply. Last one is applied first:
         # if functions = [f, g, h], then s -> f(g(h(s))).
-        functions = []
+        functions: list[Callable] = []
 
         # TODO(?): functions should be compiled only once for each question block,
         #  not for every answer (though it is probably not a bottleneck in
@@ -365,6 +381,8 @@ class MCQLatexGenerator(LatexGenerator):
             # Try to emulate verbatim (which is not allowed inside
             # a macro argument in LaTeX).
             functions.append(latex_verbatim)
+        else:
+            functions.append(_handle_multiline_answers)
 
         if not self.context.get("ALLOW_SAME_ANSWER_TWICE"):
             # This function is used to verify that each answer is unique.

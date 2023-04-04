@@ -1,0 +1,19 @@
+#LOAD{mcq}
+#SEED{38887}
+
+
+<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+
+* Linux is
+- Unix
++ Not Unix
+- a penguin
++ not a penguin
++  GNU/Linux abbreviation
+- Well, this is an interesting question.
+Though, an elaborate multiline answer is needed.
+Multiline answers like this one are supported, though this is not so commonly used...
+
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+

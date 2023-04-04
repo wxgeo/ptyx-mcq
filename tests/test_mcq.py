@@ -224,6 +224,22 @@ def test_verbatim_code():
     assert extract in latex
 
 
+def test_multiline_answers():
+    c = load_ptyx_file("multiline_answers.ptyx")
+    c.generate_syntax_tree()
+    latex = c.get_latex()
+    print(latex)
+    extract = (
+        r"\ptyxMCQTab{\checkBox{white}{Q1-3}}{a penguin}\quad"
+        "\n"
+        r"\ptyxMCQTab{\checkBox{white}{Q1-6}}{\begin{tabular}[t]{l}"
+        r"Well, this is an interesting question.\\Though, an elaborate multiline answer is needed.\\"
+        r"Multiline answers like this one are supported, though this is not so commonly used..."
+        r"\end{tabular}}"
+    )
+    assert extract in latex
+
+
 @atexit.register
 def cleanup():
     files_found = False
