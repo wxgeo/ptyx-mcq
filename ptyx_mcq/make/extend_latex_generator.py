@@ -53,6 +53,16 @@ from .header import (
 from ..tools.io_tools import print_warning
 
 
+SCORE_CONFIG_KEYS = {
+    "mode": str,
+    "correct": float,
+    "incorrect": float,
+    "skipped": float,
+    "floor": float,
+    "ceil": float,
+}
+
+
 class MCQCache(TypedDict):
     header: Optional[str]
     check_id_or_name: Optional[str]
@@ -494,6 +504,29 @@ class MCQLatexGenerator(LatexGenerator):
         print("---------------------------------------------------------------")
         # self.write(data)
 
+    def _parse_QUESTION_CONFIG_tag(self, node: Node) -> None:
+        if getattr(self, "mcq_question_number", None) is None:
+            raise RuntimeError("#QUESTION_CONFIG can only be used inside a question.")
+        for line in node.arg(0).split("\n"):
+            line = line.strip()
+            if line == "":
+                continue
+            # Support for `;` delimiter between `key = value` entries.
+            for key_val in line.split(";"):
+                key_val = key_val.strip()
+                match key_val.split("=", maxsplit=1):
+                    case key, val:
+                        key = key.strip()
+                        val = val.strip()
+                        if key in SCORE_CONFIG_KEYS:
+                            val_type = SCORE_CONFIG_KEYS[key]
+                            getattr(self.mcq_data, key)[self.mcq_question_number] = val_type(val)
+                        else:
+                            raise NameError(f"Unknown key in #QUESTION_CONFIG: {key!r}.")
+                    case _:
+                        if key_val != "":
+                            raise RuntimeError(f"Invalid line in #QUESTION_CONFIG: {key_val!r}.")
+
     @staticmethod
     def _parse_sty_list(sty_packages: str) -> str:
         """Parse LaTeX sty packages list in header."""
@@ -533,14 +566,16 @@ class MCQLatexGenerator(LatexGenerator):
         }
         # Read config: a dictionary is generated from the `key = value` entries.
         config: Dict[str, str] = {}
-        # After the `key = value` entries, the user may append some raw LaTeX code.
         for line in text.split("\n"):
+            line = line.strip()
             if "=" in line:
                 key, val = line.split("=", maxsplit=1)
                 # Normalize the key.
                 key = format_key(key)
                 key = alias.get(key, key)
                 config[key] = val.strip()
+            elif line != "":
+                raise RuntimeError(f"Invalid format in configuration: {line!r}.")
         return config
 
     def _parse_QCM_HEADER_tag(self, node: Node) -> None:
@@ -570,9 +605,10 @@ class MCQLatexGenerator(LatexGenerator):
             code = ""
 
             config = self._extract_config_from_header(node.arg(0))
+            # After the `key = value` entries, the user may append some raw LaTeX code.
             raw_latex = node.arg(1)
 
-            for key in ("mode", "correct", "incorrect", "skipped", "floor", "ceil"):
+            for key in SCORE_CONFIG_KEYS:
                 if key in config:
                     getattr(self.mcq_data, key)["default"] = config.pop(key)
 
@@ -612,7 +648,7 @@ class MCQLatexGenerator(LatexGenerator):
             for key in config:
                 if key == "scores":
                     right, wrong, skipped = config[key].split()
-                    print("Please update your ptyx file header:")
+                    print_warning("Please update your ptyx file header:")
                     print(f"Replace `scores = {config[key]}` with:")
                     print(20 * "-")
                     print(f"correct = {right}")

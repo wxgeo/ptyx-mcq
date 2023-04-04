@@ -89,6 +89,7 @@ __tags__ = {
     "ANSWERS_LIST": (2, 0, None),
     # Other tags
     "QCM_HEADER": (2, 0, None),
+    "QUESTION_CONFIG": (1, 0, None),
     "DEBUG_MCQ": (0, 0, None),
     # Deprecated tags
     "L_ANSWERS": (1, 0, None),

@@ -240,6 +240,18 @@ def test_multiline_answers():
     assert extract in latex
 
 
+def test_question_config():
+    c = load_ptyx_file("question_config.ptyx")
+    c.generate_syntax_tree()
+    latex = c.get_latex()
+    assert c.latex_generator.mcq_data.mode[1] == "all"
+    assert c.latex_generator.mcq_data.mode[2] == "some"
+    assert c.latex_generator.mcq_data.correct[1] == 2.0
+    assert c.latex_generator.mcq_data.correct[2] == 3.0
+    assert c.latex_generator.mcq_data.incorrect[1] == -1.0
+    assert c.latex_generator.mcq_data.incorrect[2] == 4.0
+
+
 @atexit.register
 def cleanup():
     files_found = False
