@@ -98,12 +98,12 @@ class DataStorage:
         default_mode = cfg.mode["default"]
         default_correct = cfg.correct["default"]
 
-        max_score = 0
+        max_score: float = 0
         # Take a random student test, and calculate max score for it.
         # Maximal score = (number of questions)x(score when answer is correct)
         for q in next(iter(cfg.ordering.values()))["questions"]:
             if cfg.mode.get(q, default_mode) != "skip":
-                max_score += int(cfg.correct.get(q, default_correct))
+                max_score += cfg.correct.get(q, default_correct)
         cfg.max_score = max_score
         return cfg
 

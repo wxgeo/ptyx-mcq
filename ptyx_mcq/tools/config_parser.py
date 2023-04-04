@@ -67,6 +67,7 @@ class Configuration:
     correct: dict[QuestionNumberOrDefault, float]  # = field(default_factory=lambda: {"default": 1})
     incorrect: dict[QuestionNumberOrDefault, float]  # = field(default_factory=lambda: {"default": 0})
     skipped: dict[QuestionNumberOrDefault, float]  # = field(default_factory=lambda: {"default": 0})
+    weight: dict[QuestionNumberOrDefault, float]  # = field(default_factory=lambda: {"default": 0})
     floor: dict[QuestionNumberOrDefault, float | None]  # = field(default_factory=lambda: {"default": None})
     ceil: dict[QuestionNumberOrDefault, float | None]  # = field(default_factory=dict)
     id_format: StudentIdFormat | None = None

@@ -280,6 +280,7 @@ def update_include(path: Path) -> None:
     ptyxfile_path = get_file_or_sysexit(path, extension=".ptyx")
     root = ptyxfile_path.parent
     IncludeParser(root).update(ptyxfile_path)
+    print_success("The list of included files was successfully updated.")
 
 
 def create_template(name: str = "default") -> None:

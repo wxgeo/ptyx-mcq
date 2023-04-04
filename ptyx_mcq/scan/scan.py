@@ -201,6 +201,7 @@ class MCQPictureParser:
     def _calculate_scores(self) -> None:
         cfg = self.config
         default_mode = cfg.mode["default"]
+        default_weight = cfg.weight["default"]
         default_correct = cfg.correct["default"]
         default_incorrect = cfg.incorrect["default"]
         default_skipped = cfg.skipped["default"]
@@ -261,8 +262,12 @@ class MCQPictureParser:
                 else:
                     color = ANSI_YELLOW
                 print(f"-  {color}Rating (Q{q}): {color}{earn:g}{ANSI_RESET}")
-                doc_data["score"] += earn
+                # Don't forget to include the weight of the question to calculate the global score.
+                earn *= float(cfg.weight.get(q, default_weight))
+                # Don't use weight for per question score, since it would make success rates
+                # harder to compare.
                 doc_data["score_per_question"][q] = earn
+                doc_data["score"] += earn
 
     def generate_output(self) -> None:
         """Generate CSV files with scores and annotated documents."""

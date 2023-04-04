@@ -55,6 +55,7 @@ from ..tools.io_tools import print_warning
 
 SCORE_CONFIG_KEYS = {
     "mode": str,
+    "weight": float,
     "correct": float,
     "incorrect": float,
     "skipped": float,
@@ -232,6 +233,7 @@ class MCQLatexGenerator(LatexGenerator):
             "check_id_or_name": None,
             "data": Configuration(
                 mode={"default": "some"},
+                weight={"default": 1},
                 correct={"default": 1},
                 incorrect={"default": 0},
                 skipped={"default": 0},
@@ -608,9 +610,9 @@ class MCQLatexGenerator(LatexGenerator):
             # After the `key = value` entries, the user may append some raw LaTeX code.
             raw_latex = node.arg(1)
 
-            for key in SCORE_CONFIG_KEYS:
+            for key, val_type in SCORE_CONFIG_KEYS.items():
                 if key in config:
-                    getattr(self.mcq_data, key)["default"] = config.pop(key)
+                    getattr(self.mcq_data, key)["default"] = val_type(config.pop(key))
 
             if "names" in config:
                 # the value must be the path of a CSV file.

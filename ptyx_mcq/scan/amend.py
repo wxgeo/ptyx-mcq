@@ -16,7 +16,7 @@ from .document_data import DocumentData
 
 from .square_detection import Pixel
 from .color import Color
-from ..tools.config_parser import DocumentId, OriginalQuestionNumber
+from ..tools.config_parser import DocumentId, OriginalQuestionNumber, QuestionNumberOrDefault
 
 
 # if TYPE_CHECKING:
@@ -25,17 +25,37 @@ from ..tools.config_parser import DocumentId, OriginalQuestionNumber
 
 def amend_all(data_storage: DataStorage) -> None:
     """Amend all generated documents, adding the scores and indicating the correct answers."""
+    cfg = data_storage.config
+    default_weight = cfg.weight["default"]
+    assert isinstance(default_weight, (int, float))
+    default_correct = cfg.correct["default"]
+    assert isinstance(default_correct, (int, float))
+    max_score_per_question: dict[QuestionNumberOrDefault, float] = {
+        "default": default_weight * default_correct
+    }
+    for question in set(cfg.correct) | set(cfg.weight) - {"default"}:
+        _max_score = cfg.weight.get(question, default_weight) * cfg.correct.get(question, default_correct)
+        max_score_per_question[question] = _max_score
+
+    # Global maximal score.
+    # Note that the global maximal score can not be easily deduced from the dict `max_score_per_question`,
+    # since this dict only include customized questions scores, and since many versions of the same question
+    # may appear in the dict, but only one of those versions was included in each generated document.
     max_score = data_storage.config.max_score
-    assert max_score is not None
+    assert isinstance(max_score, (float, int)), repr(max_score)
     N = len(data_storage.data)
     for i, (doc_id, doc_data) in enumerate(data_storage.data.items(), start=1):
         print(f"Generating the amended pdf files: {i}/{N}...", end="\r")
-        amend_doc(doc_data, doc_id, max_score, data_storage)
+        amend_doc(doc_data, doc_id, max_score, max_score_per_question, data_storage)
     print("Generating the amended pdf files: OK" + len(f"{N}/{N}...") * " ")
 
 
 def amend_doc(
-    doc_data: DocumentData, doc_id: DocumentId, max_score: float, data_storage: DataStorage
+    doc_data: DocumentData,
+    doc_id: DocumentId,
+    max_score: float,
+    max_score_per_question: dict[QuestionNumberOrDefault, float],
+    data_storage: DataStorage,
 ) -> None:
     correct_answers = data_storage.correct_answers[doc_id]
     neutralized_answers = data_storage.neutralized_answers[doc_id]
@@ -68,8 +88,10 @@ def amend_doc(
                 top_left_positions[q] = pos
         for q in top_left_positions:
             earn = doc_data["score_per_question"][q]
+            maximum = max_score_per_question.get(q, max_score_per_question["default"])
+            assert isinstance(maximum, (float, int)), repr(maximum)
             i, j = top_left_positions[q]
-            _write_score(draw, (i, j - 2 * size), earn, size)
+            _write_score(draw, (i, j - 2 * size), earn, maximum, size)
         # We will now sort pages.
         # For that, we use questions numbers: the page which displays
         # the smaller questions numbers is the first one, and so on.
@@ -81,7 +103,7 @@ def amend_doc(
     pages: list[Image]
     _, pages = zip(*sorted(pics.items()))  # type: ignore
     draw = ImageDraw.Draw(pages[0])
-    _write_score(draw, (2 * size, 4 * size), f"{doc_data['score']:g}/{max_score:g}", 2 * size)
+    _write_score(draw, (2 * size, 4 * size), doc_data["score"], max_score, 2 * size)
     pages[0].save(
         join(data_storage.dirs.pdf, f"{doc_data['name']}-{doc_id}.pdf"),
         save_all=True,
@@ -112,9 +134,7 @@ def _correct_checkboxes(
         draw.line((j + size - 1, i, j, i + size - 1), fill=red, width=2)
 
 
-def _write_score(draw: ImageDraw.ImageDraw, pos: Pixel, earn: float | str, size: int) -> None:
+def _write_score(draw: ImageDraw.ImageDraw, pos: Pixel, earn: float, maximum: float, size: int) -> None:
     i, j = pos
     fnt = ImageFont.truetype("FreeSerif.ttf", int(0.7 * size))
-    if isinstance(earn, float):
-        earn = f"{earn:g}"
-    draw.text((j, i), earn, font=fnt, fill=Color.red)
+    draw.text((j, i), f"{round(earn, 2):g}/{round(maximum, 2):g}", font=fnt, fill=Color.red)
