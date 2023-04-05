@@ -252,6 +252,23 @@ def test_question_config():
     assert c.latex_generator.mcq_data.incorrect[2] == 4.0
 
 
+def test_math_formatting():
+    c = load_ptyx_file("math_formatting.ptyx")
+    c.generate_syntax_tree()
+    latex = c.get_latex()
+    extract = (
+        r"\ptyxMCQTab{\checkBox{white}{Q1-1}}{$2x$}\quad"
+        "\n"
+        r"\ptyxMCQTab{\checkBox{white}{Q1-2}}{$x^2$}\quad"
+        "\n"
+        r"\ptyxMCQTab{\checkBox{white}{Q1-4}}{$2x^2$}\quad"
+        "\n"
+        r"\ptyxMCQTab{\checkBox{white}{Q1-3}}{$x$}\quad"
+        "\n"
+    )
+    assert extract in latex
+
+
 @atexit.register
 def cleanup():
     files_found = False

@@ -50,7 +50,7 @@ from ptyx_mcq.tools.config_parser import (
     StudentName,
     DocumentId,
 )
-from ptyx_mcq.tools.io_tools import print_success
+from ptyx_mcq.tools.io_tools import print_success, print_warning
 
 
 # File `compilation.py` is in ../.., so we have to "hack" `sys.path` a bit.
@@ -348,7 +348,7 @@ class MCQPictureParser:
     def _warn(self, *values, sep=" ", end="\n") -> None:
         """Print to stdout and write to log file."""
         msg = sep.join(str(val) for val in values) + end
-        print(msg)
+        print_warning(msg)
         self.data_storage.write_log(msg)
         self.warnings = True
 

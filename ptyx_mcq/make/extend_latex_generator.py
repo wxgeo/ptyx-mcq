@@ -370,7 +370,11 @@ class MCQLatexGenerator(LatexGenerator):
         self._open_answer(n, k, is_correct)
         # Functions to apply. Last one is applied first:
         # if functions = [f, g, h], then s -> f(g(h(s))).
-        functions: list[Callable] = []
+
+        # First function must strip remaining new lines and spaces.
+        # Remaining new lines may cause bugs if a formating is applied, like $%s$.
+        # For example, "$x^2\n\n$" or "$\n\nx^2$" would fail.
+        functions: list[Callable] = [lambda s: s.strip()]
 
         # TODO(?): functions should be compiled only once for each question block,
         #  not for every answer (though it is probably not a bottleneck in
@@ -396,11 +400,14 @@ class MCQLatexGenerator(LatexGenerator):
         else:
             functions.append(_handle_multiline_answers)
 
+        # WARNING: this function must be the last one to be called !
         if not self.context.get("ALLOW_SAME_ANSWER_TWICE"):
             # This function is used to verify that each answer is unique.
             # This avoids proposing twice the same answer by mistake, which
             # may occur easily when using random values.
             functions.append(partial(self._test_singularity_and_append, answers_list=self.mcq_answers))
+
+        # WARNING: do NOT apply any more function after `self._test_singularity_and_append` !
 
         self._parse_children(node.children[2:], function=functions)
         self._close_answer()
