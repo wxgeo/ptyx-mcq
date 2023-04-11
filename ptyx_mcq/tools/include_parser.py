@@ -1,9 +1,11 @@
 import re
+import sys
 from enum import auto, Enum
+from functools import partial
 from pathlib import Path
 from typing import Match
 
-from ptyx_mcq.tools.io_tools import print_info, print_warning
+from ptyx_mcq.tools.io_tools import print_info, print_warning, print_error
 
 
 class IncludeStatus(Enum):
@@ -48,29 +50,41 @@ class IncludeParser:
     _root: Path
 
     def __init__(self, default_path: Path):
+        """Path `default_path` should be the parent directory of the ptyx file."""
         self.default_path = default_path
         self._reset()
 
     def _reset(self):
         self._root = self.default_path
+        self._last_status = IncludeStatus.OK
         self.includes = {}
 
-    def _parse_include(self, match: Match) -> str:
+    def _parse_include(self, match: Match, strict: bool) -> str:
         include_enabled = match.group(0)[0] != "!"
+        if match.group(0)[0] == "#":
+            # Special `#--` comments are used to indicate include status.
+            # (Currently, this only used to mark that an include was automatically added.)
+            try:
+                self._last_status = IncludeStatus[match.group(1).strip().rstrip(":")]
+            except KeyError:
+                print_warning(f"Invalid line: {match.group(0)}")
+            return ""
+        status = self._last_status
+        self._last_status = IncludeStatus.OK
         pattern = match.group(1).strip()
         if pattern.startswith("ROOT:"):
             if include_enabled:
                 path = Path(pattern[5:].strip()).expanduser()
                 if not path.is_absolute():
                     path = (self.default_path / path).resolve()
-                print_info(f"Directory for files inclusion changed to '{path}'.")
+                print_info(f"Directory for files inclusion set to '{path}'.")
                 if not path.is_dir():
                     raise FileNotFoundError(
                         f"Directory '{path}' not found.\n"
                         f'HINT: Change "-- {pattern}" line in your ptyx file.'
                     )
                 self._root = path
-            return "\n"
+            return ""
         else:
             includes = self.includes.setdefault(str(self._root), {})
             if include_enabled:
@@ -79,19 +93,23 @@ class IncludeParser:
                 for path in sorted(self._root.glob(pattern)):
                     if path.is_file():
                         file_found = True
-                        contents.append(self._include_file(path))
+                        contents.append(self._include_file(path).strip())
                 if file_found:
                     # Include enabled
-                    includes[str(pattern)] = IncludeStatus.OK
+                    includes[str(pattern)] = status
                 else:
                     # Invalid include
                     includes[str(pattern)] = IncludeStatus.NOT_FOUND
-                    print_warning(f"No file corresponding to {pattern!r} in '{self._root}'!")
+                    if strict:
+                        print_error(message := f"No file corresponding to {pattern!r} in '{self._root}'!")
+                        raise FileNotFoundError(message)
+                    else:
+                        print_warning(f"No file corresponding to {pattern!r} in '{self._root}'!")
                 return "\n\n" + "\n\n".join(contents) + "\n\n"
             else:
                 # Include disabled
                 includes[str(pattern)] = IncludeStatus.DISABLED
-                return "\n"
+                return ""
 
     def _include_file(self, path: Path) -> str:
         lines: list[str] = []
@@ -115,10 +133,16 @@ class IncludeParser:
                     lines.append(f'#PRINT{{\u001b[36mIMPORTING\u001b[0m "{prettified_path}"}}')
         return "\n".join(lines)
 
-    def parse(self, text: str) -> str:
-        """"""
+    def parse(self, code: str, strict: bool = False) -> str:
+        """Parse all include directives and include the corresponding files into the code.
+
+        By default, if a path or a pattern don't match any file, a warning is raised,
+        but the parsing will go on.
+        However, if `strict` is set to `True`, a `FileNotFoundError` is raised in that case.
+        """
         self._reset()
-        return re.sub(r"^!?-- (.+)$", self._parse_include, text, flags=re.MULTILINE)
+        _parse = partial(self._parse_include, strict=strict)
+        return re.sub(r"^[#!]?-- (.+)$", _parse, code, flags=re.MULTILINE)
 
     def update(self, ptyxfile_path: Path):
         """Track all the `.ex` files and update pTyX file to include all the `.ex` files found.
@@ -162,24 +186,33 @@ class IncludeParser:
         self._rewrite_file(ptyxfile_path, new_includes)
 
     def _rewrite_file(self, ptyxfile_path: Path, includes: dict[str, dict[str, IncludeStatus]]):
+        new_file_added = False
         lines = []
         with open(ptyxfile_path, encoding="utf8") as f:
             for line in f:
                 if line.startswith(">>>"):  # `>>>` marks the end of the MCQ
                     # Insert all include directives just before the end of the MCQ.
                     for folder, paths in includes.items():
-                        lines.append(f"\n-- ROOT: {folder}")
-                        for path, status in paths.items():
+                        folder_path = Path(folder)
+                        if folder_path.is_relative_to(self.default_path):
+                            folder = str(folder_path.relative_to(self.default_path))
+                        lines.append(f"-- ROOT: {folder}")
+                        for path, status in sorted(paths.items()):
                             match status:
                                 case IncludeStatus.OK:
                                     lines.append(f"-- {path}")
                                 case IncludeStatus.DISABLED:
                                     lines.append(f"!-- {path}")
                                 case IncludeStatus.NOT_FOUND:
-                                    lines.append(f"# Invalid path:\n!-- {path}")
+                                    lines.append(f"#-- NOT_FOUND:\n!-- {path}")
+                                    print_warning(f"Invalid file path removed: '{path}'.")
                                 case IncludeStatus.AUTOMATICALLY_ADDED:
-                                    lines.append(f"# New path detected:\n-- {path}")
-                if not re.match(r"!?-- ", line):
+                                    lines.append(f"#-- AUTOMATICALLY_ADDED:\n-- {path}")
+                                    print_info(f"New file added: '{path}'.")
+                                    new_file_added = True
+                if not re.match(r"[#!]?-- ", line):
                     lines.append(line.rstrip())
+        if not new_file_added:
+            print_info("No new file found.")
         with open(ptyxfile_path, "w", encoding="utf8") as f:
-            f.write("\n".join(lines))
+            f.write("\n".join(lines) + "\n")

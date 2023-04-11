@@ -52,6 +52,85 @@ def test_update_include():
             },
         }
 
+def test_successive_calls():
+    root = Path("/tmp/mcq/include")
+    root.mkdir(parents=True, exist_ok=True)
+    questions = root / "questions"
+    questions.mkdir(exist_ok=True)
+    for i in (1, 2):
+        with open(questions / f"{i}.ex", "w") as f:
+            f.write(f"({i}.ex content)")
+    ptyx_file = root / "include.ptyx"
+    content = """#LOAD{mcq}#SEED{123456}
+<<<<<<<<<<<<<<<<<
+-- questions/1.ex
+-- questions/2.ex
+>>>>>>>>>>>>>>>>>
+"""
+    with open(ptyx_file, "w") as f:
+        f.write(content)
+    parser = IncludeParser(root)
+    assert parser.parse(content) == """#LOAD{mcq}#SEED{123456}
+<<<<<<<<<<<<<<<<<
+
+
+*
+#PRINT{\x1b[36mIMPORTING\x1b[0m "/tmp/mcq/include/questions/\x1b[36m1.ex\x1b[0m"}
+(1.ex content)
+
+
+
+
+*
+#PRINT{\x1b[36mIMPORTING\x1b[0m "/tmp/mcq/include/questions/\x1b[36m2.ex\x1b[0m"}
+(2.ex content)
+
+
+>>>>>>>>>>>>>>>>>
+"""
+    for i in (3, 4):
+        with open(questions / f"{i}.ex", "w") as f:
+            f.write(f"({i}.ex content)")
+    parser.update(ptyx_file)
+    updated_content = """#LOAD{mcq}#SEED{123456}
+<<<<<<<<<<<<<<<<<
+-- ROOT: .
+-- questions/1.ex
+-- questions/2.ex
+#-- AUTOMATICALLY_ADDED:
+-- questions/3.ex
+#-- AUTOMATICALLY_ADDED:
+-- questions/4.ex
+>>>>>>>>>>>>>>>>>
+"""
+    assert ptyx_file.read_text() == updated_content
+    parser.update(ptyx_file)
+    assert ptyx_file.read_text() == updated_content
+    content = """#LOAD{mcq}#SEED{123456}
+<<<<<<<<<<<<<<<<<
+-- questions/1.ex
+-- questions/2.ex
+-- invalid_path.ex
+>>>>>>>>>>>>>>>>>
+"""
+    with open(ptyx_file, "w") as f:
+        f.write(content)
+    with pytest.raises(Exception) as exc_info:
+        parser.parse(ptyx_file.read_text(), strict=True)
+    assert str(exc_info.value) == "No file corresponding to 'invalid_path.ex' in '/tmp/mcq/include'!"
+    parser.update(ptyx_file)
+    assert ptyx_file.read_text() == """#LOAD{mcq}#SEED{123456}
+<<<<<<<<<<<<<<<<<
+-- ROOT: .
+-- questions/1.ex
+-- questions/2.ex
+#-- AUTOMATICALLY_ADDED:
+-- questions/3.ex
+#-- AUTOMATICALLY_ADDED:
+-- questions/4.ex
+>>>>>>>>>>>>>>>>>
+"""
+
 
 @pytest.mark.xfail
 def test_latex_code():

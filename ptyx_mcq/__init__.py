@@ -144,7 +144,13 @@ def main(text: str, compiler: Compiler) -> str:
     #         ],
     #    }
 
-    text = IncludeParser(compiler.dir_path).parse(text)
+    try:
+        text = IncludeParser(compiler.dir_path).parse(text, strict=True)
+    except FileNotFoundError:
+        print_error(
+            "File not found when trying to resolve inclusions (see error message above).\n"
+            f"Hint: command `mcq update-include {compiler.file_path.name}` may fix it."
+        )
     additional_header_lines = autodetect_smallgraphlib(text)
 
     # Call extended_python extension.
