@@ -1,5 +1,4 @@
 import re
-import sys
 from enum import auto, Enum
 from functools import partial
 from pathlib import Path

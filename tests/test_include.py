@@ -52,6 +52,7 @@ def test_update_include():
             },
         }
 
+
 def test_successive_calls():
     root = Path("/tmp/mcq/include")
     root.mkdir(parents=True, exist_ok=True)
@@ -70,7 +71,9 @@ def test_successive_calls():
     with open(ptyx_file, "w") as f:
         f.write(content)
     parser = IncludeParser(root)
-    assert parser.parse(content) == """#LOAD{mcq}#SEED{123456}
+    assert (
+        parser.parse(content)
+        == """#LOAD{mcq}#SEED{123456}
 <<<<<<<<<<<<<<<<<
 
 
@@ -88,6 +91,7 @@ def test_successive_calls():
 
 >>>>>>>>>>>>>>>>>
 """
+    )
     for i in (3, 4):
         with open(questions / f"{i}.ex", "w") as f:
             f.write(f"({i}.ex content)")
@@ -119,7 +123,9 @@ def test_successive_calls():
         parser.parse(ptyx_file.read_text(), strict=True)
     assert str(exc_info.value) == "No file corresponding to 'invalid_path.ex' in '/tmp/mcq/include'!"
     parser.update(ptyx_file)
-    assert ptyx_file.read_text() == """#LOAD{mcq}#SEED{123456}
+    assert (
+        ptyx_file.read_text()
+        == """#LOAD{mcq}#SEED{123456}
 <<<<<<<<<<<<<<<<<
 -- ROOT: .
 -- questions/1.ex
@@ -130,6 +136,7 @@ def test_successive_calls():
 -- questions/4.ex
 >>>>>>>>>>>>>>>>>
 """
+    )
 
 
 @pytest.mark.xfail
@@ -138,9 +145,10 @@ def test_latex_code():
     path = TEST_DIR / "ptyx-files/new_include_syntax.ptyx"
     c = Compiler()
     latex = c.parse(path=path)
-    for line in latex.split():
+    for line in latex.split("\n"):
         assert not line.startswith("-- "), line
         assert not line.startswith("!-- "), line
+    assert "To be or not to ..." in latex
 
 
 #         assert f"""

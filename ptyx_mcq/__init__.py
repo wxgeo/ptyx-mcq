@@ -149,7 +149,8 @@ def main(text: str, compiler: Compiler) -> str:
     except FileNotFoundError:
         print_error(
             "File not found when trying to resolve inclusions (see error message above).\n"
-            f"Hint: command `mcq update-include {compiler.file_path.name}` may fix it."
+            f"Hint: command `mcq update-include {getattr(compiler.file_path, 'name', 'FILENAME')}` "
+            "may fix it."
         )
     additional_header_lines = autodetect_smallgraphlib(text)
 
