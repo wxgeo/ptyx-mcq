@@ -11,7 +11,7 @@ TEST_DIR = Path(__file__).parent.resolve()
 
 
 def test_include_parser():
-    with open(TEST_DIR / "ptyx-files/test_new_include_syntax.ptyx") as f:
+    with open(TEST_DIR / "ptyx-files/new_include_syntax.ptyx") as f:
         content = f.read()
     parser = IncludeParser(TEST_DIR / "ptyx-files")
     parser.parse(content)
@@ -34,7 +34,7 @@ def test_update_include():
     Status = IncludeStatus
     with tempfile.TemporaryDirectory() as tmpdirname:
         root = Path(tmpdirname) / "ptyx-files"
-        ptyx_file = root / "test_new_include_syntax.ptyx"
+        ptyx_file = root / "new_include_syntax.ptyx"
         shutil.copytree(TEST_DIR / "ptyx-files/", root)
         parser = IncludeParser(root)
         parser.update(ptyx_file)
@@ -135,7 +135,7 @@ def test_successive_calls():
 @pytest.mark.xfail
 def test_latex_code():
     # Bug: "#" in file name results in a #PRINT{...#...} and #PRINT{} doesn't handle correctly hashtags.
-    path = TEST_DIR / "ptyx-files/test_new_include_syntax.ptyx"
+    path = TEST_DIR / "ptyx-files/new_include_syntax.ptyx"
     c = Compiler()
     latex = c.parse(path=path)
     for line in latex.split():

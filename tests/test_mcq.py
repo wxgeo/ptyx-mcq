@@ -59,7 +59,7 @@ def test_MCQ_basics():
 
 
 def test_MCQ_shuffling():
-    c = load_ptyx_file("test_shuffle.ptyx")
+    c = load_ptyx_file("shuffle.ptyx")
     c.generate_syntax_tree()
     root = c.syntax_tree
     assert isinstance(root, Node)
@@ -126,7 +126,7 @@ def test_MCQ_shuffling():
 
 def test_include():
     os.chdir(TEST_DIR)
-    c = load_ptyx_file("test_include.ptyx")
+    c = load_ptyx_file("include.ptyx")
     # Test for support of:
     # - no star at all at the beginning of the question (must be automatically added)
     with open("ptyx-files/exercises/ex1.ex") as f:
@@ -142,10 +142,10 @@ def test_include():
 
 def test_include_glob():
     os.chdir(TEST_DIR)
-    c1 = load_ptyx_file("test_include.ptyx")
+    c1 = load_ptyx_file("include.ptyx")
     c1.generate_syntax_tree()
     latex1 = c1.get_latex()
-    c2 = load_ptyx_file("test_include_glob.ptyx")
+    c2 = load_ptyx_file("include_glob.ptyx")
     c2.generate_syntax_tree()
     latex2 = c2.get_latex()
     assert r"$2\times(-1)^2$" in latex2
@@ -154,7 +154,7 @@ def test_include_glob():
 
 
 def test_question_context():
-    c = load_ptyx_file("test_questions_context.ptyx")
+    c = load_ptyx_file("questions_context.ptyx")
     c.generate_syntax_tree()
     latex = c.get_latex()
 
@@ -163,7 +163,7 @@ def test_question_context():
 
 
 def test_unicity_of_answers():
-    c = load_ptyx_file("test_unicity_of_answers.ptyx")
+    c = load_ptyx_file("unicity_of_answers.ptyx")
     c.generate_syntax_tree()
     try:
         c.get_latex()
@@ -186,7 +186,7 @@ def test_loading_of_sty_files():
 
 
 def test_neutralized_questions():
-    c = load_ptyx_file("test_neutralized_questions.ptyx")
+    c = load_ptyx_file("neutralized_questions.ptyx")
     c.generate_syntax_tree()
     c.get_latex()
     data: Configuration = c.latex_generator.mcq_data
@@ -198,7 +198,7 @@ def test_neutralized_questions():
 def test_smallgraphlib_import_detection():
     from smallgraphlib.tikz_export import tikz_printer
 
-    c = load_ptyx_file("test_smallgraphlib.ptyx")
+    c = load_ptyx_file("smallgraphlib.ptyx")
     c.generate_syntax_tree()
     latex = c.get_latex()
     # ptyx_code = c.plain_ptyx_code
@@ -211,7 +211,7 @@ def test_smallgraphlib_import_detection():
 
 
 def test_verbatim_code():
-    c = load_ptyx_file("test_verbatim_code.ptyx")
+    c = load_ptyx_file("verbatim_code.ptyx")
     c.generate_syntax_tree()
     latex = c.get_latex()
     extract = (
