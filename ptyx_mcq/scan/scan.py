@@ -30,7 +30,7 @@ from math import inf
 from pathlib import Path
 from typing import Union, Literal, Optional
 
-from ptyx_mcq.scan import scores
+from ptyx_mcq.scan import evaluation_strategies
 from ptyx_mcq.scan.amend import amend_all
 from ptyx_mcq.scan.conflict_solver import ConflictSolver
 from ptyx_mcq.scan.data_manager import DataStorage
