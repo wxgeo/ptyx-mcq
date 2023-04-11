@@ -30,11 +30,12 @@ from math import inf
 from pathlib import Path
 from typing import Union, Literal, Optional
 
-from ptyx_mcq.scan import evaluation_strategies
+import ptyx_mcq.scan.evaluation_strategies as evaluation_strategies
 from ptyx_mcq.scan.amend import amend_all
 from ptyx_mcq.scan.conflict_solver import ConflictSolver
 from ptyx_mcq.scan.data_manager import DataStorage
 from ptyx_mcq.scan.document_data import DocumentData, PicData, Page
+from ptyx_mcq.scan.evaluation_strategies import AnswersData, ScoreData
 from ptyx_mcq.scan.pdftools import PIC_EXTS
 from ptyx_mcq.scan.scan_pic import (
     scan_picture,
@@ -234,12 +235,12 @@ class MCQPictureParser:
                     continue
 
                 try:
-                    func = getattr(scores.ScoresStrategies, mode)
+                    func = getattr(evaluation_strategies.ScoresStrategies, mode)
                 except AttributeError:
                     raise AttributeError(f"Unknown evaluation mode: {mode!r}.")
 
-                ans_data = scores.AnswersData(checked=answered, correct=correct_ones, all=all_answers)
-                scores_data = scores.ScoreData(
+                ans_data = AnswersData(checked=answered, correct=correct_ones, all=all_answers)
+                scores_data = ScoreData(
                     correct=float(cfg.correct.get(q, default_correct)),
                     skipped=float(cfg.skipped.get(q, default_skipped)),
                     incorrect=float(cfg.incorrect.get(q, default_incorrect)),
@@ -274,34 +275,17 @@ class MCQPictureParser:
         max_score = self.config.max_score
         # Generate CSV file with results.
         # TODO: Add ability to change default score ("ABI" for now).
-        scores_: dict[str, float | str] = {name: "ABI" for name in self.config.students_ids.values()}
+        scores: dict[str, float | str] = {name: "ABI" for name in self.config.students_ids.values()}
         results: dict[str, float] = {doc_data["name"]: doc_data["score"] for doc_data in self.data.values()}
-        scores_.update(results)
+        scores.update(results)
 
-        def format_(num: float | str):
-            if isinstance(num, float):
-                num = round(num, 2)
-            return num
-
-        # ~ print(scores)
-        scores_path = self.data_storage.files.scores
-        print(f"{ANSI_CYAN}SCORES (/{max_score:g}):{ANSI_RESET}")
-        with open(scores_path, "w", newline="") as csvfile:
-            writerow = csv.writer(csvfile).writerow
-            writerow(("Name", "Score"))
-            for name in sorted(scores_):
-                score = scores_[name]
-                print(f" - {name}: {format_(score)}")
-                # TODO: Add ability to change the notation system.
-                if isinstance(score, float):
-                    score = score / max_score * 20
-                writerow([name, format_(score)])
+        assert max_score is not None
+        self.generate_scores_as_csv_file(max_score, scores)
         if results:
             mean = round(sum(results.values()) / len(results), 2)
             print(f"{ANSI_YELLOW}Mean: {mean:g}/{max_score:g}{ANSI_RESET}")
         else:
             print("No score found !")
-        print(f'\nResults stored in "{scores_path}"\n')
 
         # Generate CSV file with ID and pictures names for all students.
         info_path = self.data_storage.files.infos
@@ -325,6 +309,35 @@ class MCQPictureParser:
         print(f'Infos stored in "{info_path}"\n')
         amend_all(self.data_storage)
         print(f"\n{ANSI_GREEN}Success ! {ANSI_RESET}:)")
+
+    def generate_scores_as_csv_file(self, max_score: float, scores: dict[str, float | str]) -> None:
+        def convert(num: float | str, factor=1.0):
+            if isinstance(num, float):
+                num = round(factor * num, 2)
+            return num
+
+        # ~ print(scores)
+        scores_path = self.data_storage.files.scores
+        print(f"{ANSI_CYAN}SCORES (/{max_score:g}):{ANSI_RESET}")
+        with open(scores_path, "w", newline="") as csvfile:
+            writerow = csv.writer(csvfile).writerow
+            writerow(("Name", "Score", "Score/20", "Score/100"))
+            for name in sorted(scores):
+                score = scores[name]
+                print(f" - {name}: {convert(score)}")
+                # TODO: Add ability to change the notation system.
+                writerow(
+                    [
+                        name,
+                        convert(score),
+                        convert(score, factor=20 / (max_score if max_score else 1)),
+                        convert(score, factor=100 / (max_score if max_score else 1)),
+                    ]
+                )
+        print(f'\nResults stored in "{scores_path}"\n')
+
+    def generate_scores_xlsx_file(self):
+        raise NotImplementedError
 
     def scan_picture(self, picture: Union[str, Path], manual_verification: bool = True) -> None:
         """This is used for debuging (it allows to test pages one by one)."""

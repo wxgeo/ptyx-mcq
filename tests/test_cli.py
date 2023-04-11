@@ -116,9 +116,9 @@ def read_students_scores(path: Path) -> dict[StudentName, str]:
         reader = csv.reader(csvfile)
         for row in reader:
             match row:
-                case ["Name", "Score"]:
+                case ["Name", "Score", "Score/20", "Score/100"]:
                     pass  # Header row
-                case [name, score]:
+                case [name, score, _, _]:
                     students[StudentName(name)] = score
                 case _:
                     raise ValueError(f"Invalid format in '{score_path}': {row!r}.")
@@ -216,7 +216,7 @@ def test_cli() -> None:
         # TODO : store scores outside of .scan folder, in a RESULTS folder !
         students_scores: dict[StudentName, str] = read_students_scores(path)
         for score in students_scores.values():
-            assert abs(float(score) - 20) < 1e-10, repr(score)  # Maximal score
+            assert abs(float(score) - 4.0) < 1e-10, repr(score)  # Maximal score
         assert set(students_scores) == set(STUDENTS.values()), repr(students_scores)
 
         # -----------------
