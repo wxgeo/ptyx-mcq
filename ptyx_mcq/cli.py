@@ -28,6 +28,7 @@ from .tools.io_tools import (
     ANSI_RESET,
     ANSI_REVERSE_PURPLE,
     ANSI_REVERSE_BLUE,
+    ANSI_BLUE,
 )
 
 
@@ -298,13 +299,17 @@ def update_include(path: Path) -> None:
 def strategies() -> None:
     """Display all evaluation modes with a description."""
     strategies = EvaluationStrategies.get_all_strategies()
-    print(f"\n{ANSI_REVERSE_PURPLE}Available strategies{ANSI_RESET}:")
+    print(f"\n{ANSI_REVERSE_PURPLE}[ Available strategies ]{ANSI_RESET}")
     print(", ".join(strategies))
     print()
-    print(f"\n{ANSI_REVERSE_PURPLE}Description{ANSI_RESET}:")
+    print(f"\n{ANSI_REVERSE_PURPLE}[ Details ]{ANSI_RESET}")
     for name in strategies:
-        print(f"\n• {ANSI_REVERSE_BLUE}{name}{ANSI_RESET}:")
-        print(EvaluationStrategies.formatted_info(name))
+        print(f"\n {ANSI_BLUE}╭───╴{ANSI_RESET}{ANSI_REVERSE_BLUE} {name} {ANSI_RESET} ")
+        print(f" {ANSI_BLUE}│{ANSI_RESET} ")
+        for line in getattr(EvaluationStrategies, name).__doc__.strip().split("\n"):
+            print(f" {ANSI_BLUE}│{ANSI_RESET} " + line.strip())
+        print(f" {ANSI_BLUE}│{ANSI_RESET} ")
+        print(f" {ANSI_BLUE}╰───╴{ANSI_RESET}")
 
 
 def create_template(name: str = "default") -> None:

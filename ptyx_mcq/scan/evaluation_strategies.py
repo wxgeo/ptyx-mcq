@@ -48,18 +48,14 @@ class EvaluationStrategies:
     def get_all_strategies(cls) -> list[str]:
         return [name for name, func in vars(cls).items() if isinstance(func, staticmethod)]
 
-    @classmethod
-    def formatted_info(cls, name):
-        lines = []
-        for line in getattr(cls, name).__doc__.strip().split("\n"):
-            lines.append("│ " + line.strip())
-        return "\n".join(lines)
-
     @staticmethod
     def some(answers: AnswersData, score: ScoreData) -> float:
-        """Return the maximal score if any of the correct answers and no incorrect answer is checked.
+        """If any of the correct answers have been selected and no incorrect answers
+        have been selected, the function returns the maximal score.
+        Otherwise, it returns the minimal score.
 
-        If an incorrect answer is checked, return minimal score."""
+        The maximal score and minimal score are defined in the header of the ptyx file
+        using the keywords "correct" and "incorrect", respectively."""
         # Answer is valid if and only if :
         # (proposed ≠ ∅ and proposed ⊆ correct) or (proposed = correct = ∅)
         ok = (answers.checked and answers.checked.issubset(answers.correct)) or (
@@ -74,7 +70,11 @@ class EvaluationStrategies:
 
     @staticmethod
     def all(answers: AnswersData, score: ScoreData) -> float:
-        """Return the maximal score if all the correct answers are checked, else give the minimal score."""
+        """This function returns either the maximal score or the minimal score,
+        depending on whether all correct answers are checked or not.
+
+        If all correct answers are checked, the function returns the maximal score.
+        Otherwise, it returns the minimal score."""
         ok = answers.checked == answers.correct
         if ok:
             return score.correct
@@ -85,14 +85,26 @@ class EvaluationStrategies:
 
     @staticmethod
     def proportional(answers: AnswersData, score: ScoreData) -> float:
-        """Returned score is a pondered mean of minimal and maximal scores.
+        """The score returned by this function is calculated as a weighted average
+        of the minimal and maximal scores.
 
-        Minimal and maximal scores are defined respectively in the header of the ptyx file
-        with `correct` and `incorrect` keywords.
+        The minimal and maximal scores are specified in the header of the ptyx file
+        using the keywords "correct" and "incorrect", respectively.
 
-        The score returned is (1 - k) * minimal_score + k * maximal_score,
-        where k is the proportion of correct answers (i.e. boxes left blank when proposed answer
-        was incorrect and boxes checked when proposed answer was correct).
+        The formula for the calculated score is `(1 - k) * minimal_score + k * maximal_score`,
+        where k is the proportion of correct answers.
+        This means that if all answers are correct, the score will be equal to the maximal score;
+        if all answers are incorrect, the score will be equal to the minimal score;
+        and if some answers are correct and others are incorrect, the score will be somewhere in between.
+
+        To determine the value of k, the algorithm looks at the answers provided and checks
+        which boxes were left blank when the proposed answer was incorrect,
+        and which boxes were checked when the proposed answer was correct.
+        The proportion of correct answers is then calculated as the ratio of the number of correct answers
+        to the total number of answers.
+
+        Overall, this function evaluates the quality of the answers provided, based on the specified
+        minimal and maximal scores, and the proportion of correct answers.
         """
         count_ok = len(answers.checked & answers.correct) + len(answers.unchecked & answers.incorrect)
         proportion = count_ok / len(answers.all)
@@ -100,12 +112,14 @@ class EvaluationStrategies:
 
     @staticmethod
     def partial_answers(answers: AnswersData, score: ScoreData) -> float:
-        """Return 0 if an incorrect answer was checked, else the proportion of correct answers."""
+        """Return 0 if an incorrect answer was checked,
+        else the proportion of correct answers."""
         return _partial_answers(answers, score)
 
     @staticmethod
     def partial_answers_quadratic(answers: AnswersData, score: ScoreData) -> float:
-        """Return 0 if an incorrect answer was checked, else the squared proportion of correct answers."""
+        """Return 0 if an incorrect answer was checked,
+        else the squared proportion of correct answers."""
         return _partial_answers(answers, score, exposant=2)
 
     @staticmethod
@@ -118,8 +132,9 @@ class EvaluationStrategies:
         return the difference between the proportion of correctly unchecked answers
         and the proportion of incorrectly unchecked answers.
 
-        The idea behind this algorithm is that, if the proportion of correct answers is greater than 0.5,
-        the exercise's difficulty lies in determining which answers should be left unchecked.
+        The idea behind this algorithm is that, if the proportion of correct answers
+        is greater than 0.5, the exercise's difficulty lies in determining
+        which answers should be left unchecked.
         """
         return _correct_minus_incorrect(answers, score)
 
@@ -129,7 +144,7 @@ class EvaluationStrategies:
 
         This makes very unlikely for a student answering randomly to gain significant score.
         """
-        return _correct_minus_incorrect(answers, score, exposant=2)
+        return _correct_minus_incorrect(answers, score, exponent=2)
 
 
 def _checked_among_correct_proportion(answers: AnswersData) -> float:
@@ -158,7 +173,21 @@ def _correct_proportion(answers: AnswersData) -> float:
     return proportion
 
 
-def _correct_minus_incorrect(answers: AnswersData, score: ScoreData, exposant=1.0) -> float:
+def _correct_minus_incorrect(answers: AnswersData, score: ScoreData, exponent=1.0) -> float:
+    """If the proportion of correct answers is less than 0.5, as is typically the case,
+            return the difference between the proportion of correctly checked answers
+            and the proportion of incorrectly checked answers.
+
+            Otherwise, if the proportion of correct answers is greater than 0.5,
+            return the difference between the proportion of correctly unchecked answers
+            and the proportion of incorrectly unchecked answers.
+
+            The idea behind this algorithm is that, if the proportion of correct answers
+            is greater than 0.5, the exercise's difficulty lies in determining
+            which answers should be left unchecked.
+
+            We then raise the result to the power of `exponent`.
+            """
     ratio_correctly_checked = max(
         0.0,
         (len(answers.checked & answers.correct) - len(answers.checked & answers.incorrect))
@@ -176,4 +205,4 @@ def _correct_minus_incorrect(answers: AnswersData, score: ScoreData, exposant=1.
         assert ratio_correctly_checked < ratio_correctly_unchecked <= 1
         ratio = ratio_correctly_unchecked
     assert ratio <= 1
-    return max(0.0, round(ratio**exposant * score.correct, 2))
+    return max(0.0, round(ratio ** exponent * score.correct, 2))
