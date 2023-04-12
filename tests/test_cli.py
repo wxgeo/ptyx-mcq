@@ -258,6 +258,11 @@ def test_cli() -> None:
         students_scores = read_students_scores(path)
         assert set(students_scores) == set(STUDENTS.values()), repr(students_scores)
 
+        # ---------------------
+        # Test `mcq strategies`
+        # ---------------------
+        main(["strategies"])
+
         # ----------------
         # Test `mcq clear`
         # ----------------

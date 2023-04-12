@@ -30,11 +30,30 @@ class ScoreData:
             self.incorrect = -self.correct
 
 
-class ScoresStrategies:
+class EvaluationStrategies:
+    """This class provides a collection of evaluation strategies.
+
+     Those will be used to calculate the score for each question.
+
+    Each strategy should be defined as a static method within the `EvaluationStrategies` class,
+    with two required parameters:
+    - the answers data (of type `AnswersData`),
+    - the scores configuration (of type `ScoreData`).
+
+    Note that only static methods within the `EvaluationStrategies` class will be recognized as
+    evaluation strategies, so you may safely define auxiliary class methods without interfering.
+    """
+
     @classmethod
-    def get_modes_list(cls) -> list[str]:
-        assert hasattr(cls, current_func := "get_modes_list"), "Please update function name here."
-        return [name for name in vars(cls) if not name.startswith("_") and name != current_func]
+    def get_all_strategies(cls) -> list[str]:
+        return [name for name, func in vars(cls).items() if isinstance(func, staticmethod)]
+
+    @classmethod
+    def formatted_info(cls, name):
+        lines = []
+        for line in getattr(cls, name).__doc__.strip().split("\n"):
+            lines.append("│ " + line.strip())
+        return "\n".join(lines)
 
     @staticmethod
     def some(answers: AnswersData, score: ScoreData) -> float:
@@ -80,39 +99,37 @@ class ScoresStrategies:
         return round(score.incorrect + proportion * (score.correct - score.incorrect), 2)
 
     @staticmethod
-    def partial_answers_linear(answers: AnswersData, score: ScoreData) -> float:
-        """Return 0 if an incorrect answer was checked, else the proportion of correct answers"""
-        if answers.checked & answers.incorrect:
-            return score.incorrect
-        else:
-            return round(_checked_among_correct_proportion(answers) * score.correct, 2)
+    def partial_answers(answers: AnswersData, score: ScoreData) -> float:
+        """Return 0 if an incorrect answer was checked, else the proportion of correct answers."""
+        return _partial_answers(answers, score)
 
     @staticmethod
     def partial_answers_quadratic(answers: AnswersData, score: ScoreData) -> float:
-        if answers.checked & answers.incorrect:
-            return score.incorrect
-        else:
-            return round(_checked_among_correct_proportion(answers) ** 2 * score.correct, 2)
+        """Return 0 if an incorrect answer was checked, else the squared proportion of correct answers."""
+        return _partial_answers(answers, score, exposant=2)
 
     @staticmethod
-    def correct_minus_incorrect_linear(answers: AnswersData, score: ScoreData) -> float:
-        ratio = max(
-            0.0,
-            (len(answers.checked & answers.correct) - len(answers.checked & answers.incorrect))
-            / len(answers.correct),
-        )
-        assert 0 <= ratio <= 1
-        return round(ratio * score.correct, 2)
+    def correct_minus_incorrect(answers: AnswersData, score: ScoreData) -> float:
+        """If the proportion of correct answers is less than 0.5, as is typically the case,
+        return the difference between the proportion of correctly checked answers
+        and the proportion of incorrectly checked answers.
+
+        Otherwise, if the proportion of correct answers is greater than 0.5,
+        return the difference between the proportion of correctly unchecked answers
+        and the proportion of incorrectly unchecked answers.
+
+        The idea behind this algorithm is that, if the proportion of correct answers is greater than 0.5,
+        the exercise's difficulty lies in determining which answers should be left unchecked.
+        """
+        return _correct_minus_incorrect(answers, score)
 
     @staticmethod
     def correct_minus_incorrect_quadratic(answers: AnswersData, score: ScoreData) -> float:
-        ratio = max(
-            0.0,
-            (len(answers.checked & answers.correct) - len(answers.checked & answers.incorrect))
-            / len(answers.correct),
-        )
-        assert 0 <= ratio <= 1
-        return round(ratio**2 * score.correct, 2)
+        """Same algorithm as for `correct_minus_incorrect`, but the result is squared.
+
+        This makes very unlikely for a student answering randomly to gain significant score.
+        """
+        return _correct_minus_incorrect(answers, score, exposant=2)
 
 
 def _checked_among_correct_proportion(answers: AnswersData) -> float:
@@ -123,3 +140,40 @@ def _checked_among_correct_proportion(answers: AnswersData) -> float:
     if len(answers.correct) == 0:
         return float(len(answers.checked) == 0)
     return len(answers.checked & answers.correct) / len(answers.correct)
+
+
+def _partial_answers(answers: AnswersData, score: ScoreData, exposant=1.0) -> float:
+    """Return 0 if an incorrect answer was checked, else the proportion of correct answers."""
+    if answers.checked & answers.incorrect:
+        return score.incorrect
+    else:
+        return round(_checked_among_correct_proportion(answers) ** exposant * score.correct, 2)
+
+
+def _correct_proportion(answers: AnswersData) -> float:
+    """Return the proportion of correct answers."""
+    assert len(answers.all) > 0
+    proportion = len(answers.checked) / len(answers.all)
+    assert 0 <= proportion <= 1
+    return proportion
+
+
+def _correct_minus_incorrect(answers: AnswersData, score: ScoreData, exposant=1.0) -> float:
+    ratio_correctly_checked = max(
+        0.0,
+        (len(answers.checked & answers.correct) - len(answers.checked & answers.incorrect))
+        / len(answers.correct),
+    )
+    ratio_correctly_unchecked = max(
+        0.0,
+        (len(answers.unchecked & answers.incorrect) - len(answers.unchecked & answers.correct))
+        / len(answers.incorrect),
+    )
+    if _correct_proportion(answers) <= 0.5:
+        assert ratio_correctly_unchecked < ratio_correctly_checked <= 1
+        ratio = ratio_correctly_checked
+    else:
+        assert ratio_correctly_checked < ratio_correctly_unchecked <= 1
+        ratio = ratio_correctly_unchecked
+    assert ratio <= 1
+    return max(0.0, round(ratio**exposant * score.correct, 2))

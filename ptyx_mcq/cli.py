@@ -17,10 +17,18 @@ from platformdirs import PlatformDirs
 from ptyx.latex_generator import compiler
 
 from ptyx_mcq import IncludeParser
+from ptyx_mcq.scan.evaluation_strategies import EvaluationStrategies
 from .make.make import make, parse_ptyx_file
 from .scan.scan import scan
 from .tools.config_parser import Configuration
-from .tools.io_tools import print_success, print_error, get_file_or_sysexit
+from .tools.io_tools import (
+    print_success,
+    print_error,
+    get_file_or_sysexit,
+    ANSI_RESET,
+    ANSI_REVERSE_PURPLE,
+    ANSI_REVERSE_BLUE,
+)
 
 
 def main(args: Optional[list] = None) -> None:
@@ -141,6 +149,10 @@ def main(args: Optional[list] = None) -> None:
         help="The template name must be a valid directory name.",
     )
     create_template_parser.set_defaults(func=create_template)
+
+    # create the parser for the "strategies" command
+    strategies_parser = add_parser("strategies", help="List available evaluation strategies.")
+    strategies_parser.set_defaults(func=strategies)
 
     parsed_args = parser.parse_args(args)
     try:
@@ -281,6 +293,18 @@ def update_include(path: Path) -> None:
     root = ptyxfile_path.parent
     IncludeParser(root).update(ptyxfile_path)
     print_success("The list of included files was successfully updated.")
+
+
+def strategies() -> None:
+    """Display all evaluation modes with a description."""
+    strategies = EvaluationStrategies.get_all_strategies()
+    print(f"\n{ANSI_REVERSE_PURPLE}Available strategies{ANSI_RESET}:")
+    print(", ".join(strategies))
+    print()
+    print(f"\n{ANSI_REVERSE_PURPLE}Description{ANSI_RESET}:")
+    for name in strategies:
+        print(f"\n• {ANSI_REVERSE_BLUE}{name}{ANSI_RESET}:")
+        print(EvaluationStrategies.formatted_info(name))
 
 
 def create_template(name: str = "default") -> None:

@@ -2,8 +2,7 @@ import csv
 import math
 from typing import TYPE_CHECKING, Callable
 
-import ptyx_mcq.scan.evaluation_strategies as evaluation_strategies
-from ptyx_mcq.scan.evaluation_strategies import AnswersData, ScoreData
+from ptyx_mcq.scan.evaluation_strategies import AnswersData, ScoreData, EvaluationStrategies
 from ptyx_mcq.tools.io_tools import (
     print_info,
     ANSI_RESET,
@@ -65,7 +64,7 @@ class ScoresManager:
                     continue
 
                 try:
-                    func = getattr(evaluation_strategies.ScoresStrategies, mode)
+                    func = getattr(EvaluationStrategies, mode)
                 except AttributeError:
                     raise AttributeError(f"Unknown evaluation mode: {mode!r}.")
 

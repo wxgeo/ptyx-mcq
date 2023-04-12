@@ -17,7 +17,9 @@ skipped = 0
 # floor = 0
 # Maximal score for a question
 # ceil = 1
-# Mode must be `all`, `some`, `proportional`, `partial_answers_linear` or `partial_answers_quadratic`
+# The full list of the evaluation strategies and their description can be obtained
+# using command `mcq strategies`.
+# Available modes include `all`, `some`, `proportional`, `partial_answers` or `correct_minus_incorrect`.
 mode = all
 # Uncomment and edit the following line to load students ID.
 # This must be a comma separated CSV file with at least 2 columns.
