@@ -63,14 +63,17 @@ class CustomJSONEncoder(json.JSONEncoder):
 # TODO: improve typing precision
 @dataclass(kw_only=True, slots=True)
 class Configuration:
-    mode: dict[QuestionNumberOrDefault, str]  # = field(default_factory=lambda: {"default": "all"})
-    correct: dict[QuestionNumberOrDefault, float]  # = field(default_factory=lambda: {"default": 1})
-    incorrect: dict[QuestionNumberOrDefault, float]  # = field(default_factory=lambda: {"default": 0})
-    skipped: dict[QuestionNumberOrDefault, float]  # = field(default_factory=lambda: {"default": 0})
-    weight: dict[QuestionNumberOrDefault, float]  # = field(default_factory=lambda: {"default": 1})
-    floor: dict[QuestionNumberOrDefault, float | None]  # = field(default_factory=lambda: {"default": None})
-    ceil: dict[QuestionNumberOrDefault, float | None]  # = field(default_factory=lambda: {"default": None})
+    mode: dict[QuestionNumberOrDefault, str] = field(default_factory=lambda: {"default": "all"})
+    correct: dict[QuestionNumberOrDefault, float] = field(default_factory=lambda: {"default": 1})
+    incorrect: dict[QuestionNumberOrDefault, float] = field(default_factory=lambda: {"default": 0})
+    skipped: dict[QuestionNumberOrDefault, float] = field(default_factory=lambda: {"default": 0})
+    weight: dict[QuestionNumberOrDefault, float] = field(default_factory=lambda: {"default": 1})
+    # -inf and inf would be sensible defaults for floor and ceil,
+    # but unfortunately they aren't supported by ast.literal_eval().
+    floor: dict[QuestionNumberOrDefault, float | None] = field(default_factory=lambda: {"default": None})
+    ceil: dict[QuestionNumberOrDefault, float | None] = field(default_factory=lambda: {"default": None})
     id_format: StudentIdFormat | None = None
+    default_score: str = ""
     students_ids: dict[StudentId, StudentName] = field(default_factory=dict)
     students_list: list[StudentName] = field(default_factory=list)
     ordering: dict[DocumentId, OrderingConfiguration] = field(default_factory=dict)

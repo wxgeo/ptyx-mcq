@@ -231,17 +231,7 @@ class MCQLatexGenerator(LatexGenerator):
         self.cache["mcq"] = {
             "header": None,
             "check_id_or_name": None,
-            "data": Configuration(
-                mode={"default": "some"},
-                weight={"default": 1},
-                correct={"default": 1},
-                incorrect={"default": 0},
-                skipped={"default": 0},
-                # -inf and inf would be sensible defaults for floor and ceil,
-                # but unfortunately they aren't supported by ast.literal_eval().
-                floor={"default": None},
-                ceil={"default": None},
-            ),
+            "data": Configuration(),
         }
 
     @property
@@ -652,6 +642,9 @@ class MCQLatexGenerator(LatexGenerator):
 
             if "sty" in config:
                 sty = config.pop("sty")
+
+            if "default_score" in config:
+                self.mcq_data.default_score = config.pop("default_score")
 
             # Config should be empty by now !
             for key in config:

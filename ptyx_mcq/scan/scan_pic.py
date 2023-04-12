@@ -33,19 +33,7 @@ from ..tools.config_parser import (
     StudentName,
     StudentId,
 )
-
-ANSI_RESET = "\u001B[0m"
-ANSI_BLACK = "\u001B[30m"
-ANSI_RED = "\u001B[31m"
-ANSI_GREEN = "\u001B[32m"
-ANSI_YELLOW = "\u001B[33m"
-ANSI_BLUE = "\u001B[34m"
-ANSI_PURPLE = "\u001B[35m"
-ANSI_CYAN = "\u001B[1;36m"
-ANSI_WHITE = "\u001B[37m"
-ANSI_GRAY = "\u001B[90m"
-ANSI_BOLD = "\u001B[1m"
-ANSI_REVERSE = "\u001B[45m"
+from ..tools.io_tools import ANSI_RESET, ANSI_YELLOW, ANSI_CYAN, ANSI_GRAY
 
 CORNERS = frozenset(("tl", "tr", "bl", "br"))
 CORNER_NAMES = {"tl": "top-left", "tr": "top-right", "bl": "bottom-left", "br": "bottom-right"}

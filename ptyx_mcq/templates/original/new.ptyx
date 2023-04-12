@@ -18,12 +18,14 @@ skipped = 0
 # Maximal score for a question
 # ceil = 1
 # Mode must be `all`, `some`, `proportional`, `partial_answers_linear` or `partial_answers_quadratic`
-mode=all
+mode = all
 # Uncomment and edit the following line to load students ID.
 # This must be a comma separated CSV file with at least 2 columns.
 # Students identifiers must be in the 1st column (without any header).
-# ids=~/listings/INE_2021.csv
-id format=8 digits
+# ids = ~/listings/INE_2021.csv
+id format = 8 digits
+# Value displayed for missing students (empty by default):
+# default score = ABI
 ---------------------------
 # You may include here raw LaTeX code (definition of new LaTeX commands for example).
 # It will be appended to the LaTeX preamble. Example:

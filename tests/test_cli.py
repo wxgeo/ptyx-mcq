@@ -219,6 +219,8 @@ def test_cli() -> None:
             assert abs(float(score) - 4.0) < 1e-10, repr(score)  # Maximal score
         assert set(students_scores) == set(STUDENTS.values()), repr(students_scores)
 
+        assert (path / "new.scores.xlsx").exists()
+
         # -----------------
         # Test `mcq update`
         # -----------------
@@ -231,6 +233,10 @@ def test_cli() -> None:
             file_content = f.read()
         with open(path / "questions/question1.ex", "w", encoding="utf8") as f:
             f.write(file_content.replace("+", "§").replace("-", "+").replace("§", "-"))
+        with open(path / "new.ptyx", encoding="utf8") as f:
+            content = f.read()
+        with open(path / "new.ptyx", "w", encoding="utf8") as f:
+            f.write(content.replace("# default score =", "default score ="))
 
         main(["update-config", str(path)])
         config = Configuration.load(path / "new.ptyx.mcq.config.json")

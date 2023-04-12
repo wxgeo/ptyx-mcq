@@ -11,7 +11,8 @@ class FilesPaths:
     verified: Path
     skipped: Path
     more_infos: Path
-    scores: Path
+    csv_scores: Path
+    xlsx_scores: Path
     infos: Path
 
 
@@ -71,7 +72,8 @@ class PathsHandler:
             verified=cfg / "verified.txt",
             skipped=cfg / "skipped.txt",
             more_infos=cfg / "more_infos.csv",
-            scores=output_dir / "scores.csv",
+            csv_scores=output_dir / "scores.csv",
+            xlsx_scores=output_dir / "scores.xlsx",
             infos=output_dir / "infos.csv",
         )
         self.logfile_path = log / (strftime("%Y.%m.%d-%H.%M.%S") + ".log")

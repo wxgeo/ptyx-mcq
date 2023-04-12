@@ -1,4 +1,28 @@
 #!/usr/bin/env python3
+import csv
+import subprocess
+import tempfile
+from math import inf
+from pathlib import Path
+from typing import Union, Literal, Optional
+
+from ptyx_mcq.scan.amend import amend_all
+from ptyx_mcq.scan.conflict_solver import ConflictSolver
+from ptyx_mcq.scan.data_manager import DataStorage
+from ptyx_mcq.scan.document_data import DocumentData, PicData, Page
+from ptyx_mcq.scan.pdftools import PIC_EXTS
+from ptyx_mcq.scan.scan_pic import (
+    scan_picture,
+    CalibrationError,
+)
+from ptyx_mcq.scan.scores_manager import ScoresManager
+from ptyx_mcq.tools.config_parser import (
+    StudentId,
+    StudentName,
+    DocumentId,
+)
+from ptyx_mcq.tools.io_tools import print_success, print_warning, ANSI_RESET, ANSI_GREEN
+
 
 # -----------------------------------------
 #                  Scan
@@ -21,37 +45,6 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program; if not, write to the Free Software
 #    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
-
-
-import csv
-import subprocess
-import tempfile
-from math import inf
-from pathlib import Path
-from typing import Union, Literal, Optional
-
-import ptyx_mcq.scan.evaluation_strategies as evaluation_strategies
-from ptyx_mcq.scan.amend import amend_all
-from ptyx_mcq.scan.conflict_solver import ConflictSolver
-from ptyx_mcq.scan.data_manager import DataStorage
-from ptyx_mcq.scan.document_data import DocumentData, PicData, Page
-from ptyx_mcq.scan.evaluation_strategies import AnswersData, ScoreData
-from ptyx_mcq.scan.pdftools import PIC_EXTS
-from ptyx_mcq.scan.scan_pic import (
-    scan_picture,
-    ANSI_YELLOW,
-    ANSI_RESET,
-    ANSI_CYAN,
-    ANSI_GREEN,
-    ANSI_RED,
-    CalibrationError,
-)
-from ptyx_mcq.tools.config_parser import (
-    StudentId,
-    StudentName,
-    DocumentId,
-)
-from ptyx_mcq.tools.io_tools import print_success, print_warning
 
 
 # File `compilation.py` is in ../.., so we have to "hack" `sys.path` a bit.
@@ -86,6 +79,7 @@ class MCQPictureParser:
         self.already_seen: set[tuple[DocumentId, Page]] = set()
         self.warnings = False
         self.data_storage = DataStorage(Path(path), input_dir=input_dir, output_dir=output_dir)
+        self.scores_manager = ScoresManager(self)
 
     @property
     def config(self):
@@ -199,94 +193,11 @@ class MCQPictureParser:
 
         return action == "f"
 
-    def _calculate_scores(self) -> None:
-        cfg = self.config
-        default_mode = cfg.mode["default"]
-        default_weight = cfg.weight["default"]
-        default_correct = cfg.correct["default"]
-        default_incorrect = cfg.incorrect["default"]
-        default_skipped = cfg.skipped["default"]
-        default_floor = cfg.floor["default"]
-        default_ceil = cfg.ceil["default"]
+    def generate_report(self) -> None:
+        """Generate CSV files with some information concerning each student.
 
-        for doc_id in self.data:
-            correct_ans = self.data_storage.correct_answers[doc_id]
-            neutralized_ans = self.data_storage.neutralized_answers[doc_id]
-            print(f'Test {doc_id} - {self.data[doc_id]["name"]}')
-            doc_data = self.data[doc_id]
-            for q in sorted(doc_data["answered"]):
-                answered = set(doc_data["answered"][q])
-                correct_ones = correct_ans[q]
-                neutralized_ones = neutralized_ans[q]
-                all_answers = {ans_num for ans_num, is_ok in cfg.ordering[doc_id]["answers"][q]}
-
-                # Neutralized answers must be removed from each set of answers.
-                # (Typically, neutralized answers are answers which were detected faulty during or after the
-                # examination).
-                answered -= neutralized_ones
-                correct_ones -= neutralized_ones
-                all_answers -= neutralized_ones
-
-                mode = cfg.mode.get(q, default_mode)
-
-                if mode == "skip":
-                    # Used mostly to skip bogus questions.
-                    print(f"Question {q} skipped...")
-                    continue
-
-                try:
-                    func = getattr(evaluation_strategies.ScoresStrategies, mode)
-                except AttributeError:
-                    raise AttributeError(f"Unknown evaluation mode: {mode!r}.")
-
-                ans_data = AnswersData(checked=answered, correct=correct_ones, all=all_answers)
-                scores_data = ScoreData(
-                    correct=float(cfg.correct.get(q, default_correct)),
-                    skipped=float(cfg.skipped.get(q, default_skipped)),
-                    incorrect=float(cfg.incorrect.get(q, default_incorrect)),
-                )
-                earn = func(ans_data, scores_data)
-
-                floor = cfg.floor.get(q, default_floor)
-                assert floor is None or isinstance(floor, (float, int))
-                if floor is not None and earn < floor:
-                    earn = floor
-                ceil = cfg.ceil.get(q, default_ceil)
-                assert ceil is None or isinstance(ceil, (float, int))
-                if ceil is not None and earn > ceil:
-                    earn = ceil
-
-                if earn == scores_data.correct:
-                    color = ANSI_GREEN
-                elif earn == scores_data.incorrect:
-                    color = ANSI_RED
-                else:
-                    color = ANSI_YELLOW
-                print(f"-  {color}Rating (Q{q}): {color}{earn:g}{ANSI_RESET}")
-                # Don't forget to include the weight of the question to calculate the global score.
-                earn *= float(cfg.weight.get(q, default_weight))
-                # Don't use weight for per question score, since it would make success rates
-                # harder to compare.
-                doc_data["score_per_question"][q] = earn
-                doc_data["score"] += earn
-
-    def generate_output(self) -> None:
-        """Generate CSV files with scores and annotated documents."""
-        max_score = self.config.max_score
-        # Generate CSV file with results.
-        # TODO: Add ability to change default score ("ABI" for now).
-        scores: dict[str, float | str] = {name: "ABI" for name in self.config.students_ids.values()}
-        results: dict[str, float] = {doc_data["name"]: doc_data["score"] for doc_data in self.data.values()}
-        scores.update(results)
-
-        assert max_score is not None
-        self.generate_scores_as_csv_file(max_score, scores)
-        if results:
-            mean = round(sum(results.values()) / len(results), 2)
-            print(f"{ANSI_YELLOW}Mean: {mean:g}/{max_score:g}{ANSI_RESET}")
-        else:
-            print("No score found !")
-
+        Used mainly for debugging.
+        """
         # Generate CSV file with ID and pictures names for all students.
         info_path = self.data_storage.files.infos
         info = [
@@ -299,7 +210,7 @@ class MCQPictureParser:
             )
             for doc_id, doc_data in self.data.items()
         ]
-        print(f"{ANSI_CYAN}SCORES (/{max_score:g}):{ANSI_RESET}")
+
         with open(info_path, "w", newline="") as csvfile:
             writerow = csv.writer(csvfile).writerow
             writerow(("Name", "Student ID", "Test ID", "Score", "Pictures"))
@@ -307,37 +218,9 @@ class MCQPictureParser:
                 paths_as_str = ", ".join(str(pth) for pth in paths)
                 writerow([name, student_ID, f"#{doc_id}", score, paths_as_str])
         print(f'Infos stored in "{info_path}"\n')
+
+    def generate_amended_pdf(self) -> None:
         amend_all(self.data_storage)
-        print(f"\n{ANSI_GREEN}Success ! {ANSI_RESET}:)")
-
-    def generate_scores_as_csv_file(self, max_score: float, scores: dict[str, float | str]) -> None:
-        def convert(num: float | str, factor=1.0):
-            if isinstance(num, float):
-                num = round(factor * num, 2)
-            return num
-
-        # ~ print(scores)
-        scores_path = self.data_storage.files.scores
-        print(f"{ANSI_CYAN}SCORES (/{max_score:g}):{ANSI_RESET}")
-        with open(scores_path, "w", newline="") as csvfile:
-            writerow = csv.writer(csvfile).writerow
-            writerow(("Name", "Score", "Score/20", "Score/100"))
-            for name in sorted(scores):
-                score = scores[name]
-                print(f" - {name}: {convert(score)}")
-                # TODO: Add ability to change the notation system.
-                writerow(
-                    [
-                        name,
-                        convert(score),
-                        convert(score, factor=20 / (max_score if max_score else 1)),
-                        convert(score, factor=100 / (max_score if max_score else 1)),
-                    ]
-                )
-        print(f'\nResults stored in "{scores_path}"\n')
-
-    def generate_scores_xlsx_file(self):
-        raise NotImplementedError
 
     def scan_picture(self, picture: Union[str, Path], manual_verification: bool = True) -> None:
         """This is used for debuging (it allows to test pages one by one)."""
@@ -501,13 +384,23 @@ class MCQPictureParser:
         # Calculate scores
         # ---------------------------
         # Calculate the score, taking care of the chosen mode.
-        self._calculate_scores()
-        print()
+        self.scores_manager.calculate_scores()
+        self.scores_manager.print_scores()
 
         # ---------------------------------------------------
         # Time to synthesize & store all those informations !
         # ---------------------------------------------------
-        self.generate_output()
+        self.scores_manager.generate_csv_file()
+        self.scores_manager.generate_xlsx_file()
+        cfg_ext = ".ptyx.mcq.config.json"
+        cfg_path = str(self.data_storage.paths.configfile)
+        assert cfg_path.endswith(cfg_ext)
+        xlsx_symlink = Path(cfg_path[: -len(cfg_ext)] + ".scores.xlsx")
+        xlsx_symlink.unlink(missing_ok=True)
+        xlsx_symlink.symlink_to(self.data_storage.files.xlsx_scores)
+        self.generate_report()
+        self.generate_amended_pdf()
+        print(f"\n{ANSI_GREEN}Success ! {ANSI_RESET}:)")
 
 
 def scan(
