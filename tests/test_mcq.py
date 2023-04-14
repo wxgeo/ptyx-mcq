@@ -243,7 +243,7 @@ def test_multiline_answers():
 def test_question_config():
     c = load_ptyx_file("question_config.ptyx")
     c.generate_syntax_tree()
-    latex = c.get_latex()
+    c.get_latex()
     assert c.latex_generator.mcq_data.mode[1] == "all"
     assert c.latex_generator.mcq_data.mode[2] == "some"
     assert c.latex_generator.mcq_data.correct[1] == 2.0

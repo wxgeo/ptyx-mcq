@@ -18,6 +18,14 @@ class AnswersData:
     def incorrect(self):
         return self.all - self.correct
 
+    @property
+    def correctly_answered(self):
+        return self.correct & self.checked | self.incorrect & self.unchecked
+
+    @property
+    def incorrectly_answered(self):
+        return self.all - self.correctly_answered
+
 
 @dataclass
 class ScoreData:
@@ -135,6 +143,8 @@ class EvaluationStrategies:
         The idea behind this algorithm is that, if the proportion of correct answers
         is greater than 0.5, the exercise's difficulty lies in determining
         which answers should be left unchecked.
+
+        Note that the
         """
         return _correct_minus_incorrect(answers, score)
 
@@ -165,44 +175,20 @@ def _partial_answers(answers: AnswersData, score: ScoreData, exposant=1.0) -> fl
         return round(_checked_among_correct_proportion(answers) ** exposant * score.correct, 2)
 
 
-def _correct_proportion(answers: AnswersData) -> float:
-    """Return the proportion of correct answers."""
-    assert len(answers.all) > 0
-    proportion = len(answers.checked) / len(answers.all)
-    assert 0 <= proportion <= 1
-    return proportion
-
-
 def _correct_minus_incorrect(answers: AnswersData, score: ScoreData, exponent=1.0) -> float:
     """If the proportion of correct answers is less than 0.5, as is typically the case,
-            return the difference between the proportion of correctly checked answers
-            and the proportion of incorrectly checked answers.
+    return the difference between the proportion of correctly checked answers
+    and the proportion of incorrectly checked answers.
 
-            Otherwise, if the proportion of correct answers is greater than 0.5,
-            return the difference between the proportion of correctly unchecked answers
-            and the proportion of incorrectly unchecked answers.
+    Otherwise, if the proportion of correct answers is greater than 0.5,
+    return the difference between the proportion of correctly unchecked answers
+    and the proportion of incorrectly unchecked answers.
 
-            The idea behind this algorithm is that, if the proportion of correct answers
-            is greater than 0.5, the exercise's difficulty lies in determining
-            which answers should be left unchecked.
+    The idea behind this algorithm is that, if the proportion of correct answers
+    is greater than 0.5, the exercise's difficulty lies in determining
+    which answers should be left unchecked.
 
-            We then raise the result to the power of `exponent`.
-            """
-    ratio_correctly_checked = max(
-        0.0,
-        (len(answers.checked & answers.correct) - len(answers.checked & answers.incorrect))
-        / len(answers.correct),
-    )
-    ratio_correctly_unchecked = max(
-        0.0,
-        (len(answers.unchecked & answers.incorrect) - len(answers.unchecked & answers.correct))
-        / len(answers.incorrect),
-    )
-    if _correct_proportion(answers) <= 0.5:
-        assert ratio_correctly_unchecked < ratio_correctly_checked <= 1
-        ratio = ratio_correctly_checked
-    else:
-        assert ratio_correctly_checked < ratio_correctly_unchecked <= 1
-        ratio = ratio_correctly_unchecked
-    assert ratio <= 1
-    return max(0.0, round(ratio ** exponent * score.correct, 2))
+    We then raise the result to the power of `exponent`.
+    """
+    ratio = 1 - len(answers.incorrectly_answered) / max(1, min(len(answers.correct), len(answers.incorrect)))
+    return max(0.0, round(ratio**exponent * score.correct, 2))
