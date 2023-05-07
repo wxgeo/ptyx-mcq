@@ -135,7 +135,7 @@ class ScoresManager:
 
     def _write_scores(self, writerow: Callable) -> None:
         max_score = self.max_score
-        writerow(("Name", "Score", "Score/20", "Score/100"))
+        writerow(("Name", f"Score/{max_score:g}", "Score/20", "Score/100"))
         for name, score in sorted(self.scores.items()):
             # TODO: Add ability to change the notation system.
             writerow(

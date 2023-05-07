@@ -116,7 +116,7 @@ def read_students_scores(path: Path) -> dict[StudentName, str]:
         reader = csv.reader(csvfile)
         for row in reader:
             match row:
-                case ["Name", "Score", "Score/20", "Score/100"]:
+                case ["Name", _, "Score/20", "Score/100"]:
                     pass  # Header row
                 case [name, score, _, _]:
                     students[StudentName(name)] = score
