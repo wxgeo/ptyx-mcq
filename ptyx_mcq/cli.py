@@ -5,7 +5,7 @@ ptyx MCQ Command Line Interface
 
 @author: Nicolas Pourcelot
 """
-import re
+
 import shutil
 import sys
 from argparse import ArgumentParser
@@ -190,32 +190,34 @@ def new(path: Path, include: Path = None, template="") -> None:
         print_error(f"Path {path} already exists.")
         sys.exit(1)
     else:
+        print(f"Using template from '{template_path}'.")
         shutil.copytree(template_path, path)
         if include is not None:
             # No need to have a questions directory template,
             # since questions' files will be explicitly listed.
-            assert (path / "questions").is_dir()
-            shutil.rmtree(path / "questions")
+            shutil.rmtree(path / "questions", ignore_errors=True)
             # Edit the .ptyx file, to replace default code with the list of the questions' files.
-            ptyx_path = (path / "new.ptyx").resolve()
-            assert ptyx_path.is_file(), ptyx_path
-            with open(ptyx_path, encoding="utf8") as f:
-                content = f.read()
-            lines = [f"-- ROOT: {include.resolve()}"]
+            ptyx_path = get_file_or_sysexit(path, extension=".ptyx")
+            new_lines = [f"-- ROOT: {include.resolve()}"]
             for include_path in include.glob("**/*.ex"):
-                lines.append(f"-- {include_path.relative_to(include)}")
-            assert "-- questions/**/*.ex" in content
-            start = "<<<<<<<<<<<<<<<<<"
-            end = ">>>>>>>>>>>>>>>>>"
-            files_listing = "\n".join(lines)
-            content = re.sub(
-                f"{start}(.+){end}",
-                f"{start}\n{files_listing}\n{end}",
-                content,
-                flags=re.MULTILINE | re.DOTALL,
-            )
+                new_lines.append(f"-- {include_path.relative_to(include)}")
+            lines = []
+            with open(ptyx_path, encoding="utf8") as f:
+                include_section = False
+                for line in f:
+                    line = line.rstrip("\n")
+                    if line.startswith("<<<<"):
+                        include_section = True
+                        lines.append(line)
+                        lines.extend(new_lines)
+                    elif line.startswith(">>>>"):
+                        include_section = False
+                        lines.append(line)
+                    elif not include_section:
+                        lines.append(line)
+
             with open(ptyx_path, "w", encoding="utf8") as f:
-                f.write(content)
+                f.write("\n".join(lines) + "\n")
         print_success(f"A new MCQ was created at {path}.")
 
 
