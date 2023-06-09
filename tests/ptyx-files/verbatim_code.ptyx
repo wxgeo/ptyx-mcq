@@ -26,7 +26,8 @@ id format=8 digits
 <<<<<<<<<<<<<<<<<
 * Select the correct code:
 
-@@{.45}
+<->.45
+@@
 + public double getNorm() {
 	int i, sum = 0;
 	for (i=0; i<counts.length; i++) {

@@ -3,7 +3,6 @@
 # @unique
 # class Levels(Enum):
 #     ROOT, QCM, SECTION, QUESTION, VERSION, ANSWERS_BLOCK, NEW_ANSWER = range(7)
-import re
 import sys
 from typing import Iterable
 
@@ -179,18 +178,23 @@ def generate_ptyx_code(text: str, additional_header_lines: Iterable[str] = ()) -
             # introduced by '-' or '+').
             code.append(line)
 
+        elif line.startswith("<->"):
+            # Examples:
+            # <->2cm
+            # <->.5
+            width = line[3:]
+            code.append(f"#{{ANSWER_WIDTH={width!r};}}")
+
         elif line.startswith("@"):
             raw = line.startswith("@@")
             # Examples:
-            # @{2cm}formatting_function
-            # @@{.5}\texttt{%s}
-            m = re.match("(?:{(.+)})?(.*)", line[(2 if raw else 1) :].strip())
-            assert m is not None
-            width, formatting = m.groups()
+            # @formatting_function
+            # @@\texttt{%s}
+            formatting = line[(2 if raw else 1) :].strip()
             if formatting == "":
                 formatting = "%s"
             # Declare function to be applied to all answers.
-            code.append(f"#{{RAW_CODE={raw};APPLY_TO_ANSWERS={formatting!r};ANSWER_WIDTH={width!r};}}")
+            code.append(f"#{{RAW_CODE={raw};APPLY_TO_ANSWERS={formatting!r};}}")
 
         elif line.startswith("- ") or line.startswith("+ ") or line.startswith("! "):
             # - incorrect answer

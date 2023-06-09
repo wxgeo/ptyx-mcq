@@ -7,7 +7,8 @@
 # The width can be manually reduced using `{6cm}`, or `{.5}` which stands for ``{.5\linewidth}`.
 # Combining verbatim mode and reduced width is useful to display code:
 
-@@{.45}
+<->.45
+@@
 + public double getNorm() {
 	int i, sum = 0;
 	for (i=0; i<counts.length; i++) {
