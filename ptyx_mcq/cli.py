@@ -122,8 +122,13 @@ def main(args: Optional[list] = None) -> None:
         default=False,
         help="For each first page, display a picture of " "the top of the page and ask for the student name.",
     )
+    scan_parser.add_argument(
+        "--test-picture",
+        type=Path,
+        default=None,
+        help="Used for debugging: scan only this picture, without storing scan's results.",
+    )
     scan_parser.set_defaults(func=scan)
-
     # create the parser for the "clear" command
     clear_parser = add_parser("clear", help="Remove every MCQ data but the ptyx file.")
     clear_parser.add_argument("path", nargs="?", metavar="PATH", type=Path, default=".")
@@ -257,7 +262,7 @@ def update_config(path: Path) -> None:
     # Update configuration
     data: Configuration = compiler.latex_generator.mcq_data
     # Test compatibility of `data` with `config`:
-    # The number of questions and their ordering should not have change,
+    # The number of questions and their ordering should not have changed,
     # the same holds for the answers (but their labelling as correct
     # or incorrect is allowed to change).
     if not same_questions_and_answers_numbers(data, config):
@@ -300,12 +305,12 @@ def update_include(path: Path) -> None:
 
 def strategies() -> None:
     """Display all evaluation modes with a description."""
-    strategies = EvaluationStrategies.get_all_strategies()
+    strategies_list = EvaluationStrategies.get_all_strategies()
     print(f"\n{ANSI_REVERSE_PURPLE}[ Available strategies ]{ANSI_RESET}")
-    print(", ".join(strategies))
+    print(", ".join(strategies_list))
     print()
     print(f"\n{ANSI_REVERSE_PURPLE}[ Details ]{ANSI_RESET}")
-    for name in strategies:
+    for name in strategies_list:
         print(f"\n {ANSI_BLUE}╭───╴{ANSI_RESET}{ANSI_REVERSE_BLUE} {name} {ANSI_RESET} ")
         print(f" {ANSI_BLUE}│{ANSI_RESET} ")
         for line in getattr(EvaluationStrategies, name).__doc__.strip().split("\n"):
@@ -326,6 +331,7 @@ def create_template(name: str = "default") -> None:
     default_template = Path(__file__).resolve().parent / "templates/original"
     shutil.copytree(default_template, user_template)
     print_success(f"Template created at {user_template}. Edit the inner files to customize it.")
+
 
 
 if __name__ == "__main__":

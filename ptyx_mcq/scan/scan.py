@@ -222,8 +222,8 @@ class MCQPictureParser:
     def generate_amended_pdf(self) -> None:
         amend_all(self.data_storage)
 
-    def scan_picture(self, picture: Union[str, Path], manual_verification: bool = True) -> None:
-        """This is used for debuging (it allows to test pages one by one)."""
+    def scan_picture(self, picture: Union[str, Path]) -> None:
+        """This is used for debugging (it allows to test pages one by one)."""
         # f1-pic-003.jpg (page 25)
         # f12-pic-005.jpg
         # f12-pic-003.jpg
@@ -238,7 +238,8 @@ class MCQPictureParser:
         pic_path = Path(picture).expanduser().resolve()
         if not pic_path.is_file():
             pic_path = self.data_storage.absolute_pic_path(picture)
-        pic_data, _ = scan_picture(pic_path, self.config, manual_verification=manual_verification)
+        pic_data, array = scan_picture(pic_path, self.config, debug=True)
+        ConflictSolver.display_picture_with_detected_answers(array, pic_data)
         print(pic_data)
 
     def _warn(self, *values, sep=" ", end="\n") -> None:
@@ -408,6 +409,7 @@ def scan(
     reset: bool = False,
     ask_for_name: bool = False,
     verify: Literal["auto", "always", "never"] = "auto",
+    test_picture: Path = None,
 ) -> None:
     """Implement `mcq scan` command."""
     if verify == "always":
@@ -416,9 +418,13 @@ def scan(
         manual_verification = False
     else:
         manual_verification = None
-    MCQPictureParser(path).scan_all(
-        reset=reset,
-        ask_for_name=ask_for_name,
-        manual_verification=manual_verification,
-    )
-    print_success("Students' marks successfully generated. :)")
+    if test_picture is None:
+        MCQPictureParser(path).scan_all(
+            reset=reset,
+            ask_for_name=ask_for_name,
+            manual_verification=manual_verification,
+        )
+        print_success("Students' marks successfully generated. :)")
+    else:
+        MCQPictureParser(path).scan_picture(test_picture)
+        print_success(f"Picture {test_picture!r} scanned.")

@@ -2,9 +2,11 @@ import string
 import subprocess
 from pathlib import Path
 
+from numpy import ndarray
+
 from ptyx_mcq.scan.color import Color, RGB
 from ptyx_mcq.scan.data_manager import DataStorage
-from ptyx_mcq.scan.document_data import Page, DetectionStatus, RevisionStatus
+from ptyx_mcq.scan.document_data import Page, DetectionStatus, RevisionStatus, PicData
 from ptyx_mcq.scan.visual_debugging import ArrayViewer
 from ptyx_mcq.tools.config_parser import (
     DocumentId,
@@ -39,6 +41,11 @@ class ConflictSolver:
         # Search for any missing information remaining.
         for doc_id, doc_data in self.data.items():
             if doc_data["name"] == "":
+                first_page = doc_data["pages"].get(Page(1))
+                if first_page is None:
+                    print_warning("No first page found !")
+                else:
+                    print(f"Picture's path: '{first_page.pic_path}'.")
                 print_warning(f"No student name for document {doc_id}.")
                 student_name, student_id = self.enter_name_and_id(doc_id)
                 doc_data["name"] = student_name
@@ -129,15 +136,21 @@ class ConflictSolver:
             for page, pic_data in doc_data["pages"].items():
                 if pic_data.needs_review and Path(pic_data.pic_path) not in self.data_storage.verified:
                     # The answers are ambiguous and were not already manually verified in a previous scan.
+                    print(f"Picture's path: '{pic_data.pic_path}'.")
                     print_warning(f"Ambiguous answers for student {doc_data['name']}.")
                     self.edit_answers(doc_id, page)
                     self.data_storage.store_verified_pic(Path(pic_data.pic_path))
 
-    def display_picture_with_detected_answers(self, doc_id: DocumentId, page: Page) -> subprocess.Popen:
+    def display_page_with_detected_answers(self, doc_id: DocumentId, page: Page) -> subprocess.Popen:
         """Display the page with its checkboxes colored following their detection status."""
         array = self.data_storage.get_matrix(doc_id, page)
-        viewer = ArrayViewer(array)
         pic_data = self.data[doc_id]["pages"][page]
+        return self.display_picture_with_detected_answers(array, pic_data)
+
+    @staticmethod
+    def display_picture_with_detected_answers(array: ndarray, pic_data: PicData) -> subprocess.Popen:
+        """Display the picture of the MCQ with its checkboxes colored following their detection status."""
+        viewer = ArrayViewer(array)
         colors: dict[DetectionStatus | RevisionStatus, RGB] = {
             DetectionStatus.CHECKED: Color.blue,
             DetectionStatus.PROBABLY_CHECKED: Color.green,
@@ -171,7 +184,7 @@ class ConflictSolver:
         input("-- Press ENTER --")
 
         while True:
-            process = self.display_picture_with_detected_answers(doc_id, page)
+            process = self.display_page_with_detected_answers(doc_id, page)
             if input("Is this correct ? [(y)es/(N)o]").lower() in ("y", "yes"):
                 break
             while (q_str := input("Write a question number, or 0 to escape:")) != "0":
@@ -210,7 +223,7 @@ class ConflictSolver:
                     print("Invalid number.")
                 finally:
                     process.terminate()
-                    process = self.display_picture_with_detected_answers(doc_id, page)
+                    process = self.display_page_with_detected_answers(doc_id, page)
         process.terminate()
 
     def display_first_page_head(self, doc_id: DocumentId) -> subprocess.CompletedProcess | subprocess.Popen:

@@ -2,9 +2,10 @@ import subprocess
 import tempfile
 from dataclasses import dataclass
 from os.path import join
-from typing import Any, Optional, overload, Literal
+from typing import Optional, overload, Literal
 
 from PIL import Image
+from PIL.PyAccess import PyAccess
 from numpy import ndarray, int8
 
 from ptyx_mcq.scan.color import Color, RGB
@@ -124,6 +125,12 @@ class ArrayViewer:
             for rectangle in self._shapes:
                 self._draw_rectangle(rectangle)
 
+    def _set_pixel(self, pixels: PyAccess, i: int, j: int, color: RGB) -> None:
+        if self.array is not None:
+            height, width = self.array.shape
+            if 0 <= i < height and 0 <= j < width:
+                pixels[j, i] = color
+
     def _draw_rectangle(self, rectangle: RectangularShape) -> None:
         if self.array is None:
             return
@@ -134,32 +141,43 @@ class ArrayViewer:
             i2 = height - 1
         if j2 is None:
             j2 = width - 1
-        imin, imax = int(max(min(i1, i2), 0)), int(min(max(i1, i2), height - 1))
-        jmin, jmax = int(max(min(j1, j2), 0)), int(min(max(j1, j2), width - 1))
-        assert 0 <= imin <= imax < height and 0 <= jmin <= jmax < width
+        i1 = int(i1)
+        i2 = int(i2)
+        j1 = int(j1)
+        j2 = int(j2)
+        if i2 < i1:
+            i1, i2 = i2, i1
+        if j2 < j1:
+            j1, j2 = j2, j1
+        # i1 = min(max(i1, 0), height - 1)
+        # i2 = min(max(i2, 0), height - 1)
+        # j1 = min(max(j1, 0), width - 1)
+        # j2 = min(max(j2, 0), width - 1)
+        # assert 0 <= i1 <= i2 < height, (i1, i2, height)
+        # assert 0 <= j1 <= j2 < width, (j1, j2, width)
 
         color = rectangle.color
         thickness = rectangle.thickness
         assert self._pic is not None
-        pix: Any = self._pic.load()  # type:ignore
+        pixels: PyAccess = self._pic.load()  # type:ignore
 
         if rectangle.fill:
-            for i in range(imin, imax + 1):
-                for j in range(jmin, jmax + 1):
-                    pix[j, i] = color
+            for i in range(i1, i2 + 1):
+                for j in range(j1, j2 + 1):
+                    self._set_pixel(pixels, i, j, color)
         else:
             # left and right sides of rectangle
-            for i in range(imin, imax + 1):
-                for j in range(jmin, jmin + thickness):
-                    pix[j, i] = color
-                for j in range(jmax + 1 - thickness, jmax + 1):
-                    pix[j, i] = color
+            for i in range(i1, i2 + 1):
+                for j in range(j1, j1 + thickness):
+                    self._set_pixel(pixels, i, j, color)
+                for j in range(j2 + 1 - thickness, j2 + 1):
+                    self._set_pixel(pixels, i, j, color)
             # top and bottom sides of rectangle
-            for j in range(jmin, jmax + 1):
-                for i in range(imin, imin + thickness):
-                    pix[j, i] = color
-                for i in range(imax + 1 - thickness, imax + 1):
-                    pix[j, i] = color
+            for j in range(j1, j2 + 1):
+                for i in range(i1, i1 + thickness):
+                    self._set_pixel(pixels, i, j, color)
+                for i in range(i2 + 1 - thickness, i2 + 1):
+                    self._set_pixel(pixels, i, j, color)
 
     @overload
     def display(self, wait: Literal[True] = True) -> subprocess.CompletedProcess:

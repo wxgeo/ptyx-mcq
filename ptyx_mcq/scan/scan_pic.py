@@ -443,7 +443,6 @@ def find_document_id_band(
 
 def calibrate(pic: Image.Image, m: ndarray, debug=False) -> tuple[ndarray, float, float, Pixel, Pixel]:
     """Detect picture resolution and ensure correct orientation."""
-    viewer = ArrayViewer(m)  # for debugging
     # Ensure that the picture orientation is portrait, not landscape.
     height, width = m.shape
     print(f"Picture dimensions : {height}px x {width}px.")
@@ -547,12 +546,15 @@ def calibrate(pic: Image.Image, m: ndarray, debug=False) -> tuple[ndarray, float
     positions, (i1, j1), (i2, j2) = detect_four_squares(m, calib_square, cm, debug=debug)
     print("ok2")
 
+    viewer = ArrayViewer(m)  # for debugging
+
     try:
         i3, j3 = find_document_id_band(m, i1, j1, j2, square_size, viewer)
     except StopIteration:
         # Orientation probably incorrect.
         print("Reversed page detected: 180° rotation.")
         pic, m = transform(pic, "transpose", method=Image.ROTATE_180)
+        viewer.array = m
         height, width = m.shape
         p = positions
         for corner in p:
@@ -680,7 +682,9 @@ def read_student_id_and_name(
             # ~ print(d, val)
 
             # ~ color2debug(m, (i + 2, j + 2), (i - 2 + cell_size, j - 2+ cell_size), color=(1,1,0))
-            if test_square_color(m, i, j, cell_size, gray_level=0.8):
+            if test_square_color(m, i, j, cell_size, proportion=0.3, gray_level=0.85) or test_square_color(
+                m, i, j, cell_size, proportion=0.5, gray_level=0.9
+            ):
                 # To test the blackness, we exclude the top left corner,
                 # which contain the cell number and may alter the result.
                 # So, we divide the cell in four squares, and calculate
@@ -797,7 +801,8 @@ def scan_picture(
     min_val = amin(m)
     max_val = amax(m)
     if debug:
-        viewer.display()
+        # viewer.display()
+        print("Trying to maximize contrast..")
         print(f"Old range: {min_val} - {max_val}")
     if min_val > 0 or max_val < 255 and max_val - min_val > 0.2:
         m = (m - min_val) / (max_val - min_val)
@@ -825,6 +830,7 @@ def scan_picture(
     # ------------------------------------------------------------------
 
     m, h_pixels_per_mm, v_pixels_per_mm, (TOP, LEFT), (i, j) = calibrate(pic, m, debug=debug)
+    viewer.array = m
     pixels_per_mm = (h_pixels_per_mm + 1.5 * v_pixels_per_mm) / 2.5
 
     # We should now have an accurate value for square size.
