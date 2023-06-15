@@ -223,7 +223,7 @@ class MCQPictureParser:
         amend_all(self.data_storage)
 
     def scan_picture(self, picture: Union[str, Path]) -> None:
-        """This is used for debugging (it allows to test pages one by one)."""
+        """This is used for debugging (it allows to test one page specifically)."""
         # f1-pic-003.jpg (page 25)
         # f12-pic-005.jpg
         # f12-pic-003.jpg

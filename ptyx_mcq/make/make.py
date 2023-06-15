@@ -8,6 +8,7 @@ from pathlib import Path
 from ptyx.compilation import make_files, make_file
 from ptyx.latex_generator import compiler, Compiler
 
+from ptyx_mcq.scan.document_data import Page
 from ptyx_mcq.tools.io_tools import print_error, print_success, get_file_or_sysexit
 from ptyx_mcq.tools.config_parser import Configuration
 
@@ -29,7 +30,7 @@ def generate_config_file(_compiler: Compiler) -> None:
             filename = f"{name}-{n}.pos"
         full_path = folder / ".compile" / name / filename
         # For each page of the document, give the position of every answer's checkbox.
-        checkboxes_positions: dict[int, dict[str, tuple[float, float]]] = {}
+        checkboxes_positions: dict[Page, dict[str, tuple[float, float]]] = {}
         mcq_data.boxes[n] = checkboxes_positions
         with open(full_path) as f:
             for line in f:
@@ -42,7 +43,7 @@ def generate_config_file(_compiler: Compiler) -> None:
                         mcq_data.id_table_pos = id_table_pos
                     continue
                 page_, x_, y_ = [s.strip("p() \n") for s in v.split(",")]
-                checkboxes_positions.setdefault(int(page_), {})[k] = (float(x_), float(y_))
+                checkboxes_positions.setdefault(Page(int(page_)), {})[k] = (float(x_), float(y_))
 
     mcq_data.dump(file_path.with_suffix(".ptyx.mcq.config.json"))
 

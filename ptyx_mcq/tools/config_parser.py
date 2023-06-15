@@ -2,7 +2,10 @@ import typing
 from dataclasses import dataclass, asdict, field
 import json
 from pathlib import Path
-from typing import Any, TypeVar, TypedDict, Literal, NewType
+from typing import Any, TypeVar, TypedDict, Literal, NewType, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from ptyx_mcq.scan.document_data import Page
 
 T = TypeVar("T")
 
@@ -79,7 +82,7 @@ class Configuration:
     ordering: dict[DocumentId, OrderingConfiguration] = field(default_factory=dict)
     # ordering: {NUM: {'questions': [2,1,3...],
     #                  'answers': {1: [(2, True), (1, False), (3, True)...], ...}}, ...}
-    boxes: dict[DocumentId, dict[int, dict[str, tuple[float, float]]]] = field(default_factory=dict)
+    boxes: dict[DocumentId, dict["Page", dict[str, tuple[float, float]]]] = field(default_factory=dict)
     # boxes: {NUM: {'tag': 'p4, (23.456, 34.667)', ...}, ...}
     id_table_pos: tuple[float, float] | None = None
     max_score: float | None = None

@@ -21,4 +21,3 @@ def test_correct_minus_incorrect():
     answers = AnswersData(checked={1, 2, 4}, correct={1, 2, 3}, all={1, 2, 3, 4, 5, 6})
     # 1/3 of the score
     assert EvaluationStrategies.correct_minus_incorrect(answers=answers, score=scores) == 2
-

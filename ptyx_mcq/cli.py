@@ -333,6 +333,5 @@ def create_template(name: str = "default") -> None:
     print_success(f"Template created at {user_template}. Edit the inner files to customize it.")
 
 
-
 if __name__ == "__main__":
     main()

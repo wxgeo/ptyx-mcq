@@ -943,9 +943,10 @@ def scan_picture(
     # and false negatives.
     blackness = {}
     core_blackness = {}
+    # Store the picture of the checkbox
+    boxes_content = {}
 
     for key, pos in boxes.items():
-        # ~ should_have_answered = set() # for debugging only.
         i, j = xy2ij(*pos)
         i, j = adjust_checkbox(m, i, j, cell_size)
         # `q` and `a` are real questions and answers numbers, that is,
@@ -953,12 +954,29 @@ def scan_picture(
         q_str, a_str = key[1:].split("-")
         q = OriginalQuestionNumber(int(q_str))
         a = OriginalAnswerNumber(int(a_str))
+        boxes_content[(q, a)] = m[i : i + cell_size, j : j + cell_size]
+        # The following will be used to detect false positives or false negatives later.
+        blackness[(q, a)] = eval_square_color(m, i, j, cell_size, margin=4)
+        core_blackness[(q, a)] = eval_square_color(m, i, j, cell_size, margin=7)
+        positions[(q, a)] = (i, j)
         # `q0` and `a0` keep track of apparent question and answers numbers,
         # which will be used on output to make debugging easier.
         q0, a0 = real2apparent(q, a, config, doc_id)
         displayed_questions_numbers[q] = q0
 
-        # answer_is_correct = (a in correct_answers)
+    # Various metrics used to compare the blackness of a checkbox with the other ones.
+    floor = max(0.2 * max(blackness.values()), max(blackness.values()) - 0.4)
+    upper_floor = max(0.2 * max(blackness.values()), max(blackness.values()) - 0.3)
+    core_floor = max(0.2 * max(core_blackness.values()), max(core_blackness.values()) - 0.4)
+    upper_core_floor = max(0.2 * max(core_blackness.values()), max(core_blackness.values()) - 0.3)
+    # Add 0.03 to 1.5*mean, in case mean is almost 0.
+    ceil = 1.5 * sum(blackness.values()) / len(blackness) + 0.02
+    core_ceil = 1.2 * sum(core_blackness.values()) / len(core_blackness) + 0.01
+
+    for q, a in boxes_content:
+        # ~ should_have_answered = set() # for debugging only.
+        i, j = positions[(q, a)]
+        q0 = displayed_questions_numbers[q]
 
         test_square = partial(test_square_color, m, i, j, cell_size, margin=5)
         # color_square = partial(viewer.add_square, (i, j), cell_size)
@@ -966,11 +984,6 @@ def scan_picture(
         if q not in answered:
             answered[q] = set()
             print(f"\n{ANSI_CYAN}• Question {q0}{ANSI_RESET} (Q{q})")
-
-        # The following will be used to detect false positives or false negatives later.
-        blackness[(q, a)] = eval_square_color(m, i, j, cell_size, margin=4)
-        core_blackness[(q, a)] = eval_square_color(m, i, j, cell_size, margin=7)
-        positions[(q, a)] = (i, j)
 
         answer_is_correct = is_answer_correct(q, a, config, doc_id)
 
@@ -992,7 +1005,7 @@ def scan_picture(
         else:
             # This box was left unchecked.
             c = "□"
-            if test_square(proportion=0.2, gray_level=0.95):
+            if test_square(proportion=0.2, gray_level=0.95) and blackness[(q, a)] > upper_floor:
                 detection_status[(q, a)] = DetectionStatus.PROBABLY_UNCHECKED
             else:
                 detection_status[(q, a)] = DetectionStatus.UNCHECKED
@@ -1017,9 +1030,6 @@ def scan_picture(
     # If a checkbox considered unchecked is notably darker than the others,
     # it is probably checked after all (and if not, it will most probably be caught
     # with false positives in next section).
-    # Add 0.03 to 1.5*mean, in case mean is almost 0.
-    ceil = 1.5 * sum(blackness.values()) / len(blackness) + 0.02
-    core_ceil = 1.2 * sum(core_blackness.values()) / len(core_blackness) + 0.01
     for q, a in blackness:  # pylint: disable=dict-iter-missing-items
         if a not in answered[q] and (blackness[(q, a)] > ceil or core_blackness[(q, a)] > core_ceil):
             print("False negative detected", (q, a))
@@ -1030,10 +1040,6 @@ def scan_picture(
 
     # If a checkbox is tested as checked, but is much lighter than the darker one,
     # it is very probably a false positive.
-    floor = max(0.2 * max(blackness.values()), max(blackness.values()) - 0.4)
-    upper_floor = max(0.2 * max(blackness.values()), max(blackness.values()) - 0.3)
-    core_floor = max(0.2 * max(core_blackness.values()), max(core_blackness.values()) - 0.4)
-    upper_core_floor = max(0.2 * max(core_blackness.values()), max(core_blackness.values()) - 0.3)
     for q, a in blackness:  # pylint: disable=dict-iter-missing-items
         if a in answered[q] and (
             blackness[(q, a)] < upper_floor or core_blackness[(q, a)] < upper_core_floor
