@@ -12,7 +12,7 @@ keywords = ["python", "tikz", "latex", "pdf", "exam", "mcq", "student"]
 python = "^3.10"
 numpy = "^1.23.0"
 Pillow = "^9.2"
-sympy = "^1.10.1"
+sympy = "~1.11"
 pdf2image = "^1.16.0"
 ptyx = "^23.2"
 smallgraphlib = "^0.6.3"
@@ -21,7 +21,7 @@ openpyxl = "^3.1.2"
 
 
 [tool.poetry.dev-dependencies]
-types-openpyxl = "^3.1.0.3"
+types-openpyxl = "^3.1.0.12"
 types-Pillow = "^9.0.20"
 pytest = "^7"
 mypy = "^1.0"
