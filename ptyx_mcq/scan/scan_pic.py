@@ -1,4 +1,3 @@
-from functools import partial
 from math import degrees, atan, hypot
 from pathlib import Path
 
@@ -6,7 +5,7 @@ from PIL import Image
 from numpy import array, flipud, fliplr, dot, amin, amax, zeros, ndarray  # , percentile, clip
 
 from .color import Color
-from .document_data import PicData, Page, DetectionStatus
+from .document_data import PicData, Page
 from .square_detection import (
     test_square_color,
     find_black_square,
@@ -24,7 +23,6 @@ from ..parameters import (
 )
 from ..tools.config_parser import (
     real2apparent,
-    is_answer_correct,
     Configuration,
     StudentIdFormat,
     OriginalQuestionNumber,
@@ -33,7 +31,6 @@ from ..tools.config_parser import (
     StudentName,
     StudentId,
 )
-from ..tools.io_tools import ANSI_RESET, ANSI_YELLOW, ANSI_CYAN, ANSI_GRAY
 
 CORNERS = frozenset(("tl", "tr", "bl", "br"))
 CORNER_NAMES = {"tl": "top-left", "tr": "top-right", "bl": "bottom-left", "br": "bottom-right"}
@@ -904,15 +901,10 @@ def scan_picture(
         cell_size=cell_size,
         # Translation table ({question number before shuffling: after shuffling})
         questions_nums_conversion={},
-        needs_review=False,
         detection_status={},
         revision_status={},
         pic_path="",
     )
-    answered = pic_data.answered
-    positions = pic_data.positions
-    displayed_questions_numbers = pic_data.questions_nums_conversion
-    detection_status = pic_data.detection_status
 
     try:
         boxes = config.boxes[doc_id][page]
@@ -939,12 +931,8 @@ def scan_picture(
     # Using the config file to obtain correct answers list allows some easy customization
     # after the test was generated (this is useful if some tests questions were flawed).
 
-    # Store blackness of checkboxes, to help detect false positives
-    # and false negatives.
-    blackness = {}
-    core_blackness = {}
     # Store the picture of the checkbox
-    boxes_content = {}
+    # boxes_content = {}
 
     for key, pos in boxes.items():
         i, j = xy2ij(*pos)
@@ -954,115 +942,13 @@ def scan_picture(
         q_str, a_str = key[1:].split("-")
         q = OriginalQuestionNumber(int(q_str))
         a = OriginalAnswerNumber(int(a_str))
-        boxes_content[(q, a)] = m[i : i + cell_size, j : j + cell_size]
-        # The following will be used to detect false positives or false negatives later.
-        blackness[(q, a)] = eval_square_color(m, i, j, cell_size, margin=4)
-        core_blackness[(q, a)] = eval_square_color(m, i, j, cell_size, margin=7)
-        positions[(q, a)] = (i, j)
+        # boxes_content[(q, a)] = m[i : i + cell_size, j : j + cell_size]
+        pic_data.positions[(q, a)] = (i, j)
         # `q0` and `a0` keep track of apparent question and answers numbers,
         # which will be used on output to make debugging easier.
         q0, a0 = real2apparent(q, a, config, doc_id)
-        displayed_questions_numbers[q] = q0
+        pic_data.questions_nums_conversion[q] = q0
 
-    # Various metrics used to compare the blackness of a checkbox with the other ones.
-    floor = max(0.2 * max(blackness.values()), max(blackness.values()) - 0.4)
-    upper_floor = max(0.2 * max(blackness.values()), max(blackness.values()) - 0.3)
-    core_floor = max(0.2 * max(core_blackness.values()), max(core_blackness.values()) - 0.4)
-    upper_core_floor = max(0.2 * max(core_blackness.values()), max(core_blackness.values()) - 0.3)
-    # Add 0.03 to 1.5*mean, in case mean is almost 0.
-    ceil = 1.5 * sum(blackness.values()) / len(blackness) + 0.02
-    core_ceil = 1.2 * sum(core_blackness.values()) / len(core_blackness) + 0.01
-
-    for q, a in boxes_content:
-        # ~ should_have_answered = set() # for debugging only.
-        i, j = positions[(q, a)]
-        q0 = displayed_questions_numbers[q]
-
-        test_square = partial(test_square_color, m, i, j, cell_size, margin=5)
-        # color_square = partial(viewer.add_square, (i, j), cell_size)
-
-        if q not in answered:
-            answered[q] = set()
-            print(f"\n{ANSI_CYAN}• Question {q0}{ANSI_RESET} (Q{q})")
-
-        answer_is_correct = is_answer_correct(q, a, config, doc_id)
-
-        if (
-            test_square(proportion=0.2, gray_level=0.65)
-            # ~ test_square_color(m, i + 3, j + 3, cell_size - 7, proportion=0.4, gray_level=0.75) or
-            # ~ test_square_color(m, i + 3, j + 3, cell_size - 7, proportion=0.45, gray_level=0.8) or
-            or test_square(proportion=0.4, gray_level=0.90)
-            or test_square(proportion=0.6, gray_level=0.95)
-        ):
-            # The student has checked this box.
-            c = "■"
-            answered[q].add(a)
-
-            if not test_square(proportion=0.4, gray_level=0.9):
-                detection_status[(q, a)] = DetectionStatus.PROBABLY_CHECKED
-            else:
-                detection_status[(q, a)] = DetectionStatus.CHECKED
-        else:
-            # This box was left unchecked.
-            c = "□"
-            if test_square(proportion=0.2, gray_level=0.95) and blackness[(q, a)] > upper_floor:
-                detection_status[(q, a)] = DetectionStatus.PROBABLY_UNCHECKED
-            else:
-                detection_status[(q, a)] = DetectionStatus.UNCHECKED
-
-        if answer_is_correct is None:
-            # This answer was neutralized (ahem, the teacher probably made a mistake... ;))
-            term_color = ANSI_GRAY
-        elif c == "□" and answer_is_correct or c == "■" and not answer_is_correct:
-            # Incorrect answer.
-            term_color = ANSI_YELLOW
-        else:
-            # Great answer !
-            term_color = ""
-
-        print(f"  {term_color}{c} {a}  {ANSI_RESET}", end="\t")
-        # ~ print('\nCorrect answers:', should_have_answered)
-    print()
-
-    # Test now for false negatives and false positives.
-
-    # First, try to detect false negatives.
-    # If a checkbox considered unchecked is notably darker than the others,
-    # it is probably checked after all (and if not, it will most probably be caught
-    # with false positives in next section).
-    for q, a in blackness:  # pylint: disable=dict-iter-missing-items
-        if a not in answered[q] and (blackness[(q, a)] > ceil or core_blackness[(q, a)] > core_ceil):
-            print("False negative detected", (q, a))
-            # This is probably a false negative, but we'd better verify manually.
-            manual_verification = manual_verification is not False
-            answered[q].add(a)
-            detection_status[(q, a)] = DetectionStatus.PROBABLY_CHECKED
-
-    # If a checkbox is tested as checked, but is much lighter than the darker one,
-    # it is very probably a false positive.
-    for q, a in blackness:  # pylint: disable=dict-iter-missing-items
-        if a in answered[q] and (
-            blackness[(q, a)] < upper_floor or core_blackness[(q, a)] < upper_core_floor
-        ):
-            manual_verification = manual_verification is not False
-            if blackness[(q, a)] < floor or core_blackness[(q, a)] < core_floor:
-                print("False positive detected", (q, a), blackness[(q, a)], max(blackness.values()))
-                # This is probably a false positive, but we'd better verify manually.
-                answered[q].discard(a)
-                # Change box color for manual verification.
-                detection_status[(q, a)] = DetectionStatus.PROBABLY_UNCHECKED
-            else:
-                # Probably note a false positive, but we should verify.
-                # Change box color for manual verification.
-                detection_status[(q, a)] = DetectionStatus.PROBABLY_CHECKED
-
-    if debug:
-        viewer.display()
-
-    pic_data.needs_review = (
-        DetectionStatus.PROBABLY_CHECKED in detection_status.values()
-        or DetectionStatus.PROBABLY_UNCHECKED in detection_status.values()
-    )
     # Keep matrix separate from other output data, as it is often not wanted
     # when debugging.
     return pic_data, m

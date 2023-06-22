@@ -36,35 +36,35 @@ class ConflictSolver:
     def review_missing_names(self):
         # First, complete missing information with previous scan data, if any.
         for doc_id, (student_name, student_id) in self.data_storage.more_infos.items():
-            self.data[doc_id]["name"] = student_name
-            self.data[doc_id]["student_ID"] = student_id
+            self.data[doc_id].name = student_name
+            self.data[doc_id].student_ID = student_id
         # Search for any missing information remaining.
         for doc_id, doc_data in self.data.items():
-            if doc_data["name"] == "":
-                first_page = doc_data["pages"].get(Page(1))
+            if doc_data.name == "":
+                first_page = doc_data.pages.get(Page(1))
                 if first_page is None:
                     print_warning("No first page found !")
                 else:
                     print(f"Picture's path: '{first_page.pic_path}'.")
                 print_warning(f"No student name for document {doc_id}.")
                 student_name, student_id = self.enter_name_and_id(doc_id)
-                doc_data["name"] = student_name
-                doc_data["student_ID"] = student_id
+                doc_data.name = student_name
+                doc_data.student_ID = student_id
                 self.data_storage.more_infos[doc_id] = (student_name, student_id)
 
     def review_duplicate_names(self) -> None:
         name_to_doc_id: dict[StudentName, DocumentId] = {}
         for doc_id, doc_data in self.data.items():
-            name = doc_data["name"]
+            name = doc_data.name
             if name in name_to_doc_id:
                 matching_doc_id = name_to_doc_id[name]
                 matching_doc_data = self.data[matching_doc_id]
                 print_warning(f"Same student name on documents {doc_id} and {matching_doc_id}: {name!r}.")
                 self.resolve_duplicate_name_conflict(name, doc_id, name_to_doc_id)
-                self.data_storage.more_infos[doc_id] = doc_data["name"], doc_data["student_ID"]
+                self.data_storage.more_infos[doc_id] = doc_data.name, doc_data.student_ID
                 self.data_storage.more_infos[matching_doc_id] = (
-                    matching_doc_data["name"],
-                    matching_doc_data["student_ID"],
+                    matching_doc_data.name,
+                    matching_doc_data.student_ID,
                 )
 
     def resolve_duplicate_name_conflict(
@@ -83,14 +83,14 @@ class ConflictSolver:
             name0, student_id0 = self.enter_name_and_id(doc_id0, default=name)
             # Update all infos.
             name_to_doc_id[name0] = doc_id0
-            self.data[doc_id0]["name"] = name0
-            self.data[doc_id0]["student_ID"] = student_id0
+            self.data[doc_id0].name = name0
+            self.data[doc_id0].student_ID = student_id0
             # Ask for a new name for new test too.
             name = self.enter_name_and_id(doc_id)[0]
 
         assert name, "Name should not be empty at this stage !"
         name_to_doc_id[name] = doc_id
-        self.data[doc_id]["name"] = name
+        self.data[doc_id].name = name
 
     def enter_name_and_id(self, doc_id: DocumentId, default: str = "") -> tuple[StudentName, StudentId]:
         array = self.data_storage.get_matrix(doc_id, Page(1))
@@ -133,18 +133,18 @@ class ConflictSolver:
 
     def review_answers(self):
         for doc_id, doc_data in self.data.items():
-            for page, pic_data in doc_data["pages"].items():
+            for page, pic_data in doc_data.pages.items():
                 if pic_data.needs_review and Path(pic_data.pic_path) not in self.data_storage.verified:
                     # The answers are ambiguous and were not already manually verified in a previous scan.
                     print(f"Picture's path: '{pic_data.pic_path}'.")
-                    print_warning(f"Ambiguous answers for student {doc_data['name']}.")
+                    print_warning(f"Ambiguous answers for student {doc_data.name}.")
                     self.edit_answers(doc_id, page)
                     self.data_storage.store_verified_pic(Path(pic_data.pic_path))
 
     def display_page_with_detected_answers(self, doc_id: DocumentId, page: Page) -> subprocess.Popen:
         """Display the page with its checkboxes colored following their detection status."""
         array = self.data_storage.get_matrix(doc_id, page)
-        pic_data = self.data[doc_id]["pages"][page]
+        pic_data = self.data[doc_id].pages[page]
         return self.display_picture_with_detected_answers(array, pic_data)
 
     @staticmethod
@@ -175,7 +175,7 @@ class ConflictSolver:
     def edit_answers(self, doc_id: DocumentId, page: Page) -> None:
         """Interactive editor to change answers."""
         config = self.data_storage.config
-        pic_data = self.data[doc_id]["pages"][page]
+        pic_data = self.data[doc_id].pages[page]
         # m = self.data_storage.get_matrix(doc_id, page)
         # cell_size = pic_data.cell_size
         answered = pic_data.answered

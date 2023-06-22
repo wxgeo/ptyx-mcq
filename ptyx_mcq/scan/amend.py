@@ -60,7 +60,7 @@ def amend_doc(
     correct_answers = data_storage.correct_answers[doc_id]
     neutralized_answers = data_storage.neutralized_answers[doc_id]
     pics = {}
-    for page, page_data in doc_data["pages"].items():
+    for page, page_data in doc_data.pages.items():
         top_left_positions: dict[OriginalQuestionNumber, Pixel] = {}
         # Convert to RGB picture.
         pic = data_storage.get_pic(doc_id, page).convert("RGB")
@@ -87,7 +87,7 @@ def amend_doc(
             else:
                 top_left_positions[q] = pos
         for q in top_left_positions:
-            earn = doc_data["score_per_question"][q]
+            earn = doc_data.score_per_question[q]
             maximum = max_score_per_question.get(q, max_score_per_question["default"])
             assert isinstance(maximum, (float, int)), repr(maximum)
             i, j = top_left_positions[q]
@@ -103,9 +103,9 @@ def amend_doc(
     pages: list[Image]
     _, pages = zip(*sorted(pics.items()))  # type: ignore
     draw = ImageDraw.Draw(pages[0])
-    _write_score(draw, (2 * size, 4 * size), doc_data["score"], max_score, 2 * size)
+    _write_score(draw, (2 * size, 4 * size), doc_data.score, max_score, 2 * size)
     pages[0].save(
-        join(data_storage.dirs.pdf, f"{doc_data['name']}-{doc_id}.pdf"),
+        join(data_storage.dirs.pdf, f"{doc_data.name}-{doc_id}.pdf"),
         save_all=True,
         append_images=pages[1:],
     )

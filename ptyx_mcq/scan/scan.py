@@ -72,11 +72,6 @@ class MCQPictureParser:
         input_dir: Optional[Path] = None,
         output_dir: Optional[Path] = None,
     ):
-        # Set `already_seen` will contain all seen (ID, page) couples.
-        # It is used to catch a hypothetical scanning problem:
-        # we have to be sure that the same page on the same test is not seen
-        # twice.
-        self.already_seen: set[tuple[DocumentId, Page]] = set()
         self.warnings = False
         self.data_storage = DataStorage(Path(path), input_dir=input_dir, output_dir=output_dir)
         self.scores_manager = ScoresManager(self)
@@ -106,13 +101,13 @@ class MCQPictureParser:
                     f"(Launching `mcq make -n {max(self.data)}` might fix it.)"
                 )
             questions = set(doc_ordering["questions"])
-            diff = questions - set(self.data[doc_id]["answered"])
+            diff = questions - set(self.data[doc_id].answered)
             if diff:
                 questions_not_seen[doc_id] = ", ".join(str(q) for q in diff)
             # All tests may not have the same number of pages, since
             # page breaking will occur at a different place for each test.
             pages = set(self.config.boxes[doc_id])
-            diff = pages - set(self.data[doc_id]["pages"])
+            diff = pages - set(self.data[doc_id].pages)
             if diff:
                 pages_not_seen[doc_id] = ", ".join(str(p) for p in diff)
         if pages_not_seen:
@@ -143,15 +138,9 @@ class MCQPictureParser:
         doc_id = pic_data.doc_id
         p = pic_data.page
 
-        # This page has never been seen before, everything is OK.
-        if (doc_id, p) not in self.already_seen:
-            self.already_seen.add((doc_id, p))
-            return False
-
-        # This is problematic: it seems like the same page has been seen twice.
         lastpic_path = pic_data.pic_path
         lastpic = self.data_storage.relative_pic_path(lastpic_path)
-        firstpic_path = self.data[doc_id]["pages"][p].pic_path
+        firstpic_path = self.data[doc_id].pages[p].pic_path
         firstpic = self.data_storage.relative_pic_path(firstpic_path)
         assert isinstance(lastpic_path, str)
         assert isinstance(firstpic_path, str)
@@ -159,7 +148,7 @@ class MCQPictureParser:
         self._warn(f"WARNING: Page {p} of test #{doc_id} seen twice " f'(in "{firstpic}" and "{lastpic}") !')
         action = None
         keys = ("name", "student_ID", "answered")
-        if all(pic_data[key] == self.data[doc_id]["pages"][p][key] for key in keys):  # type: ignore
+        if all(pic_data[key] == self.data[doc_id].pages[p][key] for key in keys):  # type: ignore
             # Same information found on the two pages, just keep one version.
             action = "f"
             self._warn("Both page have the same information, keeping only first one...")
@@ -188,7 +177,7 @@ class MCQPictureParser:
 
         if action == "l":
             # Remove first picture information.
-            del self.data[doc_id]["pages"][p]
+            del self.data[doc_id].pages[p]
             self.data_storage.store_doc_data(firstpic.parent.name, doc_id, p)
 
         return action == "f"
@@ -202,11 +191,11 @@ class MCQPictureParser:
         info_path = self.data_storage.files.infos
         info = [
             (
-                doc_data["name"],
-                doc_data["student_ID"],
+                doc_data.name,
+                doc_data.student_ID,
                 doc_id,
-                doc_data["score"],
-                [doc_data["pages"][p].pic_path for p in doc_data["pages"]],
+                doc_data.score,
+                [doc_data.pages[p].pic_path for p in doc_data.pages],
             )
             for doc_id, doc_data in self.data.items()
         ]
@@ -282,14 +271,17 @@ class MCQPictureParser:
         # Extract informations from the pictures.
         # ---------------------------------------
         data = self.data
-        # self.name2docID = {d["name"]: ID for ID, d in data.items()}
-        self.already_seen = set((ID, p) for ID, d in data.items() for p in d["pages"])
-        pic_list = self.data_storage.get_pics_list()
+
+        # Set `already_seen` will contain all seen (ID, page) couples.
+        # It is used to catch a hypothetical scanning problem:
+        # we have to be sure that the same page on the same test is not seen twice.
+        already_seen: set[tuple[DocumentId, Page]] = set((ID, p) for ID, d in data.items() for p in d.pages)
 
         # assert all(isinstance(path, Path) for path in self.data_storage.skipped)
         # assert all(isinstance(path, Path) for path in self.data_storage.verified)
 
-        for i, pic_path in enumerate(pic_list, start=1):
+        # Iterate over the pictures not already handled in a previous pass.
+        for i, pic_path in enumerate(self.data_storage.get_pics_list(), start=1):
             if not (start <= i <= end):
                 continue
             # Make pic_path relative, so that folder may be moved if needed.
@@ -329,8 +321,13 @@ class MCQPictureParser:
             doc_id = pic_data.doc_id
             page = pic_data.page
 
-            if self._keep_previous_version(pic_data):
+            # Test whether a previous version of the same page exist:
+            # if the same page has been seen twice, this may be problematic,
+            # so call `._keep_previous_version()` to ask user what to do.
+            if (doc_id, page) in already_seen and self._keep_previous_version(pic_data):
+                # If the user answered to skip the current page, just do it.
                 continue
+            already_seen.add((doc_id, page))
 
             # 2) Gather data
             #    ‾‾‾‾‾‾‾‾‾‾‾
@@ -338,31 +335,39 @@ class MCQPictureParser:
             doc_data: DocumentData = data.setdefault(
                 doc_id,
                 DocumentData(
-                    pages={}, name=name, student_ID=student_ID, answered={}, score=0, score_per_question={}
+                    pages={},
+                    name=name,
+                    student_ID=student_ID,
+                    score=0,
+                    score_per_question={},
                 ),
             )
-            doc_data["pages"][page] = pic_data
+            doc_data.pages[page] = pic_data
 
-            for q in pic_data.answered:
-                ans = doc_data["answered"].setdefault(q, set())
-                ans |= pic_data.answered[q]
-                # Simplify: doc_data["answered"][q] = set(pic_data["answered"][q])
+            # for q in pic_data.answered:
+            #     ans = doc_data.answered.setdefault(q, set())
+            #     ans |= pic_data.answered[q]
+            # Simplify: doc_data["answered"][q] = set(pic_data["answered"][q])
 
             # 3) 1st page of the test => retrieve the student name
             #    ‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾
-            # if page == 1:
-            #     self._extract_name(doc_id, doc_data, matrix)
 
             if page == 1:
                 if doc_id in self.data_storage.more_infos:
-                    doc_data["name"], doc_data["student_ID"] = self.data_storage.more_infos[doc_id]
+                    doc_data.name, doc_data.student_ID = self.data_storage.more_infos[doc_id]
                 else:
-                    doc_data["name"] = pic_data.name
+                    doc_data.name = pic_data.name
 
             # Store work in progress, so we can resume process if something fails...
             self.data_storage.store_doc_data(pic_path.parent.name, doc_id, page, matrix)
 
         print("Scan successful.")
+
+        # ---------------------------
+        # Read checkboxes
+        # ---------------------------
+        # Test whether each checkbox was checked.
+        self.data_storage.analyze_checkboxes()
 
         # ---------------------------
         # Resolve detected problems

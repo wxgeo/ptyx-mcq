@@ -42,9 +42,9 @@ class ScoresManager:
             correct_ans = data_manager.correct_answers[doc_id]
             neutralized_ans = data_manager.neutralized_answers[doc_id]
             doc_data = self.mcq_parser.data[doc_id]
-            print(f'Test {doc_id} - {doc_data["name"]}')
-            for q in sorted(doc_data["answered"]):
-                answered = set(doc_data["answered"][q])
+            print(f'Test {doc_id} - {doc_data.name}')
+            for q in sorted(doc_data.answered):
+                answered = set(doc_data.answered[q])
                 correct_ones = correct_ans[q]
                 neutralized_ones = neutralized_ans[q]
                 all_answers = {ans_num for ans_num, is_ok in cfg.ordering[doc_id]["answers"][q]}
@@ -96,11 +96,11 @@ class ScoresManager:
                 earn *= float(cfg.weight.get(q, default_weight))
                 # Don't use weight for per question score, since it would make success rates
                 # harder to compare.
-                doc_data["score_per_question"][q] = earn
-                doc_data["score"] += earn
+                doc_data.score_per_question[q] = earn
+                doc_data.score += earn
         default = self.mcq_parser.config.default_score
         self.scores = {name: default for name in self.mcq_parser.config.students_ids.values()}
-        self.results = {doc_data["name"]: doc_data["score"] for doc_data in self.mcq_parser.data.values()}
+        self.results = {doc_data.name: doc_data.score for doc_data in self.mcq_parser.data.values()}
         self.scores.update(self.results)
 
     @staticmethod

@@ -8,7 +8,8 @@ from typing import Iterator
 from PIL import Image
 from numpy import ndarray, array, int8
 
-from ptyx_mcq.scan.document_data import DocumentData, PicData, DetectionStatus, RevisionStatus
+from ptyx_mcq.scan.checkbox_analyzer import analyze_checkboxes
+from ptyx_mcq.scan.document_data import DocumentData, PicData, DetectionStatus, RevisionStatus, Page
 from ptyx_mcq.scan.paths_handler import PathsHandler, DirsPaths, FilesPaths
 from ptyx_mcq.scan.pdftools import number_of_pages, extract_pdf_pictures, PIC_EXTS
 from ptyx_mcq.tools.config_parser import (
@@ -18,14 +19,22 @@ from ptyx_mcq.tools.config_parser import (
     StudentName,
     StudentId,
     OriginalQuestionAnswersDict,
+    OriginalQuestionNumber,
+    OriginalAnswerNumber,
 )
 from ptyx_mcq.tools.extend_literal_eval import extended_literal_eval
+from ptyx_mcq.tools.io_tools import ANSI_CYAN, ANSI_RESET, ANSI_YELLOW, ANSI_GRAY
+
+
+def save_webp(matrix: ndarray, path: Path | str, lossless=False) -> None:
+    """Save image content as a WEBP image."""
+    Image.fromarray((255 * matrix).astype(int8)).save(str(path), format="WEBP", lossless=lossless)
 
 
 def pic_names_iterator(data: dict[DocumentId, DocumentData]) -> Iterator[Path]:
     """Iterate over all pics found in data (i.e. all the pictures already analysed)."""
     for doc_data in data.values():
-        for pic_data in doc_data["pages"].values():
+        for pic_data in doc_data.pages.values():
             path = Path(pic_data.pic_path)
             # return pdfhash/picnumber.png
             yield path.relative_to(path.parent.parent)
@@ -128,6 +137,7 @@ class DataStorage:
                             f.read(),
                             {
                                 "PicData": PicData,
+                                "DocumentData": DocumentData,
                                 "CHECKED": DetectionStatus.CHECKED,
                                 "UNCHECKED": DetectionStatus.UNCHECKED,
                                 "PROBABLY_CHECKED": DetectionStatus.PROBABLY_CHECKED,
@@ -181,8 +191,7 @@ class DataStorage:
         # We will store a compressed version of the matrix.
         # (It would consume too much memory else).
         if matrix is not None:
-            webp = self.dirs.data / f"{doc_id}-{p}.webp"
-            Image.fromarray((255 * matrix).astype(int8)).save(str(webp), format="WEBP")
+            save_webp(matrix, self.dirs.data / f"{doc_id}-{p}.webp")
 
     def store_additional_info(self, doc_id: int, name: str, student_ID: str) -> None:
         with open(self.files.more_infos, "a", newline="") as csvfile:
@@ -250,3 +259,72 @@ class DataStorage:
                     for webp in self.dirs.data.glob(f"{doc_id}-*.webp"):
                         webp.unlink()
                 path.unlink()
+
+    def get_checkboxes(
+        self, doc_id: DocumentId, page: Page
+    ) -> dict[tuple[OriginalQuestionNumber, OriginalAnswerNumber], ndarray]:
+        """For the document `doc_id`, get all the arrays representing the checkbox' pictures."""
+        checkboxes: dict[tuple[OriginalQuestionNumber, OriginalAnswerNumber], ndarray] = {}
+        positions = self.data[doc_id].pages[page].positions
+        matrix = self.get_matrix(doc_id, page)
+        cell_size = self.data[doc_id].pages[page].cell_size
+        for (q, a), (i, j) in positions.items():
+            checkboxes[(q, a)] = matrix[i : i + cell_size, j : j + cell_size]
+        return checkboxes
+
+    def export_checkboxes(self) -> None:
+        """Save all checkboxes as .webm images in a directory.
+
+        THis is used to save work in progress and to build regressions tests.
+        """
+        for doc_id, doc_data in self.data.items():
+            (doc_dir := self.dirs.checkboxes / str(doc_id)).mkdir(exist_ok=True)
+            for page, pic_data in doc_data.pages.items():
+                for (q, a), matrix in self.get_checkboxes(doc_id, page).items():
+                    detection_status = pic_data.detection_status[(q, a)]
+                    revision_status = pic_data.revision_status[(q, a)]
+                    webm = doc_dir / f"{q}-{a}-{detection_status}-{revision_status}.webm"
+                    save_webp(matrix, webm)
+
+    def display_analyze_results(self, doc_id: DocumentId) -> None:
+        """Print the result of the checkbox analysis for document `doc_id` in terminal."""
+        print(f"Document {doc_id}:")
+        for page, pic_data in self.data[doc_id].pages.items():
+            print(f"Page {page}:")
+            for q, q0 in pic_data.questions_nums_conversion.items():
+                # `q0` is the apparent number of the question, as displayed on the document,
+                # while `q` is the internal number of the question (attributed before shuffling).
+                print(f"\n{ANSI_CYAN}• Question {q0}{ANSI_RESET} (Q{q})")
+                for a, is_correct in self.config.ordering[doc_id]["answers"][q]:
+                    match pic_data.detection_status[(q, a)]:
+                        case DetectionStatus.CHECKED:
+                            c = "■"
+                        case DetectionStatus.PROBABLY_CHECKED:
+                            c = "■?"
+                        case DetectionStatus.UNCHECKED:
+                            c = "□"
+                        case DetectionStatus.PROBABLY_UNCHECKED:
+                            c = "□?"
+                        case other:
+                            raise ValueError(f"Unknown detection status: {other!r}.")
+                    term_color = ANSI_GRAY if is_correct else ANSI_YELLOW
+                    print(f"  {term_color}{c} {a}  {ANSI_RESET}", end="\t")
+            print()
+
+    def analyze_checkboxes(self, display=True):
+        """Determine whether each checkbox is checked or not, and update data accordingly."""
+        for doc_id, doc_data in self.data.items():
+            checkboxes = {
+                key: val for page in doc_data.pages for key, val in self.get_checkboxes(doc_id, page).items()
+            }
+            detection_status = analyze_checkboxes(checkboxes)
+            for page, pic_data in doc_data.pages.items():
+                for q, a in pic_data.positions:
+                    status = pic_data.detection_status[(q, a)] = detection_status[(q, a)]
+                    if DetectionStatus.seems_checked(status):
+                        pic_data.answered.setdefault(q, set()).add(a)
+            if display:
+                self.display_analyze_results(doc_id)
+
+        # if debug:
+        #     viewer.display()

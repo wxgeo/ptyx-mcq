@@ -24,6 +24,7 @@ class DirsPaths:
     pic: Path
     log: Path
     pdf: Path
+    checkboxes : Path
 
 
 class PathsHandler:
@@ -57,6 +58,7 @@ class PathsHandler:
         # .scan/cfg/skipped.csv -> pages to skip.
         # .scan/scores.csv
         # .scan/data -> data stored as .scandata files (used to resume interrupted scan).
+        # .scan/checkboxes -> directory to export checkboxes, to add regression tests
 
         cfg = output_dir / "cfg"
         log = output_dir / "log"
@@ -66,6 +68,7 @@ class PathsHandler:
             data=output_dir / "data",
             pic=output_dir / "pic",
             pdf=output_dir / "pdf",
+            checkboxes=output_dir / "checkboxes",
             log=log,
         )
         self.files = FilesPaths(
