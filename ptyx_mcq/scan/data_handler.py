@@ -40,7 +40,7 @@ def pic_names_iterator(data: dict[DocumentId, DocumentData]) -> Iterator[Path]:
             yield path.relative_to(path.parent.parent)
 
 
-class DataStorage:
+class DataHandler:
     """Store and retrieve the data."""
 
     def __init__(self, config_path: Path, input_dir: Path = None, output_dir: Path = None):
