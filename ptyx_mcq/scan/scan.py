@@ -8,7 +8,7 @@ from typing import Union, Literal, Optional
 
 from ptyx_mcq.scan.amend import amend_all
 from ptyx_mcq.scan.conflict_solver import ConflictSolver
-from ptyx_mcq.scan.data_manager import DataStorage
+from ptyx_mcq.scan.data_handler import DataHandler
 from ptyx_mcq.scan.document_data import DocumentData, PicData, Page
 from ptyx_mcq.scan.pdftools import PIC_EXTS
 from ptyx_mcq.scan.scan_pic import (
@@ -73,16 +73,16 @@ class MCQPictureParser:
         output_dir: Optional[Path] = None,
     ):
         self.warnings = False
-        self.data_storage = DataStorage(Path(path), input_dir=input_dir, output_dir=output_dir)
+        self.data_handler = DataHandler(Path(path), input_dir=input_dir, output_dir=output_dir)
         self.scores_manager = ScoresManager(self)
 
     @property
     def config(self):
-        return self.data_storage.config
+        return self.data_handler.config
 
     @property
     def data(self):
-        return self.data_storage.data
+        return self.data_handler.data
 
     def _test_integrity(self) -> None:
         """For every test:
@@ -139,9 +139,9 @@ class MCQPictureParser:
         p = pic_data.page
 
         lastpic_path = pic_data.pic_path
-        lastpic = self.data_storage.relative_pic_path(lastpic_path)
+        lastpic = self.data_handler.relative_pic_path(lastpic_path)
         firstpic_path = self.data[doc_id].pages[p].pic_path
-        firstpic = self.data_storage.relative_pic_path(firstpic_path)
+        firstpic = self.data_handler.relative_pic_path(firstpic_path)
         assert isinstance(lastpic_path, str)
         assert isinstance(firstpic_path, str)
 
@@ -173,12 +173,12 @@ class MCQPictureParser:
         # We must memorize which version should be skipped in case user
         # launch scan another time.
         skipped_pic = firstpic if action == "l" else lastpic
-        self.data_storage.store_skipped_pic(skipped_pic)
+        self.data_handler.store_skipped_pic(skipped_pic)
 
         if action == "l":
             # Remove first picture information.
             del self.data[doc_id].pages[p]
-            self.data_storage.store_doc_data(firstpic.parent.name, doc_id, p)
+            self.data_handler.store_doc_data(firstpic.parent.name, doc_id, p)
 
         return action == "f"
 
@@ -188,7 +188,7 @@ class MCQPictureParser:
         Used mainly for debugging.
         """
         # Generate CSV file with ID and pictures names for all students.
-        info_path = self.data_storage.files.infos
+        info_path = self.data_handler.files.infos
         info = [
             (
                 doc_data.name,
@@ -209,7 +209,7 @@ class MCQPictureParser:
         print(f'Infos stored in "{info_path}"\n')
 
     def generate_amended_pdf(self) -> None:
-        amend_all(self.data_storage)
+        amend_all(self.data_handler)
 
     def scan_picture(self, picture: Union[str, Path]) -> None:
         """This is used for debugging (it allows to test one page specifically)."""
@@ -226,7 +226,7 @@ class MCQPictureParser:
             raise TypeError("Allowed picture extensions: " + ", ".join(PIC_EXTS))
         pic_path = Path(picture).expanduser().resolve()
         if not pic_path.is_file():
-            pic_path = self.data_storage.absolute_pic_path(picture)
+            pic_path = self.data_handler.absolute_pic_path(picture)
         pic_data, array = scan_picture(pic_path, self.config, debug=True)
         ConflictSolver.display_picture_with_detected_answers(array, pic_data)
         print(pic_data)
@@ -235,7 +235,7 @@ class MCQPictureParser:
         """Print to stdout and write to log file."""
         msg = sep.join(str(val) for val in values) + end
         print_warning(msg)
-        self.data_storage.write_log(msg)
+        self.data_handler.write_log(msg)
         self.warnings = True
 
     def scan_all(
@@ -252,7 +252,7 @@ class MCQPictureParser:
         # Test if the PDF files of the input directory have changed and
         # extract the images from the PDF files if needed.
         print("Search for previous data...")
-        self.data_storage.reload(reset=reset)
+        self.data_handler.reload(reset=reset)
 
         # Dict `data` will collect data from all scanned tests.
         # ...............................................................
@@ -277,16 +277,16 @@ class MCQPictureParser:
         # we have to be sure that the same page on the same test is not seen twice.
         already_seen: set[tuple[DocumentId, Page]] = set((ID, p) for ID, d in data.items() for p in d.pages)
 
-        # assert all(isinstance(path, Path) for path in self.data_storage.skipped)
-        # assert all(isinstance(path, Path) for path in self.data_storage.verified)
+        # assert all(isinstance(path, Path) for path in self.data_handler.skipped)
+        # assert all(isinstance(path, Path) for path in self.data_handler.verified)
 
         # Iterate over the pictures not already handled in a previous pass.
-        for i, pic_path in enumerate(self.data_storage.get_pics_list(), start=1):
+        for i, pic_path in enumerate(self.data_handler.get_pics_list(), start=1):
             if not (start <= i <= end):
                 continue
             # Make pic_path relative, so that folder may be moved if needed.
-            pic_path = self.data_storage.relative_pic_path(pic_path)
-            if pic_path in self.data_storage.skipped:
+            pic_path = self.data_handler.relative_pic_path(pic_path)
+            if pic_path in self.data_handler.skipped:
                 continue
             print("-------------------------------------------------------")
             print("Page", i)
@@ -298,9 +298,9 @@ class MCQPictureParser:
             try:
                 # Warning: manual_verification can be None, so the order is important
                 # below : False and None -> False (but None and False -> None).
-                manual_verification = (pic_path not in self.data_storage.verified) and manual_verification
+                manual_verification = (pic_path not in self.data_handler.verified) and manual_verification
                 pic_data, matrix = scan_picture(
-                    self.data_storage.absolute_pic_path(pic_path), self.config, manual_verification
+                    self.data_handler.absolute_pic_path(pic_path), self.config, manual_verification
                 )
                 # `pic_data` FORMAT is specified in `scan_pic.py`.
                 # (Search for `pic_data =` in `scan_pic.py`).
@@ -310,13 +310,13 @@ class MCQPictureParser:
             except CalibrationError:
                 self._warn(f"WARNING: {pic_path} seems invalid ! Skipping...")
                 input("-- PAUSE --")
-                self.data_storage.store_skipped_pic(pic_path)
+                self.data_handler.store_skipped_pic(pic_path)
                 continue
 
             # if pic_data.verified:
             #     # If the page has been manually verified, keep track of it,
             #     # so it won't be verified next time if a second pass is needed.
-            #     self.data_storage.store_verified_pic(pic_path)
+            #     self.data_handler.store_verified_pic(pic_path)
 
             doc_id = pic_data.doc_id
             page = pic_data.page
@@ -331,7 +331,7 @@ class MCQPictureParser:
 
             # 2) Gather data
             #    ‾‾‾‾‾‾‾‾‾‾‾
-            name, student_ID = self.data_storage.more_infos.get(doc_id, (StudentName(""), StudentId("")))
+            name, student_ID = self.data_handler.more_infos.get(doc_id, (StudentName(""), StudentId("")))
             doc_data: DocumentData = data.setdefault(
                 doc_id,
                 DocumentData(
@@ -353,13 +353,13 @@ class MCQPictureParser:
             #    ‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾
 
             if page == 1:
-                if doc_id in self.data_storage.more_infos:
-                    doc_data.name, doc_data.student_ID = self.data_storage.more_infos[doc_id]
+                if doc_id in self.data_handler.more_infos:
+                    doc_data.name, doc_data.student_ID = self.data_handler.more_infos[doc_id]
                 else:
                     doc_data.name = pic_data.name
 
             # Store work in progress, so we can resume process if something fails...
-            self.data_storage.store_doc_data(pic_path.parent.name, doc_id, page, matrix)
+            self.data_handler.store_doc_data(pic_path.parent.name, doc_id, page, matrix)
 
         print("Scan successful.")
 
@@ -367,14 +367,14 @@ class MCQPictureParser:
         # Read checkboxes
         # ---------------------------
         # Test whether each checkbox was checked.
-        self.data_storage.analyze_checkboxes()
+        self.data_handler.analyze_checkboxes()
 
         # ---------------------------
         # Resolve detected problems
         # ---------------------------
         # Resolve conflicts manually: unknown student ID, ambiguous answer...
         print("\nAnalyzing collected data:")
-        ConflictSolver(self.data_storage).resolve_conflicts()
+        ConflictSolver(self.data_handler).resolve_conflicts()
 
         # ---------------------------
         # Test integrity
@@ -399,11 +399,11 @@ class MCQPictureParser:
         self.scores_manager.generate_csv_file()
         self.scores_manager.generate_xlsx_file()
         cfg_ext = ".ptyx.mcq.config.json"
-        cfg_path = str(self.data_storage.paths.configfile)
+        cfg_path = str(self.data_handler.paths.configfile)
         assert cfg_path.endswith(cfg_ext)
         xlsx_symlink = Path(cfg_path[: -len(cfg_ext)] + ".scores.xlsx")
         xlsx_symlink.unlink(missing_ok=True)
-        xlsx_symlink.symlink_to(self.data_storage.files.xlsx_scores)
+        xlsx_symlink.symlink_to(self.data_handler.files.xlsx_scores)
         self.generate_report()
         self.generate_amended_pdf()
         print(f"\n{ANSI_GREEN}Success ! {ANSI_RESET}:)")

@@ -5,7 +5,7 @@ from pathlib import Path
 from numpy import ndarray
 
 from ptyx_mcq.scan.color import Color, RGB
-from ptyx_mcq.scan.data_manager import DataStorage
+from ptyx_mcq.scan.data_handler import DataHandler
 from ptyx_mcq.scan.document_data import Page, DetectionStatus, RevisionStatus, PicData
 from ptyx_mcq.scan.visual_debugging import ArrayViewer
 from ptyx_mcq.tools.config_parser import (
@@ -20,7 +20,7 @@ from ptyx_mcq.tools.io_tools import print_framed_msg, print_warning
 
 
 class ConflictSolver:
-    def __init__(self, data_storage: DataStorage):
+    def __init__(self, data_storage: DataHandler):
         self.data_storage = data_storage
         self.data = data_storage.data
 
@@ -176,7 +176,7 @@ class ConflictSolver:
         """Interactive editor to change answers."""
         config = self.data_storage.config
         pic_data = self.data[doc_id].pages[page]
-        # m = self.data_storage.get_matrix(doc_id, page)
+        # m = self.data_handler.get_matrix(doc_id, page)
         # cell_size = pic_data.cell_size
         answered = pic_data.answered
         revision_status = pic_data.revision_status

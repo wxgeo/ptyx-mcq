@@ -37,7 +37,7 @@ class ScoresManager:
         default_floor = cfg.floor["default"]
         default_ceil = cfg.ceil["default"]
 
-        data_manager = self.mcq_parser.data_storage
+        data_manager = self.mcq_parser.data_handler
         for doc_id in self.mcq_parser.data:
             correct_ans = data_manager.correct_answers[doc_id]
             neutralized_ans = data_manager.neutralized_answers[doc_id]
@@ -148,7 +148,7 @@ class ScoresManager:
             )
 
     def generate_csv_file(self) -> None:
-        scores_path = self.mcq_parser.data_storage.files.csv_scores
+        scores_path = self.mcq_parser.data_handler.files.csv_scores
         with open(scores_path, "w", newline="") as csvfile:
             self._write_scores(writerow=csv.writer(csvfile).writerow)
         print_info(f'Results stored in "{scores_path}"')
@@ -176,4 +176,4 @@ class ScoresManager:
         )
         tab.tableStyleInfo = style
         sheet.column_dimensions["A"].width = 1.23 * max(len(name) for name in self.scores)
-        wb.save(self.mcq_parser.data_storage.files.xlsx_scores)
+        wb.save(self.mcq_parser.data_handler.files.xlsx_scores)
