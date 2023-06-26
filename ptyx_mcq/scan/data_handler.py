@@ -1,4 +1,5 @@
 import csv
+import signal
 from hashlib import blake2b
 from multiprocessing import Pool
 from pathlib import Path
@@ -23,7 +24,7 @@ from ptyx_mcq.tools.config_parser import (
     OriginalAnswerNumber,
 )
 from ptyx_mcq.tools.extend_literal_eval import extended_literal_eval
-from ptyx_mcq.tools.io_tools import ANSI_CYAN, ANSI_RESET, ANSI_YELLOW, ANSI_GRAY
+from ptyx_mcq.tools.io_tools import ANSI_CYAN, ANSI_RESET, ANSI_YELLOW, ANSI_GRAY, print_error
 
 
 def save_webp(matrix: ndarray, path: Path | str, lossless=False) -> None:
@@ -82,8 +83,16 @@ class DataHandler:
             logfile.write(msg)
 
     def get_pic(self, doc_id: int, page: int) -> Image.Image:
-        webp = next(self.dirs.data.glob(f"{doc_id}-{page}.webp"))
-        return Image.open(str(webp))
+        try:
+            webp = next(self.dirs.data.glob(f"{doc_id}-{page}.webp"))
+        except StopIteration:
+            print_error(f"File not found: `{doc_id}-{page}.webp`")
+            raise
+        try:
+            return Image.open(str(webp))
+        except Exception:
+            print_error(f"Error when opening {webp}.")
+            raise
 
     def get_matrix(self, doc_id: int, page: int) -> ndarray:
         # noinspection PyTypeChecker
@@ -184,14 +193,30 @@ class DataHandler:
                     print(f"    • {path}")
 
     def store_doc_data(self, pdf_hash: str, doc_id: DocumentId, p: int, matrix: ndarray = None) -> None:
+        """Store current scan data to be able to interrupt the scan and then resume it later."""
+        # Keyboard interrupts should be delayed until all the data are saved.
+        keyboard_interrupt = False
+
+        def memorize_interrupt(signum, frame):
+            nonlocal keyboard_interrupt
+            keyboard_interrupt = True
+
+        previous_sigint_handler = signal.signal(signal.SIGINT, memorize_interrupt)
         with open(self.dirs.data / f"{pdf_hash}.index", "a") as f:
             f.write(str(doc_id) + "\n")
-        with open(self.dirs.data / f"{doc_id}.scandata", "w") as f:
-            f.write(repr(self.data[doc_id]))
         # We will store a compressed version of the matrix.
         # (It would consume too much memory else).
         if matrix is not None:
             save_webp(matrix, self.dirs.data / f"{doc_id}-{p}.webp")
+        # WARNING !
+        # The .scandata file must be stored last, in case the process is interrupted.
+        # This prevents from having non-existing webp files declared in the .scandata file.
+        with open(self.dirs.data / f"{doc_id}.scandata", "w") as f:
+            f.write(repr(self.data[doc_id]))
+
+        signal.signal(signal.SIGINT, previous_sigint_handler)
+        if keyboard_interrupt:
+            raise KeyboardInterrupt
 
     def store_additional_info(self, doc_id: int, name: str, student_ID: str) -> None:
         with open(self.files.more_infos, "a", newline="") as csvfile:
@@ -272,19 +297,21 @@ class DataHandler:
             checkboxes[(q, a)] = matrix[i : i + cell_size, j : j + cell_size]
         return checkboxes
 
-    def export_checkboxes(self) -> None:
-        """Save all checkboxes as .webm images in a directory.
+    def export_checkboxes(self, export_all=False) -> None:
+        """Save checkboxes as .webm images in a directory.
 
-        THis is used to save work in progress and to build regressions tests.
+        By default, export only those which have been manually verified.
+        This is used to save work in progress and to build regressions tests.
         """
         for doc_id, doc_data in self.data.items():
             (doc_dir := self.dirs.checkboxes / str(doc_id)).mkdir(exist_ok=True)
             for page, pic_data in doc_data.pages.items():
                 for (q, a), matrix in self.get_checkboxes(doc_id, page).items():
                     detection_status = pic_data.detection_status[(q, a)]
-                    revision_status = pic_data.revision_status[(q, a)]
-                    webm = doc_dir / f"{q}-{a}-{detection_status}-{revision_status}.webm"
-                    save_webp(matrix, webm)
+                    revision_status = pic_data.revision_status.get((q, a))
+                    if revision_status is not None or export_all:
+                        webm = doc_dir / f"{q}-{a}-{detection_status}-{revision_status}.webm"
+                        save_webp(matrix, webm)
 
     def display_analyze_results(self, doc_id: DocumentId) -> None:
         """Print the result of the checkbox analysis for document `doc_id` in terminal."""

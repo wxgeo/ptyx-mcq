@@ -102,7 +102,7 @@ def main(args: Optional[list] = None) -> None:
     scan_parser.add_argument(
         "--reset",
         action="store_true",
-        help="Delete all cached data." "The scanning process will restart from the beginning.",
+        help="Delete all cached data. The scanning process will restart from the beginning.",
     )
     scan_parser.add_argument(
         "--verify",
