@@ -14,13 +14,13 @@ numpy = "^1.23.0"
 Pillow = "^9.2"
 sympy = "~1.11"
 pdf2image = "^1.16.0"
-ptyx = "^23.2"
+ptyx = "^24.0"
 smallgraphlib = "^0.6.3"
 platformdirs = "^3.2.0"
 openpyxl = "^3.1.2"
 
 
-[tool.poetry.dev-dependencies]
+[tool.poetry.group.dev.dependencies]
 types-openpyxl = "^3.1.0.12"
 types-Pillow = "^9.0.20"
 pytest = "^7"
@@ -31,10 +31,13 @@ tox = "^4.1.2"
 sphinx-autodoc-typehints = "^1.18.3"
 sphinx-rtd-theme = "^1.0.0"#
 myst-parser = "^1.0.0"
+# Version 7.29+ are buggy !
+python-semantic-release = "7.28.1"
 ptyx = {path = "../ptyx", develop = true}
 
 [tool.poetry.scripts]
 mcq = 'ptyx_mcq.cli:main'
+
 
 [tool.poetry.plugins."ptyx.extensions"]
 mcq = "ptyx_mcq"
@@ -45,7 +48,8 @@ warn_redundant_casts = true
 # enable_error_code = true
 warn_unused_ignores = true
 
-
+[tool.semantic_release]
+version_variable = "pyproject.toml:version"
 
 [tool.black]
 line-length = 110
