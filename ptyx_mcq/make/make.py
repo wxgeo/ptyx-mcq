@@ -1,15 +1,13 @@
 """
 Generate pdf file from raw mcq file.
 """
-import sys
-import traceback
 from pathlib import Path
 
 from ptyx.compilation import make_files, make_file
 from ptyx.latex_generator import compiler, Compiler
 
 from ptyx_mcq.scan.document_data import Page
-from ptyx_mcq.tools.io_tools import print_error, print_success, get_file_or_sysexit
+from ptyx_mcq.tools.io_tools import get_file_or_sysexit
 from ptyx_mcq.tools.config_parser import Configuration
 
 
@@ -48,26 +46,7 @@ def generate_config_file(_compiler: Compiler) -> None:
     mcq_data.dump(file_path.with_suffix(".ptyx.mcq.config.json"))
 
 
-def make(
-    path: Path, num: int = 1, start: int = 1, quiet: bool = False, correction_only: bool = False
-) -> None:
-    """Wrapper for _make(), so that `argparse` module don't intercept exceptions."""
-    try:
-        _make(path, num, start, quiet, correction_only)
-        print_success(f"Document was successfully generated in {num} version(s).")
-    except Exception as e:  # noqa
-        if hasattr(e, "msg"):
-            traceback.print_tb(e.__traceback__)
-            print(e.msg)
-            print(f"\u001b[31m{e.__class__.__name__}:\u001b[0m {e}")
-        else:
-            traceback.print_exc()
-        print()
-        print_error("`mcq make` failed to build document (see above for details).")
-        sys.exit(1)
-
-
-def _make(
+def make_command(
     path: Path, num: int = 1, start: int = 1, quiet: bool = False, correction_only: bool = False
 ) -> None:
     """Implement `mcq make` command.

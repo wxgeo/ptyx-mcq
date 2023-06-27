@@ -60,41 +60,43 @@ One may include some PTYX code of course.
 
     """
 import re
+from typing import TYPE_CHECKING
 
-from ptyx.extensions import extended_python
-from ptyx.latex_generator import Compiler
+if TYPE_CHECKING:
+    from ptyx.extensions import CompilerExtension
+    from ptyx.latex_generator import Compiler
+
 from ptyx_mcq.tools.io_tools import print_error
 
-from .make.extend_latex_generator import MCQLatexGenerator
-from .make.generate_ptyx_code import generate_ptyx_code
-from .tools.include_parser import IncludeParser
 
-# Note for closing tags:
-# '@END' means closing tag #END must be consumed, unlike 'END'.
-# So, use '@END_QUESTIONS_BLOCK' to close QUESTIONS_BLOCK,
-# but use 'END_QUESTIONS_BLOCK' to close QUESTION, since
-# #END_QUESTIONS_BLOCK must not be consumed then (it must close
-# QUESTIONS_BLOCK too).
+def extend_compiler() -> "CompilerExtension":
+    """Function called by the compiler when loading this extension, to add ability to parse new tags."""
+    from .make.extend_latex_generator import MCQLatexGenerator
 
-
-__tags__ = {
-    # Tags used to structure MCQ
-    "QCM": (0, 0, ["@END_QCM"]),
-    "SECTION": (0, 0, ["SECTION", "END_QCM"]),
-    "NEW_QUESTION": (0, 0, ["NEW_QUESTION", "CONSECUTIVE_QUESTION", "SECTION", "END_QCM"]),
-    "CONSECUTIVE_QUESTION": (0, 0, ["NEW_QUESTION", "CONSECUTIVE_QUESTION", "SECTION", "END_QCM"]),
-    "VERSION": (1, 0, ["VERSION", "NEW_QUESTION", "CONSECUTIVE_QUESTION", "SECTION", "END_QCM"]),
-    "ANSWERS_BLOCK": (0, 0, ["@END_ANSWERS_BLOCK"]),
-    "NEW_ANSWER": (2, 0, ["NEW_ANSWER", "END_ANSWERS_BLOCK"]),
-    "ANSWERS_LIST": (2, 0, None),
-    # Other tags
-    "QCM_HEADER": (2, 0, None),
-    "QUESTION_CONFIG": (1, 0, None),
-    "DEBUG_MCQ": (0, 0, None),
-    # Deprecated tags
-    "L_ANSWERS": (1, 0, None),
-}
-__latex_generator_extension__ = MCQLatexGenerator
+    # Note for closing tags:
+    # '@END' means closing tag #END must be consumed, unlike 'END'.
+    # So, use '@END_QUESTIONS_BLOCK' to close QUESTIONS_BLOCK,
+    # but use 'END_QUESTIONS_BLOCK' to close QUESTION, since
+    # #END_QUESTIONS_BLOCK must not be consumed then (it must close
+    # QUESTIONS_BLOCK too).
+    tags = {
+        # Tags used to structure MCQ
+        "QCM": (0, 0, ["@END_QCM"]),
+        "SECTION": (0, 0, ["SECTION", "END_QCM"]),
+        "NEW_QUESTION": (0, 0, ["NEW_QUESTION", "CONSECUTIVE_QUESTION", "SECTION", "END_QCM"]),
+        "CONSECUTIVE_QUESTION": (0, 0, ["NEW_QUESTION", "CONSECUTIVE_QUESTION", "SECTION", "END_QCM"]),
+        "VERSION": (1, 0, ["VERSION", "NEW_QUESTION", "CONSECUTIVE_QUESTION", "SECTION", "END_QCM"]),
+        "ANSWERS_BLOCK": (0, 0, ["@END_ANSWERS_BLOCK"]),
+        "NEW_ANSWER": (2, 0, ["NEW_ANSWER", "END_ANSWERS_BLOCK"]),
+        "ANSWERS_LIST": (2, 0, None),
+        # Other tags
+        "QCM_HEADER": (2, 0, None),
+        "QUESTION_CONFIG": (1, 0, None),
+        "DEBUG_MCQ": (0, 0, None),
+        # Deprecated tags
+        "L_ANSWERS": (1, 0, None),
+    }
+    return {"latex_generator": MCQLatexGenerator, "tags": tags}
 
 
 def autodetect_smallgraphlib(text: str) -> list[str]:
@@ -117,7 +119,11 @@ def autodetect_smallgraphlib(text: str) -> list[str]:
     return []
 
 
-def main(text: str, compiler: Compiler) -> str:
+def main(text: str, compiler: "Compiler") -> str:
+    from ptyx.extensions import extended_python
+    from .make.generate_ptyx_code import generate_ptyx_code
+    from .tools.include_parser import IncludeParser
+
     # Generation algorithm is the following:
     # 1. Parse AutoQCM code, to convert it to plain pTyX code.
     #    Doing this, we now know the number of questions, the number

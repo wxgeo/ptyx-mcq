@@ -42,7 +42,7 @@ class ScoresManager:
             correct_ans = data_manager.correct_answers[doc_id]
             neutralized_ans = data_manager.neutralized_answers[doc_id]
             doc_data = self.mcq_parser.data[doc_id]
-            print(f'Test {doc_id} - {doc_data.name}')
+            print(f"Test {doc_id} - {doc_data.name}")
             for q in sorted(doc_data.answered):
                 answered = set(doc_data.answered[q])
                 correct_ones = correct_ans[q]

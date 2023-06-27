@@ -8,18 +8,14 @@ ptyx MCQ Command Line Interface
 
 import shutil
 import sys
+import traceback
 from argparse import ArgumentParser
 from os import unlink
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Literal
 
 from platformdirs import PlatformDirs
-from ptyx.latex_generator import compiler
 
-from ptyx_mcq import IncludeParser
-from ptyx_mcq.scan.evaluation_strategies import EvaluationStrategies
-from .make.make import make, parse_ptyx_file
-from .scan.scan import scan
 from .tools.config_parser import Configuration
 from .tools.io_tools import (
     print_success,
@@ -29,6 +25,8 @@ from .tools.io_tools import (
     ANSI_REVERSE_PURPLE,
     ANSI_REVERSE_BLUE,
     ANSI_BLUE,
+    print_warning,
+    print_info,
 )
 
 
@@ -172,6 +170,61 @@ def main(args: Optional[list] = None) -> None:
     func(**kwargs)
 
 
+def make(
+    path: Path, num: int = 1, start: int = 1, quiet: bool = False, correction_only: bool = False
+) -> None:
+    """Wrapper for _make(), so that `argparse` module don't intercept exceptions."""
+    from .make.make import make_command
+
+    try:
+        make_command(path, num, start, quiet, correction_only)
+        print_success(f"Document was successfully generated in {num} version(s).")
+    except Exception as e:  # noqa
+        if hasattr(e, "msg"):
+            traceback.print_tb(e.__traceback__)
+            print(e.msg)
+            print(f"\u001b[31m{e.__class__.__name__}:\u001b[0m {e}")
+        else:
+            traceback.print_exc()
+        print()
+        print_error("`mcq make` failed to build document (see above for details).")
+        sys.exit(1)
+
+
+def scan(
+    path: Path,
+    reset: bool = False,
+    ask_for_name: bool = False,
+    verify: Literal["auto", "always", "never"] = "auto",
+    test_picture: Path = None,
+) -> None:
+    """Implement `mcq scan` command."""
+    from .scan.scan import MCQPictureParser
+
+    try:
+        if verify == "always":
+            manual_verification: Optional[bool] = True
+        elif verify == "never":
+            manual_verification = False
+        else:
+            manual_verification = None
+        if test_picture is None:
+            MCQPictureParser(path).scan_all(
+                reset=reset,
+                ask_for_name=ask_for_name,
+                manual_verification=manual_verification,
+            )
+            print_success("Students' marks successfully generated. :)")
+        else:
+            MCQPictureParser(path).scan_picture(test_picture)
+            print_success(f"Picture {test_picture!r} scanned.")
+    except KeyboardInterrupt:
+        print()
+        print_warning("Script interrupted.")
+        print_info("Relaunch it to resume scan process.")
+        sys.exit(0)
+
+
 def new(path: Path, include: Path = None, template="") -> None:
     """Implement `mcq new` command."""
     # Select the template to use.
@@ -252,6 +305,10 @@ def clear(path: Path) -> None:
 
 
 def update_config(path: Path) -> None:
+    """Update the .ptyx.mcq.config.json configuration file, following any .ptyx file change."""
+    from ptyx.latex_generator import compiler
+    from .make.make import parse_ptyx_file
+
     config_file = get_file_or_sysexit(path, extension=".ptyx.mcq.config.json")
     config = Configuration.load(config_file)
     parse_ptyx_file(path)
@@ -297,6 +354,8 @@ def same_questions_and_answers_numbers(config1: Configuration, config2: Configur
 
 def update_include(path: Path) -> None:
     """Update the list of included files."""
+    from .tools.include_parser import IncludeParser
+
     ptyxfile_path = get_file_or_sysexit(path, extension=".ptyx")
     root = ptyxfile_path.parent
     IncludeParser(root).update(ptyxfile_path)
@@ -305,6 +364,8 @@ def update_include(path: Path) -> None:
 
 def strategies() -> None:
     """Display all evaluation modes with a description."""
+    from .scan.evaluation_strategies import EvaluationStrategies
+
     strategies_list = EvaluationStrategies.get_all_strategies()
     print(f"\n{ANSI_REVERSE_PURPLE}[ Available strategies ]{ANSI_RESET}")
     print(", ".join(strategies_list))

@@ -1,11 +1,10 @@
 #!/usr/bin/env python3
 import csv
 import subprocess
-import sys
 import tempfile
 from math import inf
 from pathlib import Path
-from typing import Union, Literal, Optional
+from typing import Union, Optional
 
 from ptyx_mcq.scan.amend import amend_all
 from ptyx_mcq.scan.conflict_solver import ConflictSolver
@@ -22,7 +21,7 @@ from ptyx_mcq.tools.config_parser import (
     StudentName,
     DocumentId,
 )
-from ptyx_mcq.tools.io_tools import print_success, print_warning, ANSI_RESET, ANSI_GREEN, print_info
+from ptyx_mcq.tools.io_tools import print_warning, ANSI_RESET, ANSI_GREEN
 
 
 # -----------------------------------------
@@ -408,35 +407,3 @@ class MCQPictureParser:
         self.generate_report()
         self.generate_amended_pdf()
         print(f"\n{ANSI_GREEN}Success ! {ANSI_RESET}:)")
-
-
-def scan(
-    path: Path,
-    reset: bool = False,
-    ask_for_name: bool = False,
-    verify: Literal["auto", "always", "never"] = "auto",
-    test_picture: Path = None,
-) -> None:
-    """Implement `mcq scan` command."""
-    try:
-        if verify == "always":
-            manual_verification: Optional[bool] = True
-        elif verify == "never":
-            manual_verification = False
-        else:
-            manual_verification = None
-        if test_picture is None:
-            MCQPictureParser(path).scan_all(
-                reset=reset,
-                ask_for_name=ask_for_name,
-                manual_verification=manual_verification,
-            )
-            print_success("Students' marks successfully generated. :)")
-        else:
-            MCQPictureParser(path).scan_picture(test_picture)
-            print_success(f"Picture {test_picture!r} scanned.")
-    except KeyboardInterrupt:
-        print()
-        print_warning("Script interrupted.")
-        print_info("Relaunch it to resume scan process.")
-        sys.exit(0)

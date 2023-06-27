@@ -24,7 +24,7 @@ class DirsPaths:
     pic: Path
     log: Path
     pdf: Path
-    checkboxes : Path
+    checkboxes: Path
 
 
 class PathsHandler:
