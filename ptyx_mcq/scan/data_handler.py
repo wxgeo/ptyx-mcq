@@ -4,6 +4,7 @@ from hashlib import blake2b
 from multiprocessing import Pool
 from pathlib import Path
 from shutil import rmtree
+from types import FrameType
 from typing import Iterator
 
 from PIL import Image
@@ -24,7 +25,7 @@ from ptyx_mcq.tools.config_parser import (
     OriginalAnswerNumber,
 )
 from ptyx_mcq.tools.extend_literal_eval import extended_literal_eval
-from ptyx_mcq.tools.io_tools import ANSI_CYAN, ANSI_RESET, ANSI_YELLOW, ANSI_GRAY, print_error
+from ptyx_mcq.tools.io_tools import ANSI_CYAN, ANSI_RESET, ANSI_YELLOW, ANSI_GREEN, print_error
 
 
 def save_webp(matrix: ndarray, path: Path | str, lossless=False) -> None:
@@ -103,6 +104,7 @@ class DataHandler:
         return sorted(f for f in self.dirs.pic.glob("*/*") if f.suffix.lower() in PIC_EXTS)
 
     def relative_pic_path(self, pic_path: str | Path):
+        """Return picture path relatively to the `.scan/pic/` parent directory."""
         return Path(pic_path).relative_to(self.dirs.pic)
 
     def absolute_pic_path(self, pic_path: str | Path):
@@ -197,7 +199,7 @@ class DataHandler:
         # Keyboard interrupts should be delayed until all the data are saved.
         keyboard_interrupt = False
 
-        def memorize_interrupt(signum, frame):
+        def memorize_interrupt(signum: int, frame: FrameType) -> None:
             nonlocal keyboard_interrupt
             keyboard_interrupt = True
 
@@ -297,27 +299,39 @@ class DataHandler:
             checkboxes[(q, a)] = matrix[i : i + cell_size, j : j + cell_size]
         return checkboxes
 
-    def export_checkboxes(self, export_all=False) -> None:
+    def _export_doc_checkboxes(self, doc_id: DocumentId) -> None:
+        """Save the checkboxes of the document `doc_id` as .webm images in a directory."""
+        (doc_dir := self.dirs.checkboxes / str(doc_id)).mkdir(exist_ok=True)
+        for page, pic_data in self.data[doc_id].pages.items():
+            for (q, a), matrix in self.get_checkboxes(doc_id, page).items():
+                detection_status = pic_data.detection_status[(q, a)]
+                revision_status = pic_data.revision_status.get((q, a))
+                webm = doc_dir / f"{q}-{a}-{detection_status}-{revision_status}.webm"
+                save_webp(matrix, webm)
+
+    def export_checkboxes(self) -> None:
         """Save checkboxes as .webm images in a directory.
 
-        By default, export only those which have been manually verified.
-        This is used to save work in progress and to build regressions tests.
+        Only export the checkboxes of the documents whose at least one page has been manually verified.
+        This is used to build regressions tests.
         """
-        for doc_id, doc_data in self.data.items():
-            (doc_dir := self.dirs.checkboxes / str(doc_id)).mkdir(exist_ok=True)
-            for page, pic_data in doc_data.pages.items():
-                for (q, a), matrix in self.get_checkboxes(doc_id, page).items():
-                    detection_status = pic_data.detection_status[(q, a)]
-                    revision_status = pic_data.revision_status.get((q, a))
-                    if revision_status is not None or export_all:
-                        webm = doc_dir / f"{q}-{a}-{detection_status}-{revision_status}.webm"
-                        save_webp(matrix, webm)
+        to_export: set[DocumentId] = {
+            doc_id
+            for doc_id, doc_data in self.data.items()
+            if any(
+                (q, a) in pic_data.revision_status
+                for page, pic_data in doc_data.pages.items()
+                for (q, a) in self.get_checkboxes(doc_id, page)
+            )
+        }
+        for doc_id in to_export:
+            self._export_doc_checkboxes(doc_id)
 
     def display_analyze_results(self, doc_id: DocumentId) -> None:
         """Print the result of the checkbox analysis for document `doc_id` in terminal."""
-        print(f"Document {doc_id}:")
+        print(f"\n[Document {doc_id}]\n")
         for page, pic_data in self.data[doc_id].pages.items():
-            print(f"Page {page}:")
+            print(f"\nPage {page}:")
             for q, q0 in pic_data.questions_nums_conversion.items():
                 # `q0` is the apparent number of the question, as displayed on the document,
                 # while `q` is the internal number of the question (attributed before shuffling).
@@ -326,21 +340,32 @@ class DataHandler:
                     match pic_data.detection_status[(q, a)]:
                         case DetectionStatus.CHECKED:
                             c = "■"
+                            ok = is_correct
                         case DetectionStatus.PROBABLY_CHECKED:
                             c = "■?"
+                            ok = is_correct
                         case DetectionStatus.UNCHECKED:
                             c = "□"
+                            ok = not is_correct
                         case DetectionStatus.PROBABLY_UNCHECKED:
                             c = "□?"
+                            ok = not is_correct
                         case other:
                             raise ValueError(f"Unknown detection status: {other!r}.")
-                    term_color = ANSI_GRAY if is_correct else ANSI_YELLOW
+                    term_color = ANSI_GREEN if ok else ANSI_YELLOW
                     print(f"  {term_color}{c} {a}  {ANSI_RESET}", end="\t")
             print()
 
-    def analyze_checkboxes(self, display=True):
+    def analyze_checkboxes(self, display=False):
         """Determine whether each checkbox is checked or not, and update data accordingly."""
         for doc_id, doc_data in self.data.items():
+            if all(
+                len(pic_data.detection_status) == len(pic_data.positions)
+                for pic_data in doc_data.pages.values()
+            ):
+                # The checkboxes of this document were already analyzed during a previous scan.
+                continue
+
             checkboxes = {
                 key: val for page in doc_data.pages for key, val in self.get_checkboxes(doc_id, page).items()
             }
@@ -350,8 +375,13 @@ class DataHandler:
                     status = pic_data.detection_status[(q, a)] = detection_status[(q, a)]
                     if DetectionStatus.seems_checked(status):
                         pic_data.answered.setdefault(q, set()).add(a)
+
+                # Store results, to be able to interrupt and resume scan.
+                self.store_doc_data(str(Path(pic_data.pic_path).parent), doc_id, page)
             if display:
                 self.display_analyze_results(doc_id)
+            else:
+                print(f"Analyzing checkboxes of document {doc_id}...")
 
         # if debug:
         #     viewer.display()

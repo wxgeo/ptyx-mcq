@@ -270,12 +270,11 @@ class MCQPictureParser:
         # ---------------------------------------
         # Extract informations from the pictures.
         # ---------------------------------------
-        data = self.data
 
         # Set `already_seen` will contain all seen (ID, page) couples.
         # It is used to catch a hypothetical scanning problem:
         # we have to be sure that the same page on the same test is not seen twice.
-        already_seen: set[tuple[DocumentId, Page]] = set((ID, p) for ID, d in data.items() for p in d.pages)
+        already_seen: set[tuple[DocumentId, Page]] = set((ID, p) for ID, d in self.data.items() for p in d.pages)
 
         # assert all(isinstance(path, Path) for path in self.data_handler.skipped)
         # assert all(isinstance(path, Path) for path in self.data_handler.verified)
@@ -332,7 +331,7 @@ class MCQPictureParser:
             # 2) Gather data
             #    ‾‾‾‾‾‾‾‾‾‾‾
             name, student_ID = self.data_handler.more_infos.get(doc_id, (StudentName(""), StudentId("")))
-            doc_data: DocumentData = data.setdefault(
+            doc_data: DocumentData = self.data.setdefault(
                 doc_id,
                 DocumentData(
                     pages={},
@@ -375,6 +374,9 @@ class MCQPictureParser:
         # Resolve conflicts manually: unknown student ID, ambiguous answer...
         print("\nAnalyzing collected data:")
         ConflictSolver(self.data_handler).resolve_conflicts()
+        # TODO: make checkboxes export optional (this is
+        #  only useful for debug)
+        self.data_handler.export_checkboxes()
 
         # ---------------------------
         # Test integrity
