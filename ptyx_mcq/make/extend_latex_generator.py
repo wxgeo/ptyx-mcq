@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import re
+from dataclasses import dataclass
 
 # --------------------------------------
 #               Compiler
@@ -70,6 +71,15 @@ class MCQCache(TypedDict):
     data: Configuration
 
 
+@dataclass
+class CurrentState:
+    """Stores internal information to make debugging easier."""
+
+    question_text: str = ""
+    question_number: int = 0
+    version_number: int = 0
+
+
 def _handle_multiline_answers(s):
     s = s.strip()
     if "\n" in s:
@@ -90,22 +100,22 @@ def _has_option(node: Node, option: str) -> bool:
     return option in [opt.strip() for opt in options_list]
 
 
-def _analyze_IDS(ids: List[str]) -> Tuple[int, int, List[Tuple[str, ...]]]:
+def _analyze_ids(ids: List[str]) -> Tuple[int, int, List[Tuple[str, ...]]]:
     """Given a list of IDs (str), return:
     - the length of an ID (or raise an error if they don't have the same size),
     - the maximal number of different digits in an ID caracter,
     - a list of sets corresponding to the different digits used for each ID caracter.
 
-    >>> _analyze_IDS(['18', '19', '20', '21'])
+    >>> _analyze_ids(['18', '19', '20', '21'])
     (2, 4, [{'1', '2'}, {'8', '9', '0', '1'}])
     """
     lengths = {len(iD) for iD in ids}
     if len(lengths) != 1:
         print(ids)
         raise IdentifiantError("All students ID must have the same length !")
-    ID_length = lengths.pop()
-    # On crée la liste de l'ensemble des valeurs possibles pour chaque chiffre.
-    digits: List[Set[str]] = [set() for _ in range(ID_length)]
+    id_length = lengths.pop()
+    # Create the list of the sets of all possible values for each digit.
+    digits: List[Set[str]] = [set() for _ in range(id_length)]
     for iD in ids:
         for i, digit in enumerate(iD):
             digits[i].add(digit)
@@ -113,7 +123,7 @@ def _analyze_IDS(ids: List[str]) -> Tuple[int, int, List[Tuple[str, ...]]]:
     max_ndigits = max(len(set_) for set_ in digits)
     # Make digits elements immutable (safer...)
     # Don't use frozenset, as it isn't easily serializable to JSON.
-    return ID_length, max_ndigits, [tuple(s) for s in digits]
+    return id_length, max_ndigits, [tuple(s) for s in digits]
 
 
 class IdFormat(TypedDict):
@@ -121,7 +131,7 @@ class IdFormat(TypedDict):
     id_format: tuple[int, int, list[tuple[str, ...]]]
 
 
-def _detect_ID_format(ids: Dict[StudentId, StudentName], id_format: str) -> IdFormat:
+def _detect_id_format(ids: Dict[StudentId, StudentName], id_format: str) -> IdFormat:
     """Return IDs and ID format data.
 
     `ids` is a dictionary who contains students names and ids.
@@ -132,7 +142,7 @@ def _detect_ID_format(ids: Dict[StudentId, StudentName], id_format: str) -> IdFo
     - the maximal number of different digits in an ID character,
     - a list of sets corresponding to the different digits used for each ID character.
     """
-    ID_length = max_ndigits = digits = None
+    id_length = max_ndigits = digits = None
 
     if not ids and not id_format:
         raise RuntimeError("Unknown format for students' IDs.")
@@ -140,7 +150,7 @@ def _detect_ID_format(ids: Dict[StudentId, StudentName], id_format: str) -> IdFo
         # Analyze the IDs list even if `id_format` is provided.
         # This enables to check the consistency between the IDs list and the
         # given ID format.
-        ID_length, max_ndigits, digits = _analyze_IDS(list(ids))
+        id_length, max_ndigits, digits = _analyze_ids(list(ids))
 
     if id_format:
         # Analyze the ID format even if students ids are provided.
@@ -155,16 +165,16 @@ def _detect_ID_format(ids: Dict[StudentId, StudentName], id_format: str) -> IdFo
         except ValueError:
             raise ValueError(f"Unknown format : {id_format!r}")
         # Test consistency between format and IDs
-        if ID_length is not None and ID_length != n:
+        if id_length is not None and id_length != n:
             raise IdentifiantError("Identifiers don't match given format !")
         # Generate format data
-        ID_length = n
+        id_length = n
         max_ndigits = 10
         digits = n * [tuple("0123456789")]
-    assert ID_length is not None
+    assert id_length is not None
     assert max_ndigits is not None
     assert digits is not None
-    return {"students_ids": ids, "id_format": (ID_length, max_ndigits, digits)}
+    return {"students_ids": ids, "id_format": (id_length, max_ndigits, digits)}
 
 
 class SameAnswerError(RuntimeError):
@@ -177,6 +187,10 @@ class SameAnswerError(RuntimeError):
 class MCQLatexGenerator(LatexGenerator):
     """Extension of LatexGenerator handling new tags."""
 
+    def __init__(self, compiler=None):
+        super().__init__(compiler=compiler)
+        self.mcq_current_state = CurrentState()
+
     def reset(self):
         super().reset()
         self._mcq_reset_cache()
@@ -188,7 +202,7 @@ class MCQLatexGenerator(LatexGenerator):
                 "ERROR: Same answer proposed twice in MCQ !",
                 f"Answer {code!r} appeared at least twice for the same question.",
                 "Question was:",
-                repr(self.current_question),
+                repr(self.mcq_current_state.question_text),
                 "",
                 "Nota: if this is really desired behaviour, insert",
                 "following lines in the header of the ptyx file:",
@@ -244,10 +258,12 @@ class MCQLatexGenerator(LatexGenerator):
     def mcq_data(self) -> Configuration:
         return self.mcq_cache["data"]
 
+    # TODO: Rename QCM tag to `MCQ`.
     def _parse_QCM_tag(self, node: Node) -> None:
+        # Reinitialize current state (used mostly for debugging and review mode).
+        self.mcq_current_state = CurrentState()
         self.write("\n")  # A new line is mandatory here if there is no text before MCQ.
         # ~ self.mcq_correct_answers = []
-        self.current_question = ""
         self.mcq_data.ordering[self.NUM] = {"questions": [], "answers": {}}
         #    self.mcq_data['answers'] = {}
         # ~ self.mcq_data['question_num'] =
@@ -277,12 +293,27 @@ class MCQLatexGenerator(LatexGenerator):
         self._mcq_shuffle_and_parse_children(node, children[i:], target="NEW_QUESTION")
         self.write(r"\end{enumerate}")
 
+    def _parse_QUESTION_NAME_tag(self, node: Node) -> None:
+        name = node.arg(0)
+        if self.context.get("MCQ_DISPLAY_QUESTION_TITLE"):
+            self.write(r"\fbox{")
+            self.write(f"{self.mcq_current_state.question_number}")
+            if self.mcq_current_state.version_number > 1:
+                self.write(f".v{self.mcq_current_state.version_number}")
+            self.write("--")
+            self.write(name, verbatim=True)
+            self.write("}")
+
     def _parse_NEW_QUESTION_tag(self, node: Node) -> None:
+        self.mcq_current_state.question_number += 1
+        self.mcq_current_state.version_number = 0
         # Each question must be independent, so reset all local variables.
         self.set_new_context(self.mcq_context)
         self._mcq_pick_and_parse_children(node, children=node.children, target="VERSION")
 
     def _parse_CONSECUTIVE_QUESTION_tag(self, node: Node) -> None:
+        self.mcq_current_state.question_number += 1
+        self.mcq_current_state.version_number = 0
         # For a consecutive question, the context (ie. local variables) must not be reset.
         self._mcq_pick_and_parse_children(node, children=node.children, target="VERSION")
 
@@ -291,6 +322,7 @@ class MCQLatexGenerator(LatexGenerator):
 
         Tag usage: #VERSION{num}
         """
+        self.mcq_current_state.version_number += 1
         n = OriginalQuestionNumber(int(node.arg(0)))
         self.mcq_question_number = n
         # This list is used to test that the same answer is not proposed twice.
@@ -307,9 +339,9 @@ class MCQLatexGenerator(LatexGenerator):
         # This is used to improve message error when an error occurred.
         # The question itself is stored to make debugging easier (error messages will
         # display current question).
-        # Use `self.current_question` to get current question.
+        # Use `self.mcq_current_state.question_text` to get current question.
         def remember_last_question(code):
-            self.current_question = code
+            self.mcq_current_state.question_text = code
             return code
 
         # So, we have to find where the question itself ends and the answers start.
@@ -631,7 +663,7 @@ class MCQLatexGenerator(LatexGenerator):
                         ids = {}
 
                     try:
-                        data = _detect_ID_format(ids, id_format)
+                        data = _detect_id_format(ids, id_format)
                     except IdentifiantError as e:
                         msg = e.args[0]
                         raise IdentifiantError(f"Error in {csv!r} : {msg!r}")

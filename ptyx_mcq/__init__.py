@@ -85,6 +85,7 @@ def extend_compiler() -> "CompilerExtension":
         "SECTION": (0, 0, ["SECTION", "END_QCM"]),
         "NEW_QUESTION": (0, 0, ["NEW_QUESTION", "CONSECUTIVE_QUESTION", "SECTION", "END_QCM"]),
         "CONSECUTIVE_QUESTION": (0, 0, ["NEW_QUESTION", "CONSECUTIVE_QUESTION", "SECTION", "END_QCM"]),
+        "QUESTION_NAME": (1, 0, None),
         "VERSION": (1, 0, ["VERSION", "NEW_QUESTION", "CONSECUTIVE_QUESTION", "SECTION", "END_QCM"]),
         "ANSWERS_BLOCK": (0, 0, ["@END_ANSWERS_BLOCK"]),
         "NEW_ANSWER": (2, 0, ["NEW_ANSWER", "END_ANSWERS_BLOCK"]),

@@ -130,6 +130,7 @@ class IncludeParser:
                 ):
                     prettified_path = path.parent / f"\u001b[36m{path.name.replace('#', '##')}\u001b[0m"
                     lines.append(f'#PRINT{{\u001b[36mIMPORTING\u001b[0m "{prettified_path}"}}')
+                    lines.append(f"#QUESTION_NAME{{{path.name.replace('#', '##')}}}")
         return "\n".join(lines)
 
     def parse(self, code: str, strict: bool = False) -> str:

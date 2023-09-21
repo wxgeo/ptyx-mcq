@@ -274,7 +274,9 @@ class MCQPictureParser:
         # Set `already_seen` will contain all seen (ID, page) couples.
         # It is used to catch a hypothetical scanning problem:
         # we have to be sure that the same page on the same test is not seen twice.
-        already_seen: set[tuple[DocumentId, Page]] = set((ID, p) for ID, d in self.data.items() for p in d.pages)
+        already_seen: set[tuple[DocumentId, Page]] = set(
+            (ID, p) for ID, d in self.data.items() for p in d.pages
+        )
 
         # assert all(isinstance(path, Path) for path in self.data_handler.skipped)
         # assert all(isinstance(path, Path) for path in self.data_handler.verified)

@@ -2,6 +2,7 @@
 Generate pdf file from raw mcq file.
 """
 from pathlib import Path
+from typing import Any
 
 from ptyx.compilation import make_files, make_file
 from ptyx.latex_generator import compiler, Compiler
@@ -47,52 +48,62 @@ def generate_config_file(_compiler: Compiler) -> None:
 
 
 def make_command(
-    path: Path, num: int = 1, start: int = 1, quiet: bool = False, correction_only: bool = False
+    path: Path,
+    num: int = 1,
+    start: int = 1,
+    quiet: bool = False,
+    correction_only: bool = False,
+    for_review: bool = False,
 ) -> None:
     """Implement `mcq make` command.
 
     If `only_correction` is `True`, only generate correction (useful for fast testing).
+    If `for_review` is `True`, insert before each question its title; if a question has several versions, display
+    them all too.
     """
     assert isinstance(num, int)
     ptyx_filename = parse_ptyx_file(path)
 
-    # Compile and generate output files (tex or pdf)
-    output_name, nums = make_files(
-        ptyx_filename,
-        correction=correction_only,
-        compress=True,
-        number_of_documents=num,
-        fixed_number_of_pages=True,
-        quiet=quiet,
-        start=start,
-        # cpu_cores=1,
-    )
-    if not correction_only:
-        generate_config_file(compiler)
-
-    # Keep track of the seed used.
-    seed_value = compiler.seed
-    seed_file_name = output_name.parent / ".seed"
-    with open(seed_file_name, "w") as seed_file:
-        seed_file.write(str(seed_value))
-
-    if not correction_only:
-        _, nums2 = make_files(ptyx_filename, correction=True, _nums=nums, compress=True, quiet=quiet)
-        assert nums2 == nums, repr((nums, nums2))
-
-        # Generate a document including the different versions of all the questions.
-        make_file(
-            (output_name.parent / output_name.stem).with_suffix(".all.pdf"),
-            context={"MCQ_KEEP_ALL_VERSIONS": True},
-            quiet=quiet,
-        )
+    if for_review:
+        context: dict[str, Any] = {"MCQ_KEEP_ALL_VERSIONS": True, "MCQ_DISPLAY_QUESTION_TITLE": True}
+        if not correction_only:
+            # Generate a document including the different versions of all the questions.
+            make_file(
+                (ptyx_filename.parent / ptyx_filename.stem).with_suffix(".all.pdf"),
+                context=context,
+                quiet=quiet,
+            )
         # Generate a document including the different versions of all the questions
         # with the correct answers checked.
         make_file(
-            (output_name.parent / output_name.stem).with_suffix(".all-corr.pdf"),
-            context={"MCQ_KEEP_ALL_VERSIONS": True, "PTYX_WITH_ANSWERS": True},
+            (ptyx_filename.parent / ptyx_filename.stem).with_suffix(".all-corr.pdf"),
+            context=context | {"PTYX_WITH_ANSWERS": True},
             quiet=quiet,
         )
+    else:
+        # Compile and generate output files (tex or pdf)
+        output_name, nums = make_files(
+            ptyx_filename,
+            correction=correction_only,
+            compress=True,
+            number_of_documents=num,
+            fixed_number_of_pages=True,
+            quiet=quiet,
+            start=start,
+            # cpu_cores=1,
+        )
+        if not correction_only:
+            generate_config_file(compiler)
+
+        # Keep track of the seed used.
+        seed_value = compiler.seed
+        seed_file_name = output_name.parent / ".seed"
+        with open(seed_file_name, "w") as seed_file:
+            seed_file.write(str(seed_value))
+
+        if not correction_only:
+            _, nums2 = make_files(ptyx_filename, correction=True, _nums=nums, compress=True, quiet=quiet)
+            assert nums2 == nums, repr((nums, nums2))
 
 
 def parse_ptyx_file(path):

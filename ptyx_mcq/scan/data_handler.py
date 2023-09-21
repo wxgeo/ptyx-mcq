@@ -199,7 +199,7 @@ class DataHandler:
         # Keyboard interrupts should be delayed until all the data are saved.
         keyboard_interrupt = False
 
-        def memorize_interrupt(signum: int, frame: FrameType) -> None:
+        def memorize_interrupt(signum: int, frame: FrameType | None) -> None:
             nonlocal keyboard_interrupt
             keyboard_interrupt = True
 

@@ -79,6 +79,7 @@ def test_successive_calls():
 
 *
 #PRINT{\x1b[36mIMPORTING\x1b[0m "/tmp/mcq/include/questions/\x1b[36m1.ex\x1b[0m"}
+#QUESTION_NAME{1.ex}
 (1.ex content)
 
 
@@ -86,6 +87,7 @@ def test_successive_calls():
 
 *
 #PRINT{\x1b[36mIMPORTING\x1b[0m "/tmp/mcq/include/questions/\x1b[36m2.ex\x1b[0m"}
+#QUESTION_NAME{2.ex}
 (2.ex content)
 
 
