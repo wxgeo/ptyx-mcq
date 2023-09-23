@@ -372,9 +372,10 @@ class DataHandler:
             detection_status = analyze_checkboxes(checkboxes)
             for page, pic_data in doc_data.pages.items():
                 for q, a in pic_data.positions:
+                    pic_data.answered.setdefault(q, set())
                     status = pic_data.detection_status[(q, a)] = detection_status[(q, a)]
                     if DetectionStatus.seems_checked(status):
-                        pic_data.answered.setdefault(q, set()).add(a)
+                        pic_data.answered[q].add(a)
 
                 # Store results, to be able to interrupt and resume scan.
                 self.store_doc_data(str(Path(pic_data.pic_path).parent), doc_id, page)
