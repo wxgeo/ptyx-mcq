@@ -1,12 +1,14 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+# PYTHON_ARGCOMPLETE_OK
 """
 ptyx MCQ Command Line Interface
 
 @author: Nicolas Pourcelot
 """
-
+import os
 import shutil
+import subprocess
 import sys
 import traceback
 from argparse import ArgumentParser
@@ -14,10 +16,11 @@ from os import unlink
 from pathlib import Path
 from typing import Optional, Literal
 
+import argcomplete
 from platformdirs import PlatformDirs
 
-from .tools.config_parser import Configuration
-from .tools.io_tools import (
+from ptyx_mcq.tools.config_parser import Configuration
+from ptyx_mcq.tools.io_tools import (
     print_success,
     print_error,
     get_file_or_sysexit,
@@ -164,6 +167,18 @@ def main(args: Optional[list] = None) -> None:
     # create the parser for the "strategies" command
     strategies_parser = add_parser("strategies", help="List available evaluation strategies.")
     strategies_parser.set_defaults(func=strategies)
+
+    # create the parser for the "add-autocompletion" command
+    install_shell_completion_parser = add_parser(
+        "install-shell-completion",
+        help="Enable completion for the `mcq` command in the shell (only bash is supported for now).",
+    )
+    install_shell_completion_parser.add_argument(
+        "--shell", type=str, default="bash", choices=("bash", "zsh", "fish")
+    )
+    install_shell_completion_parser.set_defaults(func=install_shell_completion)
+
+    argcomplete.autocomplete(parser)
 
     parsed_args = parser.parse_args(args)
     try:
@@ -399,11 +414,36 @@ def create_template(name: str = "default") -> None:
         sys.exit(1)
     user_template = PlatformDirs().user_config_path / f"ptyx-mcq/templates/{name}"
     if user_template.is_dir():
-        print_error(f"Folder {user_template} already exist.")
+        print_error(f"Folder {user_template} already exist, choose a different template name.")
         sys.exit(1)
     default_template = Path(__file__).resolve().parent / "templates/original"
     shutil.copytree(default_template, user_template)
     print_success(f"Template created at {user_template}. Edit the inner files to customize it.")
+
+
+def install_shell_completion(shell: str = "bash") -> None:
+    """Enable completion for the `mcq` command in the shell (bash by default)."""
+    if shell != "bash":
+        print_error(f"Sorry, {shell} completion not yet supported. :-(")
+        sys.exit(1)
+    if not os.access(__file__, os.X_OK):
+        print_error(
+            f"Unable to install completion since {__file__} is not executable. Fix it with:\n"
+            f"chmod u+x {__file__}"
+        )
+        sys.exit(1)
+    completion_file = PlatformDirs().user_config_path / f"ptyx-mcq/config/{shell}-completion"
+    completion_file.parent.mkdir(parents=True, exist_ok=True)
+    with open(completion_file, "w") as f:
+        f.write(argcomplete.shellcode(["mcq"], shell=shell, argcomplete_script=__file__))
+    bash_rc = Path("~/.bashrc").expanduser()
+    newlines = f"\n# Enable mcq command completion\nsource {completion_file}\n"
+    if not (bash_rc.is_file() and newlines in bash_rc.read_text()):
+        with open(bash_rc, "a") as f:
+            f.write(newlines)
+        print_success(f"Completion enabled in {shell}. Enjoy!")
+    else:
+        print_info(f"Completion in {shell} was already activated. Nothing done.")
 
 
 if __name__ == "__main__":

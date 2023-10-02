@@ -58,8 +58,8 @@ def make_command(
     """Implement `mcq make` command.
 
     If `only_correction` is `True`, only generate correction (useful for fast testing).
-    If `for_review` is `True`, insert before each question its title; if a question has several versions, display
-    them all too.
+    If `for_review` is `True`, insert before each question its title; if a question has several versions,
+    display them all too.
     """
     assert isinstance(num, int)
     ptyx_filename = parse_ptyx_file(path)
