@@ -356,6 +356,7 @@ def packages_and_macros() -> tuple[str, str]:
     """,
         # <Custom packages will be loaded just here.>
         r"""\usepackage{inputenc}
+        \usepackage[T1]{fontenc}
     \usepackage{ragged2e}
     \usepackage{geometry}
     \usepackage{pifont}
