@@ -1,218 +1,419 @@
+"""Parser used to include files in a ptyx file.
+
+Ptyx-mcq accept the following syntax to include a file:
+
+    -- path/to/file
+
+There must be at least one space after the two dashed.
+
+To disable an include, add a `!` just before the dashes:
+
+    !-- path/to/file
+
+    --
+
+(You may also simply comment the line using the `#` character with a space after,
+which is the usual syntax to comment pTyX code, but this is less convenient).
+
+By default, when relative, paths to files refer to the directory where the ptyx file
+is located.
+
+The following syntax allows to change the directory where the files are searched.
+-- DIR: /path/to/main/directory
+This will change the search directory for every subsequent path, at least
+until another `-- DIR:` directive occurs (search directory may be changed
+several times).
+
+The files list may be semi-automatically updated using `.update()` method,
+which search for new files and missing files in the default directory,
+and in any directory declared through the `-- DIR:` directive.
+
+Directives may be prefixed with comments: @<comment>:<directive>,
+where <comment> is a single word (\\w+).
+
+New files will be added with the `@new:` prefix:
+
+    @new: -- path/relative/to/declared/directory/file.ex
+
+Files not found will appear with the `@missing:` prefix,
+and the directive will be disabled with `!`:
+
+    @missing: !-- declared/path/file.ex
+
+"""
+
 import re
-from enum import auto, Enum
-from functools import partial
+from dataclasses import dataclass
+from itertools import chain
 from pathlib import Path
-from typing import Match
+from typing import Self, Final
 
-from ptyx_mcq.tools.io_tools import print_info, print_warning, print_error
-
-
-class IncludeStatus(Enum):
-    OK = auto()
-    DISABLED = auto()
-    NOT_FOUND = auto()
-    AUTOMATICALLY_ADDED = auto()
-
-    def __repr__(self):
-        return f"{self.__class__.__name__}.{self.name}"
+from ptyx_mcq.tools.io_tools import print_warning, print_error
 
 
-class IncludeParser:
-    """Parser used to include files in a ptyx file.
+class UnsafeUpdate(RuntimeError):
+    """Error raised when detecting a mix of pTyX code and include directives in the MCQ."""
 
-    Ptyx-mcq accept the following syntax to include a file:
 
-        -- path/to/file
+@dataclass(frozen=True)
+class Directive:
+    """Object corresponding to an include directive."""
 
-    There must be at least one space after the two dashed.
+    # Nota: `path` must be the first argument, since directives must be ordered by path.
+    path: Path
+    is_disabled: bool = False
+    comment: str = ""
 
-    To disable an include, add a `!` just before the dashes:
+    def __str__(self):
+        comment = f"@{self.comment}: " if self.comment else ""
+        disabled = "!" if self.is_disabled else ""
+        type_ = " DIR:" if isinstance(self, ChangeDirectory) else ""
+        return f"{comment}{disabled}--{type_} {self.path}"
 
-        !-- path/to/file
+    def copy(self, is_disabled=None, comment=None) -> Self:
+        if comment is None:
+            comment = self.comment
+        if is_disabled is None:
+            is_disabled = self.is_disabled
+        # noinspection PyArgumentList
+        return self.__class__(self.path, comment=comment, is_disabled=is_disabled)
 
-    (You may also simply comment the line using the `#` character with a space after,
-    which is the usual syntax to comment pTyX code, but this is less convenient).
+    def __lt__(self, other: "Directive"):
+        if not isinstance(other, Directive):
+            raise NotImplementedError(f"I can't compare {other} and {self}.")
+        return self.path < other.path
 
-    By default, when relative, paths to files refer to the directory where the ptyx file
-    is located.
 
-    The following syntax allows to change the directory where the files are searched.
-    -- ROOT: /path/to/main/directory
-    This will change the search directory for every subsequent path, at least
-    until another `-- ROOT:` directive occurs (search directory may be changed
-    several times).
+class AddPath(Directive):
+    def get_all_files(self, directory: Path, error_if_none=False) -> list[Path]:
+        """
+        Return the list of all the matching files.
+        """
+        path = self.path.expanduser()
+        if path.is_absolute():
+            if path.is_file():
+                paths = [path]
+            else:
+                paths = []
+                print_warning(msg := f"File '{path}' not found !")
+                if error_if_none:
+                    raise FileNotFoundError(msg)
+        else:
+            # Support for glob (*, **)
+            paths = sorted(path for path in directory.glob(str(path)) if path.is_file())
+            if not paths:
+                if "*" in str(path):
+                    msg = f"No file name matches '{path}' in folder `{directory}`!"
+                else:
+                    msg = f"File '{path}' not found in folder `{directory}`!"
+                print_warning(msg)
+                if error_if_none:
+                    raise FileNotFoundError(msg)
+        return paths
+
+
+class ChangeDirectory(Directive):
+    def get_directory(self, root: Path) -> Path:
+        """
+        Resolve directory path, expanding user and returning an absolute path.
+
+        Raise `FileNotFoundError` if directory is not found.
+        """
+        path = self.path.expanduser()
+        if not path.is_absolute():
+            path = root / path
+        if not path.is_dir():
+            print_error(msg := f"Directory '{path}' not found !")
+            raise FileNotFoundError(msg)
+        return path
+
+
+# IncludeDictionary = dict[ChangeDirectory | None, list[AddPath]]
+
+
+# class IncludeEntry(TypedDict):
+#     path: Path
+#     comment: str | None
+#     disabled: bool
+
+
+def _parse_directive(line: str) -> Directive | str:
+    """
+    Analyze the line, and return either the corresponding directive, or the line itself.
+
+    If the line is an include directive, then a `Directive` object will be returned instead.
+    Else, the line will be returned unchanged.
+    """
+    m = re.match(
+        "^(?:@(?P<comment>\\w+):)?\\s*" "(?P<disable>!)?" "--\\s+(?P<special>DIR:|ROOT:)?" "(?P<path>.+)$",
+        line,
+    )
+    if m is None:
+        return line
+    d = m.groupdict()
+    if d["special"] == "ROOT:":
+        raise DeprecationWarning(
+            f"Error in `{line}`:\n`-- ROOT:` is not supported anymore, use `-- DIR:` instead."
+        )
+
+    # noinspection PyArgumentList
+    return (ChangeDirectory if d["special"] == "DIR:" else AddPath)(
+        Path(d["path"].strip()).expanduser(),
+        is_disabled=(d["disable"] == "!"),
+        comment=d["comment"] or "",
+    )
+
+
+def parse_code(code: str) -> list[Directive | str]:
+    """Parse pTyx code, searching for include directives.
+
+    Return a list of lines of code or directive objects."""
+    return [_parse_directive(line) for line in code.splitlines()]
+
+
+def _get_ex_file_content(ex_file_path: Path) -> str:
+    """Get the content of the file to include, with a few enhancements.
+
+    - Prefix the file content with `*` if needed (each pTyX exercise must begin with `*`).
+    - Inject some meta-information into the pTyX code to make debugging easier."""
+    lines: list[str] = []
+    with open(ex_file_path) as file:
+        file_content = file.read().strip()
+        # Remove comments
+        file_content = re.sub("( # .+)|(^# .+\n)", "", file_content, flags=re.MULTILINE)
+        # Each exercise must start with a star. Since each included file is supposed to be an exercise,
+        # add the initial star if missing.
+        if file_content[:2].strip() != "*":
+            file_content = "*\n" + file_content
+        for line in file_content.split("\n"):
+            lines.append(line)
+            if (
+                line.startswith("* ")
+                or line.startswith("> ")
+                or line.startswith("OR ")
+                or line.rstrip() in ("*", ">", "OR")
+            ):
+                prettified_path = str(
+                    ex_file_path.parent / f"\u001b[36m{ex_file_path.name}\u001b[0m"
+                ).replace("#", "##")
+
+                lines.append(f'#PRINT{{\u001b[36mIMPORTING\u001b[0m "{prettified_path}"}}')
+                lines.append(f"#QUESTION_NAME{{{ex_file_path.name.replace('#', '##')}}}")
+    return "\n".join(lines) + "\n"
+
+
+def resolve_includes(code: str, default_dir: Path, strict=True) -> str:
+    """Search for include directives, and insert the corresponding files content into the pTyX code."""
+    directory: Path = default_dir
+    lines = parse_code(code)
+
+    for i, line in enumerate(lines):
+        if isinstance(line, Directive):
+            lines[i] = ""
+            if not line.is_disabled:
+                if isinstance(line, ChangeDirectory):
+                    directory = line.get_directory(default_dir)
+                else:
+                    assert isinstance(line, AddPath)
+                    # New files to include.
+                    lines[i] = "\n".join(
+                        _get_ex_file_content(path)
+                        for path in line.get_all_files(directory, error_if_none=strict)
+                    )
+
+    return "\n".join(line for line in lines) + "\n"
+
+
+def resolve_includes_from_file(ptyx_file: Path) -> str:
+    """Search for include directives, and insert the corresponding files content into the pTyX code."""
+    return resolve_includes(ptyx_file.read_text(), ptyx_file.parent)
+
+
+def update_file(ptyxfile_path: Path, force=False, clean=False) -> None:
+    """
+    Track all the `.ex` files and update pTyX file to include all the `.ex` files found.
+
+    The `.ex` files are searched:
+        - in the same directory as the `.pTyX` file
+        - in any directory manually added via a `-- DIR: /my/path` directive.
+
+    If `force` is True, update the file even if it seems unsafe to do so
+    (include directives and pTyX code lines are intricate).
+
+    If `clean` is True, remove missing imports and any comments on imports.
+    """
+    updater = IncludesUpdater(ptyxfile_path)
+    updated_content = updater.update_file_content(clean=clean)
+    if not updater.is_updating_safe:
+        if force:
+            print_warning(f"Forcing unsafe update of {ptyxfile_path}, as requested.")
+        else:
+            print_error(msg := f"Update of {ptyxfile_path} does not seem safe.")
+            raise UnsafeUpdate(msg)
+    ptyxfile_path.write_text(updated_content)
+
+
+class IncludesUpdater:
+    """
+    Class used to update the list of the .ex files included in a pTyX file.
     """
 
-    # Store all include paths.
-    # Format: {ROOT folder: {relative path: include enabled (True)|disabled (False)|invalid (None)}}
-    includes: dict[str, dict[str, IncludeStatus]]
-    _root: Path
+    def __init__(self, ptyxfile_path: Path):
+        self.ptyxfile_path: Final[Path] = ptyxfile_path
+        self.default_dir: Final[Path] = self.ptyxfile_path.parent
 
-    def __init__(self, default_path: Path):
-        """Path `default_path` should be the parent directory of the ptyx file."""
-        self.default_path = default_path
-        self._reset()
+    def _reset(self) -> None:
+        self.all_paths: set[Path] = set()
+        self.local_includes: list[AddPath] = []
+        self.includes: dict[ChangeDirectory, list[AddPath]] = {}
+        # Is the update operation safe for this file?
+        self.is_updating_safe = True
 
-    def _reset(self):
-        self._root = self.default_path
-        self._last_status = IncludeStatus.OK
-        self.includes = {}
-
-    def _parse_include(self, match: Match, strict: bool) -> str:
-        include_enabled = match.group(0)[0] != "!"
-        if match.group(0)[0] == "#":
-            # Special `#--` comments are used to indicate include status.
-            # (Currently, this only used to mark that an include was automatically added.)
-            try:
-                self._last_status = IncludeStatus[match.group(1).strip().rstrip(":")]
-            except KeyError:
-                print_warning(f"Invalid line: {match.group(0)}")
-            return ""
-        status = self._last_status
-        self._last_status = IncludeStatus.OK
-        pattern = match.group(1).strip()
-        if pattern.startswith("ROOT:"):
-            if include_enabled:
-                path = Path(pattern[5:].strip()).expanduser()
-                if not path.is_absolute():
-                    path = (self.default_path / path).resolve()
-                print_info(f"Directory for files inclusion set to '{path}'.")
-                if not path.is_dir():
-                    raise FileNotFoundError(
-                        f"Directory '{path}' not found.\n"
-                        f'HINT: Change "-- {pattern}" line in your ptyx file.'
-                    )
-                self._root = path
-            return ""
-        else:
-            includes = self.includes.setdefault(str(self._root), {})
-            if include_enabled:
-                file_found = False
-                contents = []
-                for path in sorted(self._root.glob(pattern)):
-                    if path.is_file():
-                        file_found = True
-                        contents.append(self._include_file(path).strip())
-                if file_found:
-                    # Include enabled
-                    includes[str(pattern)] = status
-                else:
-                    # Invalid include
-                    includes[str(pattern)] = IncludeStatus.NOT_FOUND
-                    if strict:
-                        print_error(message := f"No file corresponding to {pattern!r} in '{self._root}'!")
-                        raise FileNotFoundError(message)
-                    else:
-                        print_warning(f"No file corresponding to {pattern!r} in '{self._root}'!")
-                return "\n\n" + "\n\n".join(contents) + "\n\n"
-            else:
-                # Include disabled
-                includes[str(pattern)] = IncludeStatus.DISABLED
-                return ""
-
-    def _include_file(self, path: Path) -> str:
-        lines: list[str] = []
-        with open(path) as file:
-            file_content = file.read().strip()
-            # Remove comments
-            file_content = re.sub("( # .+)|(^# .+\n)", "", file_content, flags=re.MULTILINE)
-            # Each exercise must start with a star. Since each included file is supposed to be an exercise,
-            # add the initial star if missing.
-            if file_content[:2].strip() != "*":
-                file_content = "*\n" + file_content
-            for line in file_content.split("\n"):
-                lines.append(line)
-                if (
-                    line.startswith("* ")
-                    or line.startswith("> ")
-                    or line.startswith("OR ")
-                    or line.rstrip() in ("*", ">", "OR")
-                ):
-                    prettified_path = path.parent / f"\u001b[36m{path.name.replace('#', '##')}\u001b[0m"
-                    lines.append(f'#PRINT{{\u001b[36mIMPORTING\u001b[0m "{prettified_path}"}}')
-                    lines.append(f"#QUESTION_NAME{{{path.name.replace('#', '##')}}}")
-        return "\n".join(lines)
-
-    def parse(self, code: str, strict: bool = False) -> str:
-        """Parse all include directives and include the corresponding files into the code.
-
-        By default, if a path or a pattern don't match any file, a warning is raised,
-        but the parsing will go on.
-        However, if `strict` is set to `True`, a `FileNotFoundError` is raised in that case.
+    def update_file_content(self, clean=False) -> str:
         """
-        self._reset()
-        _parse = partial(self._parse_include, strict=strict)
-        return re.sub(r"^[#!]?-- (.+)$", _parse, code, flags=re.MULTILINE)
-
-    def update(self, ptyxfile_path: Path):
-        """Track all the `.ex` files and update pTyX file to include all the `.ex` files found.
+        Track all the `.ex` files and return updated pTyX file content, to include all the `.ex` files found.
 
         The `.ex` files are searched:
             - in the same directory as the `.pTyX` file
-            - in any directory manually added via a `-- ROOT: /my/path` directive.
+            - in any directory manually added via a `-- DIR: /my/path` directive.
         """
-        self.parse(ptyxfile_path.read_text(encoding="utf8"))
-        new_includes: dict[str, dict[str, IncludeStatus]] = {}
-        # Several patterns may refer to the same file: keep track of the files already indexed,
-        # using their absolute path.
-        already_indexed: set[Path] = set()
-        for directory, indexed_files in self.includes.items():
-            directory_path = Path(directory)
-            new_directory_index = new_includes[directory] = {}
-            # `index_files` is a dict. Its format is: {
-            #   "a relative path or pattern to one or several indexed file": the status of the indexed files
-            #   }
-            indexed_ex_files: dict[Path, IncludeStatus] = {
-                path: status
-                for pattern, status in indexed_files.items()
-                for path in directory_path.glob(pattern)
-                if path not in already_indexed
-            }
-            already_indexed.update(indexed_ex_files)
+        self._reset()
+        before, after = self._extract_directives()
 
-            for ex_file_path, status in indexed_ex_files.items():
-                ex_file = str(ex_file_path.relative_to(directory_path))
-                new_directory_index[ex_file] = status
+        # Generate the set of all the files to include, and also detect and disable invalid paths.
+        self._disable_missing_paths()
+        # Detect new files.
+        self._add_newly_discovered_paths()
 
-        for directory, indexed_files in self.includes.items():
-            directory_path = Path(directory)
-            # Search for new `.ex` files to index:
-            for ex_file_path in directory_path.glob("**/*.ex"):
-                if ex_file_path not in already_indexed:
-                    already_indexed.add(ex_file_path)
-                    ex_file = str(ex_file_path.relative_to(directory_path))
-                    new_includes[directory][ex_file] = IncludeStatus.AUTOMATICALLY_ADDED
-        self.includes = new_includes
-        self._rewrite_file(ptyxfile_path, new_includes)
+        # Incorporate all the directives at the end of the mcq.
+        for add_path_directive in sorted(self.local_includes):
+            self._append_directive(add_path_directive, before, clean)
+        for directory_directive, add_path_directives in sorted(self.includes.items()):
+            if directory_directive is not None:
+                self._append_directive(directory_directive, before, clean)
+                for add_path_directive in sorted(add_path_directives):
+                    self._append_directive(add_path_directive, before, clean)
 
-    def _rewrite_file(self, ptyxfile_path: Path, includes: dict[str, dict[str, IncludeStatus]]):
-        new_file_added = False
-        lines = []
-        with open(ptyxfile_path, encoding="utf8") as f:
-            for line in f:
-                if line.startswith(">>>"):  # `>>>` marks the end of the MCQ
-                    # Insert all include directives just before the end of the MCQ.
-                    for folder, paths in includes.items():
-                        folder_path = Path(folder)
-                        if folder_path.is_relative_to(self.default_path):
-                            folder = str(folder_path.relative_to(self.default_path))
-                        lines.append(f"-- ROOT: {folder}")
-                        for path, status in sorted(paths.items()):
-                            match status:
-                                case IncludeStatus.OK:
-                                    lines.append(f"-- {path}")
-                                case IncludeStatus.DISABLED:
-                                    lines.append(f"!-- {path}")
-                                case IncludeStatus.NOT_FOUND:
-                                    lines.append(f"#-- NOT_FOUND:\n!-- {path}")
-                                    print_warning(f"Invalid file path removed: '{path}'.")
-                                case IncludeStatus.AUTOMATICALLY_ADDED:
-                                    lines.append(f"#-- AUTOMATICALLY_ADDED:\n-- {path}")
-                                    print_info(f"New file added: '{path}'.")
-                                    new_file_added = True
-                if not re.match(r"[#!]?-- ", line):
-                    lines.append(line.rstrip())
-        if not new_file_added:
-            print_info("No new file found.")
-        with open(ptyxfile_path, "w", encoding="utf8") as f:
-            f.write("\n".join(lines) + "\n")
+        return "\n".join(before + after) + "\n"
+
+    @staticmethod
+    def _append_directive(directive: Directive, lines: list[str], clean: bool) -> None:
+        if clean:
+            if not directive.comment == "missing":
+                lines.append(str(directive.copy(comment="")))
+        else:
+            lines.append(str(directive))
+
+    def _extract_directives(self) -> tuple[list[str], list[str]]:
+        """
+        Find all the include directives in the mcq section (i.e. between `<<<` and `>>>`),
+        and generate the `self.include` dict from them: {directory: [paths]}.
+
+        Return a tuple of 2 items:
+            - the lines of pTyX code (without the directives) until the end of mcq (`>>>` tag),
+            - the remaining lines of pTyX code (from the `>>>` tag).
+        """
+        lines = parse_code(self.ptyxfile_path.read_text())
+        before_directives: list[str] = []
+
+        # Default includes, corresponding to the ptyx file directory.
+        current_dir_includes = self.local_includes
+        mcq_started = False
+        directive_found = False
+        line_no = 0
+        for line_no, line in enumerate(lines):
+            if mcq_started and isinstance(line, Directive):
+                directive_found = True
+                if isinstance(line, ChangeDirectory):
+                    current_dir_includes = self.includes.setdefault(line, [])
+                else:
+                    assert isinstance(line, AddPath)
+                    current_dir_includes.append(line)
+            else:
+                assert isinstance(line, str)
+                if line.startswith(">>>"):
+                    # End of the MCQ section
+                    break
+                else:
+                    before_directives.append(line)
+                    if mcq_started and directive_found and line.strip() != "":
+                        # If directives were already found in the MCQ before this line of pTyX code,
+                        # it means that directives and pTyX code are intricate inside the MCQ.
+                        # Since any update will put all the directives at the end of the MCQ,
+                        # updating may break the MCQ, depending on actual pTyX code content.
+                        self.is_updating_safe = False
+                    if line.startswith("<<<"):
+                        mcq_started = True
+        return before_directives, lines[line_no:]
+
+    def _disable_missing_paths(self) -> None:
+        """
+        Disable missing paths, and fill the paths set with all the paths found.
+        """
+        invalid_directories = []
+        for directory_directive, add_path_directives in chain(
+            self.includes.items(), [(None, self.local_includes)]
+        ):
+            directory = None
+            if directory_directive is None:
+                directory = self.default_dir
+            elif not directory_directive.is_disabled:
+                try:
+                    directory = directory_directive.get_directory(self.default_dir)
+                except FileNotFoundError:
+                    # Disable change directory directive, since the directory does not exist.
+                    invalid_directories.append(directory_directive)
+
+            # If `directory` is still `None`, it means that the given directory path was incorrect,
+            # and has been already disabled. So only treat the case where `directory` is not `None`.
+            if directory is not None:
+                for i, add_path_directive in enumerate(add_path_directives):
+                    paths = add_path_directive.get_all_files(directory)
+                    if not paths:
+                        # Disable add-path directive, since it doesn't match any existing file.
+                        add_path_directives[i] = add_path_directive.copy(is_disabled=True, comment="missing")
+                    else:
+                        self.all_paths.update(paths)
+
+        # Disable all directives corresponding to invalid directories:
+        for directory_directive in invalid_directories:
+            add_path_directives = self.includes.pop(directory_directive)
+            # Disable any following add-path directive.
+            self.includes[directory_directive.copy(is_disabled=True, comment="missing")] = [
+                directive.copy(is_disabled=True, comment="missing") for directive in add_path_directives
+            ]
+
+    def _add_newly_discovered_paths(self) -> None:
+        """
+        Search for unreferenced .ex files, and update paths directives to include them.
+        """
+
+        # The `None` key (corresponding to `default_dir`) must be the last one to be seen.
+        # The reason is that else, all newly discovered path would be preferentially discovered
+        # from `default_dir`, instead of potential subfolders given through `-- DIR:` directives.
+        # It would be better to use a custom search algorithm, starting from the more specific subfolders,
+        # but it would not be so easy to implement, so it's probably not worth the additional code complexity.
+        for directory_directive, add_path_directives in chain(
+            self.includes.items(), [(None, self.local_includes)]
+        ):
+            # 1. Get the directory path.
+            if directory_directive is None:
+                directory = self.default_dir
+            elif not directory_directive.is_disabled:
+                directory = directory_directive.get_directory(self.default_dir)
+            else:
+                continue
+            # 2. Add the relative paths of all its newly discovered `.ex` files.
+            for ex_file_path in directory.glob("**/*.ex"):
+                if ex_file_path not in self.all_paths:
+                    add_path_directives.append(AddPath(ex_file_path.relative_to(directory), comment="new"))
+                    self.all_paths.add(ex_file_path)
+
+            # if directory_directive is None or not directory_directive.is_disabled:
+            #     for i, add_path_directive in enumerate(add_path_directives):
+            #         paths = add_path_directive.get_all_files(directory)
+            #         if not paths:
+            #             # Disable add-path directive, since it doesn't match any existing file.
+            #             add_path_directives[i] = add_path_directive.copy(is_disabled=True, comment="missing")
+            #         else:
+            #             self.all_paths.update(paths)

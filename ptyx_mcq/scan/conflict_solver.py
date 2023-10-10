@@ -192,6 +192,7 @@ class ConflictSolver:
                     q0 = ApparentQuestionNumber(int(q_str))
                     q, _ = apparent2real(q0, None, config, doc_id)
                     if q not in answered:
+                        # print(f"{answered=} {page=} {doc_id=}\n")
                         raise IndexError(rf"Invalid question number: {q0}")
 
                     checked = answered[q]
@@ -220,6 +221,9 @@ class ConflictSolver:
                     print("Invalid value.")
                     continue
                 except (KeyError, IndexError):
+                    # import traceback
+                    # import sys
+                    # traceback.print_exc(file=sys.stdout)
                     print("Invalid number.")
                 finally:
                     process.terminate()

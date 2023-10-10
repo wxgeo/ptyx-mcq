@@ -8,9 +8,9 @@
 
 !-- exercises/ex1.ex
 -- exercises/ex2.ex
--- ROOT: other_exercises/a subfolder with a space in its name
+-- DIR: other_exercises/a subfolder with a space in its name
 -- ex3.ex
--- ROOT: other_exercises
+-- DIR: other_exercises
 -- ex4 has spaces in its name, and other str@#g€ things too !.ex
 -- some/invalid/path.ex
 

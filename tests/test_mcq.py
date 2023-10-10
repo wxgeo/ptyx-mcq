@@ -185,7 +185,7 @@ def test_loading_of_sty_files():
             assert False, f"Line {line} not found ! (See above)"
 
 
-def test_neutralized_questions():
+def test_neutralized_questions() -> None:
     c = load_ptyx_file("neutralized_questions.ptyx")
     c.generate_syntax_tree()
     c.get_latex()

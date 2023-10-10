@@ -1,0 +1,46 @@
+#LOAD{mcq}
+# The following number is used to initialize the pseudorandom numbers generator.
+# Feel free to change it.
+#SEED{123456}
+
+===========================
+# Uncomment and edit the following line to load custom LaTeX packages.
+# Use brackets to load them with some options.
+sty = amssymb, amsmath, [table]xcolor
+# Score for a correct answer (usually positive)
+correct = 1
+# Score for an incorrect answer (usually negative or null)
+incorrect = 0 
+# Score when the question was left unanswered (usually null)
+skipped = 0
+# Minimal score for a question
+# floor = 0
+# Maximal score for a question
+# ceil = 1
+# The full list of the evaluation strategies and their description can be obtained
+# using command `mcq strategies`.
+# Available modes include `all`, `some`, `proportional`, `partial_answers` or `correct_minus_incorrect`.
+mode = all
+# Uncomment and edit the following line to load students ID.
+# This must be a comma separated CSV file with at least 2 columns.
+# Students identifiers must be in the 1st column (without any header).
+# ids = ~/listings/INE_2021.csv
+id format = 8 digits
+# Value displayed for missing students (empty by default):
+# default score = ABI
+---------------------------
+# You may include here raw LaTeX code (definition of new LaTeX commands for example).
+# It will be appended to the LaTeX preamble. Example:
+# \usetikzlibrary{arrows.meta}
+
+===========================
+
+# You may include raw LaTeX code here as well.
+# It will then be added ** after ** the LaTeX preamble.
+
+
+<<<<<<<<<<<<<<<<<
+# The following code will include all .ex files recursively found in the `questions/` folder.
+-- questions/**/*.ex
+>>>>>>>>>>>>>>>>>
+ 

@@ -123,7 +123,7 @@ def autodetect_smallgraphlib(text: str) -> list[str]:
 def main(text: str, compiler: "Compiler") -> str:
     from ptyx.extensions import extended_python
     from .make.generate_ptyx_code import generate_ptyx_code
-    from .tools.include_parser import IncludeParser
+    from .tools.include_parser import resolve_includes
 
     # Generation algorithm is the following:
     # 1. Parse AutoQCM code, to convert it to plain pTyX code.
@@ -152,7 +152,7 @@ def main(text: str, compiler: "Compiler") -> str:
     #    }
 
     try:
-        text = IncludeParser(compiler.dir_path).parse(text, strict=True)
+        text = resolve_includes(text, compiler.dir_path, strict=True)
     except FileNotFoundError:
         print_error(
             "File not found when trying to resolve inclusions (see error message above).\n"

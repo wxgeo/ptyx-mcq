@@ -126,21 +126,19 @@ def read_students_scores(path: Path) -> dict[StudentName, str]:
 
 
 @pytest.mark.slow
-def test_many_docs():
+def test_many_docs(tmp_path):
     NUMBER_OF_DOCUMENTS = 40
-    with tempfile.TemporaryDirectory() as _parent:
-        parent = Path(_parent)
-        path = parent / "mcq"
-        # Test mcq new
-        main(["new", str(path)])
-        assert "new.ptyx" in listdir(path)
-        # Test mcq make
-        main(["make", str(path), "-n", str(NUMBER_OF_DOCUMENTS)])
-        assert "new.pdf" in listdir(path)
-        assert "new-corr.pdf" in listdir(path)
+    path = tmp_path / "mcq"
+    # Test mcq new
+    main(["new", str(path), "--template", "original"])
+    assert "new.ptyx" in listdir(path)
+    # Test mcq make
+    main(["make", str(path), "-n", str(NUMBER_OF_DOCUMENTS)])
+    assert "new.pdf" in listdir(path)
+    assert "new-corr.pdf" in listdir(path)
 
 
-def test_cli() -> None:
+def test_cli(tmp_path: Path) -> None:
     NUMBER_OF_DOCUMENTS = 2
     # Set `USE_TMP_DIR` to `False` to make the debugging easier.
     USE_TMP_DIR = False
@@ -221,9 +219,9 @@ def test_cli() -> None:
 
         assert (path / "new.scores.xlsx").exists()
 
-        # -----------------
-        # Test `mcq update`
-        # -----------------
+        # ------------------------
+        # Test `mcq update-config`
+        # ------------------------
         STUDENTS[StudentId("12345678")] = StudentName(new_student_name := "Julien Durand")
         csv_path = write_students_id_to_csv(parent, STUDENTS)
         with open(csv_path) as f:
@@ -292,5 +290,5 @@ def test_previous_scan_data_loading():
     main(["scan", str(path)])
 
 
-if __name__ == "__main__":
-    test_cli()
+# if __name__ == "__main__":
+#     test_cli()

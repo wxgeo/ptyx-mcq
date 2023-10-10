@@ -1,67 +1,92 @@
 import shutil
-import tempfile
 from pathlib import Path
 
 import pytest
 from ptyx.latex_generator import Compiler
 
-from ptyx_mcq.tools.include_parser import IncludeParser, IncludeStatus
+from ptyx_mcq.tools.include_parser import (
+    parse_code,
+    Directive,
+    ChangeDirectory,
+    AddPath,
+    IncludesUpdater,
+    update_file,
+    resolve_includes_from_file,
+    UnsafeUpdate,
+)
 
 TEST_DIR = Path(__file__).parent.resolve()
+
+
+def _dir(directory: str, is_disabled=False, comment=""):
+    return ChangeDirectory(path=Path(directory), is_disabled=is_disabled, comment=comment)
+
+
+def _file(file: str, is_disabled=False, comment=""):
+    return AddPath(path=Path(file), is_disabled=is_disabled, comment=comment)
 
 
 def test_include_parser():
     with open(TEST_DIR / "ptyx-files/new_include_syntax.ptyx") as f:
         content = f.read()
-    parser = IncludeParser(TEST_DIR / "ptyx-files")
-    parser.parse(content)
-    assert parser.includes == {
-        f"{TEST_DIR}/ptyx-files": {
-            "exercises/ex1.ex": IncludeStatus.DISABLED,
-            "exercises/ex2.ex": IncludeStatus.OK,
-        },
-        f"{TEST_DIR}/ptyx-files/other_exercises/a subfolder with a space in its name": {
-            "ex3.ex": IncludeStatus.OK,
-        },
-        f"{TEST_DIR}/ptyx-files/other_exercises": {
-            "ex4 has spaces in its name, and other str@#g€ things too !.ex": IncludeStatus.OK,
-            "some/invalid/path.ex": IncludeStatus.NOT_FOUND,
-        },
-    }
+    directives = [line for line in parse_code(content) if isinstance(line, Directive)]
+    assert directives == [
+        _file("exercises/ex1.ex", is_disabled=True),
+        _file("exercises/ex2.ex"),
+        _dir(f"other_exercises/a subfolder with a space in its name"),
+        _file("ex3.ex"),
+        _dir(f"other_exercises"),
+        _file("ex4 has spaces in its name, and other str@#g€ things too !.ex"),
+        _file("some/invalid/path.ex"),
+    ]
+
+
+def test_include_false_positives():
+    with open(TEST_DIR / "ptyx-files/new.ptyx") as f:
+        content = f.read()
+    directives = [line for line in parse_code(content) if isinstance(line, Directive)]
+    assert directives == [
+        _file("questions/**/*.ex"),
+    ]
 
 
 def test_update_include():
-    Status = IncludeStatus
-    with tempfile.TemporaryDirectory() as tmpdirname:
-        root = Path(tmpdirname) / "ptyx-files"
-        ptyx_file = root / "new_include_syntax.ptyx"
-        shutil.copytree(TEST_DIR / "ptyx-files/", root)
-        parser = IncludeParser(root)
-        parser.update(ptyx_file)
-        assert parser.includes == {
-            f"{tmpdirname}/ptyx-files": {
-                "exercises/ex1.ex": Status.DISABLED,
-                "exercises/ex2.ex": Status.OK,
-                "other_exercises/a subfolder with a space in its name/ex5 - smallgraphlib import.ex": Status.AUTOMATICALLY_ADDED,
-            },
-            f"{tmpdirname}/ptyx-files/other_exercises/a subfolder with a space in its name": {
-                "ex3.ex": Status.OK
-            },
-            f"{tmpdirname}/ptyx-files/other_exercises": {
-                "ex4 has spaces in its name, and other str@#g€ things too !.ex": Status.OK
-            },
-        }
+    ptyx_file = TEST_DIR / "ptyx-files/new_include_syntax.ptyx"
+    updater = IncludesUpdater(ptyx_file)
+    updater.update_file_content()
+    assert updater.includes == {
+        _dir(f"other_exercises/a subfolder with a space in its name"): [
+            _file("ex3.ex"),
+            _file("ex5 - smallgraphlib import.ex", comment="new"),
+        ],
+        _dir(f"other_exercises"): [
+            _file("ex4 has spaces in its name, and other str@#g€ things too !.ex"),
+            _file("some/invalid/path.ex", comment="missing", is_disabled=True),
+        ],
+    }
+    assert updater.local_includes == [
+        _file("exercises/ex1.ex", is_disabled=True),
+        _file("exercises/ex2.ex"),
+        _file("questions/question1.ex", comment="new"),
+        _file("questions/question2.ex", comment="new"),
+        _file("questions/question3.ex", comment="new"),
+        _file("questions/question4.ex", comment="new"),
+    ]
+    assert not updater.is_updating_safe
 
 
-def test_successive_calls():
-    root = Path("/tmp/mcq/include")
-    root.mkdir(parents=True, exist_ok=True)
-    questions = root / "questions"
-    questions.mkdir(exist_ok=True)
+def test_successive_calls(tmp_path):
+    # Generate a basic directory structure:
+    # questions
+    #      ├── 1.ex
+    #      └── 2.ex
+    (questions := tmp_path / "questions").mkdir(exist_ok=True)
     for i in (1, 2):
         with open(questions / f"{i}.ex", "w") as f:
             f.write(f"({i}.ex content)")
-    ptyx_file = root / "include.ptyx"
+
+    # Generate the ptyx file:
+    ptyx_file = tmp_path / "include.ptyx"
     content = """#LOAD{mcq}#SEED{123456}
 <<<<<<<<<<<<<<<<<
 -- questions/1.ex
@@ -70,48 +95,46 @@ def test_successive_calls():
 """
     with open(ptyx_file, "w") as f:
         f.write(content)
-    parser = IncludeParser(root)
+
+    # Test the inclusion of the `.ex` files:
     assert (
-        parser.parse(content)
-        == """#LOAD{mcq}#SEED{123456}
+        resolve_includes_from_file(ptyx_file)
+        == f"""#LOAD{{mcq}}#SEED{{123456}}
 <<<<<<<<<<<<<<<<<
-
-
 *
-#PRINT{\x1b[36mIMPORTING\x1b[0m "/tmp/mcq/include/questions/\x1b[36m1.ex\x1b[0m"}
-#QUESTION_NAME{1.ex}
+#PRINT{{\x1b[36mIMPORTING\x1b[0m "{tmp_path}/questions/\x1b[36m1.ex\x1b[0m"}}
+#QUESTION_NAME{{1.ex}}
 (1.ex content)
 
-
-
-
 *
-#PRINT{\x1b[36mIMPORTING\x1b[0m "/tmp/mcq/include/questions/\x1b[36m2.ex\x1b[0m"}
-#QUESTION_NAME{2.ex}
+#PRINT{{\x1b[36mIMPORTING\x1b[0m "{tmp_path}/questions/\x1b[36m2.ex\x1b[0m"}}
+#QUESTION_NAME{{2.ex}}
 (2.ex content)
-
 
 >>>>>>>>>>>>>>>>>
 """
     )
+
+    # Generate new .ex files, and test updating.
     for i in (3, 4):
         with open(questions / f"{i}.ex", "w") as f:
             f.write(f"({i}.ex content)")
-    parser.update(ptyx_file)
+    update_file(ptyx_file)
     updated_content = """#LOAD{mcq}#SEED{123456}
 <<<<<<<<<<<<<<<<<
--- ROOT: .
 -- questions/1.ex
 -- questions/2.ex
-#-- AUTOMATICALLY_ADDED:
--- questions/3.ex
-#-- AUTOMATICALLY_ADDED:
--- questions/4.ex
+@new: -- questions/3.ex
+@new: -- questions/4.ex
 >>>>>>>>>>>>>>>>>
 """
     assert ptyx_file.read_text() == updated_content
-    parser.update(ptyx_file)
+
+    # Calling `update_file()` without any new .ex file should leave the ptyx file unchanged.
+    update_file(ptyx_file)
     assert ptyx_file.read_text() == updated_content
+
+    # Testing with an invalid path:
     content = """#LOAD{mcq}#SEED{123456}
 <<<<<<<<<<<<<<<<<
 -- questions/1.ex
@@ -121,63 +144,152 @@ def test_successive_calls():
 """
     with open(ptyx_file, "w") as f:
         f.write(content)
-    with pytest.raises(Exception) as exc_info:
-        parser.parse(ptyx_file.read_text(), strict=True)
-    assert str(exc_info.value) == "No file corresponding to 'invalid_path.ex' in '/tmp/mcq/include'!"
-    parser.update(ptyx_file)
+    with pytest.raises(FileNotFoundError) as exc_info:
+        resolve_includes_from_file(ptyx_file)
+    assert str(exc_info.value) == f"File 'invalid_path.ex' not found in folder `{tmp_path}`!"
+    update_file(ptyx_file)
     assert (
         ptyx_file.read_text()
         == """#LOAD{mcq}#SEED{123456}
 <<<<<<<<<<<<<<<<<
--- ROOT: .
+@missing: !-- invalid_path.ex
 -- questions/1.ex
 -- questions/2.ex
-#-- AUTOMATICALLY_ADDED:
+@new: -- questions/3.ex
+@new: -- questions/4.ex
+>>>>>>>>>>>>>>>>>
+"""
+    )
+
+    # Test `clean` option.
+    update_file(ptyx_file, clean=True)
+    assert (
+        ptyx_file.read_text()
+        == """#LOAD{mcq}#SEED{123456}
+<<<<<<<<<<<<<<<<<
+-- questions/1.ex
+-- questions/2.ex
 -- questions/3.ex
-#-- AUTOMATICALLY_ADDED:
 -- questions/4.ex
 >>>>>>>>>>>>>>>>>
 """
     )
 
 
+def test_update_empty_ex_list(tmp_path):
+    ex_path = TEST_DIR / "ptyx-files/exercises"
+    mcq_path = tmp_path / "mcq"
+    mcq_path.mkdir(parents=True)
+    content = f"""
+#LOAD{{mcq}}#SEED{{945544}}
+<<<<
+-- DIR: {str(ex_path)}
+>>>>"""
+    ptyx_path = mcq_path / "mcq.ptyx"
+    with open(ptyx_path, "w") as ptyx_file:
+        ptyx_file.write(content)
+    update_file(ptyx_path)
+    assert (
+        ptyx_path.read_text()
+        == f"""
+#LOAD{{mcq}}#SEED{{945544}}
+<<<<
+-- DIR: {str(ex_path)}
+@new: -- ex1.ex
+@new: -- ex2.ex
+>>>>
+"""
+    )
+
+
+def test_unsafe_update(tmp_path):
+    # Copy the files needed for the test:
+    # <tmp_path>
+    #     ├── new_include_syntax.ptyx
+    #     └── exercises
+    #             ├── 1.ex
+    #             └── 2.ex
+    shutil.copy(TEST_DIR / "ptyx-files/new_include_syntax.ptyx", tmp_path)
+    (tmp_path / "exercises").mkdir()
+    for i in (1, 2):
+        shutil.copy(TEST_DIR / f"ptyx-files/exercises/ex{i}.ex", tmp_path / "exercises")
+        shutil.copy(TEST_DIR / f"ptyx-files/exercises/ex{i}.ex", tmp_path / "exercises")
+    ptyx_path = tmp_path / "new_include_syntax.ptyx"
+
+    # Update is unsafe.
+    with pytest.raises(UnsafeUpdate) as exc_info:
+        update_file(ptyx_path)
+        assert exc_info.value == f"Update of {tmp_path}/new_include_syntax.ptyx does not seem safe."
+
+    # But we can force it.
+    update_file(ptyx_path, force=True)
+    str_directives = [str(line) for line in parse_code(ptyx_path.read_text()) if isinstance(line, Directive)]
+    assert str_directives == [
+        "!-- exercises/ex1.ex",
+        "-- exercises/ex2.ex",
+        "@missing: !-- DIR: other_exercises",
+        "@missing: !-- ex4 has spaces in its name, and other str@#g€ things too !.ex",
+        "@missing: !-- some/invalid/path.ex",
+        "@missing: !-- DIR: other_exercises/a subfolder with a space in its name",
+        "@missing: !-- ex3.ex",
+    ]
+
+
 @pytest.mark.xfail
-def test_latex_code():
-    # Bug: "#" in file name results in a #PRINT{...#...} and #PRINT{} doesn't handle correctly hashtags.
-    path = TEST_DIR / "ptyx-files/new_include_syntax.ptyx"
+def test_latex_code(tmp_path):
+    """Bug: `#` in file name results in a #PRINT{...#...},
+    but #PRINT{} doesn't handle correctly hashtags."""
+    # Generate the files needed for the test:
+    # <tmp_path>
+    #     ├── test.ptyx
+    #     └── s#me str@nge ├old€r N@Me
+    #             ├── s#me stüpiɖ ├il€ N@Me.ex
+    (ptyx_path := tmp_path / "test.ptyx").write_text(
+        """
+#LOAD{mcq}
+#SEED{5}
+<<<
+-- **/*.ex
+>>>  
+"""
+    )
+    (folder := tmp_path / "s#me str@nge ├old€r N@Me").mkdir()
+    (folder / "s#me stüpiɖ ├il€ N@Me.ex").write_text(
+        """
+"Hello world!" is a:
+- question
++ exclamation
+- 42
+"""
+    )
+    assert parse_code(ptyx_path.read_text()) == [
+        "",
+        "#LOAD{mcq}",
+        "#SEED{5}",
+        "<<<",
+        AddPath(Path("**/*.ex"), is_disabled=False, comment=""),
+        ">>>  ",
+    ]
+    assert (
+        resolve_includes_from_file(ptyx_file=ptyx_path)
+        == f"""
+#LOAD{{mcq}}
+#SEED{{5}}
+<<<
+*
+#PRINT{{\u001b[36mIMPORTING\u001b[0m "{tmp_path}/s##me str@nge ├old€r N@Me/\u001b[36ms##me stüpiɖ ├il€ N@Me.ex\u001b[0m"}}
+#QUESTION_NAME{{s##me stüpiɖ ├il€ N@Me.ex}}
+"Hello world!" is a:
+- question
++ exclamation
+- 42
+
+>>>  
+"""
+    )
     c = Compiler()
-    latex = c.parse(path=path)
+    latex = c.parse(path=ptyx_path)
     for line in latex.split("\n"):
         assert not line.startswith("-- "), line
         assert not line.startswith("!-- "), line
-    assert "To be or not to ..." in latex
-
-
-#         assert f"""
-# -- ROOT: {tmpdirname}/ptyx-files
-# !-- {tmpdirname}/ptyx-files/exercises/ex1.ex
-# -- {tmpdirname}/ptyx-files/exercises/ex2.ex
-# # New path detected:
-# -- {tmpdirname}/ptyx-files/other_exercises/a subfolder with a space in its name/ex3.ex
-# # New path detected:
-# -- {tmpdirname}/ptyx-files/other_exercises/a subfolder with a space in its name/ex5 - smallgraphlib import.ex
-# # New path detected:
-# -- {tmpdirname}/ptyx-files/other_exercises/ex4 has spaces in its name, and other str@#g€ things too !.ex
-# """ in content
-#
-#     assert f"""
-# -- ROOT: {tmpdirname}/ptyx-files/other_exercises/a subfolder with a space in its name
-# -- {tmpdirname}/ptyx-files/other_exercises/a subfolder with a space in its name/ex3.ex
-# # New path detected:
-# -- {tmpdirname}/ptyx-files/other_exercises/a subfolder with a space in its name/ex5 - smallgraphlib import.ex
-# """in content
-#
-#     assert f"""
-# -- ROOT: {tmpdirname}/ptyx-files/other_exercises
-# -- {tmpdirname}/ptyx-files/other_exercises/ex4 has spaces in its name, and other str@#g€ things too !.ex
-# # New path detected:
-# -- {tmpdirname}/ptyx-files/other_exercises/a subfolder with a space in its name/ex5 - smallgraphlib import.ex
-# # New path detected:
-# -- {tmpdirname}/ptyx-files/other_exercises/a subfolder with a space in its name/ex5 - smallgraphlib import.ex
-# """ in content
-#
+    assert "Hello world!" in latex

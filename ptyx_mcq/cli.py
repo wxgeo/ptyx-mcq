@@ -8,7 +8,6 @@ ptyx MCQ Command Line Interface
 """
 import os
 import shutil
-import subprocess
 import sys
 import traceback
 from argparse import ArgumentParser
@@ -150,6 +149,18 @@ def main(args: Optional[list] = None) -> None:
     # create the parser for the "update-include" command
     update_include_parser = add_parser("update-include", help="Update included files.")
     update_include_parser.add_argument("path", nargs="?", metavar="PATH", type=Path, default=".")
+    update_include_parser.add_argument(
+        "--force",
+        action="store_true",
+        default=False,
+        help="Force update, even if it doesn't seem safe (pTyX code and include directives are intricate).",
+    )
+    update_include_parser.add_argument(
+        "--clean",
+        action="store_true",
+        default=False,
+        help="Remove imports corresponding to missing files, and any import comments.",
+    )
     update_include_parser.set_defaults(func=update_include)
 
     # create the parser for the "create_template" command
@@ -283,7 +294,7 @@ def new(path: Path, include: Path = None, template="") -> None:
             shutil.rmtree(path / "questions", ignore_errors=True)
             # Edit the .ptyx file, to replace default code with the list of the questions' files.
             ptyx_path = get_file_or_sysexit(path, extension=".ptyx")
-            new_lines = [f"-- ROOT: {include.resolve()}"]
+            new_lines = [f"-- DIR: {include.resolve()}"]
             for include_path in include.glob("**/*.ex"):
                 new_lines.append(f"-- {include_path.relative_to(include)}")
             lines = []
@@ -379,13 +390,12 @@ def same_questions_and_answers_numbers(config1: Configuration, config2: Configur
     return True
 
 
-def update_include(path: Path) -> None:
+def update_include(path: Path, force=False, clean=False) -> None:
     """Update the list of included files."""
-    from .tools.include_parser import IncludeParser
+    from .tools.include_parser import update_file
 
     ptyxfile_path = get_file_or_sysexit(path, extension=".ptyx")
-    root = ptyxfile_path.parent
-    IncludeParser(root).update(ptyxfile_path)
+    update_file(ptyxfile_path, force=force, clean=clean)
     print_success("The list of included files was successfully updated.")
 
 
