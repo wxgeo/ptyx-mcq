@@ -448,7 +448,12 @@ def _split_around_mcq(
 
     Raise NoMCQSectionFound if <<< or >>> is not found.
     """
-    lines = parse_code(code if code is not None else ptyx_file.read_text())
+    if code is None:
+        if ptyx_file is None:
+            raise ValueError("Either `ptyx_file` or `code` argument must be given.")
+        else:
+            code = ptyx_file.read_text()
+    lines = parse_code(code)
     for start, line in enumerate(lines):
         if isinstance(line, str) and line.startswith("<<<"):
             break
