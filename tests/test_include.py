@@ -71,6 +71,10 @@ def test_update_include():
         _file("questions/question2.ex", comment="new"),
         _file("questions/question3.ex", comment="new"),
         _file("questions/question4.ex", comment="new"),
+        _file("short questions/question1.ex", comment="new"),
+        _file("short questions/question2.ex", comment="new"),
+        _file("short questions/question3.ex", comment="new"),
+        _file("short questions/question4.ex", comment="new"),
     ]
     assert not updater.is_updating_safe
 
@@ -254,7 +258,7 @@ def test_latex_code(tmp_path):
 """
     )
     (folder := tmp_path / "s#me str@nge ├old€r N@Me").mkdir()
-    (folder / "s#me stüpiɖ ├il€ N@Me.ex").write_text(
+    (ex_file := folder / "s#me stüpiɖ ├il€ N@Me.ex").write_text(
         """
 "Hello world!" is a:
 - question
@@ -270,6 +274,8 @@ def test_latex_code(tmp_path):
         AddPath(Path("**/*.ex"), is_disabled=False, comment=""),
         ">>>  ",
     ]
+    str_folder = str(folder).replace("#", "##")
+    ex_file_name = ex_file.name.replace("#", "##")
     assert (
         resolve_includes_from_file(ptyx_file=ptyx_path)
         == f"""
@@ -277,7 +283,7 @@ def test_latex_code(tmp_path):
 #SEED{{5}}
 <<<
 *
-#PRINT{{\u001b[36mIMPORTING\u001b[0m "{tmp_path}/s##me str@nge ├old€r N@Me/\u001b[36ms##me stüpiɖ ├il€ N@Me.ex\u001b[0m"}}
+#PRINT{{\u001b[36mIMPORTING\u001b[0m "{str_folder}/\u001b[36m{ex_file_name}\u001b[0m"}}
 #QUESTION_NAME{{s##me stüpiɖ ├il€ N@Me.ex}}
 "Hello world!" is a:
 - question
@@ -293,3 +299,88 @@ def test_latex_code(tmp_path):
         assert not line.startswith("-- "), line
         assert not line.startswith("!-- "), line
     assert "Hello world!" in latex
+
+
+def test_includes_outside_mcq(tmp_path):
+    (tmp_path / "header.txt").write_text("Introduction...")
+    (tmp_path / "footer.txt").write_text("Conclusion.")
+    # Generate the ptyx file:
+    ptyx_file = tmp_path / "include.ptyx"
+    ptyx_file.write_text(
+        f"""
+#LOAD{{mcq}}#SEED{{123456}}
+-- header.txt
+-- DIR: {TEST_DIR}/ptyx-files/short questions
+<<<<<<<<<<<<<<<<<
+-- question1.ex
+-- question2.ex
+>>>>>>>>>>>>>>>>>
+-- DIR: .
+-- footer.txt
+"""
+    )
+    update_file(ptyx_file)
+    assert (
+        ptyx_file.read_text()
+        == f"""
+#LOAD{{mcq}}#SEED{{123456}}
+-- header.txt
+-- DIR: {TEST_DIR}/ptyx-files/short questions
+<<<<<<<<<<<<<<<<<
+-- DIR: {TEST_DIR}/ptyx-files/short questions
+-- question1.ex
+-- question2.ex
+@new: -- question3.ex
+@new: -- question4.ex
+>>>>>>>>>>>>>>>>>
+-- DIR: .
+-- footer.txt
+"""
+    )
+    assert (
+        resolve_includes_from_file(ptyx_file)
+        == f"""
+#LOAD{{mcq}}#SEED{{123456}}
+#PRINT{{\x1b[36mIMPORTING\x1b[0m "{tmp_path}/\x1b[36mheader.txt\x1b[0m"}}
+Introduction...
+<<<<<<<<<<<<<<<<<
+*
+#PRINT{{\x1b[36mIMPORTING\x1b[0m "{TEST_DIR}/ptyx-files/short questions/\x1b[36mquestion1.ex\x1b[0m"}}
+#QUESTION_NAME{{question1.ex}}
+q1
+
++ 1
+- 2
+
+*
+#PRINT{{\x1b[36mIMPORTING\x1b[0m "{TEST_DIR}/ptyx-files/short questions/\x1b[36mquestion2.ex\x1b[0m"}}
+#QUESTION_NAME{{question2.ex}}
+q2
+
+- 1
++ 2
+
+*
+#PRINT{{\x1b[36mIMPORTING\x1b[0m "{TEST_DIR}/ptyx-files/short questions/\x1b[36mquestion3.ex\x1b[0m"}}
+#QUESTION_NAME{{question3.ex}}
+q3
+
+- 1
+- 2
++ 3
+
+*
+#PRINT{{\x1b[36mIMPORTING\x1b[0m "{TEST_DIR}/ptyx-files/short questions/\x1b[36mquestion4.ex\x1b[0m"}}
+#QUESTION_NAME{{question4.ex}}
+q4
+
+- 1
+- 2
+- 3
++ 4
+
+>>>>>>>>>>>>>>>>>
+#PRINT{{\x1b[36mIMPORTING\x1b[0m "{tmp_path}/\x1b[36mfooter.txt\x1b[0m"}}
+Conclusion.
+"""
+    )

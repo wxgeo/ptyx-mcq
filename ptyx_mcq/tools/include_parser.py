@@ -55,6 +55,14 @@ class UnsafeUpdate(RuntimeError):
     """Error raised when detecting a mix of pTyX code and include directives in the MCQ."""
 
 
+class NoMCQSectionFound(RuntimeError):
+    """
+    Error raised when the file to update does not contain any MCQ section.
+
+    The MCQ section must be surrounded by `<<<` and `>>>` lines.
+    """
+
+
 @dataclass(frozen=True)
 class Directive:
     """Object corresponding to an include directive."""
@@ -171,57 +179,64 @@ def parse_code(code: str) -> list[Directive | str]:
     return [_parse_directive(line) for line in code.splitlines()]
 
 
-def _get_ex_file_content(ex_file_path: Path) -> str:
+def _get_ex_file_content(ex_file_path: Path, exercise=True) -> str:
     """Get the content of the file to include, with a few enhancements.
 
     - Prefix the file content with `*` if needed (each pTyX exercise must begin with `*`).
     - Inject some meta-information into the pTyX code to make debugging easier."""
     lines: list[str] = []
+    prettified_path = str(ex_file_path.parent / f"\u001b[36m{ex_file_path.name}\u001b[0m").replace("#", "##")
     with open(ex_file_path) as file:
         file_content = file.read().strip()
         # Remove comments
         file_content = re.sub("( # .+)|(^# .+\n)", "", file_content, flags=re.MULTILINE)
         # Each exercise must start with a star. Since each included file is supposed to be an exercise,
         # add the initial star if missing.
-        if file_content[:2].strip() != "*":
-            file_content = "*\n" + file_content
-        for line in file_content.split("\n"):
-            lines.append(line)
-            if (
-                line.startswith("* ")
-                or line.startswith("> ")
-                or line.startswith("OR ")
-                or line.rstrip() in ("*", ">", "OR")
-            ):
-                prettified_path = str(
-                    ex_file_path.parent / f"\u001b[36m{ex_file_path.name}\u001b[0m"
-                ).replace("#", "##")
-
-                lines.append(f'#PRINT{{\u001b[36mIMPORTING\u001b[0m "{prettified_path}"}}')
-                lines.append(f"#QUESTION_NAME{{{ex_file_path.name.replace('#', '##')}}}")
-    return "\n".join(lines) + "\n"
+        if exercise:
+            if file_content[:2].strip() != "*":
+                file_content = "*\n" + file_content
+            for line in file_content.split("\n"):
+                lines.append(line)
+                if (
+                    line.startswith("* ")
+                    or line.startswith("> ")
+                    or line.startswith("OR ")
+                    or line.rstrip() in ("*", ">", "OR")
+                ):
+                    lines.append(f'#PRINT{{\u001b[36mIMPORTING\u001b[0m "{prettified_path}"}}')
+                    if exercise:
+                        lines.append(f"#QUESTION_NAME{{{ex_file_path.name.replace('#', '##')}}}")
+            return "\n".join(lines) + "\n"
+        else:
+            return f'#PRINT{{\u001b[36mIMPORTING\u001b[0m "{prettified_path}"}}\n' + file_content
 
 
 def resolve_includes(code: str, default_dir: Path, strict=True) -> str:
     """Search for include directives, and insert the corresponding files content into the pTyX code."""
     directory: Path = default_dir
-    lines = parse_code(code)
+    # pTyX code after includes resolution.
+    ptyx_code: list[str] = []
 
-    for i, line in enumerate(lines):
-        if isinstance(line, Directive):
-            lines[i] = ""
-            if not line.is_disabled:
-                if isinstance(line, ChangeDirectory):
-                    directory = line.get_directory(default_dir)
-                else:
-                    assert isinstance(line, AddPath)
-                    # New files to include.
-                    lines[i] = "\n".join(
-                        _get_ex_file_content(path)
-                        for path in line.get_all_files(directory, error_if_none=strict)
-                    )
+    for section, lines in enumerate(_split_around_mcq(code=code)):
+        for line in lines:
+            if isinstance(line, Directive):
+                if not line.is_disabled:
+                    if isinstance(line, ChangeDirectory):
+                        directory = line.get_directory(default_dir)
+                    else:
+                        assert isinstance(line, AddPath)
+                        # New files to include.
+                        ptyx_code.append(
+                            "\n".join(
+                                _get_ex_file_content(path, exercise=(section == 1))
+                                for path in line.get_all_files(directory, error_if_none=strict)
+                            )
+                        )
+            else:
+                assert isinstance(line, str)
+                ptyx_code.append(line)
 
-    return "\n".join(line for line in lines) + "\n"
+    return "\n".join(ptyx_code) + "\n"
 
 
 def resolve_includes_from_file(ptyx_file: Path) -> str:
@@ -278,33 +293,55 @@ class IncludesUpdater:
             - in any directory manually added via a `-- DIR: /my/path` directive.
         """
         self._reset()
-        before, after = self._extract_directives()
+        before_mcq, mcq_section, after_mcq = _split_around_mcq(ptyx_file=self.ptyxfile_path)
+
+        self._extract_directives(mcq_section)
+        for line in reversed(before_mcq):
+            if isinstance(line, ChangeDirectory) and self.local_includes:
+                # Directory was changed before starting the MCQ,
+                # so, the first directives of the MCQ section must refer to this directory,
+                # and not to local path.
+                self.includes.setdefault(line, []).extend(self.local_includes)
+                # noinspection PyAttributeOutsideInit
+                self.local_includes = []
 
         # Generate the set of all the files to include, and also detect and disable invalid paths.
         self._disable_missing_paths()
         # Detect new files.
         self._add_newly_discovered_paths()
 
+        return (
+            "\n".join(
+                str(val)
+                for val in before_mcq
+                + [line for line in mcq_section if isinstance(line, str)]
+                + self._directives_list(clean)
+                + after_mcq
+            )
+            + "\n"
+        )
+
+    def _directives_list(self, clean=False) -> list[str]:
+        lines = []
+
+        def _append_directive(directive: Directive) -> None:
+            if clean:
+                if not directive.comment == "missing":
+                    lines.append(str(directive.copy(comment="")))
+            else:
+                lines.append(str(directive))
+
         # Incorporate all the directives at the end of the mcq.
         for add_path_directive in sorted(self.local_includes):
-            self._append_directive(add_path_directive, before, clean)
+            _append_directive(add_path_directive)
         for directory_directive, add_path_directives in sorted(self.includes.items()):
             if directory_directive is not None:
-                self._append_directive(directory_directive, before, clean)
+                _append_directive(directory_directive)
                 for add_path_directive in sorted(add_path_directives):
-                    self._append_directive(add_path_directive, before, clean)
+                    _append_directive(add_path_directive)
+        return lines
 
-        return "\n".join(before + after) + "\n"
-
-    @staticmethod
-    def _append_directive(directive: Directive, lines: list[str], clean: bool) -> None:
-        if clean:
-            if not directive.comment == "missing":
-                lines.append(str(directive.copy(comment="")))
-        else:
-            lines.append(str(directive))
-
-    def _extract_directives(self) -> tuple[list[str], list[str]]:
+    def _extract_directives(self, lines: list[str | Directive]) -> None:
         """
         Find all the include directives in the mcq section (i.e. between `<<<` and `>>>`),
         and generate the `self.include` dict from them: {directory: [paths]}.
@@ -313,16 +350,12 @@ class IncludesUpdater:
             - the lines of pTyX code (without the directives) until the end of mcq (`>>>` tag),
             - the remaining lines of pTyX code (from the `>>>` tag).
         """
-        lines = parse_code(self.ptyxfile_path.read_text())
-        before_directives: list[str] = []
-
         # Default includes, corresponding to the ptyx file directory.
         current_dir_includes = self.local_includes
-        mcq_started = False
         directive_found = False
-        line_no = 0
+
         for line_no, line in enumerate(lines):
-            if mcq_started and isinstance(line, Directive):
+            if isinstance(line, Directive):
                 directive_found = True
                 if isinstance(line, ChangeDirectory):
                     current_dir_includes = self.includes.setdefault(line, [])
@@ -331,20 +364,12 @@ class IncludesUpdater:
                     current_dir_includes.append(line)
             else:
                 assert isinstance(line, str)
-                if line.startswith(">>>"):
-                    # End of the MCQ section
-                    break
-                else:
-                    before_directives.append(line)
-                    if mcq_started and directive_found and line.strip() != "":
-                        # If directives were already found in the MCQ before this line of pTyX code,
-                        # it means that directives and pTyX code are intricate inside the MCQ.
-                        # Since any update will put all the directives at the end of the MCQ,
-                        # updating may break the MCQ, depending on actual pTyX code content.
-                        self.is_updating_safe = False
-                    if line.startswith("<<<"):
-                        mcq_started = True
-        return before_directives, lines[line_no:]
+                if directive_found and line.strip() != "":
+                    # If directives were already found in the MCQ before this line of pTyX code,
+                    # it means that directives and pTyX code are intricate inside the MCQ.
+                    # Since any update will put all the directives at the end of the MCQ,
+                    # updating may break the MCQ, depending on actual pTyX code content.
+                    self.is_updating_safe = False
 
     def _disable_missing_paths(self) -> None:
         """
@@ -390,8 +415,8 @@ class IncludesUpdater:
 
         # The `None` key (corresponding to `default_dir`) must be the last one to be seen.
         # The reason is that else, all newly discovered path would be preferentially discovered
-        # from `default_dir`, instead of potential subfolders given through `-- DIR:` directives.
-        # It would be better to use a custom search algorithm, starting from the more specific subfolders,
+        # from `default_dir`, instead of potential sub-folders given through `-- DIR:` directives.
+        # It would be better to use a custom search algorithm, starting from the more specific sub-folders,
         # but it would not be so easy to implement, so it's probably not worth the additional code complexity.
         for directory_directive, add_path_directives in chain(
             self.includes.items(), [(None, self.local_includes)]
@@ -409,11 +434,32 @@ class IncludesUpdater:
                     add_path_directives.append(AddPath(ex_file_path.relative_to(directory), comment="new"))
                     self.all_paths.add(ex_file_path)
 
-            # if directory_directive is None or not directory_directive.is_disabled:
-            #     for i, add_path_directive in enumerate(add_path_directives):
-            #         paths = add_path_directive.get_all_files(directory)
-            #         if not paths:
-            #             # Disable add-path directive, since it doesn't match any existing file.
-            #             add_path_directives[i] = add_path_directive.copy(is_disabled=True, comment="missing")
-            #         else:
-            #             self.all_paths.update(paths)
+
+def _split_around_mcq(
+    *,
+    ptyx_file: Path = None,
+    code: str = None,
+) -> tuple[list[str | Directive], list[str | Directive], list[str | Directive]]:
+    """
+    Split the lines in 3 sub-lists:
+    - the lines before the MCQ, including <<<
+    - the lines inside the MCQ (the part between <<< and >>>).
+    - the lines after the MCQ, including >>>
+
+    Raise NoMCQSectionFound if <<< or >>> is not found.
+    """
+    lines = parse_code(code if code is not None else ptyx_file.read_text())
+    for start, line in enumerate(lines):
+        if isinstance(line, str) and line.startswith("<<<"):
+            break
+    else:
+        raise NoMCQSectionFound(f"`<<<` not found in '{ptyx_file}'.")
+    start += 1
+
+    for end, line in enumerate(lines[start:]):
+        if isinstance(line, str) and line.startswith(">>>"):
+            break
+    else:
+        raise NoMCQSectionFound(f"`>>>` not found in '{ptyx_file}'.")
+    end += start
+    return lines[:start], lines[start:end], lines[end:]
