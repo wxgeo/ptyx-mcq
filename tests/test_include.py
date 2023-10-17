@@ -239,7 +239,6 @@ def test_unsafe_update(tmp_path):
     ]
 
 
-@pytest.mark.xfail
 def test_latex_code(tmp_path):
     """Bug: `#` in file name results in a #PRINT{...#...},
     but #PRINT{} doesn't handle correctly hashtags."""

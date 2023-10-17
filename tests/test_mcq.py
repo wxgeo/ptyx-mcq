@@ -30,6 +30,12 @@ def load_ptyx_file(filename):
     return c
 
 
+def test_minimal_MCQ():
+    latex = (TEST_DIR / "ptyx-files/minimal-working-example.tex").read_text()
+    c = Compiler()
+    assert c.parse(path=TEST_DIR / "ptyx-files/minimal-working-example.ptyx") == latex
+
+
 def test_MCQ_basics():
     c = load_ptyx_file("partial-test.ptyx")
     assert "VERSION" in c.syntax_tree_generator.tags

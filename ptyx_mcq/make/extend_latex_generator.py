@@ -693,10 +693,11 @@ class MCQLatexGenerator(LatexGenerator):
 
             check_id_or_name = code if not self.WITH_ANSWERS else ""
             self.mcq_cache["check_id_or_name"] = check_id_or_name
-            check_id_or_name += r"""
+            if check_id_or_name:
+                check_id_or_name += r"""
             \vspace{1em}
 
-            \tikz{\draw[dotted] ([xshift=2cm]current page.west) -- (current page.east);}
+            \tikz{\draw[dotted] ([xshift=2cm]current page.west) -- ([xshift=-1cm]current page.east);}
             """
 
         header = self.mcq_cache["header"]
