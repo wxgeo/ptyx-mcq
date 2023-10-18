@@ -13,9 +13,10 @@ import traceback
 from argparse import ArgumentParser
 from os import unlink
 from pathlib import Path
-from typing import Optional, Literal
+from typing import Optional, Literal, Iterable
 
 import argcomplete
+from argcomplete import DirectoriesCompleter, FilesCompleter
 from platformdirs import PlatformDirs
 
 from ptyx_mcq.tools.config_parser import Configuration
@@ -32,22 +33,40 @@ from ptyx_mcq.tools.io_tools import (
 )
 
 
+class TemplatesCompleter(argcomplete.completers.BaseCompleter):
+    def __call__(self, **kwargs) -> Iterable[str]:
+        return ["original"] + [
+            template.name for template in _get_user_templates_path().glob("*") if template.is_dir()
+        ]
+
+
+# noinspection PyTypeHints
 def main(args: Optional[list] = None) -> None:
     """Main entry point, called whenever `mcq` command is executed."""
     parser = ArgumentParser(description="Generate and manage pdf MCQs.")
     subparsers = parser.add_subparsers()
     add_parser = subparsers.add_parser
 
+    # ------------------------------------------
+    #     $ mcq  new
+    # ------------------------------------------
     # create the parser for the "new" command
     new_parser = add_parser("new", help="Create an empty ptyx file.")
-    new_parser.add_argument("path", nargs="?", metavar="PATH", type=Path, default="new-mcq")
+    new_parser.add_argument(
+        "path",
+        nargs="?",
+        metavar="PATH",
+        type=Path,
+        default="new-mcq",
+        help="The name or the path of the new file to create.",
+    ).completer = DirectoriesCompleter()  # type: ignore[attr-defined]
     new_parser.add_argument(
         "--include",
         "-i",
         metavar="INCLUDE_PATH",
         type=Path,
-        help="Include all files from this path in the generated .ptyx file.",
-    )
+        help="Include all .ex files from this path in the generated .ptyx file.",
+    ).completer = DirectoriesCompleter()  # type: ignore[attr-defined]
     new_parser.add_argument(
         "--template",
         "-t",
@@ -59,12 +78,17 @@ def main(args: Optional[list] = None) -> None:
             "'default' in the user config directory, or use the default template.\n"
             "One may force the use of the default template by writing 'original'."
         ),
-    )
+    ).completer = TemplatesCompleter()  # type: ignore[attr-defined]
     new_parser.set_defaults(func=new)
 
+    # ------------------------------------------
+    #     $ mcq  make
+    # ------------------------------------------
     # create the parser for the "make" command
     make_parser = add_parser("make", help="Generate pdf file.")
-    make_parser.add_argument("path", nargs="?", metavar="PATH", type=Path, default=".")
+    make_parser.add_argument(  # type: ignore[attr-defined]
+        "path", nargs="?", metavar="PATH", type=Path, default="."
+    ).completer = FilesCompleter("ptyx")
     make_parser.add_argument(
         "--num",
         "-n",
@@ -94,6 +118,9 @@ def main(args: Optional[list] = None) -> None:
     )
     make_parser.set_defaults(func=make)
 
+    # ------------------------------------------
+    #     $ mcq  scan
+    # ------------------------------------------
     # create the parser for the "scan" command
     scan_parser = add_parser("scan", help="Generate scores from scanned documents.")
     scan_parser.add_argument(
@@ -105,7 +132,7 @@ def main(args: Optional[list] = None) -> None:
             "a .mcq.config file and a .scan.pdf file "
             "(alternatively, this path may point to any file in this folder)."
         ),
-    )
+    ).completer = DirectoriesCompleter()  # type: ignore[attr-defined]
     scan_parser.add_argument(
         "--reset",
         action="store_true",
@@ -129,26 +156,45 @@ def main(args: Optional[list] = None) -> None:
         default=False,
         help="For each first page, display a picture of " "the top of the page and ask for the student name.",
     )
-    scan_parser.add_argument(
+    scan_parser.add_argument(  # type: ignore[attr-defined]
         "--test-picture",
         type=Path,
         default=None,
         help="Used for debugging: scan only this picture, without storing scan's results.",
-    )
+    ).completer = FilesCompleter("jpg")
     scan_parser.set_defaults(func=scan)
+
+    # ------------------------------------------
+    #     $ mcq  clear
+    # ------------------------------------------
     # create the parser for the "clear" command
     clear_parser = add_parser("clear", help="Remove every MCQ data but the ptyx file.")
     clear_parser.add_argument("path", nargs="?", metavar="PATH", type=Path, default=".")
     clear_parser.set_defaults(func=clear)
 
+    # ------------------------------------------
+    #     $ mcq  update-config
+    # ------------------------------------------
     # create the parser for the "update-config" command
     update_config_parser = add_parser("update-config", help="Update mcq configuration file.")
-    update_config_parser.add_argument("path", nargs="?", metavar="PATH", type=Path, default=".")
+    update_config_parser.add_argument(  # type: ignore[attr-defined]
+        "path",
+        nargs="?",
+        metavar="PATH",
+        type=Path,
+        default=".",
+        help="The .ptyx file from which the configuration file must be updated.",
+    ).completer = FilesCompleter("ptyx")
     update_config_parser.set_defaults(func=update_config)
 
+    # ------------------------------------------
+    #     $ mcq  update-include
+    # ------------------------------------------
     # create the parser for the "update-include" command
     update_include_parser = add_parser("update-include", help="Update included files.")
-    update_include_parser.add_argument("path", nargs="?", metavar="PATH", type=Path, default=".")
+    update_include_parser.add_argument(  # type: ignore[attr-defined]
+        "path", nargs="?", metavar="PATH", type=Path, default=".", help="Path of the .ptyx file to update."
+    ).completer = FilesCompleter("ptyx")
     update_include_parser.add_argument(
         "--force",
         action="store_true",
@@ -163,7 +209,10 @@ def main(args: Optional[list] = None) -> None:
     )
     update_include_parser.set_defaults(func=update_include)
 
-    # create the parser for the "create_template" command
+    # ------------------------------------------
+    #     $ mcq  create-template
+    # ------------------------------------------
+    # create the parser for the "create-template" command
     create_template_parser = add_parser("create-template", help="Create a customisable user template.")
     create_template_parser.add_argument(
         "name",
@@ -171,14 +220,20 @@ def main(args: Optional[list] = None) -> None:
         metavar="NAME",
         type=str,
         default="default",
-        help="The template name must be a valid directory name.",
+        help="The template name must be a valid new directory name.",
     )
     create_template_parser.set_defaults(func=create_template)
 
+    # ------------------------------------------
+    #     $ mcq  strategies
+    # ------------------------------------------
     # create the parser for the "strategies" command
     strategies_parser = add_parser("strategies", help="List available evaluation strategies.")
     strategies_parser.set_defaults(func=strategies)
 
+    # ------------------------------------------
+    #     $ mcq  add-autocompletion
+    # ------------------------------------------
     # create the parser for the "add-autocompletion" command
     install_shell_completion_parser = add_parser(
         "install-shell-completion",
@@ -189,8 +244,8 @@ def main(args: Optional[list] = None) -> None:
     )
     install_shell_completion_parser.set_defaults(func=install_shell_completion)
 
-    argcomplete.autocomplete(parser)
-
+    # ------------------------------------------
+    argcomplete.autocomplete(parser, always_complete_options=False)
     parsed_args = parser.parse_args(args)
     try:
         # Launch the function corresponding to the given subcommand.
@@ -264,12 +319,16 @@ def scan(
 
 
 def new(path: Path, include: Path = None, template="") -> None:
-    """Implement `mcq new` command."""
+    """Implement `mcq new` command.
+
+    Path `path` is the path of the new file to create.
+    Path `include` must be a directory whose all .ex files will be recursively included.
+    """
     # Select the template to use.
     # Default template:
     template_path = Path(__file__).resolve().parent / "templates/original"
     # Directory of the eventual user templates:
-    user_templates_path = PlatformDirs().user_config_path / "ptyx-mcq/templates"
+    user_templates_path = _get_user_templates_path()
     if template == "":
         # Search for a default user-defined template.
         user_default_template_path = user_templates_path / "default"
@@ -317,6 +376,11 @@ def new(path: Path, include: Path = None, template="") -> None:
         print_success(f"A new MCQ was created at {path}.")
 
 
+def _get_user_templates_path() -> Path:
+    """Return the path of the directory containing all the users templates (if any)."""
+    return PlatformDirs().user_config_path / "ptyx-mcq/templates"
+
+
 def clear(path: Path) -> None:
     """Implement `mcq clear` command."""
     ptyxfile_path = get_file_or_sysexit(path, extension=".ptyx")
@@ -343,7 +407,10 @@ def clear(path: Path) -> None:
 
 
 def update_config(path: Path) -> None:
-    """Update the .ptyx.mcq.config.json configuration file, following any .ptyx file change."""
+    """Update the .ptyx.mcq.config.json configuration file, following any .ptyx file change.
+
+    Path `path` must be either a pTyx file, or a directory containing a single pTyX file.
+    """
     from ptyx.latex_generator import compiler
     from .make.make import parse_ptyx_file
 
@@ -392,7 +459,7 @@ def same_questions_and_answers_numbers(config1: Configuration, config2: Configur
 
 def update_include(path: Path, force=False, clean=False) -> None:
     """Update the list of included files."""
-    from .tools.include_parser import update_file
+    from ptyx_mcq.tools.include_parser import update_file
 
     ptyxfile_path = get_file_or_sysexit(path, extension=".ptyx")
     update_file(ptyxfile_path, force=force, clean=clean)
