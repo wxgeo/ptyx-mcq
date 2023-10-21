@@ -129,7 +129,7 @@ def main(args: Optional[list] = None) -> None:
         default=".",
         help=(
             "Path to a directory which must contain "
-            "a .mcq.config file and a .scan.pdf file "
+            "a `.mcq.config` file and a `scan/` subdirectory "
             "(alternatively, this path may point to any file in this folder)."
         ),
     ).completer = DirectoriesCompleter()  # type: ignore[attr-defined]

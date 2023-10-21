@@ -4,6 +4,10 @@ from math import nan, isnan
 from ptyx_mcq.tools.config_parser import OriginalAnswerNumber
 
 
+class IncorrectScoreParameter(RuntimeError):
+    """Error raised when a score parameter is incoherent with chosen evaluation strategy."""
+
+
 @dataclass
 class AnswersData:
     checked: set[OriginalAnswerNumber]
@@ -131,28 +135,55 @@ class EvaluationStrategies:
         return _partial_answers(answers, score, exposant=2)
 
     @staticmethod
-    def correct_minus_incorrect(answers: AnswersData, score: ScoreData) -> float:
+    def legacy_correct_minus_incorrect(answers: AnswersData, score: ScoreData) -> float:
         """If the proportion of correct answers is less than 0.5, as is typically the case,
-        return the difference between the proportion of correctly checked answers
-        and the proportion of incorrectly checked answers.
+        return the difference between the number of correctly checked answers
+        and the number of incorrectly checked answers, divided by the total number
+        of correct answers.
 
         Otherwise, if the proportion of correct answers is greater than 0.5,
-        return the difference between the proportion of correctly unchecked answers
-        and the proportion of incorrectly unchecked answers.
+        return the difference between the number of correctly unchecked answers
+        and the number of incorrectly unchecked answers, divided by the total number
+        of incorrect answers.
 
         The idea behind this algorithm is that, if the proportion of correct answers
         is greater than 0.5, the exercise's difficulty lies in determining
         which answers should be left unchecked.
 
-        Note that the
+        We then raise the result to the power of `exponent`, and keep it in a [-1,1] range.
+
+        If the result is positive, return result * score.correct.
+        Else, return -result * score.incorrect.
+        """
+        return _legacy_correct_minus_incorrect(answers, score)
+
+    @staticmethod
+    def legacy_correct_minus_incorrect_quadratic(answers: AnswersData, score: ScoreData) -> float:
+        """Same algorithm as for `legacy_correct_minus_incorrect`, but the result is squared.
+
+        This makes more unlikely for a student answering randomly to gain significant score.
+        """
+        return _legacy_correct_minus_incorrect(answers, score, exponent=2)
+
+    @staticmethod
+    def correct_minus_incorrect(answers: AnswersData, score: ScoreData) -> float:
+        """Return the proportion of checked answers among correct ones, minus the proportion of
+        checked answers between incorrect ones.
+
+        If there are no correct answers, or if all answers are correct, the previous formula
+        can't obviously be applied.
+        In that case, the score is only based on the proportion of rightly checked or unchecked
+        answers among all answers:
+          - If this proportion is higher than 1/2, then the result will be a fraction of `score.correct`.
+          - Else, the result will be a fraction of `score.incorrect`.
         """
         return _correct_minus_incorrect(answers, score)
 
     @staticmethod
     def correct_minus_incorrect_quadratic(answers: AnswersData, score: ScoreData) -> float:
-        """Same algorithm as for `correct_minus_incorrect`, but the result is squared.
+        """Same algorithm as for `correct_minus_incorrect`, but the proportions' difference is squared.
 
-        This makes very unlikely for a student answering randomly to gain significant score.
+        This makes more unlikely for a student answering randomly to gain significant score.
         """
         return _correct_minus_incorrect(answers, score, exponent=2)
 
@@ -168,27 +199,73 @@ def _checked_among_correct_proportion(answers: AnswersData) -> float:
 
 
 def _partial_answers(answers: AnswersData, score: ScoreData, exposant=1.0) -> float:
-    """Return 0 if an incorrect answer was checked, else the proportion of correct answers."""
+    """Return `score.incorrect` if an incorrect answer was checked, else the proportion of correct answers."""
     if answers.checked & answers.incorrect:
         return score.incorrect
     else:
         return round(_checked_among_correct_proportion(answers) ** exposant * score.correct, 2)
 
 
-def _correct_minus_incorrect(answers: AnswersData, score: ScoreData, exponent=1.0) -> float:
+def _legacy_correct_minus_incorrect(answers: AnswersData, score: ScoreData, exponent=1.0) -> float:
     """If the proportion of correct answers is less than 0.5, as is typically the case,
-    return the difference between the proportion of correctly checked answers
-    and the proportion of incorrectly checked answers.
+    return the difference between the number of correctly checked answers
+    and the number of incorrectly checked answers, divided by the total number
+    of correct answers.
 
     Otherwise, if the proportion of correct answers is greater than 0.5,
-    return the difference between the proportion of correctly unchecked answers
-    and the proportion of incorrectly unchecked answers.
+    return the difference between the number of correctly unchecked answers
+    and the number of incorrectly unchecked answers, divided by the total number
+    of incorrect answers.
 
     The idea behind this algorithm is that, if the proportion of correct answers
     is greater than 0.5, the exercise's difficulty lies in determining
     which answers should be left unchecked.
 
-    We then raise the result to the power of `exponent`.
+    We then raise the result to the power of `exponent`, and keep it in a [-1,1] range.
+
+    If the result is positive, return result * score.correct.
+    Else, return -result * score.incorrect.
     """
-    ratio = 1 - len(answers.incorrectly_answered) / max(1, min(len(answers.correct), len(answers.incorrect)))
-    return max(0.0, round(ratio**exponent * score.correct, 2))
+    diff = 1 - len(answers.incorrectly_answered) / max(1, min(len(answers.correct), len(answers.incorrect)))
+    diff = max(-1, diff**exponent)
+    assert -1 <= diff <= 1
+    result = diff * score.correct if diff > 0 else -diff * score.incorrect
+    return round(result, 2)
+
+
+def _correct_minus_incorrect(answers: AnswersData, score: ScoreData, exponent=1.0) -> float:
+    """Return the proportion of checked answers among correct ones, minus the proportion of
+    checked answers between incorrect ones.
+
+    If there are no correct answers, or if all answers are correct, the previous formula
+    can't obviously be applied.
+    In that case, the score is only based on the proportion of rightly checked or unchecked
+    answers among all answers:
+      - if this proportion is higher than 1/2, then the result will be a fraction of `score.correct`.
+      - else, the result will be a fraction of `score.incorrect`.
+    """
+    if score.incorrect > 0:
+        raise IncorrectScoreParameter(
+            f"The score for an incorrect answer must be zero or negative, yet {score.incorrect} > 0."
+        )
+    if len(answers.correct) == 0 or len(answers.incorrect) == 0:
+        if len(answers.correct) == 0:
+            # No answers should have been checked.
+            p = len(answers.unchecked) / len(answers.all)
+        else:
+            # All answers should have been checked.
+            p = len(answers.checked) / len(answers.all)
+        # No answer is correct (p = 1)              -> score.correct
+        # Half of the answers are correct (p = 0.5) -> 0
+        # No answers are correct (p = 0)            -> score.incorrect
+        if p > 0.5:
+            return (2 * (p - 0.5)) ** exponent * score.correct
+        else:
+            return (2 * (0.5 - p)) ** exponent * score.incorrect
+
+    else:
+        correct_ratio = len(answers.checked & answers.correct) / len(answers.correct)
+        incorrect_ratio = len(answers.checked & answers.incorrect) / len(answers.incorrect)
+        diff = (correct_ratio - incorrect_ratio) ** exponent
+        assert -1 <= diff <= 1
+        return diff * score.correct if diff > 0 else -diff * score.incorrect
