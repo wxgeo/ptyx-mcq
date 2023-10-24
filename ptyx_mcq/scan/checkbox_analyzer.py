@@ -22,7 +22,7 @@ def eval_checkbox_color(checkbox: ndarray, margin: int = 0) -> float:
     # Warning: pixels outside the sheet shouldn't be considered black !
     # Since we're doing a sum, 0 should represent white and 1 black,
     # so as if a part of the square is outside the sheet, it is considered
-    # white, not black ! This explain the `1 - m[...]` below.
+    # white, not black ! This explains the `1 - m[...]` below.
     square = 1 - checkbox[margin : width - margin, margin : width - margin]
     return square.sum() / (width - margin) ** 2
 

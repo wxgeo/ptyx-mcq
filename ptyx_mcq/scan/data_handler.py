@@ -43,7 +43,13 @@ def pic_names_iterator(data: dict[DocumentId, DocumentData]) -> Iterator[Path]:
 
 
 class DataHandler:
-    """Store and retrieve the data."""
+    """Store and retrieve the data.
+
+    Parameters:
+        - config_path: either the path of a configuration file (`.ptyx.mcq.config.json`),
+            or a directory containing a single configuration file.
+        -
+    """
 
     def __init__(self, config_path: Path, input_dir: Path = None, output_dir: Path = None):
         self.paths = PathsHandler(config_path=config_path, input_dir=input_dir, output_dir=output_dir)
@@ -299,9 +305,11 @@ class DataHandler:
             checkboxes[(q, a)] = matrix[i : i + cell_size, j : j + cell_size]
         return checkboxes
 
-    def _export_doc_checkboxes(self, doc_id: DocumentId) -> None:
+    def _export_doc_checkboxes(self, doc_id: DocumentId, path: Path = None) -> None:
         """Save the checkboxes of the document `doc_id` as .webm images in a directory."""
-        (doc_dir := self.dirs.checkboxes / str(doc_id)).mkdir(exist_ok=True)
+        if path is None:
+            path = self.dirs.checkboxes
+        (doc_dir := path / str(doc_id)).mkdir(exist_ok=True)
         for page, pic_data in self.data[doc_id].pages.items():
             for (q, a), matrix in self.get_checkboxes(doc_id, page).items():
                 detection_status = pic_data.detection_status[(q, a)]
@@ -309,23 +317,26 @@ class DataHandler:
                 webm = doc_dir / f"{q}-{a}-{detection_status}-{revision_status}.webm"
                 save_webp(matrix, webm)
 
-    def export_checkboxes(self) -> None:
+    def export_checkboxes(self, export_all=False, path: Path = None) -> None:
         """Save checkboxes as .webm images in a directory.
 
-        Only export the checkboxes of the documents whose at least one page has been manually verified.
+        By default, only export the checkboxes of the documents whose at least one page
+        has been manually verified. Set `export_all=True` to export all checkboxes.
+
         This is used to build regressions tests.
         """
         to_export: set[DocumentId] = {
             doc_id
             for doc_id, doc_data in self.data.items()
-            if any(
+            if export_all
+            or any(
                 (q, a) in pic_data.revision_status
                 for page, pic_data in doc_data.pages.items()
                 for (q, a) in self.get_checkboxes(doc_id, page)
             )
         }
         for doc_id in to_export:
-            self._export_doc_checkboxes(doc_id)
+            self._export_doc_checkboxes(doc_id, path=path)
 
     def display_analyze_results(self, doc_id: DocumentId) -> None:
         """Print the result of the checkbox analysis for document `doc_id` in terminal."""
