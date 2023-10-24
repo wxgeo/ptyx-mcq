@@ -33,9 +33,9 @@ def test_include_parser():
     assert directives == [
         _file("exercises/ex1.ex", is_disabled=True),
         _file("exercises/ex2.ex"),
-        _dir(f"other_exercises/a subfolder with a space in its name"),
+        _dir("other_exercises/a subfolder with a space in its name"),
         _file("ex3.ex"),
-        _dir(f"other_exercises"),
+        _dir("other_exercises"),
         _file("ex4 has spaces in its name, and other str@#g€ things too !.ex"),
         _file("some/invalid/path.ex"),
     ]
@@ -55,11 +55,11 @@ def test_update_include():
     updater = IncludesUpdater(ptyx_file)
     updater.update_file_content()
     assert updater.includes == {
-        _dir(f"other_exercises/a subfolder with a space in its name"): [
+        _dir("other_exercises/a subfolder with a space in its name"): [
             _file("ex3.ex"),
             _file("ex5 - smallgraphlib import.ex", comment="new"),
         ],
-        _dir(f"other_exercises"): [
+        _dir("other_exercises"): [
             _file("ex4 has spaces in its name, and other str@#g€ things too !.ex"),
             _file("some/invalid/path.ex", comment="missing", is_disabled=True),
         ],

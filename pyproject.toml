@@ -26,7 +26,6 @@ types-openpyxl = "^3.1.0.12"
 types-Pillow = "^9.0.20"
 pytest = "^7"
 mypy = "^1.0"
-flake8 = "^6"
 black = "^23.3.0"
 tox = "^4.1.2"
 sphinx-autodoc-typehints = "^1.18.3"
@@ -35,6 +34,7 @@ myst-parser = "^1.0.0"
 # Version 7.29+ are buggy !
 python-semantic-release = "7.28.1"
 ptyx = {path = "../ptyx", develop = true}
+ruff = "^0.1.2"
 
 [tool.poetry.scripts]
 mcq = 'ptyx_mcq.cli:main'
@@ -55,6 +55,9 @@ version_variable = "pyproject.toml:version"
 [tool.black]
 line-length = 110
 
+[tool.ruff]
+line-length = 110
+
 [build-system]
 requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
@@ -73,5 +76,5 @@ commands =
     poetry install -v
     poetry run pytest tests
     poetry run mypy ptyx_mcq tests
-    poetry run flake8 ptyx_mcq --max-line-length 110 --ignore=E203,W503,W391
+    poetry run ruff ptyx_mcq tests
 """
