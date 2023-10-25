@@ -524,7 +524,7 @@ def install_shell_completion(shell: str = "bash") -> None:
 
 
 def _install_completion(completion_file_name, command, python_script, shell) -> bool:
-    completion_file = PlatformDirs().user_config_path / f"ptyx-mcq/config" / completion_file_name
+    completion_file = PlatformDirs().user_config_path / "ptyx-mcq/config" / completion_file_name
     completion_file.parent.mkdir(parents=True, exist_ok=True)
     with open(completion_file, "w") as f:
         f.write(argcomplete.shellcode([command], shell=shell, argcomplete_script=python_script))
