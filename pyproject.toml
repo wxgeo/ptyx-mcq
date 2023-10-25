@@ -38,7 +38,7 @@ ruff = "^0.1.2"
 
 [tool.poetry.scripts]
 mcq = 'ptyx_mcq.cli:main'
-
+mcq-dev = 'ptyx_mcq.dev_cli:main'
 
 [tool.poetry.plugins."ptyx.extensions"]
 mcq = "ptyx_mcq"

@@ -509,18 +509,33 @@ def install_shell_completion(shell: str = "bash") -> None:
             f"chmod u+x {__file__}"
         )
         sys.exit(1)
-    completion_file = PlatformDirs().user_config_path / f"ptyx-mcq/config/{shell}-completion"
+
+    dev_cli = __file__.replace("cli.py", "dev_cli.py")
+    done = []
+    if _install_completion(f"mcq-{shell}-completion", "mcq", __file__, shell):
+        done.append("`mcq`")
+    if _install_completion(f"mcq-dev-{shell}-completion", "mcq-dev", dev_cli, shell):
+        done.append("`mcq-dev`")
+
+    if done:
+        print_success(f"Completion enabled in {shell} for {' and '.join(done)}. Enjoy!")
+    else:
+        print_info(f"Completion in {shell} was already activated. Nothing done.")
+
+
+def _install_completion(completion_file_name, command, python_script, shell) -> bool:
+    completion_file = PlatformDirs().user_config_path / f"ptyx-mcq/config" / completion_file_name
     completion_file.parent.mkdir(parents=True, exist_ok=True)
     with open(completion_file, "w") as f:
-        f.write(argcomplete.shellcode(["mcq"], shell=shell, argcomplete_script=__file__))
+        f.write(argcomplete.shellcode([command], shell=shell, argcomplete_script=python_script))
     bash_rc = Path("~/.bashrc").expanduser()
-    newlines = f"\n# Enable mcq command completion\nsource {completion_file}\n"
+    newlines = f"\n# Enable {command} command completion\nsource {completion_file}\n"
     if not (bash_rc.is_file() and newlines in bash_rc.read_text()):
         with open(bash_rc, "a") as f:
             f.write(newlines)
-        print_success(f"Completion enabled in {shell}. Enjoy!")
+        return True
     else:
-        print_info(f"Completion in {shell} was already activated. Nothing done.")
+        return False
 
 
 if __name__ == "__main__":
