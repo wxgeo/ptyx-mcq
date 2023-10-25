@@ -83,11 +83,17 @@ def export_checkboxes(path: Path | str = "."):
 
     path = Path(path)
     now = datetime.datetime.now()
-    tar_name = f"checkboxes-{now.year}-{now.month}-{now.day}-{now.hour}-{now.minute}-{now.second}.tar"
+    date = f"{now.year}-{now.month}-{now.day}-{now.hour}-{now.minute}-{now.second}"
+    tar_name = f"checkboxes-{date}.tar"
     with TemporaryDirectory() as tmp_dir:
-        DataHandler(path).export_checkboxes(export_all=True, path=Path(tmp_dir))
+        handler = DataHandler(path)
+        print("\nLoad data...")
+        handler.reload()
+        print("\nExporting pictures...")
+        handler.export_checkboxes(export_all=True, path=Path(tmp_dir))
+        print("\nCreating archive...")
         with tarfile.open(path / tar_name, "w") as tar:
-            tar.add(tmp_dir)
+            tar.add(tmp_dir, arcname=date)
     print_success(f"File {tar_name} created.")
 
 
