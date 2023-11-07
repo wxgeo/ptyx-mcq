@@ -8,7 +8,7 @@ from types import FrameType
 from typing import Iterator
 
 from PIL import Image
-from numpy import ndarray, array, int8
+from numpy import ndarray, array, int8, concatenate
 
 from ptyx_mcq.scan.checkbox_analyzer import analyze_checkboxes
 from ptyx_mcq.scan.document_data import DocumentData, PicData, DetectionStatus, RevisionStatus, Page
@@ -226,10 +226,10 @@ class DataHandler:
         if keyboard_interrupt:
             raise KeyboardInterrupt
 
-    def store_additional_info(self, doc_id: int, name: str, student_ID: str) -> None:
+    def store_additional_info(self, doc_id: int, name: str, student_id: str) -> None:
         with open(self.files.more_infos, "a", newline="") as csvfile:
             writerow = csv.writer(csvfile).writerow
-            writerow([str(doc_id), name, student_ID])
+            writerow([str(doc_id), name, student_id])
 
     def store_skipped_pic(self, skipped_pic: Path) -> None:
         with open(self.files.skipped, "a", newline="", encoding="utf8") as file:
@@ -296,7 +296,7 @@ class DataHandler:
     def get_checkboxes(
         self, doc_id: DocumentId, page: Page
     ) -> dict[tuple[OriginalQuestionNumber, OriginalAnswerNumber], ndarray]:
-        """For the document `doc_id`, get all the arrays representing the checkbox' pictures."""
+        """For the document `doc_id`, get all the arrays representing the checkbox pictures."""
         checkboxes: dict[tuple[OriginalQuestionNumber, OriginalAnswerNumber], ndarray] = {}
         positions = self.data[doc_id].pages[page].positions
         matrix = self.get_matrix(doc_id, page)
@@ -305,19 +305,31 @@ class DataHandler:
             checkboxes[(q, a)] = matrix[i : i + cell_size, j : j + cell_size]
         return checkboxes
 
-    def _export_doc_checkboxes(self, doc_id: DocumentId, path: Path = None) -> None:
+    def _export_doc_checkboxes(self, doc_id: DocumentId, path: Path = None, compact=False) -> None:
         """Save the checkboxes of the document `doc_id` as .webm images in a directory."""
         if path is None:
             path = self.dirs.checkboxes
         (doc_dir := path / str(doc_id)).mkdir(exist_ok=True)
         for page, pic_data in self.data[doc_id].pages.items():
+            matrices: list[ndarray] = []
+            index_lines: list[str] = []
             for (q, a), matrix in self.get_checkboxes(doc_id, page).items():
                 detection_status = pic_data.detection_status[(q, a)]
                 revision_status = pic_data.revision_status.get((q, a))
-                webm = doc_dir / f"{q}-{a}-{detection_status}-{revision_status}.webm"
-                save_webp(matrix, webm)
+                info = f"{q}-{a}-{detection_status.value}-{'' if revision_status is None else revision_status.value}"
 
-    def export_checkboxes(self, export_all=False, path: Path = None) -> None:
+                if compact:
+                    matrices.append(matrix)
+                    index_lines.append(info)
+                else:
+                    webp = doc_dir / f"{info}.webp"
+                    save_webp(matrix, webp)
+            if compact and matrices:
+                save_webp(concatenate(matrices), doc_dir / f"{page}.webp")
+                with open(doc_dir / f"{page}.index", "w") as f:
+                    f.write("\n".join(sorted(index_lines)) + "\n")
+
+    def export_checkboxes(self, export_all=False, path: Path = None, compact=False) -> None:
         """Save checkboxes as .webm images in a directory.
 
         By default, only export the checkboxes of the documents whose at least one page
@@ -336,7 +348,7 @@ class DataHandler:
             )
         }
         for doc_id in to_export:
-            self._export_doc_checkboxes(doc_id, path=path)
+            self._export_doc_checkboxes(doc_id, path=path, compact=compact)
 
     def display_analyze_results(self, doc_id: DocumentId) -> None:
         """Print the result of the checkbox analysis for document `doc_id` in terminal."""

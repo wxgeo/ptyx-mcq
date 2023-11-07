@@ -12,6 +12,8 @@ from argparse import ArgumentParser
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
+from PIL import Image
+from numpy import array, ndarray, concatenate
 import argcomplete
 from argcomplete import FilesCompleter
 
@@ -78,23 +80,44 @@ def scan_picture(
     print_success(f"Picture '{picture}' scanned.")
 
 
-def export_checkboxes(path: Path | str = "."):
+def export_checkboxes(path: Path | str = ".", debug=False):
     from .scan.data_handler import DataHandler
 
-    path = Path(path)
+    path = Path(path).expanduser().resolve()
     now = datetime.datetime.now()
     date = f"{now.year}-{now.month}-{now.day}-{now.hour}-{now.minute}-{now.second}"
     tar_name = f"checkboxes-{date}.tar"
+    tmp_dir: str | Path
     with TemporaryDirectory() as tmp_dir:
+        if debug:
+            tmp_dir = Path("/tmp/mcq-dev-export_checkboxes")
+            tmp_dir.mkdir(exist_ok=True)
         handler = DataHandler(path)
         print("\nLoad data...")
         handler.reload()
         print("\nExporting pictures...")
-        handler.export_checkboxes(export_all=True, path=Path(tmp_dir))
+        handler.export_checkboxes(export_all=True, path=Path(tmp_dir), compact=True)
         print("\nCreating archive...")
         with tarfile.open(path / tar_name, "w") as tar:
             tar.add(tmp_dir, arcname=date)
+        # compact_checkboxes(Path(tmp_dir), path / (date + ".webp"))
     print_success(f"File {tar_name} created.")
+
+
+def load_webp(webp: Path) -> ndarray:
+    return array(Image.open(str(webp)).convert("L")) / 255
+
+
+# def compact_checkboxes(directory: Path, final_file: Path):
+#     from ptyx_mcq.scan.data_handler import save_webp
+#
+#     names: list[str] = []
+#     matrices = []
+#     print(f"{directory=}")
+#     for webp in directory.glob("1/1-*.webp"):
+#         names.append(webp.parent.stem + "-" + webp.stem)
+#         matrices.append(load_webp(webp))
+#     save_webp(concatenate(matrices), final_file)
 
 
 if __name__ == "__main__":

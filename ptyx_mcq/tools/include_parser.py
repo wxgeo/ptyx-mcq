@@ -46,7 +46,9 @@ import re
 from dataclasses import dataclass
 from itertools import chain
 from pathlib import Path
+
 from typing import Self, Final
+
 
 from ptyx_mcq.tools.io_tools import print_warning, print_error
 

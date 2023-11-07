@@ -128,7 +128,7 @@ class ConflictSolver:
         assert process is not None
         process.terminate()
         # Keep track of manually entered information (will be useful if the scan has to be run again later !)
-        self.data_storage.store_additional_info(doc_id=doc_id, name=name, student_ID=student_ID)
+        self.data_storage.store_additional_info(doc_id=doc_id, name=name, student_id=student_ID)
         return StudentName(name), StudentId(student_ID)
 
     def review_answers(self):
