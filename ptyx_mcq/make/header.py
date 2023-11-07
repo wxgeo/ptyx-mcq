@@ -370,6 +370,8 @@ def packages_and_macros() -> tuple[str, str]:
     \usepackage{everypage}
     \usepackage{tabularx}
     \usepackage{amsmath}
+    \usepackage{amssymb}
+    \usepackage{colortbl}
     \usetikzlibrary{calc}
     \usetikzlibrary{math}
     \makeatletter
