@@ -92,6 +92,7 @@ def extend_compiler() -> "CompilerExtension":
         "ANSWERS_LIST": (2, 0, None),
         # Other tags
         "QCM_HEADER": (2, 0, None),
+        "QCM_FOOTER": (0, 0, None),
         "QUESTION_CONFIG": (1, 0, None),
         "DEBUG_MCQ": (0, 0, None),
         # Deprecated tags

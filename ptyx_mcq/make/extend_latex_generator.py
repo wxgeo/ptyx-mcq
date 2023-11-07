@@ -609,6 +609,11 @@ class MCQLatexGenerator(LatexGenerator):
                 raise RuntimeError(f"Invalid format in configuration: {line!r}.")
         return config
 
+    def _parse_QCM_FOOTER_tag(self, node: Node) -> None:
+        if not self.context.get("MCQ_REMOVE_HEADER"):
+            self.write("\n\\cleardoublepage")
+        self.write("\n\\end{document}")
+
     def _parse_QCM_HEADER_tag(self, node: Node) -> None:
         """Parse HEADER.
 
@@ -626,13 +631,16 @@ class MCQLatexGenerator(LatexGenerator):
         # Custom lines to include at the end of the LaTeX preamble.
         ===========================
         """
+
         sty = ""
         raw_latex = ""
         #    if self.WITH_ANSWERS:
         #        self.context['format_ask'] = (lambda s: '')
 
         check_id_or_name = self.mcq_cache["check_id_or_name"]
-        if check_id_or_name is None:
+        if self.context.get("MCQ_REMOVE_HEADER"):
+            check_id_or_name = ""
+        elif check_id_or_name is None:
             code = ""
 
             config = self._extract_config_from_header(node.arg(0))
@@ -711,6 +719,9 @@ class MCQLatexGenerator(LatexGenerator):
         # unique ID.
         n = self.NUM
         calibration = "MCQ__SCORE_FOR_THIS_STUDENT" not in self.context
-        barcode = ID_band(doc_id=n, calibration=calibration)
+        if self.context.get("MCQ_REMOVE_HEADER"):
+            barcode = "\n\\newcommand{\\CustomHeader}{}\n"
+        else:
+            barcode = ID_band(doc_id=n, calibration=calibration)
 
         self.write("\n".join([header, barcode, check_id_or_name]))

@@ -103,7 +103,7 @@ def generate_ptyx_code(text: str, additional_header_lines: Iterable[str] = ()) -
             # XXX: This must appear in doc.
 
     previous_line = None
-    before_QCM = True
+    before_mcq = True
     is_header = False
     is_header_raw_code = False
     header = ["#QCM_HEADER{"]
@@ -133,9 +133,9 @@ def generate_ptyx_code(text: str, additional_header_lines: Iterable[str] = ()) -
             print("Parsing MCQ...\n")
             print("STRUCTURE:\n")
             begin("QCM")
-            before_QCM = False
+            before_mcq = False
 
-        elif before_QCM:
+        elif before_mcq:
             if n >= 3 and all(c == "=" for c in line):  # ===
                 # Enter (or leave) header section.
                 is_header = not is_header
@@ -246,6 +246,5 @@ def generate_ptyx_code(text: str, additional_header_lines: Iterable[str] = ()) -
 
         previous_line = line
 
-    code.append(r"\cleardoublepage")
-    code.append(r"\end{document}")
+    code.append("#QCM_FOOTER")
     return "\n".join(code)
