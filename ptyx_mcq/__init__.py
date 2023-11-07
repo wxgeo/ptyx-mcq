@@ -60,6 +60,7 @@ One may include some PTYX code of course.
 
     """
 import re
+import sys
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -160,6 +161,7 @@ def main(text: str, compiler: "Compiler") -> str:
             f"Hint: command `mcq update-include {getattr(compiler.file_path, 'name', 'FILENAME')}` "
             "may fix it."
         )
+        sys.exit(1)
     additional_header_lines = autodetect_smallgraphlib(text)
 
     # Call extended_python extension.
