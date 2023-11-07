@@ -369,6 +369,7 @@ def packages_and_macros() -> tuple[str, str]:
     \usepackage{zref-lastpage}
     \usepackage{everypage}
     \usepackage{tabularx}
+    \usepackage{amsmath}
     \usetikzlibrary{calc}
     \usetikzlibrary{math}
     \makeatletter
