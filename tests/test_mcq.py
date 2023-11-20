@@ -68,13 +68,18 @@ def test_MCQ_shuffling():
     c = load_ptyx_file("shuffle.ptyx")
     c.generate_syntax_tree()
     root = c.syntax_tree
+    print(root.display())
     assert isinstance(root, Node)
     assert root.name == "ROOT"
     assert repr(root) == f"<Node ROOT at {hex(id(root))}>"
     header = root.children[0]
     assert isinstance(header, Node)
     assert header.name == "QCM_HEADER"
-    mcq = root.children[-2]
+    footer = root.children[-1]
+    assert isinstance(footer, Node)
+    assert footer.name == "QCM_FOOTER"
+    assert isinstance(root.children[-2], str)
+    mcq = root.children[-3]
     assert isinstance(mcq, Node)
     assert mcq.name == "QCM"
     section = mcq.children[-1]

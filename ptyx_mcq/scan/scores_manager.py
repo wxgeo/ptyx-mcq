@@ -161,7 +161,7 @@ class ScoresManager:
 
         wb = Workbook()
         # grab the active worksheet
-        sheet: Worksheet = wb.active
+        sheet: Worksheet = wb.active  # type:ignore
         sheet.title = "Resume"
         self._write_scores(writerow=sheet.append)
         tab = Table(displayName="Table1", ref=f"A1:{get_column_letter(sheet.max_column)}{sheet.max_row}")

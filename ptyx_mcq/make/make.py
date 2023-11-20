@@ -82,7 +82,7 @@ def make_command(
         )
     else:
         # Compile and generate output files (tex or pdf)
-        output_name, nums = make_files(
+        all_info = make_files(
             ptyx_filename,
             correction=correction_only,
             compress=True,
@@ -97,13 +97,14 @@ def make_command(
 
         # Keep track of the seed used.
         seed_value = compiler.seed
-        seed_file_name = output_name.parent / ".seed"
-        with open(seed_file_name, "w") as seed_file:
+        with open(all_info.directory / ".seed", "w") as seed_file:
             seed_file.write(str(seed_value))
 
         if not correction_only:
-            _, nums2 = make_files(ptyx_filename, correction=True, _nums=nums, compress=True, quiet=quiet)
-            assert nums2 == nums, repr((nums, nums2))
+            corr_info = make_files(
+                ptyx_filename, correction=True, _nums=all_info.doc_ids, compress=True, quiet=quiet
+            )
+            assert corr_info.doc_ids == all_info.doc_ids, repr((all_info.doc_ids, corr_info.doc_ids))
 
 
 def parse_ptyx_file(path):

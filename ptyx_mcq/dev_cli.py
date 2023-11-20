@@ -13,7 +13,7 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 
 from PIL import Image
-from numpy import array, ndarray, concatenate
+from numpy import array, ndarray  # , concatenate
 import argcomplete
 from argcomplete import FilesCompleter
 
