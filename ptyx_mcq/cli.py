@@ -432,6 +432,7 @@ def update_config(path: Path) -> None:
         sep = len(cmd) * "-"
         cmd = f"{sep}\n{cmd}\n{sep}\n"
         print_error("Questions or answers changed.\n" "You must run a full compilation:\n" + cmd)
+        sys.exit(1)
 
     # Get back the positions of checkboxes from last full compilation.
     data.id_table_pos = config.id_table_pos

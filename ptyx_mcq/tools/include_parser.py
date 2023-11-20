@@ -448,6 +448,8 @@ def _split_around_mcq(
     - the lines inside the MCQ (the part between <<< and >>>).
     - the lines after the MCQ, including >>>
 
+    Lines inside the MCQ are parsed and converted to directives if they match directive format.
+
     Raise NoMCQSectionFound if <<< or >>> is not found.
     """
     if code is None:
