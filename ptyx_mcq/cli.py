@@ -411,12 +411,14 @@ def update_config(path: Path) -> None:
 
     Path `path` must be either a pTyx file, or a directory containing a single pTyX file.
     """
-    from ptyx.latex_generator import compiler
-    from .make.make import parse_ptyx_file
+    from ptyx.latex_generator import Compiler
 
     config_file = get_file_or_sysexit(path, extension=".ptyx.mcq.config.json")
+    print(f"Reading {config_file}...")
     config = Configuration.load(config_file)
-    parse_ptyx_file(path)
+    ptyx_filename = get_file_or_sysexit(path, extension=".ptyx")
+    print(f"Reading {ptyx_filename}...")
+    compiler = Compiler(path=ptyx_filename)
     # Compile ptyx file to LaTeX, to update information, but without compiling
     # LaTeX, which is slow (don't generate pdf files again).
     for doc_id in config.ordering:

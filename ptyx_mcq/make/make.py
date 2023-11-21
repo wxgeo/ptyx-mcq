@@ -1,12 +1,13 @@
 """
 Generate pdf file from raw mcq file.
 """
+from functools import partial
 from pathlib import Path
 from typing import Any
 
-from ptyx.compilation import make_files, make_file
+from ptyx.compilation import make_files
 from ptyx.compilation_options import CompilationOptions
-from ptyx.latex_generator import compiler, Compiler
+from ptyx.latex_generator import Compiler
 
 from ptyx_mcq.scan.document_data import Page
 from ptyx_mcq.tools.io_tools import get_file_or_sysexit
@@ -63,27 +64,30 @@ def make_command(
     display them all too.
     """
     assert isinstance(num, int)
-    ptyx_filename = parse_ptyx_file(path)
+
+    ptyx_filename = get_file_or_sysexit(path, extension=".ptyx")
+    print(f"Reading {ptyx_filename}...")
+    compiler = Compiler(path=ptyx_filename)
+
+    make = partial(make_files, compiler=compiler)
 
     if for_review:
         context: dict[str, Any] = {"MCQ_KEEP_ALL_VERSIONS": True, "MCQ_DISPLAY_QUESTION_TITLE": True}
         if not correction_only:
             # Generate a document including the different versions of all the questions.
-            make_file(
+            make(
                 (ptyx_filename.parent / ptyx_filename.stem).with_suffix(".all.pdf"),
-                context=context,
-                quiet=quiet,
+                options=CompilationOptions(context=context, quiet=quiet),
             )
         # Generate a document including the different versions of all the questions
         # with the correct answers checked.
-        make_file(
+        make(
             (ptyx_filename.parent / ptyx_filename.stem).with_suffix(".all-corr.pdf"),
-            context=context | {"PTYX_WITH_ANSWERS": True},
-            quiet=quiet,
+            options=CompilationOptions(context=context | {"PTYX_WITH_ANSWERS": True}, quiet=quiet),
         )
     else:
         # Compile and generate output files (tex or pdf)
-        all_info = make_files(
+        all_info = make(
             ptyx_filename,
             correction=correction_only,
             number_of_documents=num,
@@ -99,25 +103,10 @@ def make_command(
             seed_file.write(str(seed_value))
 
         if not correction_only:
-            corr_info = make_files(
+            corr_info = make(
                 ptyx_filename,
                 correction=True,
                 doc_ids_selection=all_info.doc_ids,
                 options=CompilationOptions(compress=True, quiet=quiet),
             )
             assert corr_info.doc_ids == all_info.doc_ids, repr((all_info.doc_ids, corr_info.doc_ids))
-
-
-def parse_ptyx_file(path):
-    ptyx_filename = get_file_or_sysexit(path, extension=".ptyx")
-    # Read pTyX file.
-    print(f"Reading {ptyx_filename}...")
-    compiler.reset()
-    compiler.read_file(ptyx_filename)
-    # Parse #INCLUDE tags, load extensions if needed, read seed.
-    compiler.preparse()
-    # Generate syntax tree.
-    # The syntax tree is generated only once, and will then be used
-    # for all the following compilations.
-    compiler.generate_syntax_tree()
-    return ptyx_filename

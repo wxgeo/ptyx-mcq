@@ -6,7 +6,6 @@ Test new, make and scan subcommands.
 
 import csv
 import shutil
-import tempfile
 from os import listdir
 from pathlib import Path
 
@@ -26,6 +25,7 @@ from ptyx_mcq.tools.config_parser import (
     StudentId,
     StudentName,
 )
+from ptyx_mcq.tools.io_tools import print_info
 
 DPI = 200
 PX_PER_CM = DPI / 2.54
@@ -140,146 +140,135 @@ def test_many_docs(tmp_path):
 
 def test_cli(tmp_path: Path) -> None:
     NUMBER_OF_DOCUMENTS = 2
-    # Set `USE_TMP_DIR` to `False` to make the debugging easier.
-    USE_TMP_DIR = False
-    # If `USE_TMP_DIR` is set to `False`, all the generated content can
-    # be retrieved in /tmp/mcq.
-    if not USE_TMP_DIR:
-        from shutil import rmtree
-
-        rmtree("/tmp/mcq", ignore_errors=True)
-        rmtree("/tmp/mcq-2", ignore_errors=True)
     # Make a temporary directory
-    with tempfile.TemporaryDirectory() as _parent:
-        print(10 * "=")
-        print(_parent)
-        print(10 * "=")
-        parent = Path(_parent) if USE_TMP_DIR else Path("/tmp")
-        write_students_id_to_csv(parent, STUDENTS)
+    print("----------------")
+    print_info(f"Working in: '{tmp_path}'")
+    print("----------------")
+    write_students_id_to_csv(tmp_path, STUDENTS)
 
-        path = parent / "mcq"
+    path = tmp_path / "mcq"
 
-        # ----------------
-        # Test `mcq new`
-        # ----------------
-        main(["new", str(path), "--template", "original"])
-        assert "new.ptyx" in listdir(path)
+    # ----------------
+    # Test `mcq new`
+    # ----------------
+    main(["new", str(path), "--template", "original"])
+    assert "new.ptyx" in listdir(path)
 
-        with open(path / "new.ptyx") as ptyxfile:
-            ptyxfile_content = ptyxfile.read()
-        with open(path / "new.ptyx", "w") as ptyxfile:
-            assert "\nid format" in ptyxfile_content
-            ptyxfile.write(ptyxfile_content.replace("\nid format", "\nids=../students.csv\nid format"))
+    with open(path / "new.ptyx") as ptyxfile:
+        ptyxfile_content = ptyxfile.read()
+    with open(path / "new.ptyx", "w") as ptyxfile:
+        assert "\nid format" in ptyxfile_content
+        ptyxfile.write(ptyxfile_content.replace("\nid format", "\nids=../students.csv\nid format"))
 
-        # ----------------
-        # Test `mcq make`
-        # ----------------
-        main(["make", str(path), "-n", str(NUMBER_OF_DOCUMENTS)])
-        assert "new.pdf" in listdir(path)
-        assert "new-corr.pdf" in listdir(path)
-        # TODO: assert "new.all.pdf" in listdir(path)
+    # ----------------
+    # Test `mcq make`
+    # ----------------
+    main(["make", str(path), "-n", str(NUMBER_OF_DOCUMENTS)])
+    assert "new.pdf" in listdir(path)
+    assert "new-corr.pdf" in listdir(path)
+    # TODO: assert "new.all.pdf" in listdir(path)
 
-        config = Configuration.load(path / "new.ptyx.mcq.config.json")
-        for student_id in STUDENTS:
-            assert student_id in config.students_ids, (repr(student_id), repr(config.students_ids))
-            assert config.students_ids[student_id] == STUDENTS[student_id]
+    config = Configuration.load(path / "new.ptyx.mcq.config.json")
+    for student_id in STUDENTS:
+        assert student_id in config.students_ids, (repr(student_id), repr(config.students_ids))
+        assert config.students_ids[student_id] == STUDENTS[student_id]
 
-        # -----------------------------------
-        # Test `mcq new PATH -i INCLUDE_PATH`
-        # -----------------------------------
-        path2 = parent / "mcq-2"
-        main(["new", str(path2), "-i", str(path / "questions"), "-t", "original"])
-        assert "new.ptyx" in listdir(path)
-        assert not (path2 / "questions").exists()
+    # -----------------------------------
+    # Test `mcq new PATH -i INCLUDE_PATH`
+    # -----------------------------------
+    path2 = tmp_path / "mcq-2"
+    main(["new", str(path2), "-i", str(path / "questions"), "-t", "original"])
+    assert "new.ptyx" in listdir(path)
+    assert not (path2 / "questions").exists()
 
-        # --------------------------------------
-        # Test `mcq make PATH --correction-only`
-        # --------------------------------------
+    # --------------------------------------
+    # Test `mcq make PATH --correction-only`
+    # --------------------------------------
 
-        main(["make", str(path2), "--correction-only"])
-        with open(path2 / ".compile/new/new-corr.tex", encoding="utf8") as f:
-            assert f.read().count(r"\checkBox") > 10  # TODO: give a precise number.
+    main(["make", str(path2), "--correction-only"])
+    with open(path2 / ".compile/new/new-corr.tex", encoding="utf8") as f:
+        assert f.read().count(r"\checkBox") > 10  # TODO: give a precise number.
 
-        # ----------------
-        # Test `mcq scan`
-        # ----------------
-        images = convert_from_path(path / "new.pdf", dpi=DPI, output_folder=path)
-        images = simulate_answer(images, config)
-        assert len(images) / 2 == min(NUMBER_OF_DOCUMENTS, len(STUDENTS))
-        scan_path = path / "scan"
-        scan_path.mkdir(exist_ok=True)
-        images[0].save(scan_path / "simulate-scan.pdf", save_all=True, append_images=images[1:])
-        main(["scan", str(path)])
+    # ----------------
+    # Test `mcq scan`
+    # ----------------
+    images = convert_from_path(path / "new.pdf", dpi=DPI, output_folder=path)
+    images = simulate_answer(images, config)
+    assert len(images) / 2 == min(NUMBER_OF_DOCUMENTS, len(STUDENTS))
+    scan_path = path / "scan"
+    scan_path.mkdir(exist_ok=True)
+    images[0].save(scan_path / "simulate-scan.pdf", save_all=True, append_images=images[1:])
+    main(["scan", str(path)])
 
-        # TODO : store scores outside of .scan folder, in a RESULTS folder !
-        students_scores: dict[StudentName, str] = read_students_scores(path)
-        for score in students_scores.values():
-            assert abs(float(score) - 4.0) < 1e-10, repr(score)  # Maximal score
-        assert set(students_scores) == set(STUDENTS.values()), repr(students_scores)
+    # TODO : store scores outside of .scan folder, in a RESULTS folder !
+    students_scores: dict[StudentName, str] = read_students_scores(path)
+    for score in students_scores.values():
+        assert abs(float(score) - 4.0) < 1e-10, repr(score)  # Maximal score
+    assert set(students_scores) == set(STUDENTS.values()), repr(students_scores)
 
-        assert (path / "new.scores.xlsx").exists()
+    assert (path / "new.scores.xlsx").exists()
 
-        # ------------------------
-        # Test `mcq update-config`
-        # ------------------------
-        STUDENTS[StudentId("12345678")] = StudentName(new_student_name := "Julien Durand")
-        csv_path = write_students_id_to_csv(parent, STUDENTS)
-        with open(csv_path) as f:
-            assert new_student_name in f.read()
-        # Invert correct and incorrect answers for testing update.
-        with open(path / "questions/question1.ex", encoding="utf8") as f:
-            file_content = f.read()
-        with open(path / "questions/question1.ex", "w", encoding="utf8") as f:
-            f.write(file_content.replace("+", "§").replace("-", "+").replace("§", "-"))
-        with open(path / "new.ptyx", encoding="utf8") as f:
-            content = f.read()
-        with open(path / "new.ptyx", "w", encoding="utf8") as f:
-            f.write(content.replace("# default score =", "default score ="))
+    # ------------------------
+    # Test `mcq update-config`
+    # ------------------------
+    STUDENTS[StudentId("12345678")] = StudentName(new_student_name := "Julien Durand")
+    csv_path = write_students_id_to_csv(tmp_path, STUDENTS)
+    with open(csv_path) as f:
+        assert new_student_name in f.read()
+    # Invert correct and incorrect answers for testing update.
+    with open(path / "questions/question1.ex", encoding="utf8") as f:
+        file_content = f.read()
+    with open(path / "questions/question1.ex", "w", encoding="utf8") as f:
+        f.write(file_content.replace("+", "§").replace("-", "+").replace("§", "-"))
+    with open(path / "new.ptyx", encoding="utf8") as f:
+        content = f.read()
+    with open(path / "new.ptyx", "w", encoding="utf8") as f:
+        f.write(content.replace("# default score =", "default score ="))
 
-        main(["update-config", str(path)])
-        config = Configuration.load(path / "new.ptyx.mcq.config.json")
-        assert new_student_name in config.students_ids.values(), repr(path / "new.ptyx.mcq.config.json")
-        main(["scan", str(path)])
-        old_students_scores = students_scores.copy()
-        students_scores = read_students_scores(path)
-        # Names are not updated yet, since they are stored in `.scandata` cache files.
-        # Updating names requires clearing cache
-        for student in students_scores:
-            if student != new_student_name:
-                assert float(students_scores[student]) < float(old_students_scores[student])
-            else:
-                # TODO: add configuration option for default value.
-                assert students_scores[student] == "ABI"
-        # Names are  Updating names requires clearing cache,
-        # through `--reset` option.
-        main(["scan", "--reset", str(path)])
-        students_scores = read_students_scores(path)
-        assert set(students_scores) == set(STUDENTS.values()), repr(students_scores)
+    main(["update-config", str(path)])
+    config = Configuration.load(path / "new.ptyx.mcq.config.json")
+    assert new_student_name in config.students_ids.values(), repr(path / "new.ptyx.mcq.config.json")
+    main(["scan", str(path)])
+    old_students_scores = students_scores.copy()
+    students_scores = read_students_scores(path)
+    # Names are not updated yet, since they are stored in `.scandata` cache files.
+    # Updating names requires clearing cache
+    for student in students_scores:
+        if student != new_student_name:
+            assert float(students_scores[student]) < float(old_students_scores[student])
+        else:
+            # TODO: add configuration option for default value.
+            assert students_scores[student] == "ABI"
+    # Names are  Updating names requires clearing cache,
+    # through `--reset` option.
+    main(["scan", "--reset", str(path)])
+    students_scores = read_students_scores(path)
+    assert set(students_scores) == set(STUDENTS.values()), repr(students_scores)
 
-        # ---------------------
-        # Test `mcq strategies`
-        # ---------------------
-        main(["strategies"])
+    # ---------------------
+    # Test `mcq strategies`
+    # ---------------------
+    main(["strategies"])
 
-        # ----------------
-        # Test `mcq clear`
-        # ----------------
-        paths_to_be_removed = [
-            ".scan",
-            "new.pdf",
-            "new.ptyx.mcq.config.json",
-        ]
-        paths_to_be_kept = [
-            "new.ptyx",
-            "scan/simulate-scan.pdf",
-        ]
-        for endpath in paths_to_be_removed + paths_to_be_kept:
-            assert (pth := path / endpath).exists(), pth
-        main(["clear", str(path)])
-        for endpath in paths_to_be_removed:
-            assert not (pth := path / endpath).exists(), pth
-        for endpath in paths_to_be_kept:
-            assert (pth := path / endpath).exists(), pth
+    # ----------------
+    # Test `mcq clear`
+    # ----------------
+    paths_to_be_removed = [
+        ".scan",
+        "new.pdf",
+        "new.ptyx.mcq.config.json",
+    ]
+    paths_to_be_kept = [
+        "new.ptyx",
+        "scan/simulate-scan.pdf",
+    ]
+    for endpath in paths_to_be_removed + paths_to_be_kept:
+        assert (pth := path / endpath).exists(), pth
+    main(["clear", str(path)])
+    for endpath in paths_to_be_removed:
+        assert not (pth := path / endpath).exists(), pth
+    for endpath in paths_to_be_kept:
+        assert (pth := path / endpath).exists(), pth
 
 
 @pytest.mark.xfail
