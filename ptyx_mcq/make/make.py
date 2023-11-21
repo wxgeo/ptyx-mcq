@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Any
 
 from ptyx.compilation import make_files, make_file
+from ptyx.compilation_options import CompilationOptions
 from ptyx.latex_generator import compiler, Compiler
 
 from ptyx_mcq.scan.document_data import Page
@@ -85,11 +86,8 @@ def make_command(
         all_info = make_files(
             ptyx_filename,
             correction=correction_only,
-            compress=True,
             number_of_documents=num,
-            fixed_number_of_pages=True,
-            quiet=quiet,
-            start=start,
+            options=CompilationOptions(same_number_of_pages=True, compress=True, start=start, quiet=quiet)
             # cpu_cores=1,
         )
         if not correction_only:
@@ -102,7 +100,10 @@ def make_command(
 
         if not correction_only:
             corr_info = make_files(
-                ptyx_filename, correction=True, _nums=all_info.doc_ids, compress=True, quiet=quiet
+                ptyx_filename,
+                correction=True,
+                doc_ids_selection=all_info.doc_ids,
+                options=CompilationOptions(compress=True, quiet=quiet),
             )
             assert corr_info.doc_ids == all_info.doc_ids, repr((all_info.doc_ids, corr_info.doc_ids))
 
