@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "ptyx-mcq"
-version = "25.0.0"
+version = "26.0.0"
 description = "pTyX-MCQ is a generator/scanner of MCQ, based on pTyX."
 authors = ["Nicolas Pourcelot <nicolas.pourcelot@gmail.com>"]
 repository = "https://github.com/wxgeo/ptyx"
