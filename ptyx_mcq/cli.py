@@ -325,21 +325,7 @@ def new(path: Path, include: Path = None, template="") -> None:
     Path `include` must be a directory whose all .ex files will be recursively included.
     """
     # Select the template to use.
-    # Default template:
-    template_path = Path(__file__).resolve().parent / "templates/original"
-    # Directory of the eventual user templates:
-    user_templates_path = _get_user_templates_path()
-    if template == "":
-        # Search for a default user-defined template.
-        user_default_template_path = user_templates_path / "default"
-        if user_default_template_path.is_dir():
-            template_path = user_default_template_path
-    elif template != "original":
-        template_path = user_templates_path / template
-    if not template_path.is_dir():
-        print_error(f"I can't use template {template!r}: '{template_path}' directory not found.")
-        sys.exit(1)
-
+    template_path = get_template_path(template)
     # Create the new MCQ.
     if path.exists():
         print_error(f"Path {path} already exists.")
@@ -376,8 +362,31 @@ def new(path: Path, include: Path = None, template="") -> None:
         print_success(f"A new MCQ was created at {path}.")
 
 
-def _get_user_templates_path() -> Path:
-    """Return the path of the directory containing all the users templates (if any)."""
+def get_template_path(template_name: str = "") -> Path:
+    """Return the path of the directory containing the corresponding template.
+
+    The template is first searched in user config directory.
+    If not found, a default template is applied.
+    """
+    # Default template:
+    template_path = Path(__file__).resolve().parent / "templates/original"
+    # Directory of the eventual user templates:
+    user_templates_path = _get_user_templates_path()
+    if template_name == "":
+        # Search for a default user-defined template.
+        user_default_template_path = user_templates_path / "default"
+        if user_default_template_path.is_dir():
+            template_path = user_default_template_path
+    elif template_name != "original":
+        template_path = user_templates_path / template_name
+    if not template_path.is_dir():
+        print_error(f"I can't use template {template_name!r}: '{template_path}' directory not found.")
+        sys.exit(1)
+    return template_path
+
+
+def _get_user_templates_path():
+    """Return the path of the directory where the user's templates are stored."""
     return PlatformDirs().user_config_path / "ptyx-mcq/templates"
 
 
