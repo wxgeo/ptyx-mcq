@@ -23,6 +23,24 @@ from ..tools.config_parser import (
     StudentId,
 )
 
+PACKAGES = [
+    "inputenc",
+    "fontenc:T1",
+    "ragged2e",
+    "geometry",
+    "pifont",
+    "textcomp",
+    "nopageno",
+    "tikz",
+    "everypage",
+    "tabularx",
+    "amsmath",
+    "amssymb",
+    "colortbl",
+]
+ZREF_PACKAGES = ["zref-user", "zref-abspos", "zref-abspage", "zref-lastpage"]
+TIKZ_LIB = ["calc", "math"]
+
 
 class IdentifiantError(RuntimeError):
     pass
@@ -171,7 +189,7 @@ def students_checkboxes(names: Sequence[str], _n_student=None) -> str:
     """Generate a list of all students, where student can check his name.
 
     `names` is a list of students names.
-    `_n_student` is used to prefilled the table (for debuging).
+    `_n_student` is used to prefill the table (for debugging).
     """
     content = [
         r"""
@@ -214,7 +232,7 @@ def students_checkboxes(names: Sequence[str], _n_student=None) -> str:
     return "\n".join(content)
 
 
-def student_id_table(ID_length: int, max_ndigits: int, digits: List[Tuple[str, ...]]) -> str:
+def student_id_table(id_length: int, max_ndigits: int, digits: List[Tuple[str, ...]]) -> str:
     """Generate a table where the student will write its identification number.
 
     The table have a row for each digit, where the student check corresponding
@@ -232,8 +250,8 @@ def student_id_table(ID_length: int, max_ndigits: int, digits: List[Tuple[str, .
     write("\n\n")
     write(r"\begin{tikzpicture}[baseline=-10pt,scale=.5]")
     write(r"\node[anchor=south west] at (-1, 0) {Numéro étudiant (INE)~:};")
-    write(r"\draw[] (-1, 0) node {\zsavepos{ID-table}} rectangle (0,%s);" % (-ID_length))
-    for j in range(ID_length):
+    write(r"\draw[] (-1, 0) node {\zsavepos{ID-table}} rectangle (0,%s);" % (-id_length))
+    for j in range(id_length):
         # One row for each digit of the student id number.
         for i, d in enumerate(sorted(digits[j])):
             write(
@@ -242,7 +260,7 @@ def student_id_table(ID_length: int, max_ndigits: int, digits: List[Tuple[str, .
             )
         for i in range(i, max_ndigits):
             write(rf"""\draw ({i},{-j}) rectangle ({i+1},{-j-1});""")
-    write(r"\draw[black,->,thick] (-0.5, -0.5) -- (-0.5,%s);" % (0.5 - ID_length))
+    write(r"\draw[black,->,thick] (-0.5, -0.5) -- (-0.5,%s);" % (0.5 - id_length))
     write(r"\end{tikzpicture}")
     write(
         r"\hfill\begin{tikzpicture}[baseline=10pt]"
@@ -327,86 +345,113 @@ def table_for_answers(config: Configuration, doc_id: Optional[DocumentId] = None
     return "\n".join(content)
 
 
-def packages_and_macros() -> tuple[str, str]:
+def _generate_package_includes(packages: list[str]) -> str:
+    """Generate the LaTeX code corresponding to the inclusion of the given LaTeX packages."""
+    lines: list[str] = []
+    for pack in packages:
+        if ":" in pack:
+            pack, options = pack.split(":", 1)
+            line = f"\\usepackage[{options}]{{{pack}}}"
+        else:
+            line = f"\\usepackage{{{pack}}}"
+        lines.append(line)
+    return "\n".join(lines)
+
+
+def _generate_tikz_lib_includes(libs: list[str]) -> str:
+    """Generate the LaTeX code corresponding to the inclusion of the given Tikz libraries."""
+    return "\n".join(f"\\usetikzlibrary{{{lib}}}" for lib in libs)
+
+
+def _checkbox_code(preview_mode: bool = False) -> str:
+    """Generate the LaTeX code corresponding to a checkbox.
+
+    If not in preview mode, the position of the box is stored.
+    """
+    if preview_mode:
+        return r"""
+\newcommand{\checkBox}[2]{%
+    \begin{tikzpicture}[baseline=-12pt,color=black, thick]
+        \draw[fill=#1] (0,0)
+            node {}
+            rectangle (.5,-.5);
+    \end{tikzpicture}
+}"""
+    else:
+        return r"""
+\newcommand{\checkBox}[2]{%
+    \begin{tikzpicture}[baseline=-12pt,color=black, thick]
+        \draw[fill=#1] (0,0)
+            node {\zsavepos{#2-ll}}
+            rectangle (.5,-.5);
+    \end{tikzpicture}%
+    \write\mywrite{#2: p\thepage, (%
+        \dimtomm{\zposx{#2-ll}sp},
+        \dimtomm{\zposy{#2-ll}sp})%
+    }%
+}
+\newwrite\mywrite
+\openout\mywrite=\jobname.pos\relax
+\AddEverypageHook{\CustomHeader}"""
+
+
+def packages_and_macros(preview_mode: bool = False) -> tuple[str, str]:
     """Generate LaTeX default header (loading LaTeX packages and defining some custom macros)."""
     # https://tex.stackexchange.com/questions/37297/how-to-get-element-position-in-latex
     paper_format = f"{PAPER_FORMAT.lower()}paper"
     # LaTeX header is in two part, so as user may insert some customization here.
-    return (
-        rf"""\documentclass[{paper_format},twoside,10pt]{{article}}
-    \PassOptionsToPackage{{utf8}}{{inputenc}}
-    \PassOptionsToPackage{{document}}{{ragged2e}}
-    \PassOptionsToPackage{{left={MARGIN_LEFT_IN_CM}cm,
-        right={MARGIN_RIGHT_IN_CM}cm,
-        top={MARGIN_TOP_IN_CM}cm,bottom={MARGIN_BOTTOM_IN_CM}cm}}{{geometry}}
-    \parindent=0cm
-    \newcommand*\graysquared[1]{{\tikz[baseline=(char.base)]{{
-        \node[fill=gray,shape=rectangle,draw,inner sep=2pt] (char) {{\color{{white}}\textbf{{#1}}}};}}}}
-    \newcommand*\whitesquared[1]{{\tikz[baseline=(char.base)]{{
-        \node[fill=white,shape=rectangle,draw,inner sep=2pt] (char) {{\color{{black}}\textbf{{#1}}}};}}}}
-    \newcommand*\ptyxMCQcircled[1]{{\tikz[baseline=(char.base)]{{
-        \node[shape=circle,fill=blue!20!white,draw,inner sep=2pt] (char) {{\textbf{{#1}}}};}}}}
-    \makeatletter
-    \newcommand{{\ptyxMCQsimfill}}{{%
-    \leavevmode \cleaders \hb@xt@ .50em{{\hss $\sim$\hss }}\hfill \kern \z@
-    }}
-    \makeatother
-    \newcounter{{answerNumber}}
-    \renewcommand{{\thesubsection}}{{\Alph{{subsection}}}}
-    """,
-        # <Custom packages will be loaded just here.>
-        r"""\usepackage{inputenc}
-        \usepackage[T1]{fontenc}
-    \usepackage{ragged2e}
-    \usepackage{geometry}
-    \usepackage{pifont}
-    \usepackage{textcomp}
-    \usepackage{nopageno}
-    \usepackage{tikz}
-    \usepackage{zref-user}
-    \usepackage{zref-abspos}
-    \usepackage{zref-abspage}
-    \usepackage{zref-lastpage}
-    \usepackage{everypage}
-    \usepackage{tabularx}
-    \usepackage{amsmath}
-    \usepackage{amssymb}
-    \usepackage{colortbl}
-    \usetikzlibrary{calc}
-    \usetikzlibrary{math}
-    \makeatletter
-    \newcommand\dimtomm[1]{%
-        \strip@pt\dimexpr 0.351459804\dimexpr#1\relax\relax%
-    }
-    \makeatother
-    \newcommand{\checkBox}[2]{%
-        \begin{tikzpicture}[baseline=-12pt,color=black, thick]
-            \draw[fill=#1] (0,0)
-                node {\zsavepos{#2-ll}}
-                rectangle (.5,-.5);
-        \end{tikzpicture}%
-        \write\mywrite{#2: p\thepage, (%
-            \dimtomm{\zposx{#2-ll}sp},
-            \dimtomm{\zposy{#2-ll}sp})%
-        }%
-    }
-    \newwrite\mywrite
-    \openout\mywrite=\jobname.pos\relax
-    \usepackage{enumitem} % To resume an enumeration.
-    \setenumerate[0]{label=\protect\ptyxMCQcircled{\arabic*}}
-    \AddEverypageHook{\CustomHeader}
 
-    \newlength{\ptyxMCQTabLength}
-    \newcommand{\ptyxMCQTab}[2]{%
-      \settowidth{\ptyxMCQTabLength}{#1{}#2}
-      \ifdim \ptyxMCQTabLength<\textwidth%
-      \begin{tabular}{l@{\,\,}l}#1&#2\end{tabular}%
-      \else%
-      \begin{tabularx}{\linewidth}{l@{\,\,}X}#1&#2\end{tabularx}%
-      \fi%
-    }
-    """,
+    first_part = rf"""\documentclass[{paper_format},twoside,10pt]{{article}}
+\PassOptionsToPackage{{utf8}}{{inputenc}}
+\PassOptionsToPackage{{document}}{{ragged2e}}
+\PassOptionsToPackage{{left={MARGIN_LEFT_IN_CM}cm,
+    right={MARGIN_RIGHT_IN_CM}cm,
+    top={MARGIN_TOP_IN_CM}cm,bottom={MARGIN_BOTTOM_IN_CM}cm}}{{geometry}}
+\parindent=0cm
+\newcommand*\graysquared[1]{{\tikz[baseline=(char.base)]{{
+    \node[fill=gray,shape=rectangle,draw,inner sep=2pt] (char) {{\color{{white}}\textbf{{#1}}}};}}}}
+\newcommand*\whitesquared[1]{{\tikz[baseline=(char.base)]{{
+    \node[fill=white,shape=rectangle,draw,inner sep=2pt] (char) {{\color{{black}}\textbf{{#1}}}};}}}}
+\newcommand*\ptyxMCQcircled[1]{{\tikz[baseline=(char.base)]{{
+    \node[shape=circle,fill=blue!20!white,draw,inner sep=2pt] (char) {{\textbf{{#1}}}};}}}}
+\makeatletter
+\newcommand{{\ptyxMCQsimfill}}{{%
+\leavevmode \cleaders \hb@xt@ .50em{{\hss $\sim$\hss }}\hfill \kern \z@
+}}
+\makeatother
+\newcounter{{answerNumber}}
+\renewcommand{{\thesubsection}}{{\Alph{{subsection}}}}
+    """
+    packages = PACKAGES.copy()
+    if preview_mode:
+        packages.append("preview: active, tightpage")
+    second_part = "\n".join(
+        [
+            _generate_package_includes(packages),
+            _generate_tikz_lib_includes(TIKZ_LIB),
+            "" if preview_mode else _generate_package_includes(ZREF_PACKAGES),
+            r"""
+\makeatletter
+\newcommand\dimtomm[1]{%
+    \strip@pt\dimexpr 0.351459804\dimexpr#1\relax\relax%
+}
+\makeatother""",
+            _checkbox_code(preview_mode),
+            r"""
+\usepackage{enumitem} % To resume an enumeration.
+\setenumerate[0]{label=\protect\ptyxMCQcircled{\arabic*}}
+\newlength{\ptyxMCQTabLength}
+\newcommand{\ptyxMCQTab}[2]{%
+  \settowidth{\ptyxMCQTabLength}{#1{}#2}
+  \ifdim \ptyxMCQTabLength<\textwidth%
+  \begin{tabular}{l@{\,\,}l}#1&#2\end{tabular}%
+  \else%
+  \begin{tabularx}{\linewidth}{l@{\,\,}X}#1&#2\end{tabularx}%
+  \fi%
+}""",
+        ]
     )
+    return first_part, second_part
 
 
 def answers_and_score(

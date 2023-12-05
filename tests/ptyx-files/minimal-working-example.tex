@@ -1,76 +1,77 @@
 \documentclass[a4paper,twoside,10pt]{article}
-    \PassOptionsToPackage{utf8}{inputenc}
-    \PassOptionsToPackage{document}{ragged2e}
-    \PassOptionsToPackage{left=1.5cm,
-        right=1.5cm,
-        top=2.5cm,bottom=2cm}{geometry}
-    \parindent=0cm
-    \newcommand*\graysquared[1]{\tikz[baseline=(char.base)]{
-        \node[fill=gray,shape=rectangle,draw,inner sep=2pt] (char) {\color{white}\textbf{#1}};}}
-    \newcommand*\whitesquared[1]{\tikz[baseline=(char.base)]{
-        \node[fill=white,shape=rectangle,draw,inner sep=2pt] (char) {\color{black}\textbf{#1}};}}
-    \newcommand*\ptyxMCQcircled[1]{\tikz[baseline=(char.base)]{
-        \node[shape=circle,fill=blue!20!white,draw,inner sep=2pt] (char) {\textbf{#1}};}}
-    \makeatletter
-    \newcommand{\ptyxMCQsimfill}{%
-    \leavevmode \cleaders \hb@xt@ .50em{\hss $\sim$\hss }\hfill \kern \z@
-    }
-    \makeatother
-    \newcounter{answerNumber}
-    \renewcommand{\thesubsection}{\Alph{subsection}}
+\PassOptionsToPackage{utf8}{inputenc}
+\PassOptionsToPackage{document}{ragged2e}
+\PassOptionsToPackage{left=1.5cm,
+    right=1.5cm,
+    top=2.5cm,bottom=2cm}{geometry}
+\parindent=0cm
+\newcommand*\graysquared[1]{\tikz[baseline=(char.base)]{
+    \node[fill=gray,shape=rectangle,draw,inner sep=2pt] (char) {\color{white}\textbf{#1}};}}
+\newcommand*\whitesquared[1]{\tikz[baseline=(char.base)]{
+    \node[fill=white,shape=rectangle,draw,inner sep=2pt] (char) {\color{black}\textbf{#1}};}}
+\newcommand*\ptyxMCQcircled[1]{\tikz[baseline=(char.base)]{
+    \node[shape=circle,fill=blue!20!white,draw,inner sep=2pt] (char) {\textbf{#1}};}}
+\makeatletter
+\newcommand{\ptyxMCQsimfill}{%
+\leavevmode \cleaders \hb@xt@ .50em{\hss $\sim$\hss }\hfill \kern \z@
+}
+\makeatother
+\newcounter{answerNumber}
+\renewcommand{\thesubsection}{\Alph{subsection}}
     
-\usepackage{}
-\usepackage{inputenc}
-        \usepackage[T1]{fontenc}
-    \usepackage{ragged2e}
-    \usepackage{geometry}
-    \usepackage{pifont}
-    \usepackage{textcomp}
-    \usepackage{nopageno}
-    \usepackage{tikz}
-    \usepackage{zref-user}
-    \usepackage{zref-abspos}
-    \usepackage{zref-abspage}
-    \usepackage{zref-lastpage}
-    \usepackage{everypage}
-    \usepackage{tabularx}
-    \usepackage{amsmath}
-    \usepackage{amssymb}
-    \usepackage{colortbl}
-    \usetikzlibrary{calc}
-    \usetikzlibrary{math}
-    \makeatletter
-    \newcommand\dimtomm[1]{%
-        \strip@pt\dimexpr 0.351459804\dimexpr#1\relax\relax%
-    }
-    \makeatother
-    \newcommand{\checkBox}[2]{%
-        \begin{tikzpicture}[baseline=-12pt,color=black, thick]
-            \draw[fill=#1] (0,0)
-                node {\zsavepos{#2-ll}}
-                rectangle (.5,-.5);
-        \end{tikzpicture}%
-        \write\mywrite{#2: p\thepage, (%
-            \dimtomm{\zposx{#2-ll}sp},
-            \dimtomm{\zposy{#2-ll}sp})%
-        }%
-    }
-    \newwrite\mywrite
-    \openout\mywrite=\jobname.pos\relax
-    \usepackage{enumitem} % To resume an enumeration.
-    \setenumerate[0]{label=\protect\ptyxMCQcircled{\arabic*}}
-    \AddEverypageHook{\CustomHeader}
 
-    \newlength{\ptyxMCQTabLength}
-    \newcommand{\ptyxMCQTab}[2]{%
-      \settowidth{\ptyxMCQTabLength}{#1{}#2}
-      \ifdim \ptyxMCQTabLength<\textwidth%
-      \begin{tabular}{l@{\,\,}l}#1&#2\end{tabular}%
-      \else%
-      \begin{tabularx}{\linewidth}{l@{\,\,}X}#1&#2\end{tabularx}%
-      \fi%
-    }
-    
+\usepackage{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{ragged2e}
+\usepackage{geometry}
+\usepackage{pifont}
+\usepackage{textcomp}
+\usepackage{nopageno}
+\usepackage{tikz}
+\usepackage{everypage}
+\usepackage{tabularx}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{colortbl}
+\usetikzlibrary{calc}
+\usetikzlibrary{math}
+\usepackage{zref-user}
+\usepackage{zref-abspos}
+\usepackage{zref-abspage}
+\usepackage{zref-lastpage}
+
+\makeatletter
+\newcommand\dimtomm[1]{%
+    \strip@pt\dimexpr 0.351459804\dimexpr#1\relax\relax%
+}
+\makeatother
+
+\newcommand{\checkBox}[2]{%
+    \begin{tikzpicture}[baseline=-12pt,color=black, thick]
+        \draw[fill=#1] (0,0)
+            node {\zsavepos{#2-ll}}
+            rectangle (.5,-.5);
+    \end{tikzpicture}%
+    \write\mywrite{#2: p\thepage, (%
+        \dimtomm{\zposx{#2-ll}sp},
+        \dimtomm{\zposy{#2-ll}sp})%
+    }%
+}
+\newwrite\mywrite
+\openout\mywrite=\jobname.pos\relax
+\AddEverypageHook{\CustomHeader}
+
+\usepackage{enumitem} % To resume an enumeration.
+\setenumerate[0]{label=\protect\ptyxMCQcircled{\arabic*}}
+\newlength{\ptyxMCQTabLength}
+\newcommand{\ptyxMCQTab}[2]{%
+  \settowidth{\ptyxMCQTabLength}{#1{}#2}
+  \ifdim \ptyxMCQTabLength<\textwidth%
+  \begin{tabular}{l@{\,\,}l}#1&#2\end{tabular}%
+  \else%
+  \begin{tabularx}{\linewidth}{l@{\,\,}X}#1&#2\end{tabularx}%
+  \fi%
+}
 
 
 \begin{document}

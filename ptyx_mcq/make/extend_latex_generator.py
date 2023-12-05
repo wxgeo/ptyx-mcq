@@ -563,15 +563,16 @@ class MCQLatexGenerator(LatexGenerator):
         """Parse LaTeX sty packages list in header."""
         packages: list[str] = []
         for package in sty_packages.split(","):
-            package = package.strip()
-            # noinspection RegExpRedundantEscape
-            m = re.match(r"\s*\[(?P<options>(?:\w|\s)+)\](?P<package>.+)", package)
-            if m is None:
-                packages.append(f"{{{package}}}")
-            else:
-                options = m.group("options").strip()
-                package = m.group("package").strip()
-                packages.append(f"[{options}]{{{package}}}")
+            if package:
+                package = package.strip()
+                # noinspection RegExpRedundantEscape
+                m = re.match(r"\s*\[(?P<options>(?:\w|\s)+)\](?P<package>.+)", package)
+                if m is None:
+                    packages.append(f"{{{package}}}")
+                else:
+                    options = m.group("options").strip()
+                    package = m.group("package").strip()
+                    packages.append(f"[{options}]{{{package}}}")
         return "\n".join(r"\usepackage" + package for package in packages)
 
     @staticmethod
@@ -612,6 +613,8 @@ class MCQLatexGenerator(LatexGenerator):
     def _parse_QCM_FOOTER_tag(self, node: Node) -> None:
         if not self.context.get("MCQ_REMOVE_HEADER"):
             self.write("\n\\cleardoublepage")
+        if self.context.get("MCQ_PREVIEW_MODE"):
+            self.write("\\end{preview}")
         self.write("\n\\end{document}")
 
     def _parse_QCM_HEADER_tag(self, node: Node) -> None:
@@ -710,7 +713,7 @@ class MCQLatexGenerator(LatexGenerator):
 
         header = self.mcq_cache["header"]
         if header is None:
-            header1, header2 = packages_and_macros()
+            header1, header2 = packages_and_macros(preview_mode=self.context.get("MCQ_PREVIEW_MODE", False))
             header = "\n".join([header1, self._parse_sty_list(sty), header2, raw_latex, r"\begin{document}"])
             self.mcq_cache["header"] = header
 
@@ -719,9 +722,13 @@ class MCQLatexGenerator(LatexGenerator):
         # unique ID.
         n = self.NUM
         calibration = "MCQ__SCORE_FOR_THIS_STUDENT" not in self.context
+        top: list[str] = []
+        if self.context.get("MCQ_PREVIEW_MODE"):
+            top.append("\\renewcommand{\\PreviewBorder}{1.5cm}")
+            top.append("\\begin{preview}")
         if self.context.get("MCQ_REMOVE_HEADER"):
-            barcode = "\n\\newcommand{\\CustomHeader}{}\n"
+            top.append("\n\\newcommand{\\CustomHeader}{}\n")
         else:
-            barcode = ID_band(doc_id=n, calibration=calibration)
+            top.append(ID_band(doc_id=n, calibration=calibration))
 
-        self.write("\n".join([header, barcode, check_id_or_name]))
+        self.write("\n".join([header, "\n".join(top), check_id_or_name]))
