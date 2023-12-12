@@ -478,6 +478,7 @@ def update_include(path: Path, force=False, clean=False) -> None:
     print_success("The list of included files was successfully updated.")
 
 
+
 def strategies() -> None:
     """Display all evaluation modes with a description."""
     from .scan.evaluation_strategies import EvaluationStrategies

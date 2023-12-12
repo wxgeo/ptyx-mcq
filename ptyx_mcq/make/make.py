@@ -91,7 +91,9 @@ def make_command(
             ptyx_filename,
             correction=correction_only,
             number_of_documents=num,
-            options=CompilationOptions(same_number_of_pages=True, compress=True, start=start, quiet=quiet)
+            options=CompilationOptions(
+                same_number_of_pages_compact=True, compress=True, start=start, quiet=quiet
+            )
             # cpu_cores=1,
         )
         if not correction_only:

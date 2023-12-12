@@ -47,8 +47,7 @@ from dataclasses import dataclass
 from itertools import chain
 from pathlib import Path
 
-from typing import Self, Final
-
+from typing import Self, Final, Iterable
 
 from ptyx_mcq.tools.io_tools import print_warning, print_error
 
@@ -95,10 +94,10 @@ class Directive:
 
 
 class AddPath(Directive):
+    """A directive corresponding to a path to add (one or several files)."""
+
     def get_all_files(self, directory: Path, error_if_none=False) -> list[Path]:
-        """
-        Return the list of all the matching files.
-        """
+        """Return the list of all the matching files."""
         path = self.path.expanduser()
         if path.is_absolute():
             if path.is_file():
@@ -123,6 +122,10 @@ class AddPath(Directive):
 
 
 class ChangeDirectory(Directive):
+    """A directive to change current directory.
+
+    Following `AddPath` directives will use this directory by default."""
+
     def get_directory(self, root: Path) -> Path:
         """
         Resolve directory path, expanding user and returning an absolute path.
@@ -246,6 +249,14 @@ def resolve_includes_from_file(ptyx_file: Path) -> str:
     return resolve_includes(ptyx_file.read_text(), ptyx_file.parent)
 
 
+def add_directories(ptyx_file: Path, directories: Iterable[Path]) -> None:
+    """Add new `ChangeDirectory` directives."""
+    before, mcq, after = _split_around_mcq(ptyx_file=ptyx_file)
+    mcq.extend(ChangeDirectory(path) for path in directories)
+    mcq = [str(line) for line in mcq]
+    ptyx_file.write_text("\n".join(before + mcq + after))
+
+
 def update_file(ptyxfile_path: Path, force=False, clean=False) -> None:
     """
     Track all the `.ex` files and update pTyX file to include all the `.ex` files found.
@@ -267,7 +278,7 @@ def update_file(ptyxfile_path: Path, force=False, clean=False) -> None:
         else:
             print_error(msg := f"Update of {ptyxfile_path} does not seem safe.")
             raise UnsafeUpdate(msg)
-    ptyxfile_path.write_text(updated_content)
+    ptyxfile_path.write_text(updated_content, encoding="utf8")
 
 
 class IncludesUpdater:

@@ -41,7 +41,7 @@ from ptyx_mcq.tools.config_parser import (
     StudentId,
     StudentName,
 )
-
+from ptyx_mcq.tools.io_tools import print_warning
 from .header import (
     packages_and_macros,
     ID_band,
@@ -51,7 +51,6 @@ from .header import (
     students_checkboxes,
     IdentifiantError,
 )
-from ..tools.io_tools import print_warning
 
 
 SCORE_CONFIG_KEYS = {
