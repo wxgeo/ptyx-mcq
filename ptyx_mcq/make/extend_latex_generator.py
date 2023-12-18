@@ -301,7 +301,7 @@ class MCQLatexGenerator(LatexGenerator):
                 self.write(f".v{self.mcq_current_state.version_number}")
             self.write("--")
             self.write(name, verbatim=True)
-            self.write("}")
+            self.write("}\\par")
 
     def _parse_NEW_QUESTION_tag(self, node: Node) -> None:
         self.mcq_current_state.question_number += 1
