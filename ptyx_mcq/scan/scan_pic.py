@@ -45,7 +45,7 @@ CornersPositions = dict[str, Pixel]
 # class PicData(TypedDict):
 #     pages: dict
 #     name: str
-#     student_ID: str
+#     student_id: str
 #     answered: dict
 #     score: int
 #     score_per_question: dict
@@ -645,7 +645,7 @@ def read_student_id_and_name(
     f_cell_size: float,
     viewer: ArrayViewer,
 ) -> tuple[StudentId, StudentName]:
-    student_ID = ""
+    student_id = ""
     student_name = ""
     cell_size = round(f_cell_size)
     half_cell = round(f_cell_size / 2)
@@ -670,7 +670,7 @@ def read_student_id_and_name(
         digits_for_nth_character = sorted(digits[n])
         if all_ID_are_of_the_same_length and len(digits_for_nth_character) == 1:
             # No need to read, there is no choice for this character !
-            student_ID += digits_for_nth_character.pop()
+            student_id += digits_for_nth_character.pop()
             continue
         for k, d in enumerate(digits_for_nth_character):
             # Left ot the cell.
@@ -707,15 +707,15 @@ def read_student_id_and_name(
             if len(black_cells) == 1 or black_cells[0][0] - black_cells[1][0] > 0.2:
                 # The blackest one is chosen:
                 digit = black_cells[0][1]
-                student_ID += digit
-    if student_ID in students_ids:
-        print("Student ID:", student_ID)
-        student_name = students_ids[StudentId(student_ID)]
+                student_id += digit
+    if student_id in students_ids:
+        print("Student ID:", student_id)
+        student_name = students_ids[StudentId(student_id)]
     else:
         print(f"ID list: {students_ids!r}")
-        print(f"Warning: invalid student id {student_ID!r} !")
+        print(f"Warning: invalid student id {student_id!r} !")
         # ~ color2debug(m)
-    return StudentId(student_ID), StudentName(student_name)
+    return StudentId(student_id), StudentName(student_name)
 
 
 def read_student_name(m: ndarray, students: list[StudentName], TOP: int, f_square_size: float) -> StudentName:
@@ -775,7 +775,7 @@ def scan_picture(
             {'ID': int,
             'page': int,
             'name': str, # student_name
-            'student_ID': str,
+            'student_id': str,
             # answers checked by the student for each question:
             'answered': dict[int, set[int]],
             # Position of each checkbox in the page:
@@ -861,7 +861,7 @@ def scan_picture(
     # ------------------------------------------------------------------
 
     student_name = StudentName("")
-    student_ID = StudentId("")
+    student_id = StudentId("")
 
     if page == 1:
         # Read student name directly
@@ -876,7 +876,7 @@ def scan_picture(
         elif students_ids:
             assert config.id_table_pos is not None
             assert config.id_format is not None
-            student_ID, student_name = read_student_id_and_name(
+            student_id, student_name = read_student_id_and_name(
                 m, students_ids, xy2ij(*config.id_table_pos), config.id_format, f_cell_size, viewer
             )
 
@@ -893,7 +893,7 @@ def scan_picture(
         doc_id=doc_id,  # ID of the test
         page=page,  # page number
         name=student_name,
-        student_ID=student_ID,
+        student_id=student_id,
         # answers checked by the student for each question:
         answered={},
         # Position of each checkbox in the page:

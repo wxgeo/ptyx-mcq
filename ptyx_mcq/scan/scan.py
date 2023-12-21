@@ -147,7 +147,7 @@ class MCQPictureParser:
 
         self._warn(f"WARNING: Page {p} of test #{doc_id} seen twice " f'(in "{firstpic}" and "{lastpic}") !')
         action = None
-        keys = ("name", "student_ID", "answered")
+        keys = ("name", "student_id", "answered")
         if all(pic_data[key] == self.data[doc_id].pages[p][key] for key in keys):  # type: ignore
             # Same information found on the two pages, just keep one version.
             action = "f"
@@ -192,7 +192,7 @@ class MCQPictureParser:
         info = [
             (
                 doc_data.name,
-                doc_data.student_ID,
+                doc_data.student_id,
                 doc_id,
                 doc_data.score,
                 [doc_data.pages[p].pic_path for p in doc_data.pages],
@@ -203,9 +203,9 @@ class MCQPictureParser:
         with open(info_path, "w", newline="") as csvfile:
             writerow = csv.writer(csvfile).writerow
             writerow(("Name", "Student ID", "Test ID", "Score", "Pictures"))
-            for name, student_ID, doc_id, score, paths in sorted(info):
+            for name, student_id, doc_id, score, paths in sorted(info):
                 paths_as_str = ", ".join(str(pth) for pth in paths)
-                writerow([name, student_ID, f"#{doc_id}", score, paths_as_str])
+                writerow([name, student_id, f"#{doc_id}", score, paths_as_str])
         print(f'Infos stored in "{info_path}"\n')
 
     def generate_amended_pdf(self) -> None:
@@ -332,13 +332,13 @@ class MCQPictureParser:
 
             # 2) Gather data
             #    ‾‾‾‾‾‾‾‾‾‾‾
-            name, student_ID = self.data_handler.more_infos.get(doc_id, (StudentName(""), StudentId("")))
+            name, student_id = self.data_handler.more_infos.get(doc_id, (StudentName(""), StudentId("")))
             doc_data: DocumentData = self.data.setdefault(
                 doc_id,
                 DocumentData(
                     pages={},
                     name=name,
-                    student_ID=student_ID,
+                    student_id=student_id,
                     score=0,
                     score_per_question={},
                 ),
@@ -355,7 +355,7 @@ class MCQPictureParser:
 
             if page == 1:
                 if doc_id in self.data_handler.more_infos:
-                    doc_data.name, doc_data.student_ID = self.data_handler.more_infos[doc_id]
+                    doc_data.name, doc_data.student_id = self.data_handler.more_infos[doc_id]
                 else:
                     doc_data.name = pic_data.name
 

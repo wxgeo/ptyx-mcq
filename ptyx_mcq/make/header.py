@@ -68,7 +68,7 @@ def _byte_as_codebar(byte: Union[int, str], n=0) -> str:
             }};"""
 
 
-def ID_band(doc_id: int, calibration=True) -> str:
+def id_band(doc_id: int, calibration=True) -> str:
     """Generate top banner of the page to be scanned later.
 
     `doc_id` is the integer which identifies each document.

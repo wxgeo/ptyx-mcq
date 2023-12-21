@@ -37,7 +37,7 @@ class ConflictSolver:
         # First, complete missing information with previous scan data, if any.
         for doc_id, (student_name, student_id) in self.data_storage.more_infos.items():
             self.data[doc_id].name = student_name
-            self.data[doc_id].student_ID = student_id
+            self.data[doc_id].student_id = student_id
         # Search for any missing information remaining.
         for doc_id, doc_data in self.data.items():
             if doc_data.name == "":
@@ -49,7 +49,7 @@ class ConflictSolver:
                 print_warning(f"No student name for document {doc_id}.")
                 student_name, student_id = self.enter_name_and_id(doc_id)
                 doc_data.name = student_name
-                doc_data.student_ID = student_id
+                doc_data.student_id = student_id
                 self.data_storage.more_infos[doc_id] = (student_name, student_id)
 
     def review_duplicate_names(self) -> None:
@@ -61,10 +61,10 @@ class ConflictSolver:
                 matching_doc_data = self.data[matching_doc_id]
                 print_warning(f"Same student name on documents {doc_id} and {matching_doc_id}: {name!r}.")
                 self.resolve_duplicate_name_conflict(name, doc_id, name_to_doc_id)
-                self.data_storage.more_infos[doc_id] = doc_data.name, doc_data.student_ID
+                self.data_storage.more_infos[doc_id] = doc_data.name, doc_data.student_id
                 self.data_storage.more_infos[matching_doc_id] = (
                     matching_doc_data.name,
-                    matching_doc_data.student_ID,
+                    matching_doc_data.student_id,
                 )
 
     def resolve_duplicate_name_conflict(
@@ -84,7 +84,7 @@ class ConflictSolver:
             # Update all infos.
             name_to_doc_id[name0] = doc_id0
             self.data[doc_id0].name = name0
-            self.data[doc_id0].student_ID = student_id0
+            self.data[doc_id0].student_id = student_id0
             # Ask for a new name for new test too.
             name = self.enter_name_and_id(doc_id)[0]
 
@@ -96,8 +96,8 @@ class ConflictSolver:
         array = self.data_storage.get_matrix(doc_id, Page(1))
         width = array.shape[1]
         viewer = ArrayViewer(array[0 : int(3 / 4 * width), :])
-        student_ids = self.data_storage.config.students_ids
-        student_ID = ""
+        id_name_dict = self.data_storage.config.students_ids
+        student_id = ""
         print("Name can not be read automatically.")
         print("Please read the name on the picture which will be displayed now.")
         input("-- Press enter --")
@@ -114,9 +114,9 @@ class ConflictSolver:
             name = input("Student name or ID:").strip()
             if not name:
                 name = default
-            elif student_ids:
-                if name in student_ids:
-                    name, student_ID = student_ids[StudentId(name)], name
+            elif id_name_dict:
+                if name in id_name_dict:
+                    name, student_id = id_name_dict[StudentId(name)], name
                 elif any((digit in name) for digit in string.digits):
                     # This is not a student name !
                     print("Unknown ID.")
@@ -128,8 +128,8 @@ class ConflictSolver:
         assert process is not None
         process.terminate()
         # Keep track of manually entered information (will be useful if the scan has to be run again later !)
-        self.data_storage.store_additional_info(doc_id=doc_id, name=name, student_id=student_ID)
-        return StudentName(name), StudentId(student_ID)
+        self.data_storage.store_additional_info(doc_id=doc_id, name=name, student_id=student_id)
+        return StudentName(name), StudentId(student_id)
 
     def review_answers(self):
         for doc_id, doc_data in self.data.items():

@@ -44,7 +44,7 @@ from ptyx_mcq.tools.config_parser import (
 from ptyx_mcq.tools.io_tools import print_warning
 from .header import (
     packages_and_macros,
-    ID_band,
+    id_band,
     extract_students_id_and_name_from_csv,
     extract_students_name_from_csv,
     student_id_table,
@@ -728,6 +728,6 @@ class MCQLatexGenerator(LatexGenerator):
         if self.context.get("MCQ_REMOVE_HEADER"):
             top.append("\n\\newcommand{\\CustomHeader}{}\n")
         else:
-            top.append(ID_band(doc_id=n, calibration=calibration))
+            top.append(id_band(doc_id=n, calibration=calibration))
 
         self.write("\n".join([header, "\n".join(top), check_id_or_name]))

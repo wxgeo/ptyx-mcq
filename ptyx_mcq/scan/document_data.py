@@ -47,7 +47,7 @@ class PicData:
     # page number:
     page: Page
     name: StudentName
-    student_ID: StudentId
+    student_id: StudentId
     # answers checked by the student for each question:
     answered: OriginalQuestionAnswersDict
     # Position of each checkbox in the page:
@@ -71,7 +71,7 @@ class PicData:
 class DocumentData:
     pages: dict[Page, PicData]
     name: StudentName
-    student_ID: StudentId
+    student_id: StudentId
     score: float
     score_per_question: dict[OriginalQuestionNumber, float]  # {question: score}
 
