@@ -253,8 +253,8 @@ def add_directories(ptyx_file: Path, directories: Iterable[Path]) -> None:
     """Add new `ChangeDirectory` directives."""
     before, mcq, after = _split_around_mcq(ptyx_file=ptyx_file)
     mcq.extend(ChangeDirectory(path) for path in directories)
-    mcq = [str(line) for line in mcq]
-    ptyx_file.write_text("\n".join(before + mcq + after))
+    lines = [str(line) for line in before + mcq + after]
+    ptyx_file.write_text("\n".join(lines))
 
 
 def update_file(ptyxfile_path: Path, force=False, clean=False) -> None:
