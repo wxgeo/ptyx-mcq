@@ -38,6 +38,7 @@ class ConflictSolver:
         for doc_id, (student_name, student_id) in self.data_storage.more_infos.items():
             self.data[doc_id].name = student_name
             self.data[doc_id].student_id = student_id
+        to_remove: list[DocumentId] = []
         # Search for any missing information remaining.
         for doc_id, doc_data in self.data.items():
             if doc_data.name == "":
@@ -48,11 +49,17 @@ class ConflictSolver:
                     print(f"Picture's path: '{first_page.pic_path}'.")
                 print_warning(f"No student name for document {doc_id}.")
                 student_name, student_id = self.enter_name_and_id(doc_id)
+                if student_name == "/":
+                    # Remove document.
+                    to_remove.append(doc_id)
                 doc_data.name = student_name
                 doc_data.student_id = student_id
                 self.data_storage.more_infos[doc_id] = (student_name, student_id)
+        for doc_id in to_remove:
+            self.data.pop(doc_id)
 
     def review_duplicate_names(self) -> None:
+        # TODO: rewrite this, and add tests. This does surely not work for now.
         name_to_doc_id: dict[StudentName, DocumentId] = {}
         for doc_id, doc_data in self.data.items():
             name = doc_data.name
@@ -111,7 +118,10 @@ class ConflictSolver:
             # (process.poll() is not None for dead processes.)
             if process is None or process.poll() is not None:
                 process = viewer.display(wait=False)
-            name = input("Student name or ID:").strip()
+            name = input("Student name or ID (or / to skip this document):").strip()
+            if name == "/":
+                # Skip this document
+                return StudentName("/"), StudentId("-1")
             if not name:
                 name = default
             elif id_name_dict:
