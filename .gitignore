@@ -25,3 +25,5 @@ build/
 dist/
 ptyx.egg-info/
 */__pycache__/*
+.mypy_cache/
+.pytest_cache
