@@ -59,7 +59,6 @@ class ConflictSolver:
             self.data.pop(doc_id)
 
     def review_duplicate_names(self) -> None:
-        # TODO: rewrite this, and add tests. This does surely not work for now.
         name_to_doc_id: dict[StudentName, DocumentId] = {}
         for doc_id, doc_data in self.data.items():
             name = doc_data.name
@@ -73,6 +72,7 @@ class ConflictSolver:
                     matching_doc_data.name,
                     matching_doc_data.student_id,
                 )
+            name_to_doc_id[name] = doc_id
 
     def resolve_duplicate_name_conflict(
         self, name: StudentName, doc_id: DocumentId, name_to_doc_id: dict[StudentName, DocumentId]
@@ -93,7 +93,7 @@ class ConflictSolver:
             self.data[doc_id0].name = name0
             self.data[doc_id0].student_id = student_id0
             # Ask for a new name for new test too.
-            name = self.enter_name_and_id(doc_id)[0]
+            name = self.enter_name_and_id(doc_id, default=name)[0]
 
         assert name, "Name should not be empty at this stage !"
         name_to_doc_id[name] = doc_id
