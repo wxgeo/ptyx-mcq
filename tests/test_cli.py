@@ -271,19 +271,28 @@ def test_cli(tmp_path: Path) -> None:
         assert (pth := path / endpath).exists(), pth
 
 
+@pytest.mark.slow
 def test_previous_scan_data_loading(tmp_path):
     """Test that previously entered data is correctly handled.
 
     In particular, data manually entered by user during previous scans
     is stored in `more_infos.csv`, and should take precedence over all other information.
     """
-    path = tmp_path / "caching_test"
-    shutil.copytree(TEST_DIR / "caching_test", path)
-    print(TEST_DIR / "caching_test")
-    assert (TEST_DIR / "caching_test" / ".scan/data/1.scandata").is_file()
-    print(path)
-    assert (path / ".scan/data/1.scandata").is_file()
-    main(["scan", str(path)])
+    copy = tmp_path / "caching_test"
+    origin = TEST_DIR / "caching_test"
+    shutil.copytree(TEST_DIR / "caching_test", copy)
+    assert (origin / ".scan/data/1.scandata").is_file()
+    assert (origin / ".scan/unpatched_scores.csv").is_file()
+    assert (copy / ".scan/data/1.scandata").is_file()
+    main(["scan", str(copy)])
+    assert (copy / ".scan/scores.csv").read_text(encoding="utf8") == (
+        origin / ".scan/patched_scores.csv"
+    ).read_text(encoding="utf8")
+    (copy / ".scan/cfg/more_infos.csv").unlink()
+    main(["scan", str(copy), "--reset"])
+    assert (copy / ".scan/scores.csv").read_text(encoding="utf8") == (
+        origin / ".scan/unpatched_scores.csv"
+    ).read_text(encoding="utf8")
 
 
 # if __name__ == "__main__":
