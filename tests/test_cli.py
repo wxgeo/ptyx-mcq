@@ -271,11 +271,18 @@ def test_cli(tmp_path: Path) -> None:
         assert (pth := path / endpath).exists(), pth
 
 
-@pytest.mark.xfail
-def test_previous_scan_data_loading():
-    shutil.rmtree("/tmp/ptyx-mcq/", ignore_errors=True)
-    path = "/tmp/ptyx-mcq/caching_test"
+def test_previous_scan_data_loading(tmp_path):
+    """Test that previously entered data is correctly handled.
+
+    In particular, data manually entered by user during previous scans
+    is stored in `more_infos.csv`, and should take precedence over all other information.
+    """
+    path = tmp_path / "caching_test"
     shutil.copytree(TEST_DIR / "caching_test", path)
+    print(TEST_DIR / "caching_test")
+    assert (TEST_DIR / "caching_test" / ".scan/data/1.scandata").is_file()
+    print(path)
+    assert (path / ".scan/data/1.scandata").is_file()
     main(["scan", str(path)])
 
 

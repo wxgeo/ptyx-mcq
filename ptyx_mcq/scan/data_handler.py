@@ -144,6 +144,7 @@ class DataHandler:
         self._load_skipped_pictures_list()
 
     def _load_data(self) -> None:
+        """Load cached data from previous scans, if any."""
         if self.dirs.data.is_dir():
             for filename in self.dirs.data.glob("*.scandata"):
                 print(f"Loading: {filename}")

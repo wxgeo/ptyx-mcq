@@ -33,7 +33,7 @@ class ConflictSolver:
         print("Searching for ambiguous answers...")
         self.review_answers()
 
-    def review_missing_names(self):
+    def review_missing_names(self) -> None:
         # First, complete missing information with previous scan data, if any.
         for doc_id, (student_name, student_id) in self.data_storage.more_infos.items():
             self.data[doc_id].name = student_name
