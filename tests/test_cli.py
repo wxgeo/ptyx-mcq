@@ -10,8 +10,10 @@ from os import listdir
 from pathlib import Path
 
 import pytest
-from PIL import ImageDraw
-from pdf2image import convert_from_path
+from PIL import Image, ImageDraw
+import fitz_new as fitz  # type: ignore
+
+# from pdf2image import convert_from_path
 
 from ptyx_mcq.cli import main
 from ptyx_mcq.parameters import CELL_SIZE_IN_CM
@@ -38,6 +40,15 @@ STUDENTS = {
 MAX_ID_LEN = max(len(student_id) for student_id in STUDENTS)
 
 TEST_DIR = Path(__file__).parent.resolve()
+
+
+def convert_from_path(pdf_path: Path, dpi: int) -> list[Image.Image]:
+    return [
+        Image.frombytes(
+            mode="RGB", size=((pix := page.get_pixmap(dpi=dpi)).width, pix.height), data=pix.samples
+        )
+        for page in fitz.Document(pdf_path).pages()
+    ]
 
 
 def xy2ij(x: float, y: float) -> tuple[int, int]:
@@ -192,7 +203,7 @@ def test_cli(tmp_path: Path) -> None:
     # ----------------
     # Test `mcq scan`
     # ----------------
-    images = convert_from_path(path / "new.pdf", dpi=DPI, output_folder=path)
+    images = convert_from_path(path / "new.pdf", dpi=DPI)
     images = simulate_answer(images, config)
     assert len(images) / 2 == min(NUMBER_OF_DOCUMENTS, len(STUDENTS))
     scan_path = path / "scan"
@@ -280,7 +291,7 @@ def test_previous_scan_data_loading(tmp_path):
     """
     copy = tmp_path / "caching_test"
     origin = TEST_DIR / "caching_test"
-    shutil.copytree(TEST_DIR / "caching_test", copy)
+    shutil.copytree(origin, copy)
     assert (origin / ".scan/data/1.scandata").is_file()
     assert (origin / ".scan/unpatched_scores.csv").is_file()
     assert (copy / ".scan/data/1.scandata").is_file()

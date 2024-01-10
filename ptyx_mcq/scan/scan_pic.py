@@ -1,3 +1,5 @@
+from dataclasses import dataclass, field
+from enum import Enum
 from math import degrees, atan, hypot
 from pathlib import Path
 
@@ -52,8 +54,31 @@ CornersPositions = dict[str, Pixel]
 #     pic_path: str
 
 
+@dataclass
+class Rect:
+    x: int
+    y: int
+    width: int
+    height: int
+    color: Color
+
+
+class CalibrationType(Enum):
+    CORNERS = 0
+    ID_BAND = 1
+
+
+@dataclass
+class CalibrationData:
+    type: CalibrationType
+    areas: list[Rect] = field(default_factory=list)
+
+
 class CalibrationError(RuntimeError):
     """Error raised if calibration failed."""
+
+    def __init__(self, *args, details: CalibrationData | None = None):
+        super().__init__(*args)
 
 
 # def store_as_WEBP(m):

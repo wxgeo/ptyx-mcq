@@ -9,12 +9,12 @@ Created on Fri Oct 23 22:54:07 2020
 from pathlib import Path
 from shutil import rmtree
 
-import fitz
+import fitz_new as fitz  # type: ignore
 
 PIC_EXTS = (".jpg", ".jpeg", ".png")
 
 
-def extract_pdf_pictures(pdf_file: Path, dest: Path, page: int = None) -> None:
+def extract_pdf_pictures(pdf_file: Path, dest: Path) -> None:
     """Clear `dest` folder, then extract all pages of the pdf files inside."""
     rmtree(dest, ignore_errors=True)
     dest.mkdir()

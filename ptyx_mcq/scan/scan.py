@@ -310,7 +310,7 @@ class MCQPictureParser:
 
             except CalibrationError:
                 self._warn(f"WARNING: {pic_path} seems invalid ! Skipping...")
-                input("-- PAUSE --")
+                # input("-- PAUSE --")
                 self.data_handler.store_skipped_pic(pic_path)
                 continue
 

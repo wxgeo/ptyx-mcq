@@ -231,3 +231,17 @@ def test_duplicate_name(monkeypatch, conflict_solver):
 
     # There should be no remaining question.
     assert custom_input.is_empty(), f"List of remaining questions/answers: {custom_input.remaining()}"
+
+
+# def test_blank_page_inserted(tmp_path):
+#     """Test what happens when a blank page (or any unrelated paper) has been scanned by error.
+#
+#     This page should be ignored, but a warning should be raised.
+#     """
+#     copy = tmp_path / "blank-page-test"
+#     origin = TEST_DIR / "blank-page-test"
+#     shutil.copytree(origin, copy)
+#     scan(copy)
+#     assert (copy / ".scan/scores.csv").read_text(encoding="utf8") == (
+#         origin / ".scan/patched_scores.csv"
+#     ).read_text(encoding="utf8")
