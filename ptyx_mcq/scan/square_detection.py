@@ -1,10 +1,9 @@
-from typing import Literal, Iterator, Iterable, Tuple
+from typing import Literal, Iterator, Iterable
 
 from numpy import array, nonzero, transpose, ndarray
 
+from ptyx_mcq.scan.types_declaration import Pixel
 from ptyx_mcq.scan.visual_debugging import color2debug
-
-Pixel = Tuple[int, int]
 
 
 # def top_left_iterator(stop, step=1):
@@ -257,7 +256,7 @@ def eval_square_color(m: ndarray, i: int, j: int, size: int, margin: int = 0, _d
     # Warning: pixels outside the sheet shouldn't be considered black !
     # Since we're doing a sum, 0 should represent white and 1 black,
     # so as if a part of the square is outside the sheet, it is considered
-    # white, not black ! This explain the `1 - m[...]` below.
+    # white, not black ! This explains the `1 - m[...]` below.
     square = 1 - m[i + margin : i + size - margin, j + margin : j + size - margin]
     return square.sum() / (size - margin) ** 2
 

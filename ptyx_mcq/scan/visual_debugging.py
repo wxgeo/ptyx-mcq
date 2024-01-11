@@ -1,6 +1,5 @@
 import subprocess
 import tempfile
-from dataclasses import dataclass
 from os.path import join
 from typing import Optional, overload, Literal
 
@@ -9,20 +8,12 @@ from PIL.PyAccess import PyAccess
 from numpy import ndarray, int8
 
 from ptyx_mcq.scan.color import Color, RGB
-
-FloatPosition = tuple[float, float]
-
-
-# TODO: rewrite this using a class.
-
-
-@dataclass
-class RectangularShape:
-    start: FloatPosition
-    end: Optional[FloatPosition] = None
-    color: RGB = Color.red
-    thickness: int = 2
-    fill: bool = False
+from ptyx_mcq.scan.types_declaration import (
+    FigureInfo,
+    RectangleInfo,
+    AreaInfo,
+    Pixel,
+)
 
 
 class ArrayViewer:
@@ -48,17 +39,18 @@ class ArrayViewer:
     NOTA:
     - `feh` must be installed.
       On Ubuntu/Debian: sudo apt-get install feh
-    - Left-dragging the picture with mouse inside feh removes blurring/anti-aliasing,
+    - Left-dragging the picture with mouse inside feh removes blurring/antialiasing,
       making visual debugging a lot easier.
     """
 
     _array: Optional[ndarray] = None
     _pic: Optional[Image.Image] = None
 
-    def __init__(self, array: ndarray = None):
-        self._shapes: list[RectangularShape] = []
+    def __init__(self, array: ndarray = None, *debug_info: FigureInfo):
+        self._shapes: list[AreaInfo] = []
         if array is not None:
             self.array = array
+        self.add_debug_info(*debug_info)
 
     @property
     def array(self) -> ndarray | None:
@@ -69,10 +61,21 @@ class ArrayViewer:
         self._array = array
         self._shapes.clear()
 
+    def add_debug_info(self, *info_elements: FigureInfo) -> None:
+        for info in info_elements:
+            if isinstance(info, RectangleInfo):
+                self.add_rectangle(
+                    start=info.position, width=info.width, height=info.height, color=info.color
+                )
+            elif isinstance(info, AreaInfo):
+                self.add_area(start=info.start, end=info.end, color=info.color)
+            else:
+                raise NotImplementedError(f"Unrecognized data: {info!r}.")
+
     def add_area(
         self,
-        start: FloatPosition,
-        end: FloatPosition = None,
+        start: Pixel,
+        end: Pixel,
         color: RGB = Color.red,
         thickness: int = 2,
         fill: bool = False,
@@ -88,26 +91,28 @@ class ArrayViewer:
             `fill`: if true, fill the rectangle.
 
         The color can be an attribute of the `Color` class (like `Color.red`), for common color's names,
-        or a RGB tuple ([0-255], [0-255], [0-255]).
+        or an RGB tuple ([0-255], [0-255], [0-255]).
 
         """
-        self._shapes.append(RectangularShape(start, end, color=color, thickness=thickness, fill=fill))
+        self._shapes.append(AreaInfo(start, end, color=color, thickness=thickness, fill=fill))
 
     def add_rectangle(
         self,
-        start: FloatPosition,
+        start: Pixel,
         width: int,
-        height: int,
+        height: int = None,
         color: RGB = Color.red,
         thickness: int = 2,
         fill: bool = False,
     ) -> None:
+        if height is None:
+            height = width
         i, j = start
         self.add_area(start, (i + width, j + height), color=color, thickness=thickness, fill=fill)
 
     def add_square(
         self,
-        start: FloatPosition,
+        start: Pixel,
         size: int,
         color: RGB = Color.red,
         thickness: int = 2,
@@ -131,7 +136,7 @@ class ArrayViewer:
             if 0 <= i < height and 0 <= j < width:
                 pixels[j, i] = color
 
-    def _draw_rectangle(self, rectangle: RectangularShape) -> None:
+    def _draw_rectangle(self, rectangle: AreaInfo) -> None:
         if self.array is None:
             return
         height, width = self.array.shape
@@ -195,8 +200,8 @@ class ArrayViewer:
             raise RuntimeError(
                 "The `feh` command is not found, please " "install it (`sudo apt install feh` on Ubuntu)."
             )
-        with tempfile.TemporaryDirectory() as tmpdirname:
-            path = join(tmpdirname, "test.png")
+        with tempfile.TemporaryDirectory() as tmpdir_name:
+            path = join(tmpdir_name, "test.png")
             assert self._pic is not None
             self._pic.save(path)
             process: subprocess.CompletedProcess | subprocess.Popen
@@ -210,8 +215,8 @@ class ArrayViewer:
 
 def color2debug(
     array: ndarray,
-    from_: FloatPosition = None,
-    to_: FloatPosition = None,
+    from_: Pixel = None,
+    to_: Pixel = None,
     color: RGB = Color.red,
     thickness: int = 2,
     fill=False,
@@ -224,7 +229,7 @@ def color2debug(
         each pixel represented by a float from 0 (black) to 1 (white)).
         `from_`: represent one corner of the red rectangle.
         `to_`: represent opposite corner of the red rectangle.
-        `color`: color given as a RGB tuple ([0-255], [0-255], [0-255]).
+        `color`: color given as an RGB tuple ([0-255], [0-255], [0-255]).
         `thickness`: the thickness of the border
         `fill`: indicates if the rectangle should be filled.
 
@@ -233,10 +238,11 @@ def color2debug(
     NOTA:
     - `feh` must be installed.
       On Ubuntu/Debian: sudo apt-get install feh
-    - Left-dragging the picture with mouse inside feh removes blurring/anti-aliasing,
+    - Left-dragging the picture with mouse inside feh removes blurring/antialiasing,
       making visual debugging a lot easier.
     """
     viewer = ArrayViewer(array)
-    if from_ is not None:
+    if from_ is not None and to_ is not None:
         viewer.add_area(from_, to_, color=color, thickness=thickness, fill=fill)
+    # noinspection PyTypeChecker
     viewer.display(wait=wait)

@@ -13,8 +13,8 @@ from ptyx_mcq.scan.document_data import DocumentData, PicData, Page
 from ptyx_mcq.scan.pdftools import PIC_EXTS
 from ptyx_mcq.scan.scan_pic import (
     scan_picture,
-    CalibrationError,
 )
+from ptyx_mcq.scan.types_declaration import CalibrationError
 from ptyx_mcq.scan.scores_manager import ScoresManager
 from ptyx_mcq.tools.config_parser import (
     StudentId,
@@ -243,7 +243,7 @@ class MCQPictureParser:
         start: int = 1,
         end: Union[int, float] = inf,
         manual_verification: Optional[bool] = None,
-        ask_for_name: bool = False,
+        debug: bool = False,
         reset: bool = False,
     ) -> None:
         """Extract information from pdf, calculate scores and annotate documents
@@ -278,9 +278,6 @@ class MCQPictureParser:
             (ID, p) for ID, d in self.data.items() for p in d.pages
         )
 
-        # assert all(isinstance(path, Path) for path in self.data_handler.skipped)
-        # assert all(isinstance(path, Path) for path in self.data_handler.verified)
-
         # Iterate over the pictures not already handled in a previous pass.
         for i, pic_path in enumerate(self.data_handler.get_pics_list(), start=1):
             if not (start <= i <= end):
@@ -297,12 +294,14 @@ class MCQPictureParser:
             #    ‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾
 
             try:
+                pic_data, matrix = scan_picture(
+                    self.data_handler.absolute_pic_path(pic_path), config=self.config, debug=debug
+                )
                 # Warning: manual_verification can be None, so the order is important
                 # below : False and None -> False (but None and False -> None).
-                manual_verification = (pic_path not in self.data_handler.verified) and manual_verification
-                pic_data, matrix = scan_picture(
-                    self.data_handler.absolute_pic_path(pic_path), self.config, manual_verification
-                )
+                if (pic_path not in self.data_handler.verified) and manual_verification:
+                    # TODO: modify pic_data to force manual verification.
+                    ...
                 # `pic_data` FORMAT is specified in `scan_pic.py`.
                 # (Search for `pic_data =` in `scan_pic.py`).
                 pic_data.pic_path = str(pic_path)
@@ -310,14 +309,8 @@ class MCQPictureParser:
 
             except CalibrationError:
                 self._warn(f"WARNING: {pic_path} seems invalid ! Skipping...")
-                # input("-- PAUSE --")
                 self.data_handler.store_skipped_pic(pic_path)
                 continue
-
-            # if pic_data.verified:
-            #     # If the page has been manually verified, keep track of it,
-            #     # so it won't be verified next time if a second pass is needed.
-            #     self.data_handler.store_verified_pic(pic_path)
 
             doc_id = pic_data.doc_id
             page = pic_data.page
@@ -344,11 +337,6 @@ class MCQPictureParser:
                 ),
             )
             doc_data.pages[page] = pic_data
-
-            # for q in pic_data.answered:
-            #     ans = doc_data.answered.setdefault(q, set())
-            #     ans |= pic_data.answered[q]
-            # Simplify: doc_data["answered"][q] = set(pic_data["answered"][q])
 
             # 3) 1st page of the test => retrieve the student name
             #    ‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾

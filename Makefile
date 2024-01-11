@@ -6,7 +6,7 @@ doc: .
 	poetry run make -C doc html
 
 tox:
-	black .
+	poetry run black .
 	poetry run tox
 
 version:
@@ -17,3 +17,7 @@ build: version
 
 publish: build
 	poetry publish
+
+fix:
+	poetry run black .
+	poetry run ruff --fix ptyx_mcq tests

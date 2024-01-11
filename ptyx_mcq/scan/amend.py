@@ -14,7 +14,7 @@ from PIL.Image import Image
 from ptyx_mcq.scan.data_handler import DataHandler
 from .document_data import DocumentData
 
-from .square_detection import Pixel
+from .types_declaration import Pixel
 from .color import Color
 from ..tools.config_parser import DocumentId, OriginalQuestionNumber, QuestionNumberOrDefault
 

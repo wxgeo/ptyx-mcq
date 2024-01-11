@@ -1,5 +1,3 @@
-from dataclasses import dataclass, field
-from enum import Enum
 from math import degrees, atan, hypot
 from pathlib import Path
 
@@ -8,12 +6,27 @@ from numpy import array, flipud, fliplr, dot, amin, amax, zeros, ndarray  # , pe
 
 from .color import Color
 from .document_data import PicData, Page
+from .types_declaration import (
+    Corner,
+    CORNERS,
+    CornersPositions,
+    CalibrationError,
+    MissingSquare,
+    CalibrationSquaresNotFound,
+    IdBandNotFound,
+    Pixel,
+    FigureInfo,
+    RectangleInfo,
+    AreaInfo,
+    VPosition,
+    HPosition,
+    ValidCornerKey,
+)
 from .square_detection import (
     test_square_color,
     find_black_square,
     eval_square_color,
     adjust_checkbox,
-    Pixel,
 )
 from .tools import round
 from .visual_debugging import ArrayViewer
@@ -33,13 +46,13 @@ from ..tools.config_parser import (
     StudentName,
     StudentId,
 )
+from ..tools.io_tools import print_info, print_warning
 
-CORNERS = frozenset(("tl", "tr", "bl", "br"))
-CORNER_NAMES = {"tl": "top-left", "tr": "top-right", "bl": "bottom-left", "br": "bottom-right"}
 
-CornersPositions = dict[str, Pixel]
+# CornersPositions = dict[Corner, Pixel]
 
-# TODO: calibrate grayscale too.
+
+# TODO: calibrate grayscale too?
 # At the bottom of the page, display 5 squares:
 # Black - Gray - Light gray - White - Light gray - Gray - Black
 
@@ -52,33 +65,6 @@ CornersPositions = dict[str, Pixel]
 #     score: int
 #     score_per_question: dict
 #     pic_path: str
-
-
-@dataclass
-class Rect:
-    x: int
-    y: int
-    width: int
-    height: int
-    color: Color
-
-
-class CalibrationType(Enum):
-    CORNERS = 0
-    ID_BAND = 1
-
-
-@dataclass
-class CalibrationData:
-    type: CalibrationType
-    areas: list[Rect] = field(default_factory=list)
-
-
-class CalibrationError(RuntimeError):
-    """Error raised if calibration failed."""
-
-    def __init__(self, *args, details: CalibrationData | None = None):
-        super().__init__(*args)
 
 
 # def store_as_WEBP(m):
@@ -116,10 +102,24 @@ def transform(pic: Image.Image, transformation: str, *args, **kw) -> tuple[Image
     return pic, array(pic) / 255.0
 
 
-def find_black_cell(grid, ll: int, LL: int, detection_level: float) -> tuple[int, int]:
-    for k in range(LL + ll):
+def find_black_cell(grid, width: int, height: int, detection_level: float) -> tuple[int, int]:
+    """Find the "first" black-enough pixel in the grid.
+
+     This pixel corresponds to a black (or almost black) square in the original picture.
+
+    The mesh grid is browsed starting from the top left corner,
+    following oblique lines (North-East->South-West), as follows:
+
+        1  2  4  7
+        3  5  8  11
+        6  9  12 14
+        10 13 15 16
+
+    Return the black-enough pixel position.
+    """
+    for k in range(height + width):
         # j < ll <=> k - i < ll <=> k - ll < i <=> i >= k - ll + 1
-        for i in range(max(0, k - ll + 1), min(k + 1, LL)):
+        for i in range(max(0, k - width + 1), min(k + 1, height)):
             j = k - i
             #            if grid[i, j] < 100:
             #                i0 = half*i   # Add `half` and `m` to the function parameters
@@ -127,17 +127,16 @@ def find_black_cell(grid, ll: int, LL: int, detection_level: float) -> tuple[int
             #                color2debug(m, (i0, j0), (i0 + half, j0 + half))
             if grid[i, j] < detection_level:
                 return i, j
-    raise LookupError("Corner square not found.")
+    raise MissingSquare("Corner square not found.")
 
 
 def find_corner_square(
     m: ndarray,
     size: int,
-    corner: str,
+    corner: Corner,
     *,
     max_whiteness: float = 0.55,
     tolerance: float = 0.2,
-    viewer: ArrayViewer,
 ) -> tuple[int, int]:
     """Find the calibration black square of the given corner.
 
@@ -155,12 +154,11 @@ def find_corner_square(
            the grid and the found one.
     """
     height, width = m.shape
-    V, H = tuple(corner)  # for mypy support
     # First, flip the matrix if needed, so that the corner considered
     # is now the top left corner.
-    if V == "b":
+    if corner.v == VPosition.BOTTOM:
         m = flipud(m)
-    if H == "r":
+    if corner.h == HPosition.RIGHT:
         m = fliplr(m)
     area: ndarray = m[: height // 4, : width // 4]
     #    color2debug(m, (0, 0), (L//4, l//4), color=Color.blue, display=False)
@@ -266,36 +264,47 @@ def find_corner_square(
     #    color2debug(m, (i0, j0), (i0 + size, j0 + size))
     if whiteness_measure > max_whiteness:
         print(f"WARNING: Corner square {corner} not found " f"(not dark enough: {whiteness_measure}!)")
-        viewer.add_square((i0, j0), size, color=Color.blue)
-        raise LookupError(f"Corner square {corner} not found.")
+        raise MissingSquare(
+            f"Corner square {corner} not found.", details=[RectangleInfo((i0, j0), size, color=Color.blue)]
+        )
 
-    if V == "b":
+    if corner.v == VPosition.BOTTOM:
         i0 = height - 1 - i0 - size
-    if H == "r":
+    if corner.h == HPosition.RIGHT:
         j0 = width - 1 - j0 - size
 
     return i0, j0
 
 
-def orthogonal(corner: str, positions: CornersPositions) -> bool:
-    V = corner[0]  # Unpacking a string is disallowed for mypy!
-    H = corner[1]
-    corner1 = V + ("l" if H == "r" else "r")
-    corner2 = ("t" if V == "b" else "b") + H
-    i, j = positions[corner]
-    i1, j1 = positions[corner1]
-    i2, j2 = positions[corner2]
-    v1 = i1 - i, j1 - j
-    v2 = i2 - i, j2 - j
-    cos_a = dot(v1, v2) / (hypot(*v1) * hypot(*v2))
+def orthogonal(corner: ValidCornerKey, positions: CornersPositions) -> bool:
+    # v = corner[0]  # Unpacking a string is disallowed for mypy!
+    # h = corner[1]
+    # corner1 = v + ("l" if h == "r" else "r")
+    # corner2 = ("t" if v == "b" else "b") + h
+    corner = Corner.convert(corner)
+    pos = positions[corner]
+    pos1 = positions[corner.other_corner_on_same_line]
+    pos2 = positions[corner.other_corner_on_same_column]
+    assert pos is not None and pos1 is not None and pos2 is not None
+    i, j = pos
+    i1, j1 = pos1
+    i2, j2 = pos2
+    vect1 = i1 - i, j1 - j
+    vect2 = i2 - i, j2 - j
+    cos_a = dot(vect1, vect2) / (hypot(*vect1) * hypot(*vect2))
     return abs(cos_a) < 0.06
 
 
-def area_opposite_corners(positions: CornersPositions) -> tuple[Pixel, Pixel]:
-    i1 = round((positions["tl"][0] + positions["tr"][0]) / 2)
-    i2 = round((positions["bl"][0] + positions["br"][0]) / 2)
-    j1 = round((positions["tl"][1] + positions["bl"][1]) / 2)
-    j2 = round((positions["tr"][1] + positions["br"][1]) / 2)
+def area_defined_by_corners(positions: CornersPositions) -> tuple[Pixel, Pixel]:
+    tl = positions.TL
+    tr = positions.TR
+    bl = positions.BL
+    br = positions.BR
+    assert tl is not None and tr is not None and bl is not None and br is not None
+    i1 = round((tl[0] + tr[0]) / 2)
+    i2 = round((bl[0] + br[0]) / 2)
+    j1 = round((tl[1] + bl[1]) / 2)
+    j2 = round((tr[1] + br[1]) / 2)
     return (i1, j1), (i2, j2)
 
 
@@ -332,24 +341,24 @@ def _detect_four_squares(
     tolerance=0.2,
     debug=False,
 ) -> tuple[CornersPositions, Pixel, Pixel]:
-    viewer = ArrayViewer(m)
+    debug_info: list[FigureInfo] = []
     #    h = w = round(2*(1 + SQUARE_SIZE_IN_CM)*cm)
     # Make a mutable copy of frozenset CORNERS.
     corners = set(CORNERS)
     # `positions` is used to store the position (in pixels) of the calibration square of each corner.
-    positions: CornersPositions = {}
+    positions = CornersPositions()
     for corner in CORNERS:
         try:
-            i, j = find_corner_square(m, square_size, corner, tolerance=tolerance, viewer=viewer)
+            i, j = find_corner_square(m, square_size, corner, tolerance=tolerance)
             # ~ # We may have only detected a part of the square by restricting
             # ~ # the search area, so extend search by the size of the square.
             # ~ i, j = find_corner_square(m, square_size, corner, h + square_size,
             # ~ w + square_size, tolerance, whiteness)
-            viewer.add_square((i, j), square_size)
+            debug_info.append(RectangleInfo((i, j), square_size))
             positions[corner] = i, j
             corners.remove(corner)
-        except LookupError:
-            pass
+        except MissingSquare as e:
+            debug_info.extend(e.details)
 
         # ~ if input(len(positions)) == 'd':
         # ~ color2debug(m)
@@ -360,20 +369,25 @@ def _detect_four_squares(
     #    color2debug(m)
     print(f"Corners detected: {len(positions)}")
     if len(positions) <= 2:
-        viewer.display()
-        raise CalibrationError("Only 2 squares found, calibration failed !")
+        raise CalibrationSquaresNotFound("Only 2 squares found, calibration failed !", details=debug_info)
 
     if len(positions) == 4:
-        for V in "tb":
-            h_shift = positions[f"{V}r"][0] - positions[f"{V}l"][0]
+        for v in VPosition:
+            pos1 = positions[v, HPosition.RIGHT]
+            pos2 = positions[v, HPosition.LEFT]
+            assert pos1 is not None and pos2 is not None
+            h_shift = pos1[0] - pos2[0]
             if abs(h_shift) > max_alignment_error_cm * cm:
                 print("Warning: Horizontal alignment problem in corners squares !")
-                print(f"horizontal shift ({V}): {h_shift}")
-        for H in "lr":
-            v_shift = positions[f"b{H}"][1] - positions[f"t{H}"][1]
+                print(f"horizontal shift ({v}): {h_shift}")
+        for h in HPosition:
+            pos1 = positions[VPosition.BOTTOM, h]
+            pos2 = positions[VPosition.TOP, h]
+            assert pos1 is not None and pos2 is not None
+            v_shift = pos1[1] - pos2[1]
             if abs(v_shift) > max_alignment_error_cm * cm:
                 print("Warning: Vertical alignment problem in corners squares !")
-                print(f"vertical shift ({H}): {v_shift}")
+                print(f"vertical shift ({h}): {v_shift}")
 
     number_of_orthogonal_corners = 0
     # Try to detect false positives.
@@ -386,9 +400,8 @@ def _detect_four_squares(
         print(f"Number of orthogonal corners: {number_of_orthogonal_corners}")
         if number_of_orthogonal_corners == 1:
             # noinspection PyUnboundLocalVariable
-            V, H = tuple(orthogonal_corner)  # (Unpacking a string is disallowed for mypy!)
-            opposite_corner = ("t" if V == "b" else "b") + ("l" if H == "r" else "r")
-            print(f"Removing {CORNER_NAMES[opposite_corner]} corner (not orthogonal !)")
+            opposite_corner = orthogonal_corner.opposite_corner
+            print(f"Removing {opposite_corner.name} corner (not orthogonal!)")
             del positions[opposite_corner]
 
     if len(positions) == 4:
@@ -396,71 +409,74 @@ def _detect_four_squares(
         # let's drop it and use only the 3 darkest.
         # (The 4th square will be generated again using the position of the 3 others).
         darkness = {}
-        for corner, position in positions.items():
-            darkness[corner] = eval_square_color(m, *position, square_size)
+        for corner in positions:
+            pos = positions[corner]
+            assert pos is not None
+            darkness[corner] = eval_square_color(m, *pos, square_size)
 
         lighter_corner = min(darkness, key=darkness.get)  # type: ignore
         if darkness[lighter_corner] < 0.4:
-            print(
-                f"Removing {CORNER_NAMES[lighter_corner]} corner "
-                f"(too light: {darkness[lighter_corner]} !)"
-            )
+            print(f"Removing {lighter_corner.name} corner " f"(too light: {darkness[lighter_corner]} !)")
             del positions[lighter_corner]
 
     if len(positions) == 4:
         if number_of_orthogonal_corners <= 2:
-            for i, j in positions.values():
-                viewer.add_square((i, j), square_size)
-            viewer.display()
+            debug_info.extend([RectangleInfo(pos, square_size) for pos in positions.values()])
             print("number_of_orthogonal_corners =", number_of_orthogonal_corners)
-            raise CalibrationError("Something wrong with the corners !")
+            raise CalibrationSquaresNotFound("Something wrong with the corners !", details=debug_info)
 
     for corner in CORNERS:
         if corner not in positions:
             print(
-                f"Warning: {CORNER_NAMES[corner]} corner not found.\n"
+                f"Warning: {corner.name} corner not found.\n"
                 "Its position will be deduced from the 3 other corners."
             )
-            V, H = tuple(corner)  # 'b' 'r'
-            nV, nH = ("t" if V == "b" else "b"), ("l" if H == "r" else "r")
             # This is the opposite corner of the missing one.
-            i0, j0 = positions[nV + nH]
-            i1, j1 = positions[nV + H]
-            i2, j2 = positions[V + nH]
+            pos0 = positions[corner.opposite_corner]
+            pos1 = positions[corner.other_corner_on_same_column]
+            pos2 = positions[corner.other_corner_on_same_line]
+            assert pos0 is not None and pos1 is not None and pos2 is not None
+            i0, j0 = pos0
+            i1, j1 = pos1
+            i2, j2 = pos2
             i = i2 + (i1 - i0)
             j = j2 + (j1 - j0)
 
             # Calculate the last corner (ABCD parallelogram <=> Vec{AB} = \Vec{DC})
             positions[corner] = (i, j)
-            viewer.add_square((i, j), square_size, color=Color.cyan)
+            debug_info.append(RectangleInfo((i, j), square_size, color=Color.cyan))
 
             # For example: positions['bl'] = positions['br'][0], positions['tl'][1]
 
-    ij1, ij2 = area_opposite_corners(positions)
+    ij1, ij2 = area_defined_by_corners(positions)
 
     if debug:
-        viewer.add_area(ij1, ij2, color=Color.green)
-        viewer.display()
+        debug_info.append(AreaInfo(ij1, ij2, color=Color.green))
+        ArrayViewer(m, *debug_info).display()
 
     return positions, ij1, ij2
 
 
-def find_document_id_band(
-    m: ndarray, i: int, j1: int, j2: int, square_size: int, viewer: ArrayViewer
-) -> Pixel:
+def find_document_id_band(m: ndarray, i: int, j1: int, j2: int, square_size: int) -> RectangleInfo:
     """Return the top left corner (coordinates in pixels) of the document ID band first square."""
     margin = square_size
     i1, i2 = i - margin, i + square_size + margin
     j1, j2 = j1 + 3 * square_size, j2 - 2 * square_size
-    viewer.add_area((i1, j1), (i2, j2))
     search_area = m[i1:i2, j1:j2]
-    i3, j3 = find_black_square(
-        search_area, size=square_size, error=0.3, gray_level=0.5, mode="column", debug=False
-    ).__next__()
+    try:
+        i3, j3 = find_black_square(
+            search_area, size=square_size, error=0.3, gray_level=0.5, mode="column", debug=False
+        ).__next__()
+    except StopIteration:
+        raise IdBandNotFound(
+            "The beginning of the ID band could not be found.",
+            details=[
+                AreaInfo((i1, j1), (i2, j2)),
+            ],
+        )
     i3 += i1
     j3 += j1
-    viewer.add_square((i3, j3), square_size)
-    return i3, j3
+    return RectangleInfo((i3, j3), square_size)
 
 
 def calibrate(pic: Image.Image, m: ndarray, debug=False) -> tuple[ndarray, float, float, Pixel, Pixel]:
@@ -519,20 +535,27 @@ def calibrate(pic: Image.Image, m: ndarray, debug=False) -> tuple[ndarray, float
     # extending the search area and being more tolerant if needed.
 
     # First pass, to detect rotation.
+    positions: CornersPositions
     positions, *_ = detect_four_squares(m, calib_square, cm, debug=debug)
     print(positions)
 
+    tl = positions.TL
+    tr = positions.TR
+    bl = positions.BL
+    br = positions.BR
+    assert tl is not None and tr is not None and bl is not None and br is not None
+
     # Now, let's detect the rotation.
-    (i1, j1), (i2, j2) = positions["tl"], positions["tr"]
+    (i1, j1), (i2, j2) = tl, tr
     rotation_h1 = atan((i2 - i1) / (j2 - j1))
-    (i1, j1), (i2, j2) = positions["bl"], positions["br"]
+    (i1, j1), (i2, j2) = bl, br
     rotation_h2 = atan((i2 - i1) / (j2 - j1))
     rotation_h = degrees(0.5 * (rotation_h1 + rotation_h2))
     print("Detected rotation (h): %s degrees." % round(rotation_h, 4))
 
-    (i1, j1), (i2, j2) = positions["tl"], positions["bl"]
+    (i1, j1), (i2, j2) = tl, bl
     rotation_v1 = atan((j1 - j2) / (i2 - i1))
-    (i1, j1), (i2, j2) = positions["tr"], positions["br"]
+    (i1, j1), (i2, j2) = tr, br
     rotation_v2 = atan((j1 - j2) / (i2 - i1))
     rotation_v = degrees(0.5 * (rotation_v1 + rotation_v2))
     print("Detected rotation (v): %s degrees." % round(rotation_v, 4))
@@ -550,7 +573,7 @@ def calibrate(pic: Image.Image, m: ndarray, debug=False) -> tuple[ndarray, float
         expand=True,
     )
 
-    (i1, j1), (i2, j2) = positions["tl"], positions["br"]
+    (i1, j1), (i2, j2) = tl, br
 
     # XXX: implement other paper sheet sizes. Currently only A4 is supported.
 
@@ -563,41 +586,44 @@ def calibrate(pic: Image.Image, m: ndarray, debug=False) -> tuple[ndarray, float
     cm = 10 * (h_pixels_per_mm + 1.5 * v_pixels_per_mm) / 2.5
     print(f"Detect pixels/cm: {cm}")
 
-    # Redetect calibration squares.
+    # Detect calibration squares again, to enhance accuracy.
     print("ok")
     positions, (i1, j1), (i2, j2) = detect_four_squares(m, calib_square, cm, debug=debug)
     print("ok2")
 
-    viewer = ArrayViewer(m)  # for debugging
+    debug_info: list[FigureInfo] = []
 
     try:
-        i3, j3 = find_document_id_band(m, i1, j1, j2, square_size, viewer)
-    except StopIteration:
+        first_id_square = find_document_id_band(m, i1, j1, j2, square_size)
+
+    except IdBandNotFound as e:
+        debug_info.extend(e.details)
         # Orientation probably incorrect.
         print("Reversed page detected: 180° rotation.")
         pic, m = transform(pic, "transpose", method=Image.ROTATE_180)
-        viewer.array = m
         height, width = m.shape
-        p = positions
-        for corner in p:
-            i, j = p[corner]
+        for corner, position in positions.items():
+            i, j = position
             i = height - 1 - i - calib_square
             j = width - 1 - j - calib_square
-            p[corner] = i, j
-            viewer.add_square((i, j), calib_square, color=Color.green)
+            positions[corner] = i, j
+            debug_info.append(RectangleInfo((i, j), calib_square, color=Color.green))
         # Replace each tag by the opposite (top-left -> bottom-right).
-        p["tl"], p["bl"], p["br"], p["tr"] = p["br"], p["tr"], p["tl"], p["bl"]
+        positions.flip()
         # ~ color2debug(m)
-        (i1, j1), (i2, j2) = area_opposite_corners(positions)
+        (i1, j1), (i2, j2) = area_defined_by_corners(positions)
         # Redetect calibration squares.
         # ~ positions, (i1, j1), (i2, j2) = detect_four_squares(m, square_size, cm, debug=debug)
         try:
-            i3, j3 = find_document_id_band(m, i1, j1, j2, square_size, viewer)
-        except StopIteration:
-            print("ERROR: Can't find identification band, displaying search areas in red.")
-            print(i1, j1, i2, j2)
-            viewer.display()
-            raise CalibrationError("Can't find identification band !")
+            first_id_square = find_document_id_band(m, i1, j1, j2, square_size)
+        except IdBandNotFound as e:
+            debug_info.extend(e.details)
+            print("ERROR: Can't find identification band!")
+            if debug:
+                print(f"Search area: {i1, j1, i2, j2}")
+                print("Displaying search areas in red.")
+                ArrayViewer(m, *debug_info).display()
+            raise IdBandNotFound("Can't find identification band!", details=debug_info, matrix=m)
 
     # Distance between the top left corners of the left and right squares is:
     # 21 cm - (margin left + margin right + 1 square width)
@@ -607,19 +633,19 @@ def calibrate(pic: Image.Image, m: ndarray, debug=False) -> tuple[ndarray, float
     v_pixels_per_mm = (i2 - i1) / (297 - calib_shift_mm)
     #    cm = 10*(h_pixels_per_mm + 1.5*v_pixels_per_mm)/2.5
 
-    print(positions)
-    for i, j in positions.values():
-        viewer.add_square((i, j), calib_square)
-    viewer.add_square((i3, j3), square_size)
+    debug_info.extend(RectangleInfo(position, calib_square) for position in positions.values())
+    debug_info.append(first_id_square)
+
     if debug:
-        viewer.display()
+        print(f"Positions: {positions}")
+        ArrayViewer(m, *debug_info).display()
     # ~ input('- pause -')
 
-    return m, h_pixels_per_mm, v_pixels_per_mm, positions["tl"], (i3, j3)
+    return m, h_pixels_per_mm, v_pixels_per_mm, tl, first_id_square.position
 
 
 def read_doc_id_and_page(
-    m: ndarray, pos: Pixel, f_square_size: float, viewer: ArrayViewer
+    m: ndarray, pos: Pixel, f_square_size: float, debug_info: list[FigureInfo]
 ) -> tuple[DocumentId, Page]:
     """Read the document ID and the page number.
 
@@ -637,17 +663,10 @@ def read_doc_id_and_page(
     # Test the color of the 15 following squares, and interpret it as a binary number.
     for k in range(24):
         j_ = round(j + (k + 1) * f_square_size)
-        if k % 2:
-            viewer.add_square((i, j_), square_size)
-        else:
-            viewer.add_square((i, j_), square_size, color=Color.blue)
         if test_square_color(m, i, j_, square_size, proportion=0.5, gray_level=0.5):
             doc_id += 2**k
-            # ~ print((k, (i3, j)), " -> black")
-        # ~ else:
-        # ~ print((k, (i3, j)), " -> white")
+        debug_info.append(RectangleInfo((i, j_), square_size, color=(Color.red if k % 2 else Color.blue)))
 
-    # ~ color2debug(m)
     # Nota: If necessary (although this is highly unlikely !), one may extend protocol
     # by adding a second band (or more !), starting with a black square.
     # This function will test if a black square is present below the first one ;
@@ -668,21 +687,21 @@ def read_student_id_and_name(
     pos: Pixel,
     id_format: StudentIdFormat,
     f_cell_size: float,
-    viewer: ArrayViewer,
+    debug_info: list[FigureInfo],
 ) -> tuple[StudentId, StudentName]:
     student_id = ""
     student_name = ""
     cell_size = round(f_cell_size)
     half_cell = round(f_cell_size / 2)
-    ID_length, max_digits, digits = id_format
-    # ~ height = ID_length*cell_size
+    id_length, max_digits, digits = id_format
+    # ~ height = id_length*cell_size
     i0, j0 = pos
     #            color2debug(m, (i0, j0), (i0 + cell_size, j0 + cell_size), color=(0,255,0))
     # Scan grid row by row. For each row, the darker cell is retrieved,
     # and the associated character is appended to the ID.
-    all_ID_are_of_the_same_length = len(set(len(ID) for ID in students_ids)) == 1
+    all_id_are_of_the_same_length = len(set(len(id_) for id_ in students_ids)) == 1
     ev = eval_square_color
-    for n in range(ID_length):
+    for n in range(id_length):
         # Top of the row.
         i = round(i0 + n * f_cell_size)
         black_cells = []
@@ -693,20 +712,19 @@ def read_student_id_and_name(
         # as long as there is enough difference between the blackest
         # and the second blackest.
         digits_for_nth_character = sorted(digits[n])
-        if all_ID_are_of_the_same_length and len(digits_for_nth_character) == 1:
+        if all_id_are_of_the_same_length and len(digits_for_nth_character) == 1:
             # No need to read, there is no choice for this character !
             student_id += digits_for_nth_character.pop()
             continue
         for k, d in enumerate(digits_for_nth_character):
             # Left ot the cell.
             j = round(j0 + (k + 1) * f_cell_size)
-            # ~ val = eval_square_color(m, i, j, cell_size)
-            # ~ print(d, val)
 
-            # ~ color2debug(m, (i + 2, j + 2), (i - 2 + cell_size, j - 2+ cell_size), color=(1,1,0))
-            if test_square_color(m, i, j, cell_size, proportion=0.3, gray_level=0.85) or test_square_color(
-                m, i, j, cell_size, proportion=0.5, gray_level=0.9
-            ):
+            is_black_enough = test_square_color(
+                m, i, j, cell_size, proportion=0.3, gray_level=0.85
+            ) or test_square_color(m, i, j, cell_size, proportion=0.5, gray_level=0.9)
+
+            if is_black_enough:
                 # To test the blackness, we exclude the top left corner,
                 # which contain the cell number and may alter the result.
                 # So, we divide the cell in four squares, and calculate
@@ -717,13 +735,13 @@ def read_student_id_and_name(
                     + ev(m, i + half_cell, j, half_cell)
                     + ev(m, i + half_cell, j + half_cell, half_cell)
                 ) / 3
-                # ~ color2debug(m, (i, j + half_cell), (i + half_cell, j + 2*half_cell), display=True)
                 black_cells.append((square_blackness, d))
                 print("Found:", d, square_blackness)
-                # ~ color2debug(m, (imin + i, j), (imin + i + cell_size, j + cell_size))
-                viewer.add_square((i, j), cell_size, color=Color.cyan)
-            else:
-                viewer.add_square((i, j), cell_size)
+
+            debug_info.append(
+                RectangleInfo((i, j), cell_size, color=(Color.cyan if is_black_enough else Color.red))
+            )
+
         if black_cells:
             black_cells.sort(reverse=True)
             print(black_cells)
@@ -738,12 +756,12 @@ def read_student_id_and_name(
         student_name = students_ids[StudentId(student_id)]
     else:
         print(f"ID list: {students_ids!r}")
-        print(f"Warning: invalid student id {student_id!r} !")
-        # ~ color2debug(m)
+        print_warning(f"Invalid student id {student_id!r}!")
+
     return StudentId(student_id), StudentName(student_name)
 
 
-def read_student_name(m: ndarray, students: list[StudentName], TOP: int, f_square_size: float) -> StudentName:
+def read_student_name(m: ndarray, students: list[StudentName], top: int, f_square_size: float) -> StudentName:
     # TODO: rewrite this function.
     # Use .pos file to retrieve exact position of first square
     # (just like in next section),
@@ -754,7 +772,7 @@ def read_student_name(m: ndarray, students: list[StudentName], TOP: int, f_squar
     student_name = StudentName("")
     n_students = len(students)
     square_size = round(f_square_size)
-    vpos = TOP + 2 * square_size
+    vpos = top + 2 * square_size
     search_area = m[vpos : vpos + 4 * square_size, :]
     i, j0 = find_black_square(search_area, size=square_size, error=0.3, mode="column").__next__()
     # ~ color2debug((vpos + i, j0), (vpos + i + square_size, j0 + square_size), color=(0,255,0))
@@ -780,9 +798,7 @@ def read_student_name(m: ndarray, students: list[StudentName], TOP: int, f_squar
     return student_name
 
 
-def scan_picture(
-    filename: str | Path, config: Configuration, manual_verification=None, debug=False
-) -> tuple[PicData, ndarray]:
+def scan_picture(filename: str | Path, config: Configuration, debug=False) -> tuple[PicData, ndarray]:
     """Scan picture and return page identifier and list of answers for each question.
 
     - `filename` is a path pointing to a PNG file.
@@ -817,23 +833,20 @@ def scan_picture(
     pic: Image.Image = Image.open(filename).convert("L")
     # noinspection PyTypeChecker
     m: ndarray = array(pic) / 255.0
-    viewer = ArrayViewer(m)
     # Increase contrast if needed (the lightest pixel must be white,
     # the darkest must be black).
     min_val = amin(m)
     max_val = amax(m)
     if debug:
-        # viewer.display()
         print("Trying to maximize contrast..")
         print(f"Old range: {min_val} - {max_val}")
     if min_val > 0 or max_val < 255 and max_val - min_val > 0.2:
         m = (m - min_val) / (max_val - min_val)
-        viewer.array = m
         if debug:
             print(f"New range: {amin(m)} - {amax(m)}")
-            viewer.display()
+            ArrayViewer(m).display()
     else:
-        print(f"Warning: not enough contrast in picture {filename!r} !")
+        print_warning(f"Not enough contrast in picture {filename!r}!")
 
     # ------------------------------------------------------------------
     #                          CONFIGURATION
@@ -851,8 +864,12 @@ def scan_picture(
     #                          CALIBRATION
     # ------------------------------------------------------------------
 
-    m, h_pixels_per_mm, v_pixels_per_mm, (TOP, LEFT), (i, j) = calibrate(pic, m, debug=debug)
-    viewer.array = m
+    try:
+        m, h_pixels_per_mm, v_pixels_per_mm, (TOP, LEFT), (i, j) = calibrate(pic, m, debug=debug)
+    except CalibrationError as e:
+        if debug:
+            ArrayViewer(e.matrix, *e.details).display()
+        raise e
     pixels_per_mm = (h_pixels_per_mm + 1.5 * v_pixels_per_mm) / 2.5
 
     # We should now have an accurate value for square size.
@@ -879,7 +896,8 @@ def scan_picture(
     # ------------------------------------------------------------------
     #                      READ IDENTIFIER
     # ------------------------------------------------------------------
-    doc_id, page = read_doc_id_and_page(m, (i, j), f_square_size, viewer)
+    debug_info: list[FigureInfo] = []
+    doc_id, page = read_doc_id_and_page(m, (i, j), f_square_size, debug_info)
 
     # ------------------------------------------------------------------
     #                  IDENTIFY STUDENT (OPTIONAL)
@@ -902,13 +920,16 @@ def scan_picture(
             assert config.id_table_pos is not None
             assert config.id_format is not None
             student_id, student_name = read_student_id_and_name(
-                m, students_ids, xy2ij(*config.id_table_pos), config.id_format, f_cell_size, viewer
+                m, students_ids, xy2ij(*config.id_table_pos), config.id_format, f_cell_size, debug_info
             )
 
         else:
-            print("No students list.")
+            print_info("No students list.")
 
         print("Student name:", student_name)
+
+    if debug:
+        ArrayViewer(m, *debug_info).display()
 
     # ------------------------------------------------------------------
     #                      READ ANSWERS
@@ -934,9 +955,8 @@ def scan_picture(
     try:
         boxes = config.boxes[doc_id][page]
     except KeyError:
-        print(
-            f"WARNING: ID {doc_id!r} - page {page!r} not found in config file !\n"
-            f"Maybe ID {doc_id!r} - page {page!r} is an empty page ?"
+        print_info(
+            f"ID {doc_id!r} - page {page!r} not found in config file.\nThis is probably an empty page."
         )
         return pic_data, m
 

@@ -151,10 +151,10 @@ def main(args: Optional[list] = None) -> None:
         "in case of ambiguity.",
     )
     scan_parser.add_argument(
-        "--ask-for-name",
+        "--debug",
         action="store_true",
         default=False,
-        help="For each first page, display a picture of " "the top of the page and ask for the student name.",
+        help="Debugging mode: display the picture with coloured squares at each step to review scanning process.",
     )
     scan_parser.add_argument(  # type: ignore[attr-defined]
         "--test-picture",
@@ -287,9 +287,9 @@ def make(
 def scan(
     path: Path,
     reset: bool = False,
-    ask_for_name: bool = False,
     verify: Literal["auto", "always", "never"] = "auto",
     test_picture: Path = None,
+    debug: bool = False,
 ) -> None:
     """Implement `mcq scan` command."""
     from .scan.scan import MCQPictureParser
@@ -304,8 +304,8 @@ def scan(
         if test_picture is None:
             MCQPictureParser(path).scan_all(
                 reset=reset,
-                ask_for_name=ask_for_name,
                 manual_verification=manual_verification,
+                debug=debug,
             )
             print_success("Students' marks successfully generated. :)")
         else:
@@ -476,7 +476,6 @@ def update_include(path: Path, force=False, clean=False) -> None:
     ptyxfile_path = get_file_or_sysexit(path, extension=".ptyx")
     update_file(ptyxfile_path, force=force, clean=clean)
     print_success("The list of included files was successfully updated.")
-
 
 
 def strategies() -> None:

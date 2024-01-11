@@ -10,6 +10,7 @@ from ptyx_mcq.scan.data_handler import DataHandler
 from ptyx_mcq.scan.document_data import DocumentData
 from ptyx_mcq.tools.config_parser import DocumentId, StudentName
 from ptyx_mcq.tools.io_tools import custom_print
+from ptyx_mcq.cli import scan
 
 TEST_DIR = Path(__file__).parent
 
@@ -233,15 +234,20 @@ def test_duplicate_name(monkeypatch, conflict_solver):
     assert custom_input.is_empty(), f"List of remaining questions/answers: {custom_input.remaining()}"
 
 
-# def test_blank_page_inserted(tmp_path):
-#     """Test what happens when a blank page (or any unrelated paper) has been scanned by error.
-#
-#     This page should be ignored, but a warning should be raised.
-#     """
-#     copy = tmp_path / "blank-page-test"
-#     origin = TEST_DIR / "blank-page-test"
-#     shutil.copytree(origin, copy)
-#     scan(copy)
-#     assert (copy / ".scan/scores.csv").read_text(encoding="utf8") == (
-#         origin / ".scan/patched_scores.csv"
-#     ).read_text(encoding="utf8")
+def test_blank_page_inserted(tmp_path):
+    """Test what happens when a blank page (or any unrelated paper) has been scanned by error.
+
+    This page should be ignored, but a warning should be raised.
+    """
+    copy = tmp_path / "blank-page-test"
+    origin = TEST_DIR / "blank-page-test"
+    shutil.copytree(origin, copy)
+    scan(copy)
+    print(copy / ".scan/scores.csv")
+    print(origin / "reference_scores.csv")
+    assert (copy / ".scan/scores.csv").read_text(encoding="utf8") == (
+        origin / "reference_scores.csv"
+    ).read_text(encoding="utf8")
+    assert (copy / ".scan/infos.csv").read_text(encoding="utf8") == (
+        origin / "reference_infos.csv"
+    ).read_text(encoding="utf8")
