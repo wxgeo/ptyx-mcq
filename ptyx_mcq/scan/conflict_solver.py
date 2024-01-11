@@ -179,7 +179,9 @@ class ConflictSolver:
         }
         for (q, a), (i, j) in pic_data.positions.items():
             status = pic_data.revision_status.get((q, a), pic_data.detection_status[(q, a)])
-            viewer.add_square((i, j), pic_data.cell_size, color=colors[status], thickness=thicknesses[status])
+            viewer.add_rectangle(
+                (i, j), pic_data.cell_size, color=colors[status], thickness=thicknesses[status]
+            )
         return viewer.display(wait=False)
 
     def edit_answers(self, doc_id: DocumentId, page: Page) -> None:

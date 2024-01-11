@@ -9,9 +9,9 @@ from numpy import ndarray, int8
 
 from ptyx_mcq.scan.color import Color, RGB
 from ptyx_mcq.scan.types_declaration import (
-    FigureInfo,
-    RectangleInfo,
-    AreaInfo,
+    Shape,
+    Rectangle,
+    Area,
     Pixel,
 )
 
@@ -46,11 +46,11 @@ class ArrayViewer:
     _array: Optional[ndarray] = None
     _pic: Optional[Image.Image] = None
 
-    def __init__(self, array: ndarray = None, *debug_info: FigureInfo):
-        self._shapes: list[AreaInfo] = []
+    def __init__(self, array: ndarray = None, *debug_info: Shape):
+        self._shapes: list[Area] = []
         if array is not None:
             self.array = array
-        self.add_debug_info(*debug_info)
+        self.add_shapes(*debug_info)
 
     @property
     def array(self) -> ndarray | None:
@@ -61,16 +61,16 @@ class ArrayViewer:
         self._array = array
         self._shapes.clear()
 
-    def add_debug_info(self, *info_elements: FigureInfo) -> None:
-        for info in info_elements:
-            if isinstance(info, RectangleInfo):
+    def add_shapes(self, *shapes: Shape) -> None:
+        for shape in shapes:
+            if isinstance(shape, Rectangle):
                 self.add_rectangle(
-                    start=info.position, width=info.width, height=info.height, color=info.color
+                    start=shape.position, width=shape.width, height=shape.height, color=shape.color
                 )
-            elif isinstance(info, AreaInfo):
-                self.add_area(start=info.start, end=info.end, color=info.color)
+            elif isinstance(shape, Area):
+                self.add_area(start=shape.start, end=shape.end, color=shape.color)
             else:
-                raise NotImplementedError(f"Unrecognized data: {info!r}.")
+                raise NotImplementedError(f"Unrecognized data: {shape!r}.")
 
     def add_area(
         self,
@@ -94,7 +94,7 @@ class ArrayViewer:
         or an RGB tuple ([0-255], [0-255], [0-255]).
 
         """
-        self._shapes.append(AreaInfo(start, end, color=color, thickness=thickness, fill=fill))
+        self._shapes.append(Area(start, end, color=color, thickness=thickness, fill=fill))
 
     def add_rectangle(
         self,
@@ -109,16 +109,6 @@ class ArrayViewer:
             height = width
         i, j = start
         self.add_area(start, (i + width, j + height), color=color, thickness=thickness, fill=fill)
-
-    def add_square(
-        self,
-        start: Pixel,
-        size: int,
-        color: RGB = Color.red,
-        thickness: int = 2,
-        fill: bool = False,
-    ) -> None:
-        self.add_rectangle(start, size, size, color=color, thickness=thickness, fill=fill)
 
     def clear(self):
         """Clear all previous stored annotations."""
@@ -136,7 +126,7 @@ class ArrayViewer:
             if 0 <= i < height and 0 <= j < width:
                 pixels[j, i] = color
 
-    def _draw_rectangle(self, rectangle: AreaInfo) -> None:
+    def _draw_rectangle(self, rectangle: Area) -> None:
         if self.array is None:
             return
         height, width = self.array.shape

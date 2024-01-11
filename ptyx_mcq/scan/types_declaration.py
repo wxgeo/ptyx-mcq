@@ -183,7 +183,7 @@ CORNER_NAMES: tuple[ValidCornerStringValues] = ("TL", "TR", "BL", "BR")  # type:
 
 
 @dataclass(kw_only=True)
-class FigureInfo:
+class Shape:
     """Base class for all data classes providing information for figures.
 
     This is used intensively for debugging, but also to pass information
@@ -196,7 +196,7 @@ class FigureInfo:
 
 
 @dataclass
-class RectangleInfo(FigureInfo):
+class Rectangle(Shape):
     position: Pixel
     width: int
     height: int | None = None
@@ -212,7 +212,7 @@ class RectangleInfo(FigureInfo):
 
 
 @dataclass
-class AreaInfo(FigureInfo):
+class Area(Shape):
     start: Pixel
     end: Pixel
 
@@ -228,11 +228,11 @@ class CalibrationError(RuntimeError):
     def __init__(
         self,
         *args,
-        details: Sequence[FigureInfo] | None = None,
+        details: Sequence[Shape] | None = None,
         matrix: ndarray | None = None,
     ):
         super().__init__(*args)
-        self.details: list[FigureInfo] = [] if details is None else list(details)
+        self.details: list[Shape] = [] if details is None else list(details)
         self.matrix = matrix
 
 

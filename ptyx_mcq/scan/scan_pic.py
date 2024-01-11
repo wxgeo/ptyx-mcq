@@ -15,9 +15,9 @@ from .types_declaration import (
     CalibrationSquaresNotFound,
     IdBandNotFound,
     Pixel,
-    FigureInfo,
-    RectangleInfo,
-    AreaInfo,
+    Shape,
+    Rectangle,
+    Area,
     VPosition,
     HPosition,
     ValidCornerKey,
@@ -265,7 +265,7 @@ def find_corner_square(
     if whiteness_measure > max_whiteness:
         print(f"WARNING: Corner square {corner} not found " f"(not dark enough: {whiteness_measure}!)")
         raise MissingSquare(
-            f"Corner square {corner} not found.", details=[RectangleInfo((i0, j0), size, color=Color.blue)]
+            f"Corner square {corner} not found.", details=[Rectangle((i0, j0), size, color=Color.blue)]
         )
 
     if corner.v == VPosition.BOTTOM:
@@ -341,7 +341,7 @@ def _detect_four_squares(
     tolerance=0.2,
     debug=False,
 ) -> tuple[CornersPositions, Pixel, Pixel]:
-    debug_info: list[FigureInfo] = []
+    debug_info: list[Shape] = []
     #    h = w = round(2*(1 + SQUARE_SIZE_IN_CM)*cm)
     # Make a mutable copy of frozenset CORNERS.
     corners = set(CORNERS)
@@ -354,7 +354,7 @@ def _detect_four_squares(
             # ~ # the search area, so extend search by the size of the square.
             # ~ i, j = find_corner_square(m, square_size, corner, h + square_size,
             # ~ w + square_size, tolerance, whiteness)
-            debug_info.append(RectangleInfo((i, j), square_size))
+            debug_info.append(Rectangle((i, j), square_size))
             positions[corner] = i, j
             corners.remove(corner)
         except MissingSquare as e:
@@ -421,7 +421,7 @@ def _detect_four_squares(
 
     if len(positions) == 4:
         if number_of_orthogonal_corners <= 2:
-            debug_info.extend([RectangleInfo(pos, square_size) for pos in positions.values()])
+            debug_info.extend([Rectangle(pos, square_size) for pos in positions.values()])
             print("number_of_orthogonal_corners =", number_of_orthogonal_corners)
             raise CalibrationSquaresNotFound("Something wrong with the corners !", details=debug_info)
 
@@ -444,20 +444,20 @@ def _detect_four_squares(
 
             # Calculate the last corner (ABCD parallelogram <=> Vec{AB} = \Vec{DC})
             positions[corner] = (i, j)
-            debug_info.append(RectangleInfo((i, j), square_size, color=Color.cyan))
+            debug_info.append(Rectangle((i, j), square_size, color=Color.cyan))
 
             # For example: positions['bl'] = positions['br'][0], positions['tl'][1]
 
     ij1, ij2 = area_defined_by_corners(positions)
 
     if debug:
-        debug_info.append(AreaInfo(ij1, ij2, color=Color.green))
+        debug_info.append(Area(ij1, ij2, color=Color.green))
         ArrayViewer(m, *debug_info).display()
 
     return positions, ij1, ij2
 
 
-def find_document_id_band(m: ndarray, i: int, j1: int, j2: int, square_size: int) -> RectangleInfo:
+def find_document_id_band(m: ndarray, i: int, j1: int, j2: int, square_size: int) -> Rectangle:
     """Return the top left corner (coordinates in pixels) of the document ID band first square."""
     margin = square_size
     i1, i2 = i - margin, i + square_size + margin
@@ -471,12 +471,12 @@ def find_document_id_band(m: ndarray, i: int, j1: int, j2: int, square_size: int
         raise IdBandNotFound(
             "The beginning of the ID band could not be found.",
             details=[
-                AreaInfo((i1, j1), (i2, j2)),
+                Area((i1, j1), (i2, j2)),
             ],
         )
     i3 += i1
     j3 += j1
-    return RectangleInfo((i3, j3), square_size)
+    return Rectangle((i3, j3), square_size)
 
 
 def calibrate(pic: Image.Image, m: ndarray, debug=False) -> tuple[ndarray, float, float, Pixel, Pixel]:
@@ -591,7 +591,7 @@ def calibrate(pic: Image.Image, m: ndarray, debug=False) -> tuple[ndarray, float
     positions, (i1, j1), (i2, j2) = detect_four_squares(m, calib_square, cm, debug=debug)
     print("ok2")
 
-    debug_info: list[FigureInfo] = []
+    debug_info: list[Shape] = []
 
     try:
         first_id_square = find_document_id_band(m, i1, j1, j2, square_size)
@@ -607,7 +607,7 @@ def calibrate(pic: Image.Image, m: ndarray, debug=False) -> tuple[ndarray, float
             i = height - 1 - i - calib_square
             j = width - 1 - j - calib_square
             positions[corner] = i, j
-            debug_info.append(RectangleInfo((i, j), calib_square, color=Color.green))
+            debug_info.append(Rectangle((i, j), calib_square, color=Color.green))
         # Replace each tag by the opposite (top-left -> bottom-right).
         positions.flip()
         # ~ color2debug(m)
@@ -633,7 +633,7 @@ def calibrate(pic: Image.Image, m: ndarray, debug=False) -> tuple[ndarray, float
     v_pixels_per_mm = (i2 - i1) / (297 - calib_shift_mm)
     #    cm = 10*(h_pixels_per_mm + 1.5*v_pixels_per_mm)/2.5
 
-    debug_info.extend(RectangleInfo(position, calib_square) for position in positions.values())
+    debug_info.extend(Rectangle(position, calib_square) for position in positions.values())
     debug_info.append(first_id_square)
 
     if debug:
@@ -645,7 +645,7 @@ def calibrate(pic: Image.Image, m: ndarray, debug=False) -> tuple[ndarray, float
 
 
 def read_doc_id_and_page(
-    m: ndarray, pos: Pixel, f_square_size: float, debug_info: list[FigureInfo]
+    m: ndarray, pos: Pixel, f_square_size: float, debug_info: list[Shape]
 ) -> tuple[DocumentId, Page]:
     """Read the document ID and the page number.
 
@@ -665,7 +665,7 @@ def read_doc_id_and_page(
         j_ = round(j + (k + 1) * f_square_size)
         if test_square_color(m, i, j_, square_size, proportion=0.5, gray_level=0.5):
             doc_id += 2**k
-        debug_info.append(RectangleInfo((i, j_), square_size, color=(Color.red if k % 2 else Color.blue)))
+        debug_info.append(Rectangle((i, j_), square_size, color=(Color.red if k % 2 else Color.blue)))
 
     # Nota: If necessary (although this is highly unlikely !), one may extend protocol
     # by adding a second band (or more !), starting with a black square.
@@ -687,7 +687,7 @@ def read_student_id_and_name(
     pos: Pixel,
     id_format: StudentIdFormat,
     f_cell_size: float,
-    debug_info: list[FigureInfo],
+    debug_info: list[Shape],
 ) -> tuple[StudentId, StudentName]:
     student_id = ""
     student_name = ""
@@ -739,7 +739,7 @@ def read_student_id_and_name(
                 print("Found:", d, square_blackness)
 
             debug_info.append(
-                RectangleInfo((i, j), cell_size, color=(Color.cyan if is_black_enough else Color.red))
+                Rectangle((i, j), cell_size, color=(Color.cyan if is_black_enough else Color.red))
             )
 
         if black_cells:
@@ -896,7 +896,7 @@ def scan_picture(filename: str | Path, config: Configuration, debug=False) -> tu
     # ------------------------------------------------------------------
     #                      READ IDENTIFIER
     # ------------------------------------------------------------------
-    debug_info: list[FigureInfo] = []
+    debug_info: list[Shape] = []
     doc_id, page = read_doc_id_and_page(m, (i, j), f_square_size, debug_info)
 
     # ------------------------------------------------------------------
