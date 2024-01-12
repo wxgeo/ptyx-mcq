@@ -33,7 +33,7 @@ def extract_pdf_pictures(pdf_file: Path, dest: Path) -> None:
                 continue
         # In all other cases, we'll have to rasterize the whole page and save it as a JPG picture
         # (unfortunately, this is much slower than a simple extraction).
-        page.get_pixmap(dpi=200, colorspace="GRAY").save(dest / f"{i:03d}.jpg")
+        page.get_pixmap(dpi=200, colorspace=fitz.Colorspace(fitz.CS_GRAY)).save(dest / f"{i:03d}.jpg")
 
 
 def _contain_only_a_single_image(page: fitz.Page) -> bool:
