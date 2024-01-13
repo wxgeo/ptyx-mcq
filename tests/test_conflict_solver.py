@@ -234,6 +234,10 @@ def test_duplicate_name(monkeypatch, conflict_solver):
     assert custom_input.is_empty(), f"List of remaining questions/answers: {custom_input.remaining()}"
 
 
+def test_empty_document(tmp_path):
+    """Simulate an empty document (i.e. a valid unfilled document) being inserted by mistake."""
+
+
 def test_blank_page_inserted(tmp_path):
     """Test what happens when a blank page (or any unrelated paper) has been scanned by error.
 
