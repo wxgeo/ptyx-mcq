@@ -173,11 +173,11 @@ def main(args: Optional[list] = None) -> None:
     clear_parser.set_defaults(func=clear)
 
     # ------------------------------------------
-    #     $ mcq  update-config
+    #     $ mcq  fix
     # ------------------------------------------
-    # create the parser for the "update-config" command
-    update_config_parser = add_parser("update-config", help="Update mcq configuration file.")
-    update_config_parser.add_argument(  # type: ignore[attr-defined]
+    # create the parser for the "fix" command
+    fix_parser = add_parser("fix", help="Update mcq configuration file.")
+    fix_parser.add_argument(  # type: ignore[attr-defined]
         "path",
         nargs="?",
         metavar="PATH",
@@ -185,29 +185,29 @@ def main(args: Optional[list] = None) -> None:
         default=".",
         help="The .ptyx file from which the configuration file must be updated.",
     ).completer = FilesCompleter("ptyx")
-    update_config_parser.set_defaults(func=update_config)
+    fix_parser.set_defaults(func=fix)
 
     # ------------------------------------------
-    #     $ mcq  update-include
+    #     $ mcq  update
     # ------------------------------------------
-    # create the parser for the "update-include" command
-    update_include_parser = add_parser("update-include", help="Update included files.")
-    update_include_parser.add_argument(  # type: ignore[attr-defined]
+    # create the parser for the "update" command
+    update_parser = add_parser("update", help="Update included files.")
+    update_parser.add_argument(  # type: ignore[attr-defined]
         "path", nargs="?", metavar="PATH", type=Path, default=".", help="Path of the .ptyx file to update."
     ).completer = FilesCompleter("ptyx")
-    update_include_parser.add_argument(
+    update_parser.add_argument(
         "--force",
         action="store_true",
         default=False,
         help="Force update, even if it doesn't seem safe (pTyX code and include directives are intricate).",
     )
-    update_include_parser.add_argument(
+    update_parser.add_argument(
         "--clean",
         action="store_true",
         default=False,
         help="Remove imports corresponding to missing files, and any import comments.",
     )
-    update_include_parser.set_defaults(func=update_include)
+    update_parser.set_defaults(func=update)
 
     # ------------------------------------------
     #     $ mcq  create-template
@@ -415,7 +415,7 @@ def clear(path: Path) -> None:
     print_success("Directory cleared.")
 
 
-def update_config(path: Path) -> None:
+def fix(path: Path) -> None:
     """Update the .ptyx.mcq.config.json configuration file, following any .ptyx file change.
 
     Path `path` must be either a pTyx file, or a directory containing a single pTyX file.
@@ -469,7 +469,7 @@ def same_questions_and_answers_numbers(config1: Configuration, config2: Configur
     return True
 
 
-def update_include(path: Path, force=False, clean=False) -> None:
+def update(path: Path, force=False, clean=False) -> None:
     """Update the list of included files."""
     from ptyx_mcq.tools.include_parser import update_file
 
