@@ -363,7 +363,7 @@ class MCQPictureParser:
         # ---------------------------
         # Resolve conflicts manually: unknown student ID, ambiguous answer...
         print("\nAnalyzing collected data:")
-        ConflictSolver(self.data_handler).resolve_conflicts()
+        ConflictSolver(self.data_handler).resolve_conflicts(debug=debug)
         # TODO: make checkboxes export optional (this is
         #  only useful for debug)
         self.data_handler.export_checkboxes()

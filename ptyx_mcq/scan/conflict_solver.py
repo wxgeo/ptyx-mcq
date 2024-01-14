@@ -16,7 +16,7 @@ from ptyx_mcq.tools.config_parser import (
     StudentName,
     StudentId,
 )
-from ptyx_mcq.tools.io_tools import print_framed_msg, print_warning
+from ptyx_mcq.tools.io_tools import print_framed_msg, print_warning, print_success
 
 
 class ConflictSolver:
@@ -24,14 +24,14 @@ class ConflictSolver:
         self.data_storage = data_storage
         self.data = data_storage.data
 
-    def resolve_conflicts(self):
+    def resolve_conflicts(self, debug=False):
         """Resolve conflicts manually: unknown student ID, ambiguous answer..."""
         print("Searching for missing names...")
         self.review_missing_names()
         print("Searching for duplicate names...")
         self.review_duplicate_names()
         print("Searching for ambiguous answers...")
-        self.review_answers()
+        self.review_answers(debug=debug)
 
     def review_missing_names(self) -> None:
         # First, complete missing information with previous scan data, if any.
@@ -141,7 +141,7 @@ class ConflictSolver:
         self.data_storage.store_additional_info(doc_id=doc_id, name=name, student_id=student_id)
         return StudentName(name), StudentId(student_id)
 
-    def review_answers(self):
+    def review_answers(self, debug=False):
         for doc_id, doc_data in self.data.items():
             for page, pic_data in doc_data.pages.items():
                 if pic_data.needs_review and Path(pic_data.pic_path) not in self.data_storage.verified:
@@ -150,6 +150,10 @@ class ConflictSolver:
                     print_warning(f"Ambiguous answers for student {doc_data.name}.")
                     self.edit_answers(doc_id, page)
                     self.data_storage.store_verified_pic(Path(pic_data.pic_path))
+                elif debug:
+                    print(f"Picture's path: '{pic_data.pic_path}'.")
+                    print_success(f"All answers successfully read for student {doc_data.name}.")
+                    self.display_page_with_detected_answers(doc_id, page)
 
     def display_page_with_detected_answers(self, doc_id: DocumentId, page: Page) -> subprocess.Popen:
         """Display the page with its checkboxes colored following their detection status."""

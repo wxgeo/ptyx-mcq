@@ -536,7 +536,8 @@ def calibrate(pic: Image.Image, m: ndarray, debug=False) -> tuple[ndarray, float
 
     # First pass, to detect rotation.
     positions: CornersPositions
-    positions, *_ = detect_four_squares(m, calib_square, cm, debug=debug)
+    # First pass is usually not worth displaying when debugging.
+    positions, *_ = detect_four_squares(m, calib_square, cm, debug=False)
     print(positions)
 
     tl = positions.TL
@@ -587,9 +588,7 @@ def calibrate(pic: Image.Image, m: ndarray, debug=False) -> tuple[ndarray, float
     print(f"Detect pixels/cm: {cm}")
 
     # Detect calibration squares again, to enhance accuracy.
-    print("ok")
     positions, (i1, j1), (i2, j2) = detect_four_squares(m, calib_square, cm, debug=debug)
-    print("ok2")
 
     debug_info: list[Shape] = []
 
@@ -618,12 +617,15 @@ def calibrate(pic: Image.Image, m: ndarray, debug=False) -> tuple[ndarray, float
             first_id_square = find_document_id_band(m, i1, j1, j2, square_size)
         except IdBandNotFound as e:
             debug_info.extend(e.details)
-            print("ERROR: Can't find identification band!")
+            print_warning("Identification band not found!")
             if debug:
                 print(f"Search area: {i1, j1, i2, j2}")
                 print("Displaying search areas in red.")
                 ArrayViewer(m, *debug_info).display()
             raise IdBandNotFound("Can't find identification band!", details=debug_info, matrix=m)
+
+    if debug:
+        print(f"Detected corners positions: {positions}")
 
     # Distance between the top left corners of the left and right squares is:
     # 21 cm - (margin left + margin right + 1 square width)
@@ -641,7 +643,7 @@ def calibrate(pic: Image.Image, m: ndarray, debug=False) -> tuple[ndarray, float
         ArrayViewer(m, *debug_info).display()
     # ~ input('- pause -')
 
-    return m, h_pixels_per_mm, v_pixels_per_mm, tl, first_id_square.position
+    return m, h_pixels_per_mm, v_pixels_per_mm, positions.TL, first_id_square.position
 
 
 def read_doc_id_and_page(
@@ -844,7 +846,7 @@ def scan_picture(filename: str | Path, config: Configuration, debug=False) -> tu
         m = (m - min_val) / (max_val - min_val)
         if debug:
             print(f"New range: {amin(m)} - {amax(m)}")
-            ArrayViewer(m).display()
+            # ArrayViewer(m).display()
     else:
         print_warning(f"Not enough contrast in picture {filename!r}!")
 
@@ -955,9 +957,9 @@ def scan_picture(filename: str | Path, config: Configuration, debug=False) -> tu
     try:
         boxes = config.boxes[doc_id][page]
     except KeyError:
-        print_info(
-            f"ID {doc_id!r} - page {page!r} not found in config file.\nThis is probably an empty page."
-        )
+        print_warning(f"ID {doc_id!r} - page {page!r} not found in config file.")
+        print_warning(f"This page doesn't seem to belong to the current document.")
+        print_warning(f"Maybe some unrelated sheet was scanned by mistake?")
         return pic_data, m
 
     # ordering = config['ordering'][doc_id]
