@@ -1,4 +1,4 @@
-from ptyx_mcq.scan.types_declaration import CORNER_NAMES, Corner
+from ptyx_mcq.scan.calibration import Corner, CORNER_NAMES
 
 
 def test_corners():
