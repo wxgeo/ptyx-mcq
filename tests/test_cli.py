@@ -220,7 +220,7 @@ def test_cli(tmp_path: Path) -> None:
     assert (path / "new.scores.xlsx").exists()
 
     # ------------------------
-    # Test `mcq update-config`
+    # Test `mcq fix`
     # ------------------------
     STUDENTS[StudentId("12345678")] = StudentName(new_student_name := "Julien Durand")
     csv_path = write_students_id_to_csv(tmp_path, STUDENTS)
@@ -236,7 +236,7 @@ def test_cli(tmp_path: Path) -> None:
     with open(path / "new.ptyx", "w", encoding="utf8") as f:
         f.write(content.replace("# default score =", "default score ="))
 
-    main(["update-config", str(path)])
+    main(["fix", str(path)])
     config = Configuration.load(path / "new.ptyx.mcq.config.json")
     assert new_student_name in config.students_ids.values(), repr(path / "new.ptyx.mcq.config.json")
     main(["scan", str(path)])

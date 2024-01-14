@@ -643,6 +643,7 @@ def calibrate(pic: Image.Image, m: ndarray, debug=False) -> tuple[ndarray, float
         ArrayViewer(m, *debug_info).display()
     # ~ input('- pause -')
 
+    assert positions.TL is not None
     return m, h_pixels_per_mm, v_pixels_per_mm, positions.TL, first_id_square.position
 
 
@@ -958,8 +959,8 @@ def scan_picture(filename: str | Path, config: Configuration, debug=False) -> tu
         boxes = config.boxes[doc_id][page]
     except KeyError:
         print_warning(f"ID {doc_id!r} - page {page!r} not found in config file.")
-        print_warning(f"This page doesn't seem to belong to the current document.")
-        print_warning(f"Maybe some unrelated sheet was scanned by mistake?")
+        print_warning("This page doesn't seem to belong to the current document.")
+        print_warning("Maybe some unrelated sheet was scanned by mistake?")
         return pic_data, m
 
     # ordering = config['ordering'][doc_id]

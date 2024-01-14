@@ -13,7 +13,7 @@ import traceback
 from argparse import ArgumentParser
 from os import unlink
 from pathlib import Path
-from typing import Optional, Literal, Iterable
+from typing import Optional, Literal, Iterable, TYPE_CHECKING
 
 import argcomplete
 from argcomplete import DirectoriesCompleter, FilesCompleter
@@ -31,6 +31,11 @@ from ptyx_mcq.tools.io_tools import (
     print_warning,
     print_info,
 )
+
+if TYPE_CHECKING:
+    # Import `MCQPictureParser` ONLY when type checking!
+    # Otherwise, this would severely impact CLI autocompletion performance.
+    from ptyx_mcq.scan.scan import MCQPictureParser
 
 
 class TemplatesCompleter(argcomplete.completers.BaseCompleter):
@@ -290,9 +295,12 @@ def scan(
     verify: Literal["auto", "always", "never"] = "auto",
     test_picture: Path = None,
     debug: bool = False,
-) -> None:
-    """Implement `mcq scan` command."""
-    from .scan.scan import MCQPictureParser
+) -> "MCQPictureParser":
+    """Implement `mcq scan` command.
+
+    Returned `MCQPictureParser` instance may be used by tests to check results.
+    """
+    from ptyx_mcq.scan.scan import MCQPictureParser
 
     try:
         if verify == "always":
@@ -301,16 +309,18 @@ def scan(
             manual_verification = False
         else:
             manual_verification = None
+        mcq_parser = MCQPictureParser(path)
         if test_picture is None:
-            MCQPictureParser(path).scan_all(
+            mcq_parser.scan_all(
                 reset=reset,
                 manual_verification=manual_verification,
                 debug=debug,
             )
             print_success("Students' marks successfully generated. :)")
         else:
-            MCQPictureParser(path).scan_picture(test_picture)
+            mcq_parser.scan_picture(test_picture)
             print_success(f"Picture {test_picture!r} scanned.")
+        return mcq_parser
     except KeyboardInterrupt:
         print()
         print_warning("Script interrupted.")
