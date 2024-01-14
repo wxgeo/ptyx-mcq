@@ -193,7 +193,9 @@ class DataHandler:
 
     def _load_skipped_pictures_list(self) -> None:
         """List skipped pictures. Next time, they will be skipped with no warning."""
+        # All pictures already analyzed in a previous run will be skipped.
         self.skipped = set(pic_names_iterator(self.data))
+        # `self.files.skipped` is the path of a text file, listing additional pictures to skip (blank pages for ex.)
         if self.files.skipped.is_file():
             with open(self.files.skipped, "r", encoding="utf8", newline="") as file:
                 self.skipped |= set(Path(line.strip()) for line in file.readlines())
@@ -211,15 +213,18 @@ class DataHandler:
             keyboard_interrupt = True
 
         previous_sigint_handler = signal.signal(signal.SIGINT, memorize_interrupt)
-        with open(self.dirs.data / f"{pdf_hash}.index", "a") as f:
-            f.write(str(doc_id) + "\n")
-        # We will store a compressed version of the matrix.
+        # File <pdfhash>.index will index all the documents ids corresponding to this pdf.
+        index_file = self.dirs.data / f"{pdf_hash}.index"
+        if not index_file.is_file() or str(doc_id) not in set(index_file.read_text("utf-8").split()):
+            with open(index_file, "a") as f:
+                f.write(str(doc_id) + "\n")
+        # We will store a compressed version of the matrix (as a webp image).
         # (It would consume too much memory else).
         if matrix is not None:
             save_webp(matrix, self.dirs.data / f"{doc_id}-{p}.webp")
         # WARNING !
-        # The .scandata file must be stored last, in case the process is interrupted.
-        # This prevents from having non-existing webp files declared in the .scandata file.
+        # The `<doc_id>.scandata` file must be stored last, in case the process is interrupted.
+        # This prevents from having non-existing webp files declared in a .scandata file.
         with open(self.dirs.data / f"{doc_id}.scandata", "w") as f:
             f.write(repr(self.data[doc_id]))
 
@@ -273,7 +278,7 @@ class DataHandler:
                     to_extract.append((pdfpath, folder))
             pool.starmap(extract_pdf_pictures, to_extract)
 
-    def _remove_obsolete_files(self, hash2pdf):
+    def _remove_obsolete_files(self, hash2pdf: dict[str, Path]) -> None:
         """For each removed pdf files, remove corresponding pictures and data."""
         for path in self.dirs.pic.iterdir():
             if not path.is_dir():
@@ -289,10 +294,14 @@ class DataHandler:
                 with open(path) as f:
                     doc_ids = set(f.read().split())
                 for doc_id in doc_ids:
-                    (self.dirs.data / f"{doc_id}.scandata").unlink(missing_ok=True)
-                    for webp in self.dirs.data.glob(f"{doc_id}-*.webp"):
-                        webp.unlink()
+                    self.remove_doc_files(DocumentId(int(doc_id)))
                 path.unlink()
+
+    def remove_doc_files(self, doc_id: DocumentId) -> None:
+        """Remove all the data files associated with the document of id `doc_id`."""
+        (self.dirs.data / f"{doc_id}.scandata").unlink(missing_ok=True)
+        for webp in self.dirs.data.glob(f"{doc_id}-*.webp"):
+            webp.unlink()
 
     def get_checkboxes(
         self, doc_id: DocumentId, page: Page

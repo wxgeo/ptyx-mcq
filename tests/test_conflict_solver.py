@@ -279,7 +279,10 @@ def test_empty_document(no_display, tmp_path, custom_input):
     assert mcq_parser.scores_manager.results == {"John": 8.833333333333332, "Edward": 9.455952380952379}
     # There should be no remaining question.
     assert custom_input.is_empty(), f"List of remaining questions/answers: {custom_input.remaining()}"
-    # custom_input.set_scenario([])
-    # mcq_parser = scan(copy, reset=True)
-    # # There should be no remaining question.
-    # assert custom_input.is_empty(), f"List of remaining questions/answers: {custom_input.remaining()}"
+    custom_input.set_scenario([])
+    mcq_parser = scan(copy)
+    # There should be no remaining question.
+    assert custom_input.is_empty(), f"List of remaining questions/answers: {custom_input.remaining()}"
+    # No change in results of course.
+    assert mcq_parser.scores_manager.scores == {"John": 8.833333333333332, "Edward": 9.455952380952379}
+    assert mcq_parser.scores_manager.results == {"John": 8.833333333333332, "Edward": 9.455952380952379}

@@ -50,13 +50,20 @@ class ConflictSolver:
                 print_warning(f"No student name for document {doc_id}.")
                 student_name, student_id = self.enter_name_and_id(doc_id)
                 if student_name == "/":
-                    # Remove document.
+                    # Remove this document.
                     to_remove.append(doc_id)
                 doc_data.name = student_name
                 doc_data.student_id = student_id
                 self.data_storage.more_infos[doc_id] = (student_name, student_id)
         for doc_id in to_remove:
-            self.data.pop(doc_id)
+            doc_data = self.data.pop(doc_id)
+            # For each page of the document, add corresponding picture path
+            # to skipped paths list.
+            # If `mcq scan` is run again, those pictures will be skipped.
+            for pic_data in doc_data.pages.values():
+                self.data_storage.store_skipped_pic(Path(pic_data.pic_path))
+            # Remove also all corresponding data files.
+            self.data_storage.remove_doc_files(doc_id)
 
     def review_duplicate_names(self) -> None:
         name_to_doc_id: dict[StudentName, DocumentId] = {}
