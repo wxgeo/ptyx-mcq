@@ -5,6 +5,8 @@ Created on Thu Aug 29 14:49:37 2019
 
 @author: nicolas
 """
+from collections.abc import Generator
+from itertools import chain
 from os.path import join
 
 # from typing import TYPE_CHECKING
@@ -15,7 +17,7 @@ from ptyx_mcq.scan.data_handler import DataHandler
 from .document_data import DocumentData
 
 from .types_declaration import Pixel
-from .color import Color
+from .color import Color, RGB
 from ..tools.config_parser import DocumentId, OriginalQuestionNumber, QuestionNumberOrDefault
 
 
@@ -116,8 +118,12 @@ def _correct_checkboxes(
 ) -> None:
     i, j = pos
     margin = size // 2
-    # Draw a blue square around the box (for debugging purpose).
-    draw.rectangle((j, i, j + size, i + size), outline=Color.green)
+    # Draw a blue square around each checkbox.
+    # The square's border should be solid if the box has been detected as checked, and dashed otherwise.
+    if checked:
+        draw.rectangle((j, i, j + size, i + size), outline=Color.blue)
+    else:
+        _draw_dashed_rectangle(draw, pos, size, color=Color.blue, color2=Color.white)
     red = Color.red
     if correct is None:
         draw.rectangle((j, i, j + size, i + size), outline=Color.orange)
@@ -137,4 +143,71 @@ def _correct_checkboxes(
 def _write_score(draw: ImageDraw.ImageDraw, pos: Pixel, earn: float, maximum: float, size: int) -> None:
     i, j = pos
     fnt = ImageFont.truetype("FreeSerif.ttf", int(0.7 * size))
-    draw.text((j, i), f"{round(earn, 2):g}/{round(maximum, 2):g}", font=fnt, fill=Color.red)
+    # Add 0.0 to result after rounding, to prevent negative zeros (-0.0).
+    # (Don't use `:zn` formatter, since it will fail on integers!)
+    draw.text((j, i), f"{round(earn, 2) + 0.0:n}/{round(maximum, 2):n}", font=fnt, fill=Color.red)
+
+
+def _dash_generator(
+    start: int, stop: int, plain_step: int, blank_step: int, invert=False
+) -> Generator[int, None, None]:
+    """Like range(), but skip blank intervals to generate dashes.
+
+    Unlike range, stop value is included (if it is not in a blank interval).
+    """
+    n = start
+    while n <= stop:
+        if invert:
+            n += plain_step
+            for i in range(n, min(n + blank_step, stop)):
+                yield i
+            n += blank_step
+        else:
+            for i in range(n, min(n + plain_step, stop)):
+                yield i
+            n += plain_step + blank_step
+
+
+def _draw_dotted_rectangle(draw: ImageDraw.ImageDraw, pos: Pixel, size: int, color: RGB) -> None:
+    """Draw a rectangle with dotted line using PIL.
+
+    Current implementation is very limited, line width in particular can not be changed.
+    """
+    i0, j0 = pos
+    pixels = chain(
+        ((j, i0 + i) for j in (j0, j0 + size) for i in range(0, size + 1, 2)),
+        ((j0 + j, i) for i in (i0, i0 + size) for j in range(0, size + 1, 2)),
+    )
+    draw.point(list(pixels), fill=color)
+
+
+def _draw_dashed_rectangle(
+    draw: ImageDraw.ImageDraw,
+    pos: Pixel,
+    size: int,
+    color: RGB,
+    color2: RGB | None = None,
+    plain: int = 4,
+    blank: int = 4,
+    _invert=False,
+) -> None:
+    """Draw a rectangle with dashed line using PIL.
+
+    Current implementation is very limited, line width in particular can not be changed.
+    """
+    i0, j0 = pos
+    pixels = chain(
+        (
+            (j, i)
+            for j in (j0, j0 + size)
+            for i in _dash_generator(i0, i0 + size, plain, blank, invert=_invert)
+        ),
+        (
+            (j, i)
+            for i in (i0, i0 + size)
+            for j in _dash_generator(j0, j0 + size, plain, blank, invert=_invert)
+        ),
+    )
+    draw.point(list(pixels), fill=color)
+    if color2 is not None:
+        _draw_dashed_rectangle(draw, pos, size, color=color2, plain=plain, blank=blank, _invert=True)
