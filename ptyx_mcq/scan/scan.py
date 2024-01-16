@@ -55,14 +55,6 @@ from ptyx_mcq.tools.io_tools import print_warning, ANSI_RESET, ANSI_GREEN
 # from ..make.header import answers_and_score
 
 
-class MissingQuestion(RuntimeError):
-    """Error raised when some questions where not seen when scanning all data."""
-
-
-class MissingConfigurationData(RuntimeError):
-    """Error raised when some configuration data is missing."""
-
-
 class MCQPictureParser:
     """Main class for parsing pdf files containing all the scanned MCQ."""
 
@@ -72,7 +64,7 @@ class MCQPictureParser:
         input_dir: Optional[Path] = None,
         output_dir: Optional[Path] = None,
     ):
-        self.warnings = False
+        # self.warnings = False
         self.data_handler = DataHandler(Path(path), input_dir=input_dir, output_dir=output_dir)
         self.scores_manager = ScoresManager(self)
 
@@ -83,48 +75,6 @@ class MCQPictureParser:
     @property
     def data(self):
         return self.data_handler.data
-
-    def _test_integrity(self) -> None:
-        """For every test:
-        - all pages must have been scanned,
-        - all questions must have been seen."""
-        questions_not_seen = {}
-        pages_not_seen = {}
-        ordering = self.config.ordering
-        for doc_id in self.data:
-            try:
-                doc_ordering = ordering[doc_id]
-            except KeyError:
-                raise MissingConfigurationData(
-                    f"No configuration data found for document #{doc_id}.\n"
-                    "Maybe you recompiled the ptyx file in the while ?\n"
-                    f"(Launching `mcq make -n {max(self.data)}` might fix it.)"
-                )
-            questions = set(doc_ordering["questions"])
-            diff = questions - set(self.data[doc_id].answered)
-            if diff:
-                questions_not_seen[doc_id] = ", ".join(str(q) for q in diff)
-            # All tests may not have the same number of pages, since
-            # page breaking will occur at a different place for each test.
-            pages = set(self.config.boxes[doc_id])
-            diff = pages - set(self.data[doc_id].pages)
-            if diff:
-                pages_not_seen[doc_id] = ", ".join(str(p) for p in diff)
-        if pages_not_seen:
-            self._warn("= WARNING =")
-            self._warn("Pages not seen:")
-            for doc_id in sorted(pages_not_seen):
-                self._warn(f"    • Test {doc_id}: page(s) {pages_not_seen[doc_id]}")
-        if questions_not_seen:
-            self._warn("=== ERROR ===")
-            self._warn("Questions not seen !")
-            for doc_id in sorted(questions_not_seen):
-                self._warn(f"    • Test {doc_id}: question(s) {questions_not_seen[doc_id]}")
-
-        if questions_not_seen:
-            # Don't raise an error for pages not found (only a warning in log)
-            # if all questions were found, this was probably empty pages.
-            raise MissingQuestion("Questions not seen ! (Look at message above).")
 
     def _keep_previous_version(self, pic_data: PicData) -> bool:
         """Test if a previous version of the same page exist.
@@ -145,13 +95,13 @@ class MCQPictureParser:
         assert isinstance(lastpic_path, str)
         assert isinstance(firstpic_path, str)
 
-        self._warn(f"WARNING: Page {p} of test #{doc_id} seen twice " f'(in "{firstpic}" and "{lastpic}") !')
+        print_warning(f"Page {p} of test #{doc_id} seen twice " f'(in "{firstpic}" and "{lastpic}") !')
         action = None
         keys = ("name", "student_id", "answered")
         if all(pic_data[key] == self.data[doc_id].pages[p][key] for key in keys):  # type: ignore
             # Same information found on the two pages, just keep one version.
             action = "f"
-            self._warn("Both page have the same information, keeping only first one...")
+            print_warning("Both page have the same information, keeping only first one...")
 
         # We have a problem: this is a duplicate.
         # In other words, we have 2 different versions of the same page.
@@ -231,12 +181,12 @@ class MCQPictureParser:
         ConflictSolver.display_picture_with_detected_answers(array, pic_data)
         print(pic_data)
 
-    def _warn(self, *values, sep=" ", end="\n") -> None:
-        """Print to stdout and write to log file."""
-        msg = sep.join(str(val) for val in values) + end
-        print_warning(msg)
-        self.data_handler.write_log(msg)
-        self.warnings = True
+    # def _warn(self, *values, sep=" ", end="\n") -> None:
+    #     """Print to stdout and write to log file."""
+    #     msg = sep.join(str(val) for val in values) + end
+    #     print_warning(msg)
+    #     self.data_handler.write_log(msg)
+    #     self.warnings = True
 
     def scan_all(
         self,
@@ -253,19 +203,6 @@ class MCQPictureParser:
         # extract the images from the PDF files if needed.
         print("Search for previous data...")
         self.data_handler.reload(reset=reset)
-
-        # Dict `data` will collect data from all scanned tests.
-        # ...............................................................
-        # FORMAT: {ID: {'pages': (dict) the pages seen, and all related information,
-        #               'answers': ({int: set}) the answers of the student for each question,
-        #               'score': (float) the test score,
-        #               'name': (str) the student name,
-        #               'last_pic': (str) last image seen full path,
-        #               },
-        #           ...
-        #          }
-        # ...............................................................
-        #
 
         # ---------------------------------------
         # Extract informations from the pictures.
@@ -308,7 +245,7 @@ class MCQPictureParser:
                 print()
 
             except CalibrationError:
-                self._warn(f"WARNING: {pic_path} seems invalid ! Skipping...")
+                print_warning(f"{pic_path} seems invalid ! Skipping...")
                 self.data_handler.store_skipped_pic(pic_path)
                 continue
 
@@ -367,16 +304,6 @@ class MCQPictureParser:
         # TODO: make checkboxes export optional (this is
         #  only useful for debug)
         self.data_handler.export_checkboxes()
-
-        # ---------------------------
-        # Test integrity
-        # ---------------------------
-        # For every test:
-        # - all pages must have been scanned,
-        # - all questions must have been seen.
-        print("Test for data integrity...")
-        self._test_integrity()
-        print("Everything seems OK.")
 
         # ---------------------------
         # Calculate scores

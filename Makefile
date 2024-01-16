@@ -21,3 +21,6 @@ publish: build
 fix:
 	poetry run black .
 	poetry run ruff --fix ptyx_mcq tests
+
+slow:
+	poetry run pytest tests/ --runslow

@@ -15,8 +15,17 @@ from ptyx_mcq.tools.config_parser import (
     ApparentAnswerNumber,
     StudentName,
     StudentId,
+    OriginalQuestionNumber,
 )
-from ptyx_mcq.tools.io_tools import print_framed_msg, print_warning, print_success
+from ptyx_mcq.tools.io_tools import print_framed_msg, print_warning, print_success, print_error, print_info
+
+
+class MissingQuestion(RuntimeError):
+    """Error raised when some questions where not seen when scanning all data."""
+
+
+class MissingConfigurationData(RuntimeError):
+    """Error raised when some configuration data is missing."""
 
 
 class ConflictSolver:
@@ -32,6 +41,8 @@ class ConflictSolver:
         self.review_duplicate_names()
         print("Searching for ambiguous answers...")
         self.review_answers(debug=debug)
+        print("Test for data integrity...")
+        self.test_integrity()
 
     def review_missing_names(self) -> None:
         # First, complete missing information with previous scan data, if any.
@@ -259,3 +270,54 @@ class ConflictSolver:
         width = array.shape[1]
         viewer = ArrayViewer(array[0 : int(3 / 4 * width), :])
         return viewer.display(wait=False)
+
+    def test_integrity(self) -> None:
+        """For every test:
+        - all pages must have been scanned,
+        - all questions must have been seen."""
+        missing_questions: dict[DocumentId, list[OriginalQuestionNumber]] = {}
+        missing_pages: dict[DocumentId, list[Page]] = {}
+        ordering = self.data_storage.config.ordering
+        for doc_id in self.data:
+            try:
+                doc_ordering = ordering[doc_id]
+            except KeyError:
+                raise MissingConfigurationData(
+                    f"No configuration data found for document #{doc_id}.\n"
+                    "Maybe you recompiled the ptyx file in the while ?\n"
+                    f"(Launching `mcq make -n {max(self.data)}` might fix it.)"
+                )
+            if questions_diff := sorted(set(doc_ordering["questions"]) - set(self.data[doc_id].answered)):
+                missing_questions[doc_id] = questions_diff
+            # ", ".join(str(q) for q in unseen_questions)
+            # All tests may not have the same number of pages, since
+            # page breaking will occur at a different place for each test.
+            if pages_diff := sorted(
+                set(self.data_storage.config.boxes[doc_id]) - set(self.data[doc_id].pages)
+            ):
+                missing_pages[doc_id] = pages_diff
+
+        if missing_pages:
+            print_warning("Pages missing:")
+            for doc_id in sorted(missing_pages):
+                print_warning(
+                    f"    • Test {doc_id}: page(s) {', '.join(str(page) for page in missing_pages[doc_id])}"
+                )
+            if not missing_questions:
+                print_info(
+                    "Missing pages seem to be empty, since all questions"
+                    " and answers have been successfully recovered yet."
+                )
+        if missing_questions:
+            print_error("Questions missing!")
+            for doc_id in sorted(missing_questions):
+                print_error(
+                    f"    • Test {doc_id}: question(s) {', '.join(str(page) for page in missing_questions[doc_id])}"
+                )
+
+        if missing_questions:
+            # Don't raise an error for pages not found (only a warning in log)
+            # if all questions were found, this was probably empty pages.
+            raise MissingQuestion("Questions not seen ! (Look at message above).")
+        else:
+            print_success("Data integrity successfully verified.")
