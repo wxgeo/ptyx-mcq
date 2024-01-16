@@ -89,7 +89,7 @@ class DataHandler:
         with open(self.paths.logfile_path, "a", encoding="utf8") as logfile:
             logfile.write(msg)
 
-    def get_pic(self, doc_id: int, page: int) -> Image.Image:
+    def get_pic(self, doc_id: DocumentId, page: Page) -> Image.Image:
         try:
             webp = next(self.dirs.data.glob(f"{doc_id}-{page}.webp"))
         except StopIteration:
@@ -101,7 +101,7 @@ class DataHandler:
             print_error(f"Error when opening {webp}.")
             raise
 
-    def get_matrix(self, doc_id: int, page: int) -> ndarray:
+    def get_matrix(self, doc_id: DocumentId, page: Page) -> ndarray:
         # noinspection PyTypeChecker
         return array(self.get_pic(doc_id, page).convert("L")) / 255
 
@@ -217,7 +217,7 @@ class DataHandler:
         index_file = self.dirs.data / f"{pdf_hash}.index"
         if not index_file.is_file() or str(doc_id) not in set(index_file.read_text("utf-8").split()):
             with open(index_file, "a") as f:
-                f.write(str(doc_id) + "\n")
+                f.write(f"{doc_id}\n")
         # We will store a compressed version of the matrix (as a webp image).
         # (It would consume too much memory else).
         if matrix is not None:
@@ -232,7 +232,7 @@ class DataHandler:
         if keyboard_interrupt:
             raise KeyboardInterrupt
 
-    def store_additional_info(self, doc_id: int, name: str, student_id: str) -> None:
+    def store_additional_info(self, doc_id: DocumentId, name: str, student_id: StudentId) -> None:
         with open(self.files.more_infos, "a", newline="") as csvfile:
             writerow = csv.writer(csvfile).writerow
             writerow([str(doc_id), name, student_id])

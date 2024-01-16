@@ -62,11 +62,11 @@ def test_no_conflict(monkeypatch, patched_conflict_solver):
 
 
 class CustomInput:
-    def __init__(self):
+    def __init__(self) -> None:
         self.scenario: list[tuple[str, str]] = []
         self.index = 0
 
-    def set_scenario(self, scenario: list[tuple[str, str]]):
+    def set_scenario(self, scenario: list[tuple[str, str]]) -> None:
         self.scenario = scenario
         self.index = 0
 

@@ -152,6 +152,8 @@ def keys2int(d: dict[str, T]) -> dict[int | str, T]:
     return {(int(k) if k.isdecimal() else k): v for k, v in d.items()}
 
 
+# TODO: Use Configuration types directly to convert keys and values
+#       automatically when decoding the JSON configuration file.
 def decodejs(js: str) -> dict[str, Any]:
     d = json.loads(js, object_hook=keys2int)
     new_d: dict[str, Any] = {}

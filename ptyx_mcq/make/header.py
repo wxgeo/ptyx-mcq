@@ -282,8 +282,8 @@ def table_for_answers(config: Configuration, doc_id: Optional[DocumentId] = None
     """Generate the table where students select correct answers.
 
     - `config` is a dict generated when compiling test.
-    - `ID` is the test ID if correct answers should be shown.
-      If `ID` is `None` (default), the table will be blank.
+    - `doc_id` is the document ID if correct answers should be shown.
+      If `doc_id` is `None` (default), the table will be left empty.
     """
     content: List[str] = []
     write = content.append
@@ -291,7 +291,13 @@ def table_for_answers(config: Configuration, doc_id: Optional[DocumentId] = None
     # Generate the table where students will answer.
     tkzoptions = ["scale=%s" % CELL_SIZE_IN_CM]
 
-    d = config.ordering[DocumentId(1) if doc_id is None else doc_id]
+    if doc_id is None:
+        assert len(config.ordering) >= 1
+        # Get any dict value.
+        d = next(iter(config.ordering.values()))
+    else:
+        d = config.ordering[doc_id]
+
     questions = d["questions"]
     answers = d["answers"]
     n_questions = len(questions)
