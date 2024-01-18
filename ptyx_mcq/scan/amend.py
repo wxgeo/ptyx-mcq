@@ -117,7 +117,7 @@ def _correct_checkboxes(
     draw: ImageDraw.ImageDraw, pos: Pixel, checked: bool, correct: bool | None, size: int
 ) -> None:
     i, j = pos
-    margin = size // 2
+    margin = size // 3
     # Draw a blue square around each checkbox.
     # The square's border should be solid if the box has been detected as checked, and dashed otherwise.
     if checked:
@@ -129,11 +129,9 @@ def _correct_checkboxes(
         draw.rectangle((j, i, j + size, i + size), outline=Color.orange)
     elif checked and not correct:
         # Circle checkbox with red pen.
-        try:
-            draw.ellipse((j - margin, i - margin, j + size + margin, i + size + margin), width=2, outline=red)
-        except TypeError:
-            # old PIL versions (<5.1.3)
-            draw.ellipse((j - margin, i - margin, j + size + margin, i + size + margin), outline=red)
+        draw.ellipse((j - margin, i - margin, j + size + margin, i + size + margin), outline=red)
+        # Strike through the checkbox too.
+        draw.line([(j - margin, i + size + margin), (j + size + margin, i - margin)], width=2, fill=Color.red)
     elif not checked and correct:
         # Check (cross) the box (with red pen).
         draw.line((j, i, j + size - 1, i + size - 1), fill=red, width=2)
