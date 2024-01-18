@@ -9,6 +9,33 @@ from typing import Iterable
 from ptyx_mcq import print_error
 
 
+def parse_at_directive(line: str) -> str:
+    r"""Parse @-directives.
+
+    @-directives are lines starting by an `@` character, and preceding answers.
+    There used to declare a formatter for all the answers of the same question.
+
+    One may change of f
+
+    Examples of formatter definition:
+        * "@formatting_function"
+        * "@\texttt{%s}"
+        * "@@\texttt{%s}"
+
+    Note that `%s` will be replaced by the provided answer string.
+
+    The last one, with two @ characters, is a raw formatter.
+    In that case, \texttt{} will be escaped, so that answer "hello"
+    will be converted to "\\texttt\{hello\}".
+    """
+    assert line.startswith("@")
+    raw = line.startswith("@@")
+    formatting = line[(2 if raw else 1) :].strip()
+    if formatting == "":
+        formatting = "%s"
+    return f"#{{RAW_CODE={raw};APPLY_TO_ANSWERS={formatting!r};}}"
+
+
 def generate_ptyx_code(text: str, additional_header_lines: Iterable[str] = ()) -> str:
     """This function translates MCQ syntax into proper pTyX code."""
 
@@ -185,17 +212,6 @@ def generate_ptyx_code(text: str, additional_header_lines: Iterable[str] = ()) -
             width = line[3:]
             code.append(f"#{{ANSWER_WIDTH={width!r};}}")
 
-        elif line.startswith("@"):
-            raw = line.startswith("@@")
-            # Examples:
-            # @formatting_function
-            # @@\texttt{%s}
-            formatting = line[(2 if raw else 1) :].strip()
-            if formatting == "":
-                formatting = "%s"
-            # Declare function to be applied to all answers.
-            code.append(f"#{{RAW_CODE={raw};APPLY_TO_ANSWERS={formatting!r};}}")
-
         elif line.startswith("- ") or line.startswith("+ ") or line.startswith("! "):
             # - incorrect answer
             # + correct answer
@@ -204,6 +220,9 @@ def generate_ptyx_code(text: str, additional_header_lines: Iterable[str] = ()) -
 
             if previous_line is None:
                 raise RuntimeError("No question before answers list !")
+            elif previous_line.startswith("@"):
+                # An @-directive have to be written in the line preceding an answer.
+                code[-1] = parse_at_directive(previous_line)
 
             # A blank line is used to separate answers groups.
             if previous_line == "" and current_level == "NEW_ANSWER":

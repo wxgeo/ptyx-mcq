@@ -1,0 +1,158 @@
+\documentclass[a4paper,twoside,10pt]{article}
+\PassOptionsToPackage{utf8}{inputenc}
+\PassOptionsToPackage{document}{ragged2e}
+\PassOptionsToPackage{left=1.5cm,
+    right=1.5cm,
+    top=2.5cm,bottom=2cm}{geometry}
+\parindent=0cm
+\newcommand*\graysquared[1]{\tikz[baseline=(char.base)]{
+    \node[fill=gray,shape=rectangle,draw,inner sep=2pt] (char) {\color{white}\textbf{#1}};}}
+\newcommand*\whitesquared[1]{\tikz[baseline=(char.base)]{
+    \node[fill=white,shape=rectangle,draw,inner sep=2pt] (char) {\color{black}\textbf{#1}};}}
+\newcommand*\ptyxMCQcircled[1]{\tikz[baseline=(char.base)]{
+    \node[shape=circle,fill=blue!20!white,draw,inner sep=2pt] (char) {\textbf{#1}};}}
+\makeatletter
+\newcommand{\ptyxMCQsimfill}{%
+\leavevmode \cleaders \hb@xt@ .50em{\hss $\sim$\hss }\hfill \kern \z@
+}
+\makeatother
+\newcounter{answerNumber}
+\renewcommand{\thesubsection}{\Alph{subsection}}
+    
+
+\usepackage{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{ragged2e}
+\usepackage{geometry}
+\usepackage{pifont}
+\usepackage{textcomp}
+\usepackage{nopageno}
+\usepackage{tikz}
+\usepackage{everypage}
+\usepackage{tabularx}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{colortbl}
+\usetikzlibrary{calc}
+\usetikzlibrary{math}
+\usepackage{zref-user}
+\usepackage{zref-abspos}
+\usepackage{zref-abspage}
+\usepackage{zref-lastpage}
+
+\makeatletter
+\newcommand\dimtomm[1]{%
+    \strip@pt\dimexpr 0.351459804\dimexpr#1\relax\relax%
+}
+\makeatother
+
+\newcommand{\checkBox}[2]{%
+    \begin{tikzpicture}[baseline=-12pt,color=black, thick]
+        \draw[fill=#1] (0,0)
+            node {\zsavepos{#2-ll}}
+            rectangle (.5,-.5);
+    \end{tikzpicture}%
+    \write\mywrite{#2: p\thepage, (%
+        \dimtomm{\zposx{#2-ll}sp},
+        \dimtomm{\zposy{#2-ll}sp})%
+    }%
+}
+\newwrite\mywrite
+\openout\mywrite=\jobname.pos\relax
+\AddEverypageHook{\CustomHeader}
+
+\usepackage{enumitem} % To resume an enumeration.
+\setenumerate[0]{label=\protect\ptyxMCQcircled{\arabic*}}
+\newlength{\ptyxMCQTabLength}
+\newcommand{\ptyxMCQTab}[2]{%
+  \settowidth{\ptyxMCQTabLength}{#1{}#2}
+  \ifdim \ptyxMCQTabLength<\textwidth%
+  \begin{tabular}{l@{\,\,}l}#1&#2\end{tabular}%
+  \else%
+  \begin{tabularx}{\linewidth}{l@{\,\,}X}#1&#2\end{tabularx}%
+  \fi%
+}
+
+
+\begin{document}
+\newcommand\CustomHeader{%
+    \begin{tikzpicture}[remember picture,overlay,black,every node/.style={inner sep=0,outer sep=-0.2}]
+        \draw[fill=black] ([xshift=1cm,yshift=-1cm]current page.north west)
+            rectangle ([xshift=1.5cm,yshift=-1.5cm]current page.north west);
+        \draw[fill=black] ([xshift=-1cm,yshift=-1cm]current page.north east)
+            rectangle ([xshift=-1.5cm,yshift=-1.5cm]current page.north east);
+        \draw[fill=black] ([xshift=1cm,yshift=1cm]current page.south west)
+            rectangle ([xshift=1.5cm,yshift=1.5cm]current page.south west);
+        \draw[fill=black] ([xshift=-1cm,yshift=1cm]current page.south east)
+            rectangle ([xshift=-1.5cm,yshift=1.5cm]current page.south east);\node at ([yshift=-1cm]current page.north) [anchor=north] {
+            \begin{tikzpicture}
+            \definecolor{color0}{rgb}{1,1,1}
+            \definecolor{color1}{rgb}{0,0,0}
+            \draw[fill=black] (0,0) rectangle (0.25,0.25);
+            \tikzmath {
+    \n=\thepage;
+    \j=0;
+    for \i in {1,...,8}{%
+            \r = int(Mod(\n,2));
+            \n = int(\n/2);
+            {\draw[fill=color\r] ({\i*0.25+2*\j},0) rectangle ({\i*0.25+0.25+2*\j},0.25);
+             };
+            };
+    \n=1;
+    \j=1;
+    for \i in {1,...,8}{%
+            \r = int(Mod(\n,2));
+            \n = int(\n/2);
+            {\draw[fill=color\r] ({\i*0.25+2*\j},0) rectangle ({\i*0.25+0.25+2*\j},0.25);
+             };
+            };
+    \n=0;
+    \j=2;
+    for \i in {1,...,8}{%
+            \r = int(Mod(\n,2));
+            \n = int(\n/2);
+            {\draw[fill=color\r] ({\i*0.25+2*\j},0) rectangle ({\i*0.25+0.25+2*\j},0.25);
+             };
+            };}
+        \node[anchor=west] at  ({2.5+2*\j},0.1)
+            {\scriptsize\textbf{\#1}~:~{\thepage}/\zpageref{LastPage}};
+        \end{tikzpicture}};
+
+        \draw[dotted]  ([xshift=-1cm,yshift=-2cm]current page.north east)
+            -- ([xshift=1cm,yshift=-2cm]current page.north west)
+            node [pos=0.25,fill=white]
+            {\,\,\scriptsize\textuparrow\,\,\textsc{N'écrivez rien au
+            dessus de cette ligne}\,\,\textuparrow\,\,}
+            node [pos=0.75,fill=white]
+            {\,\,\scriptsize\textuparrow\,\,\textsc{N'écrivez rien au
+            dessus de cette ligne}\,\,\textuparrow\,\,};
+    \end{tikzpicture}}
+ % (introduction)
+
+ % (introduction)
+\begin{enumerate}[resume]\pagebreak[3]\item\filbreak\setcounter{answerNumber}{0}
+1+1 =
+
+@ character here must not be interpreted as an @-directive.
+\nopagebreak[4]
+
+\begin{minipage}{\textwidth}
+\begin{flushleft}
+\ptyxMCQTab{\checkBox{white}{Q1-2}}{$-2$}\quad
+\ptyxMCQTab{\checkBox{white}{Q1-1}}{$-1$}\quad
+
+
+\ptyxMCQTab{\checkBox{white}{Q1-3}}{3}\quad
+\ptyxMCQTab{\checkBox{white}{Q1-4}}{2}\quad
+
+
+\ptyxMCQTab{\checkBox{white}{Q1-5}}{\texttt{2\textasciicircum{}3}}\quad
+
+
+\ptyxMCQTab{\checkBox{white}{Q1-6}}{\texttt{\{2\}}}\quad
+\end{flushleft}
+\end{minipage}\end{enumerate}
+
+
+\cleardoublepage
+\end{document}

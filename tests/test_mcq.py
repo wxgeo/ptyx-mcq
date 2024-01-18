@@ -6,11 +6,14 @@ This extension offers a new syntax to write tests and answers.
 
 import os
 import re
+import shutil
 from pathlib import Path
 import atexit
 
+import pytest
 from ptyx.latex_generator import Compiler, Node
 
+from ptyx_mcq.cli import make
 from ptyx_mcq.make.extend_latex_generator import SameAnswerError
 from ptyx_mcq.tools.config_parser import Configuration, DocumentId, OriginalQuestionNumber
 
@@ -34,6 +37,12 @@ def test_minimal_MCQ():
     latex = (TEST_DIR / "ptyx-files/minimal-working-example.tex").read_text()
     c = Compiler()
     assert c.parse(path=TEST_DIR / "ptyx-files/minimal-working-example.ptyx") == latex
+
+
+def test_at_directives():
+    latex = (TEST_DIR / "ptyx-files/at-directives.tex").read_text()
+    c = Compiler()
+    assert c.parse(path=TEST_DIR / "ptyx-files/at-directives.ptyx", PTYX_NUM=1) == latex
 
 
 def test_MCQ_basics():
@@ -278,6 +287,17 @@ def test_math_formatting():
         "\n"
     )
     assert extract in latex
+
+
+def copy_test(folder: str, tmp_path) -> Path:
+    shutil.copytree(TEST_DIR / folder, copy_ := tmp_path / folder)
+    return copy_
+
+
+@pytest.mark.xfail
+def test_1(tmp_path):
+    copy = copy_test("test-1", tmp_path)
+    make(copy / "test.ptyx")
 
 
 @atexit.register
