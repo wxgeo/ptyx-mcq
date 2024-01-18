@@ -158,7 +158,7 @@ def main(text: str, compiler: "Compiler") -> str:
     except FileNotFoundError:
         print_error(
             "File not found when trying to resolve inclusions (see error message above).\n"
-            f"Hint: command `mcq update-include {getattr(compiler.file_path, 'name', 'FILENAME')}` "
+            f"Hint: command `mcq update {getattr(compiler.file_path, 'name', '<PTYX-FILE-PATH>')}` "
             "may fix it."
         )
         sys.exit(1)
