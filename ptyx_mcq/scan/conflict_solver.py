@@ -1,6 +1,5 @@
 import string
 import subprocess
-import tempfile
 from pathlib import Path
 
 from PIL import Image, ImageDraw
@@ -9,7 +8,7 @@ from numpy import ndarray
 from ptyx_mcq.scan.color import Color, RGB
 from ptyx_mcq.scan.data_handler import DataHandler
 from ptyx_mcq.scan.document_data import Page, DetectionStatus, RevisionStatus, PicData, DocumentData
-from ptyx_mcq.scan.visual_debugging import ArrayViewer
+from ptyx_mcq.scan.image_viewer import ImageViewer
 from ptyx_mcq.tools.config_parser import (
     DocumentId,
     ApparentQuestionNumber,
@@ -127,7 +126,7 @@ class ConflictSolver:
     def enter_name_and_id(self, doc_id: DocumentId, default: str = "") -> tuple[StudentName, StudentId]:
         array = self.data_storage.get_matrix(doc_id, Page(1))
         width = array.shape[1]
-        viewer = ArrayViewer(array[0 : int(3 / 4 * width), :])
+        viewer = ImageViewer(array=array[0 : int(3 / 4 * width), :])
         id_name_dict = self.data_storage.config.students_ids
         student_id = ""
         print("Name can not be read automatically.")
@@ -191,7 +190,7 @@ class ConflictSolver:
     @staticmethod
     def display_picture_with_detected_answers(array: ndarray, pic_data: PicData) -> subprocess.Popen:
         """Display the picture of the MCQ with its checkboxes colored following their detection status."""
-        viewer = ArrayViewer(array)
+        viewer = ImageViewer(array=array)
         colors: dict[DetectionStatus | RevisionStatus, RGB] = {
             DetectionStatus.CHECKED: Color.blue,
             DetectionStatus.PROBABLY_CHECKED: Color.green,
@@ -277,7 +276,7 @@ class ConflictSolver:
         """Display the head of the first page, to be able to read student name manually."""
         array = self.data_storage.get_matrix(doc_id, Page(1))
         width = array.shape[1]
-        viewer = ArrayViewer(array[0 : int(3 / 4 * width), :])
+        viewer = ImageViewer(array=array[0 : int(3 / 4 * width), :])
         return viewer.display(wait=False)
 
     def test_integrity(self) -> None:
@@ -416,10 +415,11 @@ class ConflictSolver:
         dst.paste(im2, (im1.width, 0))
         ImageDraw.Draw(dst).line([(im1.width, 0), (im1.width, height)], fill=Color.blue)
 
-        # TODO: Use ArrayViewer.display() from visual_debugging.py
-        #  We must refactor ArrayViewer() first to accept PIL Image as argument.
-
-        with tempfile.TemporaryDirectory() as tmpdir:
-            dst.save(path := Path(tmpdir) / "test.png")
-            subprocess.run(["feh", "-F", str(path)], check=True)
-            input("-- pause --")
+        ImageViewer(image=dst).display()
+        # TODO: Use ImageViewer.display() from image_viewer.py
+        #  We must refactor ImageViewer() first to accept PIL Image as argument.
+        #
+        # with tempfile.TemporaryDirectory() as tmpdir:
+        #     dst.save(path := Path(tmpdir) / "test.png")
+        #     subprocess.run(["feh", "-F", str(path)], check=True)
+        #     input("-- pause --")

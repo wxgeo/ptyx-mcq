@@ -3,7 +3,7 @@ from typing import Literal, Iterator, Iterable
 from numpy import array, nonzero, transpose, ndarray
 
 from ptyx_mcq.scan.types_declaration import Pixel
-from ptyx_mcq.scan.visual_debugging import color2debug
+from ptyx_mcq.scan.image_viewer import color2debug
 
 
 # def top_left_iterator(stop, step=1):

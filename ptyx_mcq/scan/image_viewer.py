@@ -1,7 +1,7 @@
 import subprocess
 import tempfile
 from os.path import join
-from typing import Optional, overload, Literal
+from typing import overload, Literal
 
 from PIL import Image
 from PIL.PyAccess import PyAccess
@@ -16,8 +16,8 @@ from ptyx_mcq.scan.types_declaration import (
 )
 
 
-class ArrayViewer:
-    """`ArrayViewer` is used to display pictures annotated with colored rectangles, mainly for debugging.
+class ImageViewer:
+    """`ImageViewer` is used to display pictures annotated with colored rectangles, mainly for debugging.
 
     The picture to be displayed must be given as a numpy array.
 
@@ -27,7 +27,7 @@ class ArrayViewer:
 
     Example:
 
-        >> viewer = ArrayViewer(array)
+        >> viewer = ImageViewer(array=array)
         >> viewer.add_rectangle((2, 5), (10, 15), color=Color.red, thickness=4)
         >> viewer.add_rectangle((10, 10), (30, 20), color=Color.blue, fill=True)
         >> viewer.display()
@@ -43,29 +43,27 @@ class ArrayViewer:
       making visual debugging a lot easier.
     """
 
-    _array: Optional[ndarray] = None
-    _pic: Optional[Image.Image] = None
-
     # TODO:
     #  Accept either an array, or directly a PIL image.
     #  If it is an array, convert it directly to a PIL image.
     #  (There is probably no need to store the array, just store the PIL image.)
     #  A methods set_array() should be created too, replacing property getter and setter.
 
-    def __init__(self, array: ndarray = None, *debug_info: Shape):
+    def __init__(self, *debug_info: Shape, array: ndarray = None, image: Image.Image = None):
+        if image is None:
+            if array is None:
+                raise ValueError("Argument `array` or `image` must be specified.")
+            self.image: Image.Image = self._get_image_from_array(array)
+        else:
+            if array is not None:
+                raise ValueError("Arguments `array` and `image` must not be both specified.")
+            self.image = image
         self._shapes: list[Area] = []
-        if array is not None:
-            self.array = array
         self.add_shapes(*debug_info)
 
-    @property
-    def array(self) -> ndarray | None:
-        return self._array
-
-    @array.setter
-    def array(self, array: ndarray) -> None:
-        self._array = array
-        self._shapes.clear()
+    @staticmethod
+    def _get_image_from_array(array: ndarray) -> Image.Image:
+        return Image.fromarray((255 * array).astype(int8)).convert("RGB")
 
     def add_shapes(self, *shapes: Shape) -> None:
         for shape in shapes:
@@ -121,27 +119,20 @@ class ArrayViewer:
         self._shapes.clear()
 
     def _draw_rectangles(self) -> None:
-        if self.array is not None:
-            self._pic = Image.fromarray((255 * self.array).astype(int8)).convert("RGB")
-            for rectangle in self._shapes:
-                self._draw_rectangle(rectangle)
+        for rectangle in self._shapes:
+            self._draw_rectangle(rectangle)
 
     def _set_pixel(self, pixels: PyAccess, i: int, j: int, color: RGB) -> None:
-        if self.array is not None:
-            height, width = self.array.shape
-            if 0 <= i < height and 0 <= j < width:
-                pixels[j, i] = color
+        if 0 <= i < self.image.height and 0 <= j < self.image.width:
+            pixels[j, i] = color
 
     def _draw_rectangle(self, rectangle: Area) -> None:
-        if self.array is None:
-            return
-        height, width = self.array.shape
         i1, j1 = rectangle.start
         i2, j2 = rectangle.end or rectangle.start
         if i2 is None:
-            i2 = height - 1
+            i2 = self.image.height - 1
         if j2 is None:
-            j2 = width - 1
+            j2 = self.image.width - 1
         i1 = int(i1)
         i2 = int(i2)
         j1 = int(j1)
@@ -150,17 +141,10 @@ class ArrayViewer:
             i1, i2 = i2, i1
         if j2 < j1:
             j1, j2 = j2, j1
-        # i1 = min(max(i1, 0), height - 1)
-        # i2 = min(max(i2, 0), height - 1)
-        # j1 = min(max(j1, 0), width - 1)
-        # j2 = min(max(j2, 0), width - 1)
-        # assert 0 <= i1 <= i2 < height, (i1, i2, height)
-        # assert 0 <= j1 <= j2 < width, (j1, j2, width)
 
         color = rectangle.color
         thickness = rectangle.thickness
-        assert self._pic is not None
-        pixels: PyAccess = self._pic.load()  # type:ignore
+        pixels: PyAccess = self.image.load()  # type:ignore
 
         if rectangle.fill:
             for i in range(i1, i2 + 1):
@@ -189,8 +173,6 @@ class ArrayViewer:
         """Function signature when wait is False."""
 
     def display(self, wait: bool = True) -> subprocess.CompletedProcess | subprocess.Popen:
-        if self.array is None:
-            raise RuntimeError("No picture to display.")
         self._draw_rectangles()
         if subprocess.call(["which", "feh"]) != 0:
             raise RuntimeError(
@@ -198,8 +180,7 @@ class ArrayViewer:
             )
         with tempfile.TemporaryDirectory() as tmpdir_name:
             path = join(tmpdir_name, "test.png")
-            assert self._pic is not None
-            self._pic.save(path)
+            self.image.save(path)
             process: subprocess.CompletedProcess | subprocess.Popen
             if wait:
                 process = subprocess.run(["feh", "-F", path])
@@ -237,7 +218,7 @@ def color2debug(
     - Left-dragging the picture with mouse inside feh removes blurring/antialiasing,
       making visual debugging a lot easier.
     """
-    viewer = ArrayViewer(array)
+    viewer = ImageViewer(array=array)
     if from_ is not None and to_ is not None:
         viewer.add_area(from_, to_, color=color, thickness=thickness, fill=fill)
     # noinspection PyTypeChecker

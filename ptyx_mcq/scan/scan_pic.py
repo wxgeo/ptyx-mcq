@@ -19,7 +19,7 @@ from .square_detection import (
     adjust_checkbox,
 )
 from .tools import round
-from .visual_debugging import ArrayViewer
+from .image_viewer import ImageViewer
 from ..parameters import (
     SQUARE_SIZE_IN_CM,
     CELL_SIZE_IN_CM,
@@ -244,7 +244,7 @@ def adjust_contrast(m: ndarray, filename: str, debug=False) -> ndarray:
         m = (m - min_val) / (max_val - min_val)
         if debug:
             print(f"New range: {amin(m)} - {amax(m)}")
-            # ArrayViewer(m).display()
+            # ImageViewer(m).display()
     else:
         print_warning(f"Not enough contrast in picture {filename!r}!")
     return m
@@ -288,7 +288,7 @@ def scan_picture(filename: str | Path, config: Configuration, debug=False) -> tu
         m, h_pixels_per_mm, v_pixels_per_mm, (TOP, LEFT), (i, j) = calibrate(pic, m, debug=debug)
     except CalibrationError as e:
         if debug:
-            ArrayViewer(e.matrix, *e.details).display()
+            ImageViewer(array=e.matrix, *e.details).display()
         raise e
     pixels_per_mm = (h_pixels_per_mm + 1.5 * v_pixels_per_mm) / 2.5
 
@@ -349,7 +349,7 @@ def scan_picture(filename: str | Path, config: Configuration, debug=False) -> tu
         print("Student name:", student_name)
 
     if debug:
-        ArrayViewer(m, *debug_info).display()
+        ImageViewer(array=m, *debug_info).display()
 
     # ------------------------------------------------------------------
     #                      READ ANSWERS

@@ -21,7 +21,7 @@ from ptyx_mcq.scan.types_declaration import (
     Area,
     IdBandNotFound,
 )
-from ptyx_mcq.scan.visual_debugging import ArrayViewer
+from ptyx_mcq.scan.image_viewer import ImageViewer
 from ptyx_mcq.tools.io_tools import print_warning
 
 ValidCornerStringValues = Literal["TL", "TR", "BL", "BR"]
@@ -531,7 +531,7 @@ def _detect_four_squares(
 
     if debug:
         debug_info.append(Area(ij1, ij2, color=Color.green))
-        ArrayViewer(m, *debug_info).display()
+        ImageViewer(array=m, *debug_info).display()
 
     return positions, ij1, ij2
 
@@ -700,7 +700,7 @@ def calibrate(pic: Image.Image, m: ndarray, debug=False) -> tuple[ndarray, float
             if debug:
                 print(f"Search area: {i1, j1, i2, j2}")
                 print("Displaying search areas in red.")
-                ArrayViewer(m, *debug_info).display()
+                ImageViewer(array=m, *debug_info).display()
             raise IdBandNotFound("Can't find identification band!", details=debug_info, matrix=m)
 
     if debug:
@@ -719,7 +719,7 @@ def calibrate(pic: Image.Image, m: ndarray, debug=False) -> tuple[ndarray, float
 
     if debug:
         print(f"Positions: {positions}")
-        ArrayViewer(m, *debug_info).display()
+        ImageViewer(array=m, *debug_info).display()
     # ~ input('- pause -')
 
     assert positions.TL is not None

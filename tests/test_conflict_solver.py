@@ -35,7 +35,7 @@ def no_display(monkeypatch):
         else:
             return subprocess.Popen(["sleep", "0"], stdin=subprocess.DEVNULL)
 
-    monkeypatch.setattr("ptyx_mcq.scan.visual_debugging.ArrayViewer.display", display)
+    monkeypatch.setattr("ptyx_mcq.scan.image_viewer.ImageViewer.display", display)
 
 
 @pytest.fixture
@@ -47,7 +47,7 @@ def patched_conflict_solver(monkeypatch, tmp_path, no_display):
 
     # noinspection PyUnusedLocal
     def get_matrix(self, doc_id: int, page: int) -> ndarray:
-        return array([[]])
+        return array([[0, 0], [0, 0]])  # Array must be at least 2x2 for tests to pass.
 
     monkeypatch.setattr("ptyx_mcq.scan.data_handler.DataHandler.get_matrix", get_matrix)
     return conflict_solver
@@ -284,8 +284,9 @@ def test_empty_document(no_display, tmp_path, custom_input):
     # There should be no remaining question.
     assert custom_input.is_empty(), f"List of remaining questions/answers: {custom_input.remaining()}"
     # No change in results of course.
-    assert mcq_parser.scores_manager.scores == {"John": 8.833333333333332, "Edward": 9.455952380952379}
-    assert mcq_parser.scores_manager.results == {"John": 8.833333333333332, "Edward": 9.455952380952379}
+    target = pytest.approx({"John": 8.83333333, "Edward": 9.45595238})
+    assert mcq_parser.scores_manager.scores == target
+    assert mcq_parser.scores_manager.results == target
 
 
 def test_identical_duplicate_documents(no_display, tmp_path, custom_input):
@@ -296,8 +297,9 @@ def test_identical_duplicate_documents(no_display, tmp_path, custom_input):
     (copy / "scan/flat-scan-conflict.pdf").unlink()
     shutil.copy(copy / "scan/flat-scan.pdf", copy / "scan/flat-scan-bis.pdf")
     mcq_parser = scan(copy)
-    assert mcq_parser.scores_manager.scores == {"John": 8.833333333333332, "Edward": 9.455952380952379}
-    assert mcq_parser.scores_manager.results == {"John": 8.833333333333332, "Edward": 9.455952380952379}
+    target = pytest.approx({"John": 8.83333333, "Edward": 9.45595238})
+    assert mcq_parser.scores_manager.scores == target
+    assert mcq_parser.scores_manager.results == target
 
 
 def test_different_duplicate_documents_keep_first(no_display, tmp_path, custom_input):
@@ -306,15 +308,21 @@ def test_different_duplicate_documents_keep_first(no_display, tmp_path, custom_i
             "Message indicating that a duplicate has been found.",
             (PRESS_ENTER, ""),
             "Keep the first version",
-            ("Answer: ", ""),
+            ("Answer: ", "1"),
         ]
     )
     origin = TEST_DIR / "duplicate-files"
     copy = tmp_path / "duplicate-files"
     shutil.copytree(origin, copy)
     mcq_parser = scan(copy)
-    assert mcq_parser.scores_manager.scores == {"John": 8.833333333333332, "Edward": 9.455952380952379}
-    assert mcq_parser.scores_manager.results == {"John": 8.833333333333332, "Edward": 9.455952380952379}
+    assert (
+        Path(mcq_parser.data[45].pages[1].pic_path).parent
+        != Path(mcq_parser.data[44].pages[1].pic_path).parent
+    )
+    # Score for John changed (8.83 -> 8.63).
+    target = pytest.approx({"John": 8.63333333, "Edward": 9.45595238})
+    assert mcq_parser.scores_manager.scores == target
+    assert mcq_parser.scores_manager.results == target
 
 
 def test_different_duplicate_documents_keep_second(no_display, tmp_path, custom_input):
@@ -322,11 +330,19 @@ def test_different_duplicate_documents_keep_second(no_display, tmp_path, custom_
         [
             "Message indicating that a duplicate has been found.",
             (PRESS_ENTER, ""),
+            "Keep the seconde version",
+            ("Answer: ", "2"),
         ]
     )
     origin = TEST_DIR / "duplicate-files"
     copy = tmp_path / "duplicate-files"
     shutil.copytree(origin, copy)
     mcq_parser = scan(copy)
-    assert mcq_parser.scores_manager.scores == {"John": 8.833333333333332, "Edward": 9.455952380952379}
-    assert mcq_parser.scores_manager.results == {"John": 8.833333333333332, "Edward": 9.455952380952379}
+    assert (
+        Path(mcq_parser.data[45].pages[1].pic_path).parent
+        == Path(mcq_parser.data[44].pages[1].pic_path).parent
+    )
+    # Score for John was left unchanged.
+    target = pytest.approx({"John": 8.83333333, "Edward": 9.45595238})
+    assert mcq_parser.scores_manager.scores == target
+    assert mcq_parser.scores_manager.results == target
