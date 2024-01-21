@@ -210,8 +210,8 @@ def _get_ex_file_content(ex_file_path: Path, exercise=True) -> str:
             # Test for unbalanced python delimiters AFTER prefixing the code with "*\n" (see note above).
             if sum(1 for _ in re.finditer(PYTHON_DELIMITER, file_content)) % 2 == 1:
                 print_warning(f"A lonely line of multiple dots was found in exercise '{ex_file_path}'.")
-                print_warning(f"This may lead to strange bugs, since a line of multiple dots is used")
-                print_warning(f" to declare python code.")
+                print_warning("This may lead to strange bugs, since a line of multiple dots is used")
+                print_warning(" to declare python code.")
                 print_warning("Hint: prefix the line with empty brackets, for example `{}............`.")
 
             for line in file_content.split("\n"):

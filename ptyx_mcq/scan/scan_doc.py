@@ -1,7 +1,5 @@
 #!/usr/bin/env python3
 import csv
-import subprocess
-import tempfile
 from math import inf
 from pathlib import Path
 from typing import Union, Optional
@@ -9,7 +7,7 @@ from typing import Union, Optional
 from ptyx_mcq.scan.amend import amend_all
 from ptyx_mcq.scan.conflict_solver import ConflictSolver
 from ptyx_mcq.scan.data_handler import DataHandler
-from ptyx_mcq.scan.document_data import DocumentData, PicData, Page
+from ptyx_mcq.scan.document_data import DocumentData, Page
 from ptyx_mcq.scan.pdftools import PIC_EXTS
 from ptyx_mcq.scan.scan_pic import (
     scan_picture,
@@ -75,62 +73,6 @@ class MCQPictureParser:
     @property
     def data(self):
         return self.data_handler.data
-
-    def _keep_previous_version(self, pic_data: PicData) -> bool:
-        """Test if a previous version of the same page exist.
-
-        If so, it probably means the page has been scanned twice, but it could
-        also indicate a more serious problem (for example, tests with the same ID
-        have been given to different students !).
-        As a precaution, we should signal the problem to the user, and ask him
-        what he wants to do.
-        """
-        doc_id = pic_data.doc_id
-        p = pic_data.page
-
-        lastpic_path = pic_data.pic_path
-        lastpic = self.data_handler.relative_pic_path(lastpic_path)
-        firstpic_path = self.data[doc_id].pages[p].pic_path
-        firstpic = self.data_handler.relative_pic_path(firstpic_path)
-        assert isinstance(lastpic_path, str)
-        assert isinstance(firstpic_path, str)
-
-        print_warning(f"Page {p} of test #{doc_id} seen twice " f'(in "{firstpic}" and "{lastpic}") !')
-        action = None
-        keys = ("name", "student_id", "answered")
-        if all(pic_data[key] == self.data[doc_id].pages[p][key] for key in keys):  # type: ignore
-            # Same information found on the two pages, just keep one version.
-            action = "f"
-            print_warning("Both page have the same information, keeping only first one...")
-
-        # We have a problem: this is a duplicate.
-        # In other words, we have 2 different versions of the same page.
-        # Ask the user what to do.
-        while action not in ("f", "l"):
-            print("What must we do ?")
-            print("- See pictures (s)")
-            print("- Keep only first one (f)")
-            print("- Keep only last one (l)")
-
-            action = input("Answer:")
-            if action == "s":
-                with tempfile.TemporaryDirectory() as tmpdirname:
-                    path = Path(tmpdirname) / "test.png"
-                    # https://stackoverflow.com/questions/39141694/how-to-display-multiple-images-in-unix-command-line
-                    subprocess.run(["convert", firstpic_path, lastpic_path, "-append", str(path)], check=True)
-                    subprocess.run(["feh", "-F", str(path)], check=True)
-                    input("-- pause --")
-        # We must memorize which version should be skipped in case user
-        # launch scan another time.
-        skipped_pic = firstpic if action == "l" else lastpic
-        self.data_handler.store_skipped_pic(skipped_pic)
-
-        if action == "l":
-            # Remove first picture information.
-            del self.data[doc_id].pages[p]
-            self.data_handler.store_doc_data(firstpic.parent.name, doc_id, p)
-
-        return action == "f"
 
     def generate_report(self) -> None:
         """Generate CSV files with some information concerning each student.
@@ -255,9 +197,13 @@ class MCQPictureParser:
             # Test whether a previous version of the same page exist:
             # if the same page has been seen twice, this may be problematic,
             # so call `._keep_previous_version()` to ask user what to do.
-            if (doc_id, page) in already_seen and self._keep_previous_version(pic_data):
-                # If the user answered to skip the current page, just do it.
-                continue
+            # if (doc_id, page) in already_seen and self._keep_previous_version(pic_data):
+            #     # If the user answered to skip the current page, just do it.
+            #     continue
+            if (doc_id, page) in already_seen:
+                # There are two versions (at least) of the same document.  │    │
+                # Store it for now, with a new temporary id, and resolve conflict later.
+                doc_id = self.data_handler.create_new_temporary_id(doc_id, page)
             already_seen.add((doc_id, page))
 
             # 2) Gather data

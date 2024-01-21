@@ -2,6 +2,20 @@
 #SEED{0}
 <<<
 * 1+1 =
-- 1
+
+@ character here must not be interpreted as an @-directive.
+
+@$%s$
+- -1
+- -2
+
+@
+- 3
 + 2
+
+@@
+- 2^3
+
+@@{%s}
+- 2
 >>>

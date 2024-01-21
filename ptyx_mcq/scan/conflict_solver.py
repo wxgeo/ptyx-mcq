@@ -1,12 +1,14 @@
 import string
 import subprocess
+import tempfile
 from pathlib import Path
 
+from PIL import Image, ImageDraw
 from numpy import ndarray
 
 from ptyx_mcq.scan.color import Color, RGB
 from ptyx_mcq.scan.data_handler import DataHandler
-from ptyx_mcq.scan.document_data import Page, DetectionStatus, RevisionStatus, PicData
+from ptyx_mcq.scan.document_data import Page, DetectionStatus, RevisionStatus, PicData, DocumentData
 from ptyx_mcq.scan.visual_debugging import ArrayViewer
 from ptyx_mcq.tools.config_parser import (
     DocumentId,
@@ -35,9 +37,13 @@ class ConflictSolver:
 
     def resolve_conflicts(self, debug=False):
         """Resolve conflicts manually: unknown student ID, ambiguous answer..."""
-        print("Searching for missing names...")
-        self.review_missing_names()
         print("Searching for duplicate names...")
+        self.review_missing_names()
+        # Reviewing missing names must have been done *BEFORE* searching for duplicate pages,
+        # to detect conflicts in duplicate pages (same document with different names).
+        print("Searching for duplicate pages...")
+        self.review_duplicate_pages()
+        print("Searching for missing names...")
         self.review_duplicate_names()
         print("Searching for ambiguous answers...")
         self.review_answers(debug=debug)
@@ -55,7 +61,8 @@ class ConflictSolver:
             if doc_data.name == "":
                 first_page = doc_data.pages.get(Page(1))
                 if first_page is None:
-                    print_warning("No first page found !")
+                    print_warning(f"No first page found for document {doc_id}!")
+                    return
                 else:
                     print(f"Picture's path: '{first_page.pic_path}'.")
                 print_warning(f"No student name for document {doc_id}.")
@@ -125,7 +132,7 @@ class ConflictSolver:
         student_id = ""
         print("Name can not be read automatically.")
         print("Please read the name on the picture which will be displayed now.")
-        input("-- Press enter --")
+        input("-- Press ENTER --")
         #    subprocess.run(["display", "-resize", "1920x1080", pic_path])
         # TODO: use first letters of students name to find student.
         # (ask again if not found, or if several names match first letters)
@@ -155,9 +162,11 @@ class ConflictSolver:
                     name = ""
         assert process is not None
         process.terminate()
+        name = StudentName(name)
+        student_id = StudentId(student_id)
         # Keep track of manually entered information (will be useful if the scan has to be run again later !)
         self.data_storage.store_additional_info(doc_id=doc_id, name=name, student_id=student_id)
-        return StudentName(name), StudentId(student_id)
+        return name, student_id
 
     def review_answers(self, debug=False):
         for doc_id, doc_data in self.data.items():
@@ -321,3 +330,96 @@ class ConflictSolver:
             raise MissingQuestion("Questions not seen ! (Look at message above).")
         else:
             print_success("Data integrity successfully verified.")
+
+    def review_duplicate_pages(self) -> None:
+        # List of all ids alias.
+        # conflicts: dict[tuple[DocumentId, Page], list[DocumentId]] = self.data_storage.duplicates_alias
+        tmp_doc_id: DocumentId
+        doc_data: DocumentData
+        page: Page
+        pic_data: PicData
+        print(list(self.data))
+        for tmp_doc_id, doc_data in self.data_storage.get_all_temporary_ids().items():
+            assert tmp_doc_id < 0
+            assert len(doc_data.pages) == 1, (tmp_doc_id, list(doc_data.pages))
+            print(tmp_doc_id, list(doc_data.pages))
+            for page, pic_data in doc_data.pages.items():
+                print(list(self.data))
+                scanned_id = pic_data.doc_id
+                conflicting_pic_data = self.data[scanned_id].pages[page]
+                same_data = (
+                    pic_data.detection_status == conflicting_pic_data.detection_status
+                    and pic_data.name == conflicting_pic_data.name
+                )
+                if same_data or self._keep_previous_version(scanned_id, tmp_doc_id, page):
+                    # Same name and same answers detected for both versions,
+                    # so we can safely ignore the new version, and remove `tmp_dic_id` data.
+                    print(list(self.data))
+                    self.data.pop(tmp_doc_id)
+                    self.data_storage.remove_doc_files(tmp_doc_id)
+                    if same_data:
+                        print_warning(f"Page {page} of document {scanned_id} was scanned twice.")
+                        print_info("Same information found on both versions, so we ignore it.")
+                else:
+                    # Replace the data and the files corresponding to this page
+                    # by the new version (corresponding to id `tmp_doc_id`).
+                    # Warning: All other data of document `scanned_id` (i.e. the data for all the other pages)
+                    # must be kept unchanged!
+                    self.data[scanned_id].pages[page] = self.data.pop(tmp_doc_id).pages[page]
+                    data_dir = self.data_storage.dirs.data
+                    # Replace the WEBP image.
+                    (data_dir / f"{tmp_doc_id}-{page}.webp").replace(data_dir / f"{scanned_id}-{page}.webp")
+                    # Create an updated `scanned_id` .scandata file.
+                    # Warning: we can't simply replace it with the `tmp_doc_id` .scandata file, because it would only
+                    # contain the data corresponding to this page, not the other ones.
+                    self.data_storage.write_scandata_file(scanned_id)
+
+    def _keep_previous_version(self, scanned_doc_id: DocumentId, temp_doc_id: DocumentId, page: Page) -> bool:
+        """Ask user what to do is two versions of the same page exist, with conflicting data.
+
+        It may mean the page has been scanned twice with different scan qualities, but it could
+        also indicate a more serious problem (for example, tests with the same ID
+        have been given to different students !).
+        Anyway, we should signal the problem to the user, and ask him
+        what he wants to do.
+        """
+        pic_path1 = self.data[scanned_doc_id].pages[page].pic_path
+        pic_path1 = self.data_storage.absolute_pic_path(pic_path1)
+        pic_path2 = self.data[temp_doc_id].pages[page].pic_path
+        pic_path2 = self.data_storage.absolute_pic_path(pic_path2)
+        # assert isinstance(pic_path1, str)
+        # assert isinstance(pic_path2, str)
+        print_warning(
+            f"Page {page} of test #{scanned_doc_id} seen twice " f'(in "{pic_path1}" and "{pic_path2}") !'
+        )
+        print("Choose which version to keep:")
+        input("-- Press ENTER --")
+        action = ""
+
+        while action not in ("1", "2"):
+            self._display_duplicates(scanned_doc_id, temp_doc_id, page)
+            print("What must we do ?")
+            print("- Keep only 1st one (1)")
+            print("- Keep only 2nd one (2)")
+            print("If you want to see the pictures again, juste press ENTER.")
+            action = input("Answer: ")
+
+        return action == "1"
+
+    def _display_duplicates(self, scanned_doc_id: DocumentId, temp_doc_id: DocumentId, page: Page) -> None:
+        # im1 = Image.open(pic_path1)
+        # im2 = Image.open(pic_path2)
+        im1 = self.data_storage.get_pic(scanned_doc_id, page)
+        im2 = self.data_storage.get_pic(temp_doc_id, page)
+        dst = Image.new("RGB", (im1.width + im2.width, height := min(im1.height, im2.height)))
+        dst.paste(im1, (0, 0))
+        dst.paste(im2, (im1.width, 0))
+        ImageDraw.Draw(dst).line([(im1.width, 0), (im1.width, height)], fill=Color.blue)
+
+        # TODO: Use ArrayViewer.display() from visual_debugging.py
+        #  We must refactor ArrayViewer() first to accept PIL Image as argument.
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            dst.save(path := Path(tmpdir) / "test.png")
+            subprocess.run(["feh", "-F", str(path)], check=True)
+            input("-- pause --")

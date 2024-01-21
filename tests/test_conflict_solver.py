@@ -17,7 +17,7 @@ TEST_DIR = Path(__file__).parent
 
 CORRECT_Y_N = "Is it correct ? (Y/n)"
 ASK_FOR_STUDENT_NAME = "Student name or ID (or / to skip this document):"
-PRESS_ENTER = "-- Press enter --"
+PRESS_ENTER = "-- Press ENTER --"
 
 STUDENT_NAMES = ["Robert Le Hardi", "Jules Le Preux", "Edouard Le Couard", "Jules de chez Smith"]
 
@@ -284,5 +284,49 @@ def test_empty_document(no_display, tmp_path, custom_input):
     # There should be no remaining question.
     assert custom_input.is_empty(), f"List of remaining questions/answers: {custom_input.remaining()}"
     # No change in results of course.
+    assert mcq_parser.scores_manager.scores == {"John": 8.833333333333332, "Edward": 9.455952380952379}
+    assert mcq_parser.scores_manager.results == {"John": 8.833333333333332, "Edward": 9.455952380952379}
+
+
+def test_identical_duplicate_documents(no_display, tmp_path, custom_input):
+    custom_input.set_scenario([])
+    origin = TEST_DIR / "duplicate-files"
+    copy = tmp_path / "duplicate-files"
+    shutil.copytree(origin, copy)
+    (copy / "scan/flat-scan-conflict.pdf").unlink()
+    shutil.copy(copy / "scan/flat-scan.pdf", copy / "scan/flat-scan-bis.pdf")
+    mcq_parser = scan(copy)
+    assert mcq_parser.scores_manager.scores == {"John": 8.833333333333332, "Edward": 9.455952380952379}
+    assert mcq_parser.scores_manager.results == {"John": 8.833333333333332, "Edward": 9.455952380952379}
+
+
+def test_different_duplicate_documents_keep_first(no_display, tmp_path, custom_input):
+    custom_input.set_scenario(
+        [
+            "Message indicating that a duplicate has been found.",
+            (PRESS_ENTER, ""),
+            "Keep the first version",
+            ("Answer: ", ""),
+        ]
+    )
+    origin = TEST_DIR / "duplicate-files"
+    copy = tmp_path / "duplicate-files"
+    shutil.copytree(origin, copy)
+    mcq_parser = scan(copy)
+    assert mcq_parser.scores_manager.scores == {"John": 8.833333333333332, "Edward": 9.455952380952379}
+    assert mcq_parser.scores_manager.results == {"John": 8.833333333333332, "Edward": 9.455952380952379}
+
+
+def test_different_duplicate_documents_keep_second(no_display, tmp_path, custom_input):
+    custom_input.set_scenario(
+        [
+            "Message indicating that a duplicate has been found.",
+            (PRESS_ENTER, ""),
+        ]
+    )
+    origin = TEST_DIR / "duplicate-files"
+    copy = tmp_path / "duplicate-files"
+    shutil.copytree(origin, copy)
+    mcq_parser = scan(copy)
     assert mcq_parser.scores_manager.scores == {"John": 8.833333333333332, "Edward": 9.455952380952379}
     assert mcq_parser.scores_manager.results == {"John": 8.833333333333332, "Edward": 9.455952380952379}

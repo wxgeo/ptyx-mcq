@@ -64,6 +64,14 @@ class DataHandler:
         self.neutralized_answers: dict[DocumentId, OriginalQuestionAnswersDict] = {}
         # self.paths.make_dirs()
         self.config: Configuration = self.get_configuration(self.paths.configfile)
+        # When two versions of the same document are detected, a temporary document id
+        # is given to the duplicates, to preserve id unicity until conflicts resolution phase.
+        # The true id of the duplicate documents is stored in dict `self.duplicates_alias`:
+        # `self.duplicates_alias`: list all alias id used for a scanned document's page.
+        # self.duplicates_alias: dict[[DocumentId, Page], list[DocumentId]] = {}
+        # Counter used to generate unique temporary id.
+        # This is a negative integer, since all temporary ids will be negative integers.
+        self._tmp_ids_counter = -1
 
     # def student_name_to_doc_id_dict(self) -> dict[StudentName, DocumentId]:
     #     """`student_name_to_doc_id` is used to retrieve the data associated with a name."""
@@ -90,11 +98,12 @@ class DataHandler:
             logfile.write(msg)
 
     def get_pic(self, doc_id: DocumentId, page: Page) -> Image.Image:
+        filename = f"{doc_id}-{page}.webp"
         try:
-            webp = next(self.dirs.data.glob(f"{doc_id}-{page}.webp"))
+            webp = next(self.dirs.data.glob(filename))
         except StopIteration:
-            print_error(f"File not found: `{doc_id}-{page}.webp`")
-            raise
+            print_error(f"File not found: `{filename}`")
+            raise FileNotFoundError(f'"{self.dirs.data / filename}"')
         try:
             return Image.open(str(webp))
         except Exception:
@@ -225,14 +234,18 @@ class DataHandler:
         # WARNING !
         # The `<doc_id>.scandata` file must be stored last, in case the process is interrupted.
         # This prevents from having non-existing webp files declared in a .scandata file.
-        with open(self.dirs.data / f"{doc_id}.scandata", "w") as f:
-            f.write(repr(self.data[doc_id]))
+        self.write_scandata_file(doc_id)
 
         signal.signal(signal.SIGINT, previous_sigint_handler)
         if keyboard_interrupt:
             raise KeyboardInterrupt
 
-    def store_additional_info(self, doc_id: DocumentId, name: str, student_id: StudentId) -> None:
+    def write_scandata_file(self, doc_id: DocumentId) -> None:
+        """Create (or re-create) the .scandata file containing all the data for document `doc_id`."""
+        with open(self.dirs.data / f"{doc_id}.scandata", "w") as f:
+            f.write(repr(self.data[doc_id]))
+
+    def store_additional_info(self, doc_id: DocumentId, name: StudentName, student_id: StudentId) -> None:
         with open(self.files.more_infos, "a", newline="") as csvfile:
             writerow = csv.writer(csvfile).writerow
             writerow([str(doc_id), name, student_id])
@@ -302,6 +315,14 @@ class DataHandler:
         (self.dirs.data / f"{doc_id}.scandata").unlink(missing_ok=True)
         for webp in self.dirs.data.glob(f"{doc_id}-*.webp"):
             webp.unlink()
+
+    # def replace_doc_files(self, old_doc_id: DocumentId, new_doc_id: DocumentId) -> None:
+    #     """Replace all the data files associated with the document of id `old_doc_id`, to match `new_doc_id`.
+    #     """
+    #     (self.dirs.data / f"{old_doc_id}.scandata").replace(self.dirs.data / f"{new_doc_id}.scandata")
+    #     for webp in self.dirs.data.glob(f"{old_doc_id}-*.webp"):
+    #         *_, page = webp.stem.split("-")
+    #         webp.replace(webp.parent / f"{new_doc_id}-{page}*.webp")
 
     def get_checkboxes(
         self, doc_id: DocumentId, page: Page
@@ -419,3 +440,27 @@ class DataHandler:
 
         # if debug:
         #     viewer.display()
+
+    def create_new_temporary_id(self, doc_id: DocumentId, page: Page) -> DocumentId:
+        """Return a unique negative temporary id."""
+        tmp_doc_id = DocumentId(self._tmp_ids_counter)
+        self._tmp_ids_counter -= 1
+        # self.duplicates_alias.setdefault((DocumentId, Page), []).append(tmp_doc_id)
+        return tmp_doc_id
+
+    def get_all_temporary_ids(self) -> dict[DocumentId, DocumentData]:
+        """Return all temporary ids and their associated data as a dict.
+
+        (Currently, temporary ids are all the negative ones, but this is an implementation detail,
+        and one should not rely on it).
+        """
+        return {doc_id: doc_data for doc_id, doc_data in self.data.items() if doc_id < 0}
+
+    @staticmethod
+    def is_temp_id(doc_id: DocumentId) -> bool:
+        """Test whether the document id is a temporary one.
+
+        (Currently, temporary ids are all the negative ones, but this is an implementation detail,
+        and one should not rely on it).
+        """
+        return doc_id < 0

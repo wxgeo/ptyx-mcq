@@ -46,6 +46,12 @@ class ArrayViewer:
     _array: Optional[ndarray] = None
     _pic: Optional[Image.Image] = None
 
+    # TODO:
+    #  Accept either an array, or directly a PIL image.
+    #  If it is an array, convert it directly to a PIL image.
+    #  (There is probably no need to store the array, just store the PIL image.)
+    #  A methods set_array() should be created too, replacing property getter and setter.
+
     def __init__(self, array: ndarray = None, *debug_info: Shape):
         self._shapes: list[Area] = []
         if array is not None:

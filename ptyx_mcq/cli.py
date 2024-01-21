@@ -35,7 +35,7 @@ from ptyx_mcq.tools.io_tools import (
 if TYPE_CHECKING:
     # Import `MCQPictureParser` ONLY when type checking!
     # Otherwise, this would severely impact CLI autocompletion performance.
-    from ptyx_mcq.scan.scan import MCQPictureParser
+    from ptyx_mcq.scan.scan_doc import MCQPictureParser
 
 
 class TemplatesCompleter(argcomplete.completers.BaseCompleter):
@@ -300,7 +300,7 @@ def scan(
 
     Returned `MCQPictureParser` instance may be used by tests to check results.
     """
-    from ptyx_mcq.scan.scan import MCQPictureParser
+    from ptyx_mcq.scan.scan_doc import MCQPictureParser
 
     try:
         if verify == "always":

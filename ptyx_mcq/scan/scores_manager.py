@@ -14,7 +14,7 @@ from ptyx_mcq.tools.io_tools import (
 )
 
 if TYPE_CHECKING:
-    from ptyx_mcq.scan.scan import MCQPictureParser
+    from ptyx_mcq.scan.scan_doc import MCQPictureParser
 
 
 class ScoresManager:
