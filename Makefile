@@ -22,5 +22,11 @@ fix:
 	poetry run black .
 	poetry run ruff --fix ptyx_mcq tests
 
-slow:
-	poetry run pytest tests/ --runslow
+test:
+	poetry run pytest -n auto tests/
+
+slow-test:
+	poetry run pytest -n auto --runslow tests/
+
+single-processor-test:
+	poetry run pytest tests/

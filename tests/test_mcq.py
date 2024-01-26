@@ -8,7 +8,8 @@ import os
 import re
 import shutil
 from pathlib import Path
-import atexit
+
+# import atexit
 
 import pytest
 from ptyx.latex_generator import Compiler, Node
@@ -300,16 +301,16 @@ def test_1(tmp_path):
     make(copy / "test.ptyx")
 
 
-@atexit.register
-def cleanup():
-    files_found = False
-    # Remove .ptyx.plain-ptyx files generated during tests.
-    for tmp_filename in (TEST_DIR / "ptyx-files").glob("*.ptyx.plain-ptyx"):
-        tmp_filename.unlink()
-        files_found = True
-    assert files_found
-    # for tmp_filename in TMP_PDF:
-    #     (TEST_DIR / Path(tmp_filename)).unlink()
+# @atexit.register
+# def cleanup():
+#     files_found = False
+#     # Remove .ptyx.plain-ptyx files generated during tests.
+#     for tmp_filename in (TEST_DIR / "ptyx-files").glob("*.ptyx.plain-ptyx"):
+#         tmp_filename.unlink()
+#         files_found = True
+#     assert files_found
+#     # for tmp_filename in TMP_PDF:
+#     #     (TEST_DIR / Path(tmp_filename)).unlink()
 
 
 if __name__ == "__main__":
