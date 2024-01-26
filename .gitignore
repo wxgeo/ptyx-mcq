@@ -7,17 +7,8 @@
 *~
 *.backup
 *.bak
-*.log
-*.aux
-*.toc
 *.directory
 BAZAR/
-*.tex
-*.plain-ptyx
-*.pdf
-*.csv
-*.autoqcm.config
-*.seed
 tmp.py
 temp.py
 extensions/autoqcm/test_complet/
