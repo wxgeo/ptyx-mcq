@@ -6,7 +6,10 @@
 import sys
 from typing import Iterable
 
+from ptyx.utilities import extract_verbatim_tag_content, restore_verbatim_tag_content
+
 from ptyx_mcq import print_error
+from ptyx_mcq.make.parser_tools import is_new_exercise_start, is_mcq_start, is_mcq_end, is_section_start
 
 
 def parse_at_directive(line: str) -> str:
@@ -140,12 +143,14 @@ def generate_ptyx_code(text: str, additional_header_lines: Iterable[str] = ()) -
     # silently when generating the pdf files with the answers !
     intro = ["#ASK % (introduction)"]
 
+    text, verbatim_contents = extract_verbatim_tag_content(text)
+
     answer_num = None
     for _line_ in text.split("\n"):
-        line = _line_.strip()
+        line = _line_.rstrip()
         n = len(line)
 
-        if n >= 3 and all(c == "<" for c in line):  # <<<
+        if is_mcq_start(line):  # <<<
             # MCQ start tag detected.
             # First, we must close the header.
             if not is_header_raw_code:
@@ -177,14 +182,14 @@ def generate_ptyx_code(text: str, additional_header_lines: Iterable[str] = ()) -
             else:
                 intro.append(_line_)
 
-        elif n >= 3 and line.startswith("=") and line.endswith("="):
+        elif is_section_start(_line_):
             # === title ===
             # Start a new section.
             begin("SECTION", title=line.strip("= "))
 
         # Nota: for a new version of a question, line must start with 'OR ',
         # with a trailing space, or line must be 'OR', without trailing space.
-        elif line[:2].strip() in ("*", ">") or line[:3].strip() == "OR":
+        elif is_new_exercise_start(line):
             # * question
             # Start a question block, with possibly several versions of a question.
 
@@ -199,11 +204,11 @@ def generate_ptyx_code(text: str, additional_header_lines: Iterable[str] = ()) -
             answer_num = 0
             code.append(line[2:])
 
-        elif line.startswith("#ANSWERS_LIST"):
-            # End question.
-            # (Usually, questions are closed when seeing answers, i.e. lines
-            # introduced by '-' or '+').
-            code.append(line)
+        # elif line.startswith("#ANSWERS_LIST"):
+        #     # End question.
+        #     # (Usually, questions are closed when seeing answers, i.e. lines
+        #     # introduced by '-' or '+').
+        #     code.append(line)
 
         elif line.startswith("<->"):
             # Examples:
@@ -256,7 +261,7 @@ def generate_ptyx_code(text: str, additional_header_lines: Iterable[str] = ()) -
 
             code.append(line[2:])
 
-        elif n >= 3 and all(c == ">" for c in line):  # >>>
+        elif is_mcq_end(line):  # >>>
             # End MCQ
             close("QCM")
 
@@ -266,4 +271,6 @@ def generate_ptyx_code(text: str, additional_header_lines: Iterable[str] = ()) -
         previous_line = line
 
     code.append("#QCM_FOOTER")
-    return "\n".join(code)
+
+    text = "\n".join(code)
+    return restore_verbatim_tag_content(text, verbatim_contents)

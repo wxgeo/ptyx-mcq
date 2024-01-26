@@ -4,7 +4,6 @@ QUESTIONS
 This extension offers a new syntax to write tests and answers.
 """
 
-import os
 import re
 import shutil
 from pathlib import Path
@@ -22,32 +21,39 @@ TEST_DIR = Path(__file__).parent.resolve()
 # TMP_PDF: List[Path] = []
 
 
-def load_ptyx_file(filename):
+def copy_test(folder: str, tmp_path) -> Path:
+    shutil.copytree(TEST_DIR / folder, copy_ := tmp_path / folder)
+    return copy_
+
+
+def load_ptyx_file(ptyx_file_path: Path):
     """Load ptyx file, create a `Compiler` instance and call extensions to
     generate a plain ptyx file.
 
     Return the `Compiler` instance."""
-    path = TEST_DIR / "ptyx-files" / filename
     c = Compiler()
-    c.read_file(path)
+    c.read_file(ptyx_file_path)
     c.preparse()
     return c
 
 
-def test_minimal_MCQ():
-    latex = (TEST_DIR / "ptyx-files/minimal-working-example.tex").read_text()
+def test_minimal_MCQ(tmp_path):
+    folder = copy_test("ptyx-files/minimal-working-example", tmp_path)
+    latex = (folder / "minimal-working-example.tex").read_text()
     c = Compiler()
-    assert c.parse(path=TEST_DIR / "ptyx-files/minimal-working-example.ptyx") == latex
+    assert c.parse(path=folder / "minimal-working-example.ptyx") == latex
 
 
-def test_at_directives():
-    latex = (TEST_DIR / "ptyx-files/at-directives.tex").read_text()
+def test_at_directives(tmp_path):
+    folder = copy_test("ptyx-files/format-answers", tmp_path)
+    latex = (folder / "at-directives.tex").read_text()
     c = Compiler()
-    assert c.parse(path=TEST_DIR / "ptyx-files/at-directives.ptyx", PTYX_NUM=1) == latex
+    assert c.parse(path=folder / "at-directives.ptyx", PTYX_NUM=1) == latex
 
 
-def test_MCQ_basics():
-    c = load_ptyx_file("partial-test.ptyx")
+def test_MCQ_basics(tmp_path):
+    folder = copy_test("ptyx-files/other", tmp_path)
+    c = load_ptyx_file(folder / "partial-test.ptyx")
     assert "VERSION" in c.syntax_tree_generator.tags
     assert "VERSION" in c.latex_generator.parser.tags
     assert "END_QCM" in c.syntax_tree_generator.tags
@@ -74,8 +80,9 @@ def test_MCQ_basics():
     assert "Jean de la Fontaine" in latex
 
 
-def test_MCQ_shuffling():
-    c = load_ptyx_file("shuffle.ptyx")
+def test_MCQ_shuffling(tmp_path):
+    folder = copy_test("ptyx-files/other", tmp_path)
+    c = load_ptyx_file(folder / "shuffle.ptyx")
     c.generate_syntax_tree()
     root = c.syntax_tree
     print(root.display())
@@ -145,15 +152,16 @@ def test_MCQ_shuffling():
     assert "\n\n" not in latex[e3:e4]
 
 
-def test_include():
-    os.chdir(TEST_DIR)
-    c = load_ptyx_file("include.ptyx")
+def test_include(monkeypatch, tmp_path):
+    folder = copy_test("ptyx-files/with-exercises", tmp_path)
+    monkeypatch.chdir(folder)
+    c = load_ptyx_file(folder / "include.ptyx")
     # Test for support of:
     # - no star at all at the beginning of the question (must be automatically added)
-    with open("ptyx-files/exercises/ex1.ex") as f:
+    with open(folder / "exercises/ex1.ex") as f:
         assert not f.read().startswith("*")
     # - a line break after the star. This should be Ok too.
-    with open("ptyx-files/exercises/ex2.ex") as f:
+    with open(folder / "exercises/ex2.ex") as f:
         assert f.read().startswith("*\n")
     c.generate_syntax_tree()
     latex = c.get_latex()
@@ -161,12 +169,13 @@ def test_include():
     assert "an other answer" in latex
 
 
-def test_include_glob():
-    os.chdir(TEST_DIR)
-    c1 = load_ptyx_file("include.ptyx")
+def test_include_glob(monkeypatch, tmp_path):
+    folder = copy_test("ptyx-files/with-exercises", tmp_path)
+    monkeypatch.chdir(folder)
+    c1 = load_ptyx_file(folder / "include.ptyx")
     c1.generate_syntax_tree()
     latex1 = c1.get_latex()
-    c2 = load_ptyx_file("include_glob.ptyx")
+    c2 = load_ptyx_file(folder / "include_glob.ptyx")
     c2.generate_syntax_tree()
     latex2 = c2.get_latex()
     assert r"$2\times(-1)^2$" in latex2
@@ -174,8 +183,9 @@ def test_include_glob():
     assert latex1.split() == latex2.split()
 
 
-def test_question_context():
-    c = load_ptyx_file("questions_context.ptyx")
+def test_question_context(tmp_path):
+    folder = copy_test("ptyx-files/other", tmp_path)
+    c = load_ptyx_file(folder / "questions_context.ptyx")
     c.generate_syntax_tree()
     latex = c.get_latex()
 
@@ -183,8 +193,9 @@ def test_question_context():
         assert match.group(1) == match.group(2)
 
 
-def test_unicity_of_answers():
-    c = load_ptyx_file("unicity_of_answers.ptyx")
+def test_unicity_of_answers(tmp_path):
+    folder = copy_test("ptyx-files/with-exercises", tmp_path)
+    c = load_ptyx_file(folder / "unicity_of_answers.ptyx")
     c.generate_syntax_tree()
     try:
         c.get_latex()
@@ -195,8 +206,9 @@ def test_unicity_of_answers():
         pass
 
 
-def test_loading_of_sty_files():
-    c = load_ptyx_file("loading-sty-files.ptyx")
+def test_loading_of_sty_files(tmp_path):
+    folder = copy_test("ptyx-files/with-exercises", tmp_path)
+    c = load_ptyx_file(folder / "loading-sty-files.ptyx")
     c.generate_syntax_tree()
     latex = c.get_latex()
     latex_lines = latex.split("\n")
@@ -206,8 +218,9 @@ def test_loading_of_sty_files():
             assert False, f"Line {line} not found ! (See above)"
 
 
-def test_neutralized_questions() -> None:
-    c = load_ptyx_file("neutralized_questions.ptyx")
+def test_neutralized_questions(tmp_path) -> None:
+    folder = copy_test("ptyx-files/other", tmp_path)
+    c = load_ptyx_file(folder / "neutralized_questions.ptyx")
     c.generate_syntax_tree()
     c.get_latex()
     data: Configuration = c.latex_generator.mcq_data
@@ -216,10 +229,11 @@ def test_neutralized_questions() -> None:
     assert sorted(answers[OriginalQuestionNumber(2)]) == [(1, False), (2, True), (3, None)]
 
 
-def test_smallgraphlib_import_detection():
+def test_smallgraphlib_import_detection(tmp_path):
     from smallgraphlib.tikz_export import tikz_printer
 
-    c = load_ptyx_file("smallgraphlib.ptyx")
+    folder = copy_test("ptyx-files/with-exercises", tmp_path)
+    c = load_ptyx_file(folder / "smallgraphlib.ptyx")
     c.generate_syntax_tree()
     latex = c.get_latex()
     # ptyx_code = c.plain_ptyx_code
@@ -231,8 +245,9 @@ def test_smallgraphlib_import_detection():
             assert 0 <= position < begin_document, line
 
 
-def test_verbatim_code():
-    c = load_ptyx_file("verbatim_code.ptyx")
+def test_verbatim_code(tmp_path):
+    folder = copy_test("ptyx-files/format-answers", tmp_path)
+    c = load_ptyx_file(folder / "verbatim_code.ptyx")
     c.generate_syntax_tree()
     latex = c.get_latex()
     extract = (
@@ -245,8 +260,9 @@ def test_verbatim_code():
     assert extract in latex
 
 
-def test_multiline_answers():
-    c = load_ptyx_file("multiline_answers.ptyx")
+def test_multiline_answers(tmp_path):
+    folder = copy_test("ptyx-files/other", tmp_path)
+    c = load_ptyx_file(folder / "multiline_answers.ptyx")
     c.generate_syntax_tree()
     latex = c.get_latex()
     print(latex)
@@ -261,8 +277,9 @@ def test_multiline_answers():
     assert extract in latex
 
 
-def test_question_config():
-    c = load_ptyx_file("question_config.ptyx")
+def test_question_config(tmp_path):
+    folder = copy_test("ptyx-files/other", tmp_path)
+    c = load_ptyx_file(folder / "question_config.ptyx")
     c.generate_syntax_tree()
     c.get_latex()
     assert c.latex_generator.mcq_data.mode[1] == "all"
@@ -273,8 +290,9 @@ def test_question_config():
     assert c.latex_generator.mcq_data.incorrect[2] == 4.0
 
 
-def test_math_formatting():
-    c = load_ptyx_file("math_formatting.ptyx")
+def test_math_formatting(tmp_path):
+    folder = copy_test("ptyx-files/format-answers", tmp_path)
+    c = load_ptyx_file(folder / "math_formatting.ptyx")
     c.generate_syntax_tree()
     latex = c.get_latex()
     extract = (
@@ -290,9 +308,20 @@ def test_math_formatting():
     assert extract in latex
 
 
-def copy_test(folder: str, tmp_path) -> Path:
-    shutil.copytree(TEST_DIR / folder, copy_ := tmp_path / folder)
-    return copy_
+def test_bug_verbatim(tmp_path):
+    folder = copy_test("ptyx-files/bug-verbatim", tmp_path)
+    c = load_ptyx_file(folder / "bug-verbatim.ptyx")
+    c.generate_syntax_tree()
+    latex = c.get_latex()
+    assert r"\texttt{*~\{\linebreak\phantom{}~~margin:~0;\linebreak\phantom{}\}}" in latex
+
+
+def test_bug_verbatim_ex(tmp_path):
+    folder = copy_test("ptyx-files/bug-verbatim", tmp_path)
+    c = load_ptyx_file(folder / "bug-verbatim-ex.ptyx")
+    c.generate_syntax_tree()
+    latex = c.get_latex()
+    assert r"\texttt{*~\{\linebreak\phantom{}~~margin:~0;\linebreak\phantom{}\}}" in latex
 
 
 @pytest.mark.xfail
@@ -314,5 +343,4 @@ def test_1(tmp_path):
 
 
 if __name__ == "__main__":
-    test_MCQ_shuffling()
-    print("OK")
+    pass

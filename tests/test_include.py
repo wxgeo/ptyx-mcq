@@ -4,7 +4,8 @@ from pathlib import Path
 import pytest
 from ptyx.latex_generator import Compiler
 
-from ptyx_mcq.tools.include_parser import (
+# noinspection PyProtectedMember
+from ptyx_mcq.make.include_parser import (
     parse_code,
     Directive,
     ChangeDirectory,
@@ -27,7 +28,7 @@ def _file(file: str, is_disabled=False, comment=""):
 
 
 def test_include_parser():
-    with open(TEST_DIR / "ptyx-files/new_include_syntax.ptyx") as f:
+    with open(TEST_DIR / "ptyx-files/with-exercises/new_include_syntax.ptyx") as f:
         content = f.read()
     directives = [line for line in parse_code(content) if isinstance(line, Directive)]
     assert directives == [
@@ -42,7 +43,7 @@ def test_include_parser():
 
 
 def test_include_false_positives():
-    with open(TEST_DIR / "ptyx-files/new.ptyx") as f:
+    with open(TEST_DIR / "ptyx-files/with-exercises/new.ptyx") as f:
         content = f.read()
     directives = [line for line in parse_code(content) if isinstance(line, Directive)]
     assert directives == [
@@ -51,7 +52,7 @@ def test_include_false_positives():
 
 
 def test_update_include():
-    ptyx_file = TEST_DIR / "ptyx-files/new_include_syntax.ptyx"
+    ptyx_file = TEST_DIR / "ptyx-files/with-exercises/new_include_syntax.ptyx"
     updater = IncludesUpdater(ptyx_file)
     updater.update_file_content()
     assert updater.includes == {
@@ -181,7 +182,7 @@ def test_successive_calls(tmp_path):
 
 
 def test_update_empty_ex_list(tmp_path):
-    ex_path = TEST_DIR / "ptyx-files/exercises"
+    ex_path = TEST_DIR / "ptyx-files/with-exercises/exercises"
     mcq_path = tmp_path / "mcq"
     mcq_path.mkdir(parents=True)
     content = f"""
@@ -213,11 +214,12 @@ def test_unsafe_update(tmp_path):
     #     └── exercises
     #             ├── 1.ex
     #             └── 2.ex
-    shutil.copy(TEST_DIR / "ptyx-files/new_include_syntax.ptyx", tmp_path)
+    root = TEST_DIR / "ptyx-files/with-exercises"
+    shutil.copy(root / "new_include_syntax.ptyx", tmp_path)
     (tmp_path / "exercises").mkdir()
     for i in (1, 2):
-        shutil.copy(TEST_DIR / f"ptyx-files/exercises/ex{i}.ex", tmp_path / "exercises")
-        shutil.copy(TEST_DIR / f"ptyx-files/exercises/ex{i}.ex", tmp_path / "exercises")
+        shutil.copy(root / f"exercises/ex{i}.ex", tmp_path / "exercises")
+        shutil.copy(root / f"exercises/ex{i}.ex", tmp_path / "exercises")
     ptyx_path = tmp_path / "new_include_syntax.ptyx"
 
     # Update is unsafe.
@@ -305,11 +307,12 @@ def test_includes_outside_mcq(tmp_path):
     (tmp_path / "footer.txt").write_text("Conclusion.")
     # Generate the ptyx file:
     ptyx_file = tmp_path / "include.ptyx"
+    root = TEST_DIR / "ptyx-files/with-exercises"
     ptyx_file.write_text(
         f"""
 #LOAD{{mcq}}#SEED{{123456}}
 -- header.txt
--- DIR: {TEST_DIR}/ptyx-files/short questions
+-- DIR: {root}/short questions
 <<<<<<<<<<<<<<<<<
 -- question1.ex
 -- question2.ex
@@ -324,9 +327,9 @@ def test_includes_outside_mcq(tmp_path):
         == f"""
 #LOAD{{mcq}}#SEED{{123456}}
 -- header.txt
--- DIR: {TEST_DIR}/ptyx-files/short questions
+-- DIR: {root}/short questions
 <<<<<<<<<<<<<<<<<
--- DIR: {TEST_DIR}/ptyx-files/short questions
+-- DIR: {root}/short questions
 -- question1.ex
 -- question2.ex
 @new: -- question3.ex
@@ -344,7 +347,7 @@ def test_includes_outside_mcq(tmp_path):
 Introduction...
 <<<<<<<<<<<<<<<<<
 *
-#PRINT{{\x1b[36mIMPORTING\x1b[0m "{TEST_DIR}/ptyx-files/short questions/\x1b[36mquestion1.ex\x1b[0m"}}
+#PRINT{{\x1b[36mIMPORTING\x1b[0m "{root}/short questions/\x1b[36mquestion1.ex\x1b[0m"}}
 #QUESTION_NAME{{question1.ex}}
 q1
 
@@ -352,7 +355,7 @@ q1
 - 2
 
 *
-#PRINT{{\x1b[36mIMPORTING\x1b[0m "{TEST_DIR}/ptyx-files/short questions/\x1b[36mquestion2.ex\x1b[0m"}}
+#PRINT{{\x1b[36mIMPORTING\x1b[0m "{root}/short questions/\x1b[36mquestion2.ex\x1b[0m"}}
 #QUESTION_NAME{{question2.ex}}
 q2
 
@@ -360,7 +363,7 @@ q2
 + 2
 
 *
-#PRINT{{\x1b[36mIMPORTING\x1b[0m "{TEST_DIR}/ptyx-files/short questions/\x1b[36mquestion3.ex\x1b[0m"}}
+#PRINT{{\x1b[36mIMPORTING\x1b[0m "{root}/short questions/\x1b[36mquestion3.ex\x1b[0m"}}
 #QUESTION_NAME{{question3.ex}}
 q3
 
@@ -369,7 +372,7 @@ q3
 + 3
 
 *
-#PRINT{{\x1b[36mIMPORTING\x1b[0m "{TEST_DIR}/ptyx-files/short questions/\x1b[36mquestion4.ex\x1b[0m"}}
+#PRINT{{\x1b[36mIMPORTING\x1b[0m "{root}/short questions/\x1b[36mquestion4.ex\x1b[0m"}}
 #QUESTION_NAME{{question4.ex}}
 q4
 

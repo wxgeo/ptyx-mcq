@@ -50,8 +50,10 @@ from pathlib import Path
 from typing import Self, Final, Iterable
 
 from ptyx.extensions.extended_python import PYTHON_DELIMITER
+from ptyx.utilities import extract_verbatim_tag_content, restore_verbatim_tag_content
 
-from ptyx_mcq.tools.io_tools import print_warning, print_error
+from ptyx_mcq.make.parser_tools import is_new_exercise_start
+from ptyx_mcq.tools.io_tools import print_warning, print_error, print_info
 
 
 class UnsafeUpdate(RuntimeError):
@@ -195,37 +197,51 @@ def _get_ex_file_content(ex_file_path: Path, exercise=True) -> str:
     prettified_path = str(ex_file_path.parent / f"\u001b[36m{ex_file_path.name}\u001b[0m").replace("#", "##")
     with open(ex_file_path) as file:
         file_content = file.read().strip()
-        # Remove comments
+        # Remove all comments
         file_content = re.sub("( # .+)|(^# .+\n)", "", file_content, flags=re.MULTILINE)
 
         # Each exercise must start with a star. Since each included file is supposed to be an exercise,
         # add the initial star if missing.
         if exercise:
-            if file_content[:2].strip() != "*":
-                # Add line break after the exercise delimiter, in case the .ex file starts
-                # with python code.
-                # (To avoid something like "*.............", where the line of dots introduces python code).
-                file_content = "*\n" + file_content
+            # Search for lines starting inadvertently with `* `, since a star is the symbol used to
+            # start a new exercise.
+            # If we found any, we will insert a space before, so it is not interpreted as the start of
+            # a new exercise (unless we are in a verbatim block, which we can't modify for now, so,
+            # in this last case, we'll have to be careful when we will generate PTYX code later.).
+            file_content, verbatim_contents = extract_verbatim_tag_content(file_content)
 
-            # Test for unbalanced python delimiters AFTER prefixing the code with "*\n" (see note above).
+            def substitute(m: re.Match) -> str:
+                print_info("`* ` at the start of a line is used to declare a new exercise.")
+                print_info("A space will be inserted before to prevent this in the following line:")
+                star_prefixed_line = m.group(0)
+                print_info(star_prefixed_line + "\n")
+                return " " + star_prefixed_line
+
+            # Search for lines containing only a star, or starting with `* `.
+            file_content = re.sub("^\\*(?: .*)?$", substitute, file_content, flags=re.MULTILINE)
+
+            # Insert `*\n` to mark the start of a new exercise.
+            # Nota: Add a line break (instead of a space) after the star,
+            #       in case the .ex file starts with python code.
+            #       This avoids to get something like "* .............",
+            #       where the line of dots introduces python code.
+            file_content = "*\n" + file_content
+
+            # Test for unbalanced python delimiters.
             if sum(1 for _ in re.finditer(PYTHON_DELIMITER, file_content)) % 2 == 1:
                 print_warning(f"A lonely line of multiple dots was found in exercise '{ex_file_path}'.")
-                print_warning("This may lead to strange bugs, since a line of multiple dots is used")
+                print_warning("This may lead to strange bugs, since a line of multiple dots is meant")
                 print_warning(" to declare python code.")
                 print_warning("Hint: prefix the line with empty brackets, for example `{}............`.")
 
             for line in file_content.split("\n"):
                 lines.append(line)
-                if (
-                    line.startswith("* ")
-                    or line.startswith("> ")
-                    or line.startswith("OR ")
-                    or line.rstrip() in ("*", ">", "OR")
-                ):
+                if is_new_exercise_start(line):
                     lines.append(f'#PRINT{{\u001b[36mIMPORTING\u001b[0m "{prettified_path}"}}')
                     if exercise:
                         lines.append(f"#QUESTION_NAME{{{ex_file_path.name.replace('#', '##')}}}")
-            return "\n".join(lines) + "\n"
+            file_content = "\n".join(lines) + "\n"
+            return restore_verbatim_tag_content(file_content, verbatim_contents)
         else:
             return f'#PRINT{{\u001b[36mIMPORTING\u001b[0m "{prettified_path}"}}\n' + file_content
 
