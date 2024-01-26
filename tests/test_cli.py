@@ -144,7 +144,8 @@ def test_many_docs(tmp_path):
     # Test mcq make
     main(["make", str(path), "-n", str(NUMBER_OF_DOCUMENTS)])
     assert "new.pdf" in listdir(path)
-    assert "new-corr.pdf" in listdir(path)
+    # No correction generated anymore by default.
+    assert "new-corr.pdf" not in listdir(path)
 
 
 def test_cli(tmp_path: Path) -> None:
@@ -174,7 +175,8 @@ def test_cli(tmp_path: Path) -> None:
     # ----------------
     main(["make", str(path), "-n", str(NUMBER_OF_DOCUMENTS)])
     assert "new.pdf" in listdir(path)
-    assert "new-corr.pdf" in listdir(path)
+    # No correction generated anymore by default.
+    assert "new-corr.pdf" not in listdir(path)
     # TODO: assert "new.all.pdf" in listdir(path)
 
     config = Configuration.load(path / "new.ptyx.mcq.config.json")
@@ -191,12 +193,13 @@ def test_cli(tmp_path: Path) -> None:
     assert not (path2 / "questions").exists()
 
     # --------------------------------------
-    # Test `mcq make PATH --correction-only`
+    # Test `mcq make PATH --with-correction`
     # --------------------------------------
 
-    main(["make", str(path2), "--correction-only"])
+    main(["make", str(path2), "--with-correction"])
     with open(path2 / ".compile/new/new-corr.tex", encoding="utf8") as f:
         assert f.read().count(r"\checkBox") > 10  # TODO: give a precise number.
+    assert "new-corr.pdf" in listdir(path2)
 
     # ----------------
     # Test `mcq scan`

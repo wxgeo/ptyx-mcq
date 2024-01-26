@@ -111,9 +111,7 @@ def main(args: Optional[list] = None) -> None:
         help="First document number (default=1).",
     )
     make_parser.add_argument("--quiet", "-q", action="store_true", help="Hide pdflatex output.")
-    make_parser.add_argument(
-        "--correction-only", "-c", action="store_true", help="Generate only correction for fast testing."
-    )
+    make_parser.add_argument("--with-correction", "-c", action="store_true", help="Generate correction too.")
     make_parser.add_argument(
         "--for-review",
         "-r",
@@ -268,14 +266,14 @@ def make(
     num: int = 1,
     start: int = 1,
     quiet: bool = False,
-    correction_only: bool = False,
+    with_correction: bool = False,
     for_review: bool = False,
 ) -> None:
     """Wrapper for _make(), so that `argparse` module don't intercept exceptions."""
     from .make.make import make_command
 
     try:
-        make_command(path, num, start, quiet, correction_only, for_review)
+        make_command(path, num, start, quiet, with_correction, for_review)
         print_success(f"Document was successfully generated in {num} version(s).")
     except Exception as e:  # noqa
         if hasattr(e, "msg"):

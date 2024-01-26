@@ -54,7 +54,7 @@ def make_command(
     num: int = 1,
     start: int = 1,
     quiet: bool = False,
-    correction_only: bool = False,
+    with_correction: bool = False,
     for_review: bool = False,
 ) -> None:
     """Implement `mcq make` command.
@@ -73,12 +73,6 @@ def make_command(
 
     if for_review:
         context: dict[str, Any] = {"MCQ_KEEP_ALL_VERSIONS": True, "MCQ_DISPLAY_QUESTION_TITLE": True}
-        if not correction_only:
-            # Generate a document including the different versions of all the questions.
-            make(
-                (ptyx_filename.parent / ptyx_filename.stem).with_suffix(".all.pdf"),
-                options=CompilationOptions(context=context, quiet=quiet),
-            )
         # Generate a document including the different versions of all the questions
         # with the correct answers checked.
         make(
@@ -89,22 +83,20 @@ def make_command(
         # Compile and generate output files (tex or pdf)
         all_info = make(
             ptyx_filename,
-            correction=correction_only,
             number_of_documents=num,
             options=CompilationOptions(
                 same_number_of_pages_compact=True, compress=True, start=start, quiet=quiet
             )
             # cpu_cores=1,
         )
-        if not correction_only:
-            generate_config_file(compiler)
+        generate_config_file(compiler)
 
         # Keep track of the seed used.
         seed_value = compiler.seed
         with open(all_info.directory / ".seed", "w") as seed_file:
             seed_file.write(str(seed_value))
 
-        if not correction_only:
+        if with_correction:
             corr_info = make(
                 ptyx_filename,
                 correction=True,
