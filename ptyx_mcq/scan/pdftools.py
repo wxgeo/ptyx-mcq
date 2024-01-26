@@ -9,7 +9,7 @@ Created on Fri Oct 23 22:54:07 2020
 from pathlib import Path
 from shutil import rmtree
 
-import fitz_new as fitz  # type: ignore
+import fitz  # type: ignore
 
 PIC_EXTS = (".jpg", ".jpeg", ".png")
 

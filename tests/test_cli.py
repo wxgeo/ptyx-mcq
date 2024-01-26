@@ -11,9 +11,7 @@ from pathlib import Path
 
 import pytest
 from PIL import Image, ImageDraw
-import fitz_new as fitz  # type: ignore
-
-# from pdf2image import convert_from_path
+import fitz  # type: ignore
 
 from ptyx_mcq.cli import main
 from ptyx_mcq.parameters import CELL_SIZE_IN_CM
