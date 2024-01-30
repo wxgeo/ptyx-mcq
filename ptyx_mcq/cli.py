@@ -479,7 +479,7 @@ def same_questions_and_answers_numbers(config1: Configuration, config2: Configur
 
 def update(path: Path, force=False, clean=False) -> None:
     """Update the list of included files."""
-    from ptyx_mcq.make.include_parser import update_file
+    from ptyx_mcq.make.include_directives_parsing import update_file
 
     ptyxfile_path = get_file_or_sysexit(path, extension=".ptyx")
     update_file(ptyxfile_path, force=force, clean=clean)

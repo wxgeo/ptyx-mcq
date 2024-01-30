@@ -376,16 +376,12 @@ class MCQLatexGenerator(LatexGenerator):
         """
 
         k = OriginalAnswerNumber(int(node.arg(0)))
-        is_correct: Optional[bool]
-        match arg1 := node.arg(1).strip():
-            case "True":
-                is_correct = True
-            case "False":
-                is_correct = False
-            case "None":
-                is_correct = None
-            case _:
-                raise RuntimeError(f"Second #NEW_ANSWER argument must be True, False or None, not {arg1!r}.")
+        is_correct: Optional[bool] = eval(node.arg(1), self.context)
+        if not (is_correct is True or is_correct is False or is_correct is None):
+            raise ValueError(
+                "Second #NEW_ANSWER argument must be either True, False or None,"
+                f" but {node.arg(1)!r} value is {is_correct!r}."
+            )
         n = self.mcq_question_number
 
         self._open_answer(n, k, is_correct)

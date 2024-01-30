@@ -11,7 +11,7 @@ from ptyx_mcq.make.parser_tools import is_new_exercise_start
 from ptyx_mcq.tools.io_tools import get_file_or_sysexit, print_info, print_warning
 
 
-def wrap_exercise(code: str, doc_path: Path) -> str:
+def wrap_exercise(code: str, doc_path: Path = None) -> str:
     """Add a minimal header to mcq exercises to make them compilation-ready."""
     template = (Path(ptyx_mcq.__file__).parent / "templates/original/new.ptyx").read_text()
     code = improve_ex_file_content(code, ex_file_path=doc_path)
@@ -20,19 +20,28 @@ def wrap_exercise(code: str, doc_path: Path) -> str:
     return f"{before}\n<<<\n{code}\n>>>\n{after}"
 
 
-def generate_exercise_latex_code_for_preview(path: Path) -> str:
+def generate_exercise_latex_code_for_preview(*, code: str = None, path: Path = None) -> str:
     """Generate the LaTeX code corresponding to an exercise, for preview.
+
+    One must provide either the code of the exercise, or the path of a `.ex` file, but not both.
 
     The header generated before the exercise is minimal (no document id for example).
     """
-    ex_filename = get_file_or_sysexit(path, extension=".ex")
-    code = ex_filename.read_text(encoding="utf8")
+    if code is None and path is None:
+        raise ValueError("One of `code` or `path` argument must be set.")
+    if code is not None and path is not None:
+        raise ValueError("Only one of `code` or `path` argument must be set, not both.")
+    if path is not None:
+        ex_filename = get_file_or_sysexit(path, extension=".ex")
+        code = ex_filename.read_text(encoding="utf8")
+    else:
+        ex_filename = None
+    assert code is not None
     code = wrap_exercise(code, ex_filename)
     context: dict[str, Any] = {
         "MCQ_REMOVE_HEADER": True,
         "MCQ_PREVIEW_MODE": True,
         "MCQ_KEEP_ALL_VERSIONS": True,
-        "MCQ_DISPLAY_QUESTION_TITLE": True,
     }
     compiler = Compiler()
     # Create temporary document

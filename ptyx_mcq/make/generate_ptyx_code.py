@@ -4,9 +4,10 @@
 # class Levels(Enum):
 #     ROOT, QCM, SECTION, QUESTION, VERSION, ANSWERS_BLOCK, NEW_ANSWER = range(7)
 import sys
+import re
 from typing import Iterable
 
-from ptyx.utilities import extract_verbatim_tag_content, restore_verbatim_tag_content
+from ptyx.utilities import extract_verbatim_tag_content, restore_verbatim_tag_content, find_closing_bracket
 
 from ptyx_mcq import print_error
 from ptyx_mcq.make.parser_tools import is_new_exercise_start, is_mcq_start, is_mcq_end, is_section_start
@@ -217,11 +218,12 @@ def generate_ptyx_code(text: str, additional_header_lines: Iterable[str] = ()) -
             width = line[3:]
             code.append(f"#{{ANSWER_WIDTH={width!r};}}")
 
-        elif line.startswith("- ") or line.startswith("+ ") or line.startswith("! "):
+        elif re.match("[-+!] |\\?{.+} ", line):
             # - incorrect answer
             # + correct answer
             # ! neutralized answer (neither really true nor false, this is useful when there was a problem
             # in an answer).
+            # ?{condition} conditional answer (correct iff condition is true)
 
             if previous_line is None:
                 raise RuntimeError("No question before answers list !")
@@ -248,6 +250,7 @@ def generate_ptyx_code(text: str, additional_header_lines: Iterable[str] = ()) -
             if answer_num is None:
                 raise RuntimeError("No question before answers list !")
             answer_num += 1
+            end = 2
             match line[0]:
                 case "+":
                     correct = True
@@ -255,11 +258,18 @@ def generate_ptyx_code(text: str, additional_header_lines: Iterable[str] = ()) -
                     correct = False
                 case "!":
                     correct = None
+                case "?":
+                    try:
+                        end = find_closing_bracket(line, 2)
+                    except ValueError:
+                        raise RuntimeError(f"Unbalanced brackets in line {line!r}")
+                    correct = line[2:end]
+                    end += 1  # to skip closing bracket.
                 case _:
-                    assert False, f"{line[0]} should be either '+', '-' or '!'."
+                    assert False, f"{line[0]} should be either '+', '-', '!' or '?'."
             begin("NEW_ANSWER", n=answer_num, correct=correct)
 
-            code.append(line[2:])
+            code.append(line[end:])
 
         elif is_mcq_end(line):  # >>>
             # End MCQ

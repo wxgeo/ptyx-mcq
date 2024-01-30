@@ -427,7 +427,7 @@ def packages_and_macros(preview_mode: bool = False) -> tuple[str, str]:
 \makeatother
 \newcounter{{answerNumber}}
 \renewcommand{{\thesubsection}}{{\Alph{{subsection}}}}
-    """
+"""
     packages = PACKAGES.copy()
     if preview_mode:
         packages.append("preview: active, tightpage")

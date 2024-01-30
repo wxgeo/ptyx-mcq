@@ -125,7 +125,7 @@ def autodetect_smallgraphlib(text: str) -> list[str]:
 def main(text: str, compiler: "Compiler") -> str:
     from ptyx.extensions import extended_python
     from .make.generate_ptyx_code import generate_ptyx_code
-    from ptyx_mcq.make.include_parser import resolve_includes
+    from ptyx_mcq.make.include_directives_parsing import resolve_includes
 
     # Generation algorithm is the following:
     # 1. Parse AutoQCM code, to convert it to plain pTyX code.

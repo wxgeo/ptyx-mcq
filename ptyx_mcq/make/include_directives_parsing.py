@@ -49,7 +49,7 @@ from pathlib import Path
 
 from typing import Self, Final, Iterable
 
-from ptyx_mcq.make.exercise_parsing import _get_ex_file_content
+from ptyx_mcq.make.exercises_parsing import _get_ex_file_content
 from ptyx_mcq.tools.io_tools import print_warning, print_error
 
 
