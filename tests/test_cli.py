@@ -27,6 +27,8 @@ from ptyx_mcq.tools.config_parser import (
 )
 from ptyx_mcq.tools.io_tools import print_info
 
+from .toolbox import TEST_DIR
+
 DPI = 200
 PX_PER_CM = DPI / 2.54
 PX_PER_MM = PX_PER_CM / 10
@@ -36,8 +38,6 @@ STUDENTS = {
     StudentId("34567890"): StudentName("Martin De La Tour"),
 }
 MAX_ID_LEN = max(len(student_id) for student_id in STUDENTS)
-
-TEST_DIR = Path(__file__).parent.resolve()
 
 
 def convert_from_path(pdf_path: Path, dpi: int) -> list[Image.Image]:
@@ -291,7 +291,7 @@ def test_previous_scan_data_loading(tmp_path):
     is stored in `more_infos.csv`, and should take precedence over all other information.
     """
     copy = tmp_path / "caching_test"
-    origin = TEST_DIR / "caching_test"
+    origin = TEST_DIR / "data/cli-tests/caching_test"
     shutil.copytree(origin, copy)
     assert (origin / ".scan/data/1.scandata").is_file()
     assert (origin / ".scan/unpatched_scores.csv").is_file()

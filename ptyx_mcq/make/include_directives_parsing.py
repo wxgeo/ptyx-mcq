@@ -49,11 +49,8 @@ from pathlib import Path
 
 from typing import Self, Final, Iterable
 
-from ptyx.extensions.extended_python import PYTHON_DELIMITER
-from ptyx.utilities import extract_verbatim_tag_content, restore_verbatim_tag_content
-
-from ptyx_mcq.make.parser_tools import is_new_exercise_start
-from ptyx_mcq.tools.io_tools import print_warning, print_error, print_info
+from ptyx_mcq.make.exercise_parsing import _get_ex_file_content
+from ptyx_mcq.tools.io_tools import print_warning, print_error
 
 
 class UnsafeUpdate(RuntimeError):
@@ -188,75 +185,6 @@ def parse_code(code: str) -> list[Directive | str]:
     return [_parse_directive(line) for line in code.splitlines()]
 
 
-def improve_ex_file_content(file_content: str, ex_file_path: Path = None) -> str:
-    """Improve the content of the exercise file, escaping `*` characters notably."""
-    # Search for lines starting inadvertently with `* `, since a star is the symbol used to
-    # start a new exercise.
-    # If we found any, we will insert a space before, so it is not interpreted as the start of
-    # a new exercise (unless we are in a verbatim block, which we can't modify for now, so,
-    # in this last case, we'll have to be careful when we will generate PTYX code later.).
-    file_content, verbatim_contents = extract_verbatim_tag_content(file_content)
-
-    def substitute(m: re.Match) -> str:
-        print_info("`* ` at the start of a line is used to declare a new exercise.")
-        print_info("A space will be inserted before to prevent this in the following line:")
-        star_prefixed_line = m.group(0)
-        print_info(star_prefixed_line + "\n")
-        return " " + star_prefixed_line
-
-    # Search for lines containing only a star, or starting with `* `.
-    file_content = re.sub("^\\*(?: .*)?$", substitute, file_content, flags=re.MULTILINE)
-
-    # Insert `*\n` to mark the start of a new exercise.
-    # Nota: Add a line break (instead of a space) after the star,
-    #       in case the .ex file starts with python code.
-    #       This avoids to get something like "* .............",
-    #       where the line of dots introduces python code.
-    file_content = "*\n" + file_content
-
-    # Test for unbalanced python delimiters.
-    if sum(1 for _ in re.finditer(PYTHON_DELIMITER, file_content)) % 2 == 1:
-        print_warning(f"A lonely line of multiple dots was found in exercise '{ex_file_path}'.")
-        print_warning("This may lead to strange bugs, since a line of multiple dots is meant")
-        print_warning(" to declare python code.")
-        print_warning("Hint: prefix the line with empty brackets, for example `{}............`.")
-
-    lines: list[str] = []
-    for line in file_content.split("\n"):
-        lines.append(line)
-        if is_new_exercise_start(line):
-            lines.append(f'#PRINT{{\u001b[36mIMPORTING\u001b[0m "{_prettify_path(ex_file_path)}"}}')
-            question_name = ex_file_path.name.replace("#", "##") if ex_file_path is not None else "?"
-            lines.append(f"#QUESTION_NAME{{{question_name}}}")
-    file_content = "\n".join(lines) + "\n"
-    return restore_verbatim_tag_content(file_content, verbatim_contents)
-
-
-def _prettify_path(ex_file_path: Path = None) -> str:
-    if ex_file_path is None:
-        return "?"
-    return str(ex_file_path.parent / f"\u001b[36m{ex_file_path.name}\u001b[0m").replace("#", "##")
-
-
-def _get_ex_file_content(ex_file_path: Path, exercise=True) -> str:
-    """Get the content of the file to include, with a few enhancements.
-
-    - Prefix the file content with `*` if needed (each pTyX exercise must begin with `*`).
-    - Inject some meta-information into the pTyX code to make debugging easier."""
-
-    with open(ex_file_path) as file:
-        file_content = file.read().strip()
-        # Remove all comments
-        file_content = re.sub("( # .+)|(^# .+\n)", "", file_content, flags=re.MULTILINE)
-
-        # Each exercise must start with a star. Since each included file is supposed to be an exercise,
-        # add the initial star if missing.
-        if exercise:
-            return improve_ex_file_content(file_content, ex_file_path=ex_file_path)
-        else:
-            return f'#PRINT{{\u001b[36mIMPORTING\u001b[0m "{_prettify_path(ex_file_path)}"}}\n' + file_content
-
-
 def resolve_includes(code: str, default_dir: Path, strict=True) -> str:
     """Search for include directives, and insert the corresponding files content into the pTyX code."""
     directory: Path = default_dir
@@ -291,7 +219,7 @@ def resolve_includes_from_file(ptyx_file: Path) -> str:
 
 
 def add_directories(ptyx_file: Path, directories: Iterable[Path]) -> None:
-    """Add new `ChangeDirectory` directives."""
+    """Append new `ChangeDirectory` directives to the given pTyX file."""
     before, mcq, after = _split_around_mcq(ptyx_file=ptyx_file)
     mcq.extend(ChangeDirectory(path) for path in directories)
     lines = [str(line) for line in before + mcq + after]
@@ -429,11 +357,11 @@ class IncludesUpdater:
         """
         Disable missing paths, and fill the paths set with all the paths found.
         """
-        invalid_directories = []
+        invalid_directories: list[ChangeDirectory] = []
         for directory_directive, add_path_directives in chain(
-            self.includes.items(), [(None, self.local_includes)]
+            self.includes.items(), [(ChangeDirectory(self.default_dir), self.local_includes)]
         ):
-            directory = None
+            directory: Path | None = None
             if directory_directive is None:
                 directory = self.default_dir
             elif not directory_directive.is_disabled:
@@ -473,7 +401,7 @@ class IncludesUpdater:
         # It would be better to use a custom search algorithm, starting from the more specific sub-folders,
         # but it would not be so easy to implement, so it's probably not worth the additional code complexity.
         for directory_directive, add_path_directives in chain(
-            self.includes.items(), [(None, self.local_includes)]
+            self.includes.items(), [(ChangeDirectory(self.default_dir), self.local_includes)]
         ):
             # 1. Get the directory path.
             if directory_directive is None:

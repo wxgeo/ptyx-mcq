@@ -1,8 +1,8 @@
 Question:
 
-\begin{verbatim}
+#VERBATIM
 ...................
-\end{verbatim}
+#END
 
 @\texttt{%s}
 + M[i] += -M[i][j0]

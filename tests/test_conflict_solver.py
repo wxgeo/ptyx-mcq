@@ -12,14 +12,15 @@ from ptyx_mcq.tools.config_parser import DocumentId, StudentName
 from ptyx_mcq.tools.io_tools import custom_print
 from ptyx_mcq.cli import scan
 
-TEST_DIR = Path(__file__).parent
-
+from .toolbox import TEST_DIR
 
 CORRECT_Y_N = "Is it correct ? (Y/n)"
 ASK_FOR_STUDENT_NAME = "Student name or ID (or / to skip this document):"
 PRESS_ENTER = "-- Press ENTER --"
 
 STUDENT_NAMES = ["Robert Le Hardi", "Jules Le Preux", "Edouard Le Couard", "Jules de chez Smith"]
+
+DATA_DIR = TEST_DIR / "data/test-conflict-solver"
 
 
 def fail_on_input(text=""):
@@ -40,7 +41,7 @@ def no_display(monkeypatch):
 
 @pytest.fixture
 def patched_conflict_solver(monkeypatch, tmp_path, no_display):
-    shutil.copytree(TEST_DIR / "test-conflict-solver-data/no-conflict", tmp_path / "no-conflict")
+    shutil.copytree(DATA_DIR / "no-conflict", tmp_path / "no-conflict")
     data_storage = DataHandler(config_path=tmp_path / "no-conflict")
     conflict_solver = ConflictSolver(data_storage)
     conflict_solver.data_storage.reload()
@@ -244,7 +245,7 @@ def test_blank_page_inserted(tmp_path):
 
     This page should be ignored, but a warning should be raised.
     """
-    origin = TEST_DIR / "blank-page-test"
+    origin = DATA_DIR / "blank-page-test"
     copy = tmp_path / "blank-page-test"
     shutil.copytree(origin, copy)
     scan(copy)
@@ -271,7 +272,7 @@ def test_empty_document(no_display, tmp_path, custom_input):
             (ASK_FOR_STUDENT_NAME, "/"),
         ],
     )
-    origin = TEST_DIR / "unfilled-doc-test"
+    origin = DATA_DIR / "unfilled-doc-test"
     copy = tmp_path / "unfilled-doc-test"
     shutil.copytree(origin, copy)
     mcq_parser = scan(copy)
@@ -291,7 +292,7 @@ def test_empty_document(no_display, tmp_path, custom_input):
 
 def test_identical_duplicate_documents(no_display, tmp_path, custom_input):
     custom_input.set_scenario([])
-    origin = TEST_DIR / "duplicate-files"
+    origin = DATA_DIR / "duplicate-files"
     copy = tmp_path / "duplicate-files"
     shutil.copytree(origin, copy)
     (copy / "scan/flat-scan-conflict.pdf").unlink()
@@ -311,7 +312,7 @@ def test_different_duplicate_documents_keep_first(no_display, tmp_path, custom_i
             ("Answer: ", "1"),
         ]
     )
-    origin = TEST_DIR / "duplicate-files"
+    origin = DATA_DIR / "duplicate-files"
     copy = tmp_path / "duplicate-files"
     shutil.copytree(origin, copy)
     mcq_parser = scan(copy)
@@ -334,7 +335,7 @@ def test_different_duplicate_documents_keep_second(no_display, tmp_path, custom_
             ("Answer: ", "2"),
         ]
     )
-    origin = TEST_DIR / "duplicate-files"
+    origin = DATA_DIR / "duplicate-files"
     copy = tmp_path / "duplicate-files"
     shutil.copytree(origin, copy)
     mcq_parser = scan(copy)

@@ -5,7 +5,7 @@ import pytest
 from ptyx.latex_generator import Compiler
 
 # noinspection PyProtectedMember
-from ptyx_mcq.make.include_parser import (
+from ptyx_mcq.make.include_directives_parsing import (
     parse_code,
     Directive,
     ChangeDirectory,
@@ -15,8 +15,7 @@ from ptyx_mcq.make.include_parser import (
     resolve_includes_from_file,
     UnsafeUpdate,
 )
-
-TEST_DIR = Path(__file__).parent.resolve()
+from tests.toolbox import TEST_DIR
 
 
 def _dir(directory: str, is_disabled=False, comment=""):
@@ -27,9 +26,11 @@ def _file(file: str, is_disabled=False, comment=""):
     return AddPath(path=Path(file), is_disabled=is_disabled, comment=comment)
 
 
+DATA_DIR = TEST_DIR / "data/ptyx-files"
+
+
 def test_include_parser():
-    with open(TEST_DIR / "ptyx-files/with-exercises/new_include_syntax.ptyx") as f:
-        content = f.read()
+    content = (DATA_DIR / "with-exercises/new_include_syntax.ptyx").read_text(encoding="utf8")
     directives = [line for line in parse_code(content) if isinstance(line, Directive)]
     assert directives == [
         _file("exercises/ex1.ex", is_disabled=True),
@@ -43,8 +44,7 @@ def test_include_parser():
 
 
 def test_include_false_positives():
-    with open(TEST_DIR / "ptyx-files/with-exercises/new.ptyx") as f:
-        content = f.read()
+    content = (DATA_DIR / "with-exercises/new.ptyx").read_text(encoding="utf8")
     directives = [line for line in parse_code(content) if isinstance(line, Directive)]
     assert directives == [
         _file("questions/**/*.ex"),
@@ -52,7 +52,7 @@ def test_include_false_positives():
 
 
 def test_update_include():
-    ptyx_file = TEST_DIR / "ptyx-files/with-exercises/new_include_syntax.ptyx"
+    ptyx_file = DATA_DIR / "with-exercises/new_include_syntax.ptyx"
     updater = IncludesUpdater(ptyx_file)
     updater.update_file_content()
     assert updater.includes == {
@@ -68,6 +68,9 @@ def test_update_include():
     assert updater.local_includes == [
         _file("exercises/ex1.ex", is_disabled=True),
         _file("exercises/ex2.ex"),
+        _file("example_with_verbatim/ex/2.ex", comment="new"),
+        _file("example_with_verbatim/ex/1.ex", comment="new"),
+        _file("example_with_verbatim/ex/3.ex", comment="new"),
         _file("questions/question1.ex", comment="new"),
         _file("questions/question2.ex", comment="new"),
         _file("questions/question3.ex", comment="new"),
@@ -182,7 +185,7 @@ def test_successive_calls(tmp_path):
 
 
 def test_update_empty_ex_list(tmp_path):
-    ex_path = TEST_DIR / "ptyx-files/with-exercises/exercises"
+    ex_path = DATA_DIR / "with-exercises/exercises"
     mcq_path = tmp_path / "mcq"
     mcq_path.mkdir(parents=True)
     content = f"""
@@ -214,7 +217,7 @@ def test_unsafe_update(tmp_path):
     #     └── exercises
     #             ├── 1.ex
     #             └── 2.ex
-    root = TEST_DIR / "ptyx-files/with-exercises"
+    root = DATA_DIR / "with-exercises"
     shutil.copy(root / "new_include_syntax.ptyx", tmp_path)
     (tmp_path / "exercises").mkdir()
     for i in (1, 2):
@@ -307,7 +310,7 @@ def test_includes_outside_mcq(tmp_path):
     (tmp_path / "footer.txt").write_text("Conclusion.")
     # Generate the ptyx file:
     ptyx_file = tmp_path / "include.ptyx"
-    root = TEST_DIR / "ptyx-files/with-exercises"
+    root = DATA_DIR / "with-exercises"
     ptyx_file.write_text(
         f"""
 #LOAD{{mcq}}#SEED{{123456}}
