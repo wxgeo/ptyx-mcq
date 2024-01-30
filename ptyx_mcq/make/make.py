@@ -56,14 +56,20 @@ def make_command(
     quiet: bool = False,
     with_correction: bool = False,
     for_review: bool = False,
+    context: dict[str, Any] | None = None,
 ) -> None:
     """Implement `mcq make` command.
 
-    If `only_correction` is `True`, only generate correction (useful for fast testing).
+    If `with_correction` is `True`, then a corrected version of the documents will also be generated.
     If `for_review` is `True`, insert before each question its title; if a question has several versions,
     display them all too.
+
+    Dictionary `context` can be used to pass additional information to compiler.
     """
     assert isinstance(num, int)
+
+    if context is None:
+        context = {}
 
     ptyx_filename = get_file_or_sysexit(path, extension=".ptyx")
     print(f"Reading {ptyx_filename}...")
@@ -72,7 +78,7 @@ def make_command(
     make = partial(make_files, compiler=compiler)
 
     if for_review:
-        context: dict[str, Any] = {"MCQ_KEEP_ALL_VERSIONS": True, "MCQ_DISPLAY_QUESTION_TITLE": True}
+        context |= {"MCQ_KEEP_ALL_VERSIONS": True, "MCQ_DISPLAY_QUESTION_TITLE": True}
         # Generate a document including the different versions of all the questions
         # with the correct answers checked.
         make(
