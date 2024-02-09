@@ -13,6 +13,8 @@ import pytest
 from PIL import Image, ImageDraw
 import fitz  # type: ignore
 
+from ptyx.shell import print_info
+
 from ptyx_mcq.cli import main
 from ptyx_mcq.parameters import CELL_SIZE_IN_CM
 from ptyx_mcq.scan.color import Color, RGB
@@ -25,7 +27,7 @@ from ptyx_mcq.tools.config_parser import (
     StudentId,
     StudentName,
 )
-from ptyx_mcq.tools.io_tools import print_info
+
 
 from .toolbox import TEST_DIR
 

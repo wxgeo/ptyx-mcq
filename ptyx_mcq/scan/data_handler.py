@@ -10,6 +10,8 @@ from typing import Iterator
 from PIL import Image
 from numpy import ndarray, array, int8, concatenate
 
+from ptyx.shell import ANSI_CYAN, ANSI_RESET, ANSI_YELLOW, ANSI_GREEN, print_error
+
 from ptyx_mcq.scan.checkbox_analyzer import analyze_checkboxes
 from ptyx_mcq.scan.document_data import DocumentData, PicData, DetectionStatus, RevisionStatus, Page
 from ptyx_mcq.scan.paths_handler import PathsHandler, DirsPaths, FilesPaths
@@ -25,7 +27,6 @@ from ptyx_mcq.tools.config_parser import (
     OriginalAnswerNumber,
 )
 from ptyx_mcq.tools.extend_literal_eval import extended_literal_eval
-from ptyx_mcq.tools.io_tools import ANSI_CYAN, ANSI_RESET, ANSI_YELLOW, ANSI_GREEN, print_error
 
 
 def save_webp(matrix: ndarray, path: Path | str, lossless=False) -> None:

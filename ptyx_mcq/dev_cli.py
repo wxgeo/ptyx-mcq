@@ -17,9 +17,7 @@ from numpy import array, ndarray  # , concatenate
 import argcomplete
 from argcomplete import FilesCompleter
 
-from ptyx_mcq.tools.io_tools import (
-    print_success,
-)
+from ptyx.shell import print_success
 
 
 # noinspection PyTypeHints

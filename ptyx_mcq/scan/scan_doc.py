@@ -4,6 +4,8 @@ from math import inf
 from pathlib import Path
 from typing import Union, Optional
 
+from ptyx.shell import print_warning, ANSI_RESET, ANSI_GREEN
+
 from ptyx_mcq.scan.amend import amend_all
 from ptyx_mcq.scan.conflict_solver import ConflictSolver
 from ptyx_mcq.scan.data_handler import DataHandler
@@ -19,7 +21,6 @@ from ptyx_mcq.tools.config_parser import (
     StudentName,
     DocumentId,
 )
-from ptyx_mcq.tools.io_tools import print_warning, ANSI_RESET, ANSI_GREEN
 
 
 # -----------------------------------------

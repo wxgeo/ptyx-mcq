@@ -5,10 +5,11 @@ from typing import Any
 from ptyx.extensions.extended_python import PYTHON_DELIMITER
 from ptyx.latex_generator import Compiler
 from ptyx.utilities import extract_verbatim_tag_content, restore_verbatim_tag_content
+from ptyx.shell import print_info, print_warning
 
 import ptyx_mcq
 from ptyx_mcq.make.parser_tools import is_new_exercise_start
-from ptyx_mcq.tools.io_tools import get_file_or_sysexit, print_info, print_warning
+from ptyx_mcq.tools.io_tools import get_file_or_sysexit
 
 
 def wrap_exercise(code: str, doc_path: Path = None) -> str:

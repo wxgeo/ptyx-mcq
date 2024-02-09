@@ -5,11 +5,12 @@ from pathlib import Path
 import pytest
 from numpy import ndarray, array
 
+from ptyx.shell import custom_print
+
 from ptyx_mcq.scan.conflict_solver import ConflictSolver
 from ptyx_mcq.scan.data_handler import DataHandler
 from ptyx_mcq.scan.document_data import DocumentData
 from ptyx_mcq.tools.config_parser import DocumentId, StudentName
-from ptyx_mcq.tools.io_tools import custom_print
 from ptyx_mcq.cli import scan
 
 from .toolbox import TEST_DIR

@@ -3,6 +3,8 @@ from pathlib import Path
 from PIL import Image
 from numpy import array, amin, amax, ndarray  # , percentile, clip
 
+from ptyx.shell import print_info, print_warning
+
 from .color import Color
 from .document_data import PicData, Page
 from .types_declaration import (
@@ -34,7 +36,6 @@ from ..tools.config_parser import (
     StudentName,
     StudentId,
 )
-from ..tools.io_tools import print_info, print_warning
 
 
 # CornersPositions = dict[Corner, Pixel]

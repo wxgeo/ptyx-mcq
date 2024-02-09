@@ -2,8 +2,7 @@ import csv
 import math
 from typing import TYPE_CHECKING, Callable
 
-from ptyx_mcq.scan.evaluation_strategies import AnswersData, ScoreData, EvaluationStrategies
-from ptyx_mcq.tools.io_tools import (
+from ptyx.shell import (
     print_info,
     ANSI_RESET,
     ANSI_RED,
@@ -12,6 +11,8 @@ from ptyx_mcq.tools.io_tools import (
     ANSI_CYAN,
     ANSI_BOLD,
 )
+
+from ptyx_mcq.scan.evaluation_strategies import AnswersData, ScoreData, EvaluationStrategies
 
 if TYPE_CHECKING:
     from ptyx_mcq.scan.scan_doc import MCQPictureParser

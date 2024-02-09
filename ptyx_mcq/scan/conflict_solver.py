@@ -5,6 +5,8 @@ from pathlib import Path
 from PIL import Image, ImageDraw
 from numpy import ndarray
 
+from ptyx.shell import print_error, print_warning, print_success, print_info
+
 from ptyx_mcq.scan.color import Color, RGB
 from ptyx_mcq.scan.data_handler import DataHandler
 from ptyx_mcq.scan.document_data import Page, DetectionStatus, RevisionStatus, PicData, DocumentData
@@ -18,7 +20,7 @@ from ptyx_mcq.tools.config_parser import (
     StudentId,
     OriginalQuestionNumber,
 )
-from ptyx_mcq.tools.io_tools import print_framed_msg, print_warning, print_success, print_error, print_info
+from ptyx_mcq.tools.io_tools import print_framed_msg
 
 
 class MissingQuestion(RuntimeError):

@@ -19,18 +19,19 @@ import argcomplete
 from argcomplete import DirectoriesCompleter, FilesCompleter
 from platformdirs import PlatformDirs
 
-from ptyx_mcq.tools.config_parser import Configuration
-from ptyx_mcq.tools.io_tools import (
+from ptyx.shell import (
+    print_warning,
     print_success,
     print_error,
-    get_file_or_sysexit,
+    print_info,
     ANSI_RESET,
     ANSI_REVERSE_PURPLE,
     ANSI_REVERSE_BLUE,
     ANSI_BLUE,
-    print_warning,
-    print_info,
 )
+
+from ptyx_mcq.tools.config_parser import Configuration
+from ptyx_mcq.tools.io_tools import get_file_or_sysexit
 
 if TYPE_CHECKING:
     # Import `MCQPictureParser` ONLY when type checking!
