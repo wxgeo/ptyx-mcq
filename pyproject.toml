@@ -34,7 +34,7 @@ myst-parser = "^1.0.0"
 # Version 7.29+ are buggy !
 python-semantic-release = "7.28.1"
 ptyx = {path = "../ptyx", develop = true}
-ruff = "^0.1.2"
+ruff = "^0.2.1"
 pytest-xdist = "^3.5.0"
 
 [tool.poetry.scripts]
