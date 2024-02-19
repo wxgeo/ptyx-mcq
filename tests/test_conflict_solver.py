@@ -5,8 +5,6 @@ from pathlib import Path
 import pytest
 from numpy import ndarray, array
 
-from ptyx.shell import custom_print
-
 from ptyx_mcq.scan.conflict_solver import ConflictSolver
 from ptyx_mcq.scan.data_handler import DataHandler
 from ptyx_mcq.scan.document_data import DocumentData
@@ -61,44 +59,6 @@ def test_no_conflict(monkeypatch, patched_conflict_solver):
     patched_conflict_solver.resolve_conflicts()
     data = patched_conflict_solver.data
     assert sorted(data) == [1, 2, 3, 4], data
-
-
-class CustomInput:
-    def __init__(self) -> None:
-        self.scenario: list[tuple[str, str]] = []
-        self.index = 0
-
-    def set_scenario(self, scenario: list[tuple[str, str]]) -> None:
-        self.scenario = scenario
-        self.index = 0
-
-    def __call__(self, text: str = "") -> str:
-        while self.index < len(self.scenario) and isinstance(comment := self.scenario[self.index], str):
-            assert isinstance(comment, str)  # stupid Pycharm!
-            # This is only comments.
-            custom_print(comment, label="Note", color="blue", bold=False)
-            self.index += 1
-        print("Q:", text)
-        try:
-            question, answer = self.scenario[self.index]
-        except IndexError:
-            raise ValueError(f"Unexpected input request: {text!r}")
-        assert text == question, (question, answer)
-        print("A:", answer)
-        self.index += 1
-        return answer
-
-    def remaining(self):
-        return self.scenario[self.index :]
-
-    def is_empty(self) -> bool:
-        return self.index == len(self.scenario)
-
-
-@pytest.fixture
-def custom_input(monkeypatch):
-    monkeypatch.setattr("builtins.input", custom_input := CustomInput())
-    return custom_input
 
 
 def test_missing_name(patched_conflict_solver, custom_input) -> None:

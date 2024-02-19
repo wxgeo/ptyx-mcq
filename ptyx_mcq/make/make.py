@@ -1,6 +1,7 @@
 """
 Generate pdf file from raw mcq file.
 """
+import sys
 from functools import partial
 from pathlib import Path
 from typing import Any
@@ -8,6 +9,7 @@ from typing import Any
 from ptyx.compilation import make_files
 from ptyx.compilation_options import CompilationOptions
 from ptyx.latex_generator import Compiler
+from ptyx.shell import print_error, print_info
 
 from ptyx_mcq.scan.document_data import Page
 from ptyx_mcq.tools.io_tools import get_file_or_sysexit
@@ -56,6 +58,7 @@ def make_command(
     quiet: bool = False,
     with_correction: bool = False,
     for_review: bool = False,
+    force: bool = False,
     context: dict[str, Any] | None = None,
 ) -> None:
     """Implement `mcq make` command.
@@ -72,6 +75,11 @@ def make_command(
         context = {}
 
     ptyx_filename = get_file_or_sysexit(path, extension=".ptyx")
+    if ptyx_filename.with_suffix(".ptyx.mcq.config.json").is_file() and not force:
+        if input("A previous compiled version exist, overwrite it (y∕N) ?") not in ("y", "Y"):
+            print_info("You may use `mcq scan --force` or `mcq scan -f` to force recompilation.")
+            print_error("Conflict with a previous file, no file was generated.")
+            sys.exit(1)
     print(f"Reading {ptyx_filename}...")
     compiler = Compiler(path=ptyx_filename)
 
@@ -82,9 +90,12 @@ def make_command(
         # Generate a document including the different versions of all the questions
         # with the correct answers checked.
         make(
-            (ptyx_filename.parent / ptyx_filename.stem).with_suffix(".all-corr.pdf"),
+            ptyx_filename,
+            output_basename=f"{ptyx_filename.stem}.review",
+            correction=True,
             options=CompilationOptions(context=context | {"PTYX_WITH_ANSWERS": True}, quiet=quiet),
         )
+
     else:
         # Compile and generate output files (tex or pdf)
         all_info = make(

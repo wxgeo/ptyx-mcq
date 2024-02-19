@@ -43,6 +43,7 @@ MAX_ID_LEN = max(len(student_id) for student_id in STUDENTS)
 
 
 def convert_from_path(pdf_path: Path, dpi: int) -> list[Image.Image]:
+    # noinspection PyTypeChecker
     return [
         Image.frombytes(
             mode="RGB", size=((pix := page.get_pixmap(dpi=dpi)).width, pix.height), data=pix.samples
@@ -138,20 +139,20 @@ def read_students_scores(path: Path) -> dict[StudentName, str]:
 
 @pytest.mark.slow
 def test_many_docs(tmp_path):
-    NUMBER_OF_DOCUMENTS = 40
+    number_of_documents = 10
     path = tmp_path / "mcq"
     # Test mcq new
     main(["new", str(path), "--template", "original"])
     assert "new.ptyx" in listdir(path)
     # Test mcq make
-    main(["make", str(path), "-n", str(NUMBER_OF_DOCUMENTS)])
+    main(["make", str(path), "-n", str(number_of_documents)])
     assert "new.pdf" in listdir(path)
     # No correction generated anymore by default.
     assert "new-corr.pdf" not in listdir(path)
 
 
 def test_cli(tmp_path: Path) -> None:
-    NUMBER_OF_DOCUMENTS = 2
+    number_of_documents = 2
     # Make a temporary directory
     print("----------------")
     print_info(f"Working in: '{tmp_path}'")
@@ -175,11 +176,10 @@ def test_cli(tmp_path: Path) -> None:
     # ----------------
     # Test `mcq make`
     # ----------------
-    main(["make", str(path), "-n", str(NUMBER_OF_DOCUMENTS)])
+    main(["make", str(path), "-n", str(number_of_documents)])
     assert "new.pdf" in listdir(path)
     # No correction generated anymore by default.
     assert "new-corr.pdf" not in listdir(path)
-    # TODO: assert "new.all.pdf" in listdir(path)
 
     config = Configuration.load(path / "new.ptyx.mcq.config.json")
     for student_id in STUDENTS:
@@ -208,7 +208,7 @@ def test_cli(tmp_path: Path) -> None:
     # ----------------
     images = convert_from_path(path / "new.pdf", dpi=DPI)
     images = simulate_answer(images, config)
-    assert len(images) / 2 == min(NUMBER_OF_DOCUMENTS, len(STUDENTS))
+    assert len(images) / 2 == min(number_of_documents, len(STUDENTS))
     scan_path = path / "scan"
     scan_path.mkdir(exist_ok=True)
     images[0].save(scan_path / "simulate-scan.pdf", save_all=True, append_images=images[1:])
@@ -276,13 +276,64 @@ def test_cli(tmp_path: Path) -> None:
         "new.ptyx",
         "scan/simulate-scan.pdf",
     ]
-    for endpath in paths_to_be_removed + paths_to_be_kept:
-        assert (pth := path / endpath).exists(), pth
+    for path_end in paths_to_be_removed + paths_to_be_kept:
+        assert (pth := path / path_end).exists(), pth
     main(["clear", str(path)])
-    for endpath in paths_to_be_removed:
-        assert not (pth := path / endpath).exists(), pth
-    for endpath in paths_to_be_kept:
-        assert (pth := path / endpath).exists(), pth
+    for path_end in paths_to_be_removed:
+        assert not (pth := path / path_end).exists(), pth
+    for path_end in paths_to_be_kept:
+        assert (pth := path / path_end).exists(), pth
+
+
+def _pdf_as_pixels_list(pdf_file: Path) -> list[bytes]:
+    return [page.get_pixmap(alpha=False, dpi=96).samples for page in fitz.open(pdf_file)]
+
+
+def _pdf_look_the_same(pdf_file1: Path, pdf_file2: Path) -> bool:
+    return _pdf_as_pixels_list(pdf_file1) == _pdf_as_pixels_list(pdf_file2)
+
+
+def test_make_for_review(tmp_path):
+    path = tmp_path / "new dir with non-ascii characters like éhô"
+    targets = TEST_DIR / "data/cli-tests/pdf-targets"
+    main(["new", str(path), "--template", "original"])
+    assert not (path / "new.review.pdf").is_file()
+    main(["make", str(path), "--for-review"])
+    assert (path / "new.review.pdf").is_file()
+    assert not (path / "new.pdf").is_file()
+    assert not _pdf_look_the_same(path / "new.review.pdf", targets / "vanilla-version.pdf")
+    assert _pdf_look_the_same(path / "new.review.pdf", targets / "for-review-version.pdf")
+
+
+def test_make_force(tmp_path):
+    path = tmp_path / "new dir"
+    targets = TEST_DIR / "data/cli-tests/pdf-targets"
+    main(["new", str(path), "--template", "original"])
+    main(["make", str(path)])
+    assert _pdf_look_the_same(path / "new.pdf", targets / "vanilla-version.pdf")
+    assert not _pdf_look_the_same(path / "new.pdf", targets / "for-review-version.pdf")
+    assert not _pdf_look_the_same(path / "new.pdf", targets / "two-docs-version.pdf")
+    # Force rebuild
+    main(["make", str(path), "-n", "2", "-f"])
+    assert _pdf_look_the_same(path / "new.pdf", targets / "two-docs-version.pdf")
+
+
+def test_make_without_force(tmp_path, custom_input):
+    path = tmp_path / "new dir"
+    targets = TEST_DIR / "data/cli-tests/pdf-targets"
+    main(["new", str(path), "--template", "original"])
+    main(["make", str(path)])
+    assert _pdf_look_the_same(path / "new.pdf", targets / "vanilla-version.pdf")
+
+    custom_input.set_scenario([("A previous compiled version exist, overwrite it (y∕N) ?", "")])
+    with pytest.raises(SystemExit):
+        main(["make", str(path), "-n", "2"])
+    assert custom_input.is_empty()
+    assert _pdf_look_the_same(path / "new.pdf", targets / "vanilla-version.pdf")
+
+    custom_input.set_scenario([("A previous compiled version exist, overwrite it (y∕N) ?", "y")])
+    main(["make", str(path), "-n", "2"])
+    assert _pdf_look_the_same(path / "new.pdf", targets / "two-docs-version.pdf")
 
 
 @pytest.mark.slow

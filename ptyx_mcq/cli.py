@@ -120,6 +120,12 @@ def main(args: Optional[list] = None) -> None:
         help="For each question, display its title and its different versions (if any). "
         "Useful for reviewing a mcq.",
     )
+    make_parser.add_argument(
+        "--force",
+        "-f",
+        action="store_true",
+        help="Force the build of a new document even if a previous one exist, without asking what to do.",
+    )
     make_parser.set_defaults(func=make)
 
     # ------------------------------------------
@@ -269,12 +275,13 @@ def make(
     quiet: bool = False,
     with_correction: bool = False,
     for_review: bool = False,
+    force: bool = False,
 ) -> None:
     """Wrapper for _make(), so that `argparse` module don't intercept exceptions."""
     from .make.make import make_command
 
     try:
-        make_command(path, num, start, quiet, with_correction, for_review)
+        make_command(path, num, start, quiet, with_correction, for_review, force)
         print_success(f"Document was successfully generated in {num} version(s).")
     except Exception as e:  # noqa
         if hasattr(e, "msg"):
