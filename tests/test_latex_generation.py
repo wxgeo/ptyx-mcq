@@ -194,6 +194,19 @@ def test_unicity_of_answers(tmp_path):
         pass
 
 
+def test_unicity_of_answers2(tmp_path):
+    folder = copy_test("with-exercises", tmp_path)
+    c = load_ptyx_file(folder / "unicity_of_answers2.ptyx")
+    c.generate_syntax_tree()
+    try:
+        c.get_latex()
+        # The same answer appeared twice, it should have raised an error !
+        assert False
+    except SameAnswerError:
+        # Alright, identical answers were detected.
+        pass
+
+
 def test_loading_of_sty_files(tmp_path):
     folder = copy_test("with-exercises", tmp_path)
     c = load_ptyx_file(folder / "loading-sty-files.ptyx")

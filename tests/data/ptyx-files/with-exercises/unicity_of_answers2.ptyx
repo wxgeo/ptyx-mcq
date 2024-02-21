@@ -1,0 +1,15 @@
+#LOAD{mcq}
+#SEED{38887}
+
+
+<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+
+
+* Jean de la Fontaine was a famous french
+- $1+x$
+- $1 + x$ # Same answer twice ! This must fail !!
+
+
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+

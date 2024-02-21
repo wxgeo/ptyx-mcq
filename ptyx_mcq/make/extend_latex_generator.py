@@ -25,10 +25,10 @@ from dataclasses import dataclass
 #    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 
-from functools import partial
 from pathlib import Path
 from typing import TypedDict, Optional, Set, List, Tuple, Dict, Callable
 
+from ptyx.errors import PtyxRuntimeError
 from ptyx.printers import sympy2latex
 from ptyx.latex_generator import LatexGenerator
 from ptyx.syntax_tree import Node, Tag
@@ -177,8 +177,23 @@ def _detect_id_format(ids: Dict[StudentId, StudentName], id_format: str) -> IdFo
     return {"students_ids": ids, "id_format": (id_length, max_ndigits, digits)}
 
 
-class SameAnswerError(RuntimeError):
-    pass
+def _canonical_form(latex_code: str) -> str:
+    """Simplify LaTeX expression, to control it does not appear twice in answers."""
+    for command in (",", ";", ".", "quad", "qquad", " "):
+        latex_code = latex_code.replace(rf"\{command}", " ")
+    latex_code = re.sub(r"\s+", " ", latex_code)
+    latex_code = re.sub(r"(?<!\\)~", " ", latex_code)
+    latex_code = re.sub(r"(?<=\W) ", "", latex_code)
+    latex_code = re.sub(r" (?=\W)", "", latex_code)
+    return latex_code
+
+
+class SameAnswerError(PtyxRuntimeError):
+    """Error raised when the same answer appears twice in a question."""
+
+    def __init__(self, *args, answer: str):
+        super().__init__(*args)
+        self.answer = answer
 
 
 # Extend LatexGenerator with new tags.
@@ -195,9 +210,10 @@ class MCQLatexGenerator(LatexGenerator):
         super().reset()
         self._mcq_reset_cache()
 
-    def _test_singularity_and_append(self, code: str, answers_list: list) -> str:
-        code = code.strip()
-        if code in answers_list:
+    def _test_singularity_and_append(self, raw_code: str) -> str:
+        raw_code = raw_code.strip()
+        code = _canonical_form(raw_code)
+        if code in self.mcq_answers:
             msg = [
                 "ERROR: Same answer proposed twice in MCQ !",
                 f"Answer {code!r} appeared at least twice for the same question.",
@@ -217,11 +233,12 @@ class MCQLatexGenerator(LatexGenerator):
                 print("* " + s)
             print(stars)
             raise SameAnswerError(
-                "Same answer proposed twice in MCQ (see message above for more information) !"
+                "Same answer proposed twice in MCQ (see message above for more information) !",
+                answer=raw_code,
             )
         else:
-            answers_list.append(code)
-        return code
+            self.mcq_answers.append(code)
+        return raw_code
 
     def _mcq_shuffle_and_parse_children(
         self, node: Node, children: list = None, target: Tag = "ITEM"
@@ -423,7 +440,7 @@ class MCQLatexGenerator(LatexGenerator):
             # This function is used to verify that each answer is unique.
             # This avoids proposing twice the same answer by mistake, which
             # may occur easily when using random values.
-            functions.append(partial(self._test_singularity_and_append, answers_list=self.mcq_answers))
+            functions.append(self._test_singularity_and_append)
 
         # WARNING: do NOT apply any more function after `self._test_singularity_and_append` !
 
@@ -500,7 +517,7 @@ class MCQLatexGenerator(LatexGenerator):
                 )
 
         for ans in answers:
-            self._test_singularity_and_append(ans, self.mcq_answers)
+            self._test_singularity_and_append(ans)
         # answers = self.mcq_answers
 
         # Shuffle and generate LaTeX.
