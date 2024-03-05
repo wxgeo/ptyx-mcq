@@ -230,13 +230,13 @@ def test_neutralized_questions(tmp_path) -> None:
     assert sorted(answers[OriginalQuestionNumber(2)]) == [(1, False), (2, True), (3, None)]
 
 
-def test_smallgraphlib_import_detection(tmp_path):
+def _smallgraphlib_import_detection(tmp_path, **context):
     from smallgraphlib.tikz_export import tikz_printer
 
     folder = copy_test("with-exercises", tmp_path)
     c = load_ptyx_file(folder / "smallgraphlib.ptyx")
     c.generate_syntax_tree()
-    latex = c.get_latex()
+    latex = c.get_latex(**context)
     # ptyx_code = c.plain_ptyx_code
     begin_document = latex.find(r"\begin{document}")
     for line in tikz_printer.latex_preamble_additions():
@@ -244,6 +244,14 @@ def test_smallgraphlib_import_detection(tmp_path):
         if line != r"\usepackage{tikz}":
             position = latex.find(line)
             assert 0 <= position < begin_document, line
+
+
+def test_smallgraphlib_import_detection(tmp_path):
+    _smallgraphlib_import_detection(tmp_path)
+
+
+def test_smallgraphlib_import_detection_with_preview_mode(tmp_path):
+    _smallgraphlib_import_detection(tmp_path, MCQ_PREVIEW_MODE=True, MCQ_REMOVE_HEADER=True)
 
 
 def test_verbatim_code(tmp_path):

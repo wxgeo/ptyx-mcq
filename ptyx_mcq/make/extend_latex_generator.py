@@ -649,13 +649,14 @@ class MCQLatexGenerator(LatexGenerator):
         """
 
         sty = ""
-        raw_latex = ""
+        # raw_latex = ""
         #    if self.WITH_ANSWERS:
         #        self.context['format_ask'] = (lambda s: '')
 
         check_id_or_name = self.mcq_cache["check_id_or_name"]
         if self.context.get("MCQ_REMOVE_HEADER"):
             check_id_or_name = ""
+            raw_latex = node.arg(1)
         elif check_id_or_name is None:
             code = ""
 
