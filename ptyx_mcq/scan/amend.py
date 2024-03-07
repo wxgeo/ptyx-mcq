@@ -7,6 +7,8 @@ Created on Thu Aug 29 14:49:37 2019
 """
 from collections.abc import Generator
 from itertools import chain
+from multiprocessing.queues import Queue as QueueType
+from multiprocessing import Queue, Pool
 from os.path import join
 
 # from typing import TYPE_CHECKING
@@ -45,11 +47,30 @@ def amend_all(data_storage: DataHandler) -> None:
     # may appear in the dict, but only one of those versions was included in each generated document.
     max_score = data_storage.config.max_score
     assert isinstance(max_score, (float, int)), repr(max_score)
-    N = len(data_storage.data)
+    number_of_documents = len(data_storage.data)
+    counter = 0
+
+    def print_progression(arg):
+        # print("*")
+        nonlocal counter
+        counter += 1
+        # print(counter)
+        print(f"Generating the amended pdf files: {counter}/{number_of_documents}...", end="\r")
+
+    print(f"Generating the amended pdf files: 0/{number_of_documents}", end="\r")
+    pool = Pool()
     for i, (doc_id, doc_data) in enumerate(data_storage.data.items(), start=1):
-        print(f"Generating the amended pdf files: {i}/{N}...", end="\r")
-        amend_doc(doc_data, doc_id, max_score, max_score_per_question, data_storage)
-    print("Generating the amended pdf files: OK" + len(f"{N}/{N}...") * " ")
+        pool.apply_async(
+            amend_doc,
+            (doc_data, doc_id, max_score, max_score_per_question, data_storage),
+            callback=print_progression,
+        )
+    pool.close()
+    pool.join()
+
+    print(
+        "Generating the amended pdf files: OK" + len(f"{number_of_documents}/{number_of_documents}...") * " "
+    )
 
 
 def amend_doc(

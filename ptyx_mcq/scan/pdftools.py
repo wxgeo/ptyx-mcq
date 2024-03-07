@@ -14,13 +14,15 @@ import fitz  # type: ignore
 PIC_EXTS = (".jpg", ".jpeg", ".png")
 
 
-def extract_pdf_pictures(pdf_file: Path, dest: Path) -> None:
+def extract_pdf_pictures(pdf_file: Path, dest: Path, verbose=True) -> None:
     """Clear `dest` folder, then extract all pages of the pdf files inside."""
     rmtree(dest, ignore_errors=True)
     dest.mkdir()
 
     page: fitz.Page
     doc = fitz.Document(pdf_file)
+    if verbose:
+        print(f"Extracting pages from '{pdf_file}' as pictures...")
     for i, page in enumerate(doc.pages()):
         # Extract picture if the page contains only a picture (this is quite fast).
         if _contain_only_a_single_image(page):

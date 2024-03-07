@@ -290,7 +290,9 @@ class DataHandler:
                     rmtree(folder)
                     folder.mkdir()
                     to_extract.append((pdfpath, folder))
-            pool.starmap(extract_pdf_pictures, to_extract)
+            if to_extract:
+                print("Extracting pictures from pdf...")
+                pool.starmap(extract_pdf_pictures, to_extract)
 
     def _remove_obsolete_files(self, hash2pdf: dict[str, Path]) -> None:
         """For each removed pdf files, remove corresponding pictures and data."""
