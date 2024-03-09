@@ -191,7 +191,9 @@ def _canonical_form(latex_code: str) -> str:
 class SameAnswerError(PtyxRuntimeError):
     """Error raised when the same answer appears twice in a question."""
 
-    def __init__(self, *args, answer: str):
+    def __init__(self, *args, answer: str = ""):
+        # Strangely, `answer` parameter must have a default value,
+        # or else this class won't be serializable with pickle.
         super().__init__(*args)
         self.answer = answer
 

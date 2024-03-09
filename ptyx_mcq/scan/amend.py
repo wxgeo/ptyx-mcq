@@ -7,8 +7,7 @@ Created on Thu Aug 29 14:49:37 2019
 """
 from collections.abc import Generator
 from itertools import chain
-from multiprocessing.queues import Queue as QueueType
-from multiprocessing import Queue, Pool
+from multiprocessing import Pool
 from os.path import join
 
 # from typing import TYPE_CHECKING
@@ -50,11 +49,9 @@ def amend_all(data_storage: DataHandler) -> None:
     number_of_documents = len(data_storage.data)
     counter = 0
 
-    def print_progression(arg):
-        # print("*")
+    def print_progression(_):
         nonlocal counter
         counter += 1
-        # print(counter)
         print(f"Generating the amended pdf files: {counter}/{number_of_documents}...", end="\r")
 
     print(f"Generating the amended pdf files: 0/{number_of_documents}", end="\r")
@@ -66,6 +63,7 @@ def amend_all(data_storage: DataHandler) -> None:
             callback=print_progression,
         )
     pool.close()
+    # noinspection PyTestUnpassedFixture
     pool.join()
 
     print(
