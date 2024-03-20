@@ -16,6 +16,9 @@ from ptyx_mcq.tools.io_tools import get_file_or_sysexit
 from ptyx_mcq.tools.config_parser import Configuration
 
 
+DEFAULT_PTYX_MCQ_COMPILATION_OPTIONS = CompilationOptions(same_number_of_pages_compact=True, compress=True)
+
+
 def generate_config_file(_compiler: Compiler) -> None:
     mcq_data: Configuration = _compiler.latex_generator.mcq_data
     file_path = _compiler.file_path
@@ -101,9 +104,7 @@ def make_command(
         all_info = make(
             ptyx_filename,
             number_of_documents=num,
-            options=CompilationOptions(
-                same_number_of_pages_compact=True, compress=True, start=start, quiet=quiet
-            )
+            options=DEFAULT_PTYX_MCQ_COMPILATION_OPTIONS.updated(start=start, quiet=quiet)
             # cpu_cores=1,
         )
         generate_config_file(compiler)
