@@ -8,6 +8,8 @@ if TYPE_CHECKING:
     from ptyx_mcq.scan.document_data import Page
 
 T = TypeVar("T")
+K = TypeVar("K", bound=typing.Hashable)
+V = TypeVar("V")
 
 DocumentId = NewType("DocumentId", int)
 StudentId = NewType("StudentId", str)
@@ -63,6 +65,41 @@ class CustomJSONEncoder(json.JSONEncoder):
 # "id_format": None,
 
 
+# @typing.overload
+# def recursively_update_dict(
+#     d1: dict[K, V], d2: dict[K, Any], verify_types: Literal[False], new_key_allowed: bool
+# ) -> None:
+#     """Signature overload when verify_types is False"""
+#
+#
+# @typing.overload
+# def recursively_update_dict(
+#     d1: dict[K, V], d2: dict[K, V], verify_types: Literal[True], new_key_allowed: bool
+# ) -> None:
+#     """Signature overload when verify_types is True"""
+
+
+def recursively_update_dict(
+    d1: dict[K, V], d2: dict[K, V], verify_types: bool = True, new_key_allowed: bool = True
+) -> None:
+    for key in d2:
+        if key not in d1:
+            if not new_key_allowed:
+                raise ValueError(f"Incorrect key: {key!r}.")
+            d1[key] = d2[key]
+        elif isinstance(d1[key], dict) and isinstance(d2[key], dict):
+            recursively_update_dict(
+                d1[key], d2[key], verify_types=verify_types, new_key_allowed=new_key_allowed  # type: ignore
+            )
+        else:
+            if verify_types and key in d1 and not isinstance(d2[key], type(d1[key])):
+                raise ValueError(
+                    f"Incompatible types for key {key!r}: {d1[key]!r} (type: {type(d1[key])})"
+                    f" and {d2[key]!r} (type: {type(d2[key])})."
+                )
+            d1[key] = d2[key]
+
+
 # TODO: improve typing precision
 @dataclass(kw_only=True, slots=True)
 class Configuration:
@@ -95,9 +132,10 @@ class Configuration:
     def as_dict(self):
         return asdict(self)
 
-    #
-    # def update(self, d:dict[str, Any]) -> None:
-    #     self.__dict__.update(d)
+    def updated_copy(self, d: dict[str, Any]) -> "Configuration":
+        original_dict = self.as_dict()
+        recursively_update_dict(original_dict, d, verify_types=False)
+        return Configuration(**original_dict)
 
     @classmethod
     def load(cls, path: Path | str) -> "Configuration":
