@@ -720,7 +720,7 @@ class MCQLatexGenerator(LatexGenerator):
 
             check_id_or_name = code if not self.WITH_ANSWERS else ""
             self.mcq_cache["check_id_or_name"] = check_id_or_name
-            if check_id_or_name:
+            if check_id_or_name and self.NUM == 1:
                 check_id_or_name += r"""
             \vspace{1em}
 

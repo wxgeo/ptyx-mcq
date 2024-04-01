@@ -2,19 +2,21 @@
 Generate pdf file from raw mcq file.
 """
 import sys
+import tempfile
 from functools import partial
 from pathlib import Path
 from typing import Any
 
-from ptyx.compilation import make_files
+from ptyx.compilation import make_files, compile_latex_to_pdf
 from ptyx.compilation_options import CompilationOptions
 from ptyx.latex_generator import Compiler
 from ptyx.shell import print_error, print_info
+from ptyx.utilities import force_hardlink_to
 
 from ptyx_mcq.scan.document_data import Page
 from ptyx_mcq.tools.io_tools import get_file_or_sysexit
 from ptyx_mcq.tools.config_parser import Configuration
-
+from ptyx_mcq.make.exercises_parsing import wrap_exercise
 
 DEFAULT_PTYX_MCQ_COMPILATION_OPTIONS = CompilationOptions(same_number_of_pages_compact=True, compress=True)
 
@@ -52,6 +54,31 @@ def generate_config_file(_compiler: Compiler) -> None:
                 checkboxes_positions.setdefault(Page(int(page_)), {})[k] = (float(x_), float(y_))
 
     mcq_data.dump(file_path.with_suffix(".ptyx.mcq.config.json"))
+
+
+def compile_exercise_to_latex(path: Path, **context: Any) -> tuple[str, Path]:
+    """Compile an exercise to LaTeX code."""
+    exercise_path = get_file_or_sysexit(path, extension=".ex")
+    print(f"\n == Compiling exercise '{exercise_path}'. == \n")
+    code = wrap_exercise(exercise_path.read_text(encoding="utf8"), exercise_path)
+    context["MCQ_REMOVE_HEADER"] = True
+    context["MCQ_PREVIEW_MODE"] = True
+    print("Temporary pTyX file code:")
+    print("\n" + 5 * "---✂---")
+    print(code)
+    print(5 * "---✂---" + "\n")
+    compiler = Compiler()
+    return compiler.parse(code=code, **context), exercise_path
+
+
+def compile_exercise(path: Path) -> None:
+    """Compile an exercise."""
+    latex, ex_path = compile_exercise_to_latex(path)
+    with tempfile.TemporaryDirectory() as tmpdir:
+        texfile = Path(tmpdir) / ex_path.with_suffix(".tex").name
+        texfile.write_text(latex, encoding="utf8")
+        info = compile_latex_to_pdf(texfile)
+        force_hardlink_to(ex_path.with_suffix(".pdf"), info.dest)
 
 
 def make_command(
@@ -101,7 +128,7 @@ def make_command(
 
     else:
         # Compile and generate output files (tex or pdf)
-        all_info = make(
+        all_info, _ = make(
             ptyx_filename,
             number_of_documents=num,
             options=DEFAULT_PTYX_MCQ_COMPILATION_OPTIONS.updated(start=start, quiet=quiet)
@@ -115,7 +142,7 @@ def make_command(
             seed_file.write(str(seed_value))
 
         if with_correction:
-            corr_info = make(
+            corr_info, _ = make(
                 ptyx_filename,
                 correction=True,
                 doc_ids_selection=all_info.doc_ids,
