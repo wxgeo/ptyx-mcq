@@ -11,6 +11,7 @@ from ptyx_mcq.scan.color import Color, RGB
 from ptyx_mcq.scan.data_handler import DataHandler
 from ptyx_mcq.scan.document_data import Page, DetectionStatus, RevisionStatus, PicData, DocumentData
 from ptyx_mcq.scan.image_viewer import ImageViewer
+from ptyx_mcq.scan.tools import levenshtein_distance
 from ptyx_mcq.tools.config_parser import (
     DocumentId,
     ApparentQuestionNumber,
@@ -156,6 +157,12 @@ class ConflictSolver:
                 elif any((digit in name) for digit in string.digits):
                     # This is not a student name !
                     print("Unknown ID.")
+
+                    def proximity(id_):
+                        return levenshtein_distance(name, id_)
+
+                    suggestion: StudentId = min(id_name_dict, key=proximity)
+                    print(f"Suggestion: {suggestion} ({id_name_dict[suggestion]})")
                     name = ""
             if name:
                 print("Name: %s" % name)
