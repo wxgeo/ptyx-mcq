@@ -42,8 +42,9 @@ if TYPE_CHECKING:
 if not os.getenv("PYTHONHASHSEED"):
     os.environ["PYTHONHASHSEED"] = "0"
     os.execv(sys.executable, [sys.executable] + sys.argv)
-
-assert os.getenv("PYTHONHASHSEED") == "0"
+else:
+    print("PYTHONHASHSEED:", os.getenv("PYTHONHASHSEED"))
+assert os.getenv("PYTHONHASHSEED")
 
 
 class TemplatesCompleter(argcomplete.completers.BaseCompleter):
