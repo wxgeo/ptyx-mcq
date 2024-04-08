@@ -38,14 +38,6 @@ if TYPE_CHECKING:
     # Otherwise, this would severely impact CLI autocompletion performance.
     from ptyx_mcq.scan.scan_doc import MCQPictureParser
 
-# Make compilation more reproducible, by disabling PYTHONHASHSEED.
-if not os.getenv("PYTHONHASHSEED"):
-    os.environ["PYTHONHASHSEED"] = "0"
-    os.execv(sys.executable, [sys.executable] + sys.argv)
-else:
-    print("PYTHONHASHSEED:", os.getenv("PYTHONHASHSEED"))
-assert os.getenv("PYTHONHASHSEED")
-
 
 class TemplatesCompleter(argcomplete.completers.BaseCompleter):
     def __call__(self, **kwargs) -> Iterable[str]:
@@ -265,6 +257,7 @@ def main(args: Optional[list] = None) -> None:
     # ------------------------------------------
     argcomplete.autocomplete(parser, always_complete_options=False)
     parsed_args = parser.parse_args(args)
+
     try:
         # Launch the function corresponding to the given subcommand.
         kwargs = vars(parsed_args)
@@ -273,6 +266,15 @@ def main(args: Optional[list] = None) -> None:
         # No subcommand passed.
         parser.print_help()
         return
+
+    # Make compilation more reproducible, by disabling PYTHONHASHSEED.
+    if not os.getenv("PYTHONHASHSEED"):
+        os.environ["PYTHONHASHSEED"] = "0"
+        os.execv(sys.executable, [sys.executable] + sys.argv)
+    else:
+        print("PYTHONHASHSEED:", os.getenv("PYTHONHASHSEED"))
+    assert os.getenv("PYTHONHASHSEED")
+
     func(**kwargs)
 
 
