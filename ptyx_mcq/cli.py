@@ -38,6 +38,13 @@ if TYPE_CHECKING:
     # Otherwise, this would severely impact CLI autocompletion performance.
     from ptyx_mcq.scan.scan_doc import MCQPictureParser
 
+# Make compilation more reproducible, by disabling PYTHONHASHSEED.
+if not os.getenv("PYTHONHASHSEED"):
+    os.environ["PYTHONHASHSEED"] = "0"
+    os.execv(sys.executable, [sys.executable] + sys.argv)
+
+assert os.getenv("PYTHONHASHSEED") == "0"
+
 
 class TemplatesCompleter(argcomplete.completers.BaseCompleter):
     def __call__(self, **kwargs) -> Iterable[str]:
