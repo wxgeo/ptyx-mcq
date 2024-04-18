@@ -13,7 +13,7 @@ from ptyx_mcq.cli import scan
 
 from .toolbox import TEST_DIR
 
-CORRECT_Y_N = "Is it correct ? (Y/n)"
+CORRECT_Y_N = "Is it correct? (Y/n)"
 ASK_FOR_STUDENT_NAME = "Student name or ID (or / to skip this document):"
 PRESS_ENTER = "-- Press ENTER --"
 
