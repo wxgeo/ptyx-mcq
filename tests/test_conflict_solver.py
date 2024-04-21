@@ -5,17 +5,18 @@ from pathlib import Path
 import pytest
 from numpy import ndarray, array
 
-from ptyx_mcq.scan.conflict_solver import ConflictSolver
-from ptyx_mcq.scan.data_handler import DataHandler
-from ptyx_mcq.scan.document_data import DocumentData
+from ptyx_mcq.scan.data_gestion.conflict_handling import ConflictSolver, NamesReviewer
+from ptyx_mcq.scan.data_gestion.conflict_handling.data_check import Action
+from ptyx_mcq.scan.data_gestion.data_handler import DataHandler
+from ptyx_mcq.scan.data_gestion.document_data import DocumentData
 from ptyx_mcq.tools.config_parser import DocumentId, StudentName
 from ptyx_mcq.cli import scan
 
 from .toolbox import TEST_DIR
 
-CORRECT_Y_N = "Is it correct? (Y/n)"
-ASK_FOR_STUDENT_NAME = "Student name or ID (or / to skip this document):"
-PRESS_ENTER = "-- Press ENTER --"
+# NamesReviewer.CORRECT_Y_N = "Is it correct? (Y/n)"
+# NamesReviewer.ASK_FOR_NAME = "Student name or ID (or / to skip this document):"
+# NamesReviewer.PRESS_ENTER = "-- Press ENTER --"
 
 STUDENT_NAMES = ["Robert Le Hardi", "Jules Le Preux", "Edouard Le Couard", "Jules de chez Smith"]
 
@@ -30,6 +31,7 @@ def fail_on_input(text=""):
 def no_display(monkeypatch):
     # noinspection PyUnusedLocal
     def display(self, wait: bool = True) -> subprocess.CompletedProcess | subprocess.Popen:
+        print("\033[3;37m[Image displayed here...]\033[0m")
         if wait:
             return subprocess.run(["sleep", "0"])
         else:
@@ -49,14 +51,14 @@ def patched_conflict_solver(monkeypatch, tmp_path, no_display):
     def get_matrix(self, doc_id: int, page: int) -> ndarray:
         return array([[0, 0], [0, 0]])  # Array must be at least 2x2 for tests to pass.
 
-    monkeypatch.setattr("ptyx_mcq.scan.data_handler.DataHandler.get_matrix", get_matrix)
+    monkeypatch.setattr("ptyx_mcq.scan.data_gestion.data_handler.DataHandler.get_matrix", get_matrix)
     return conflict_solver
 
 
 def test_no_conflict(monkeypatch, patched_conflict_solver):
     """No interaction should occur if there is no conflict."""
     monkeypatch.setattr("builtins.input", fail_on_input)
-    patched_conflict_solver.resolve_conflicts()
+    patched_conflict_solver.run()
     data = patched_conflict_solver.data
     assert sorted(data) == [1, 2, 3, 4], data
 
@@ -72,33 +74,39 @@ def test_missing_name(patched_conflict_solver, custom_input) -> None:
     # The variable `scenario` is the list of the successive expected questions and their corresponding answers.
     custom_input.set_scenario(
         [
-            (PRESS_ENTER, ""),
+            (NamesReviewer.PRESS_ENTER, ""),
             # No name provided: ask again
-            (ASK_FOR_STUDENT_NAME, ""),
+            (NamesReviewer.ASK_FOR_NAME, ""),
             # Invalid student id provided: ask again
-            (ASK_FOR_STUDENT_NAME, "22"),
+            (NamesReviewer.ASK_FOR_NAME, "22"),
             # Custom name: ok (this behavior may change in the future...)
-            (ASK_FOR_STUDENT_NAME, "Any name"),
+            (NamesReviewer.ASK_FOR_NAME, "Any name"),
             # Ask for confirmation; answer "n", so ask again
-            (CORRECT_Y_N, "n"),
+            # Valid student name
+            (NamesReviewer.ASK_FOR_NAME, "Robert Le Hardi"),
+            # Ask for confirmation; answer "n", so ask again.
+            (NamesReviewer.CORRECT_Y_N, "n"),
             # Valid student id
-            (ASK_FOR_STUDENT_NAME, "22205649"),
+            (NamesReviewer.ASK_FOR_NAME, "22205649"),
             # Ask for confirmation; answer "Y", so quit (success)
-            (CORRECT_Y_N, "Y"),
+            (NamesReviewer.CORRECT_Y_N, "Y"),
         ],
     )
 
-    patched_conflict_solver.resolve_conflicts()
+    patched_conflict_solver.run()
+
     assert patched_conflict_solver.data[DocumentId(1)].name == student_name
 
     # There should be no remaining question.
     assert custom_input.is_empty(), custom_input.remaining()
 
     assert doc_data is patched_conflict_solver.data[DocumentId(1)]
+
+    # Test that student name is memorized now.
     doc_data.name = StudentName("")
     custom_input.set_scenario([])
 
-    patched_conflict_solver.resolve_conflicts()
+    patched_conflict_solver.run()
     assert patched_conflict_solver.data[DocumentId(1)].name == student_name
 
     # There should be no remaining question.
@@ -116,13 +124,13 @@ def test_missing_name2(patched_conflict_solver, custom_input) -> None:
     # The variable `scenario` is the list of the successive expected questions and their corresponding answers.
     custom_input.set_scenario(
         [
-            (PRESS_ENTER, ""),
-            (ASK_FOR_STUDENT_NAME, student_name),
-            (CORRECT_Y_N, "Y"),
+            (NamesReviewer.PRESS_ENTER, ""),
+            (NamesReviewer.ASK_FOR_NAME, student_name),
+            (NamesReviewer.CORRECT_Y_N, "Y"),
         ],
     )
 
-    patched_conflict_solver.resolve_conflicts()
+    patched_conflict_solver.run()
     assert patched_conflict_solver.data[DocumentId(1)].name == student_name
 
     # There should be no remaining question.
@@ -140,12 +148,12 @@ def test_missing_name_skip_doc(patched_conflict_solver, custom_input) -> None:
     # The variable `scenario` is the list of the successives expected questions and their corresponding answers.
     custom_input.set_scenario(
         [
-            (PRESS_ENTER, ""),
-            (ASK_FOR_STUDENT_NAME, "/"),
+            (NamesReviewer.PRESS_ENTER, ""),
+            (NamesReviewer.ASK_FOR_NAME, "/"),
         ],
     )
 
-    patched_conflict_solver.resolve_conflicts()
+    patched_conflict_solver.run()
     assert DocumentId(1) not in patched_conflict_solver.data
 
     # There should be no remaining question.
@@ -165,36 +173,36 @@ def test_duplicate_name(patched_conflict_solver, custom_input):
         [
             "I) Resolve the conflict between doc 1 and doc 2",
             "I.1) DOC 1",
-            (PRESS_ENTER, ""),
+            (NamesReviewer.PRESS_ENTER, ""),
             # Give invalid student id: ask again
-            (ASK_FOR_STUDENT_NAME, "0"),
+            (NamesReviewer.ASK_FOR_NAME, "0"),
             # Don't change name
-            (ASK_FOR_STUDENT_NAME, ""),
+            (NamesReviewer.ASK_FOR_NAME, Action.NEXT),
             # Confirm ("yes" should be the default answer)
-            (CORRECT_Y_N, ""),
+            # (NamesReviewer.CORRECT_Y_N, ""),
             "I.1) DOC 2",
-            (PRESS_ENTER, ""),
+            (NamesReviewer.PRESS_ENTER, ""),
             # Create another conflict(give the student name of the doc number 3 too)
-            (ASK_FOR_STUDENT_NAME, student_names[3]),
+            (NamesReviewer.ASK_FOR_NAME, student_names[3]),
             # Confirm.
-            (CORRECT_Y_N, ""),
+            (NamesReviewer.CORRECT_Y_N, ""),
             "II) Resolve the newly created conflict between doc 2 and doc 3.",
-            "II.1) DOC 2",
-            (PRESS_ENTER, ""),
-            # Give the right name this time.
-            (ASK_FOR_STUDENT_NAME, student_names[2]),
-            # Confirm.
-            (CORRECT_Y_N, ""),
+            # "II.1) DOC 2",
+            # (NamesReviewer.PRESS_ENTER, ""),
+            # # Give the right name this time.
+            # (NamesReviewer.ASK_FOR_NAME, student_names[2]),
+            # # Confirm.
+            # (NamesReviewer.CORRECT_Y_N, ""),
             "II.2) DOC 3",
-            (PRESS_ENTER, ""),
+            (NamesReviewer.PRESS_ENTER, ""),
             # Keep current name.
-            (ASK_FOR_STUDENT_NAME, ""),
+            (NamesReviewer.ASK_FOR_NAME, student_names[2]),
             # Confirm.
-            (CORRECT_Y_N, ""),
+            (NamesReviewer.CORRECT_Y_N, ""),
         ],
     )
 
-    patched_conflict_solver.resolve_conflicts()
+    patched_conflict_solver.run()
     assert sorted(patched_conflict_solver.data) == [1, 2, 3, 4]
 
     # There should be no remaining question.
@@ -228,9 +236,9 @@ def test_empty_document(no_display, tmp_path, custom_input):
     custom_input.set_scenario(
         [
             "Empty document: no name found.",
-            (PRESS_ENTER, ""),
+            (NamesReviewer.PRESS_ENTER, ""),
             "This is an empty document: use '/' to skip it.",
-            (ASK_FOR_STUDENT_NAME, "/"),
+            (NamesReviewer.ASK_FOR_NAME, "/"),
         ],
     )
     origin = DATA_DIR / "unfilled-doc-test"
@@ -268,7 +276,7 @@ def test_different_duplicate_documents_keep_first(no_display, tmp_path, custom_i
     custom_input.set_scenario(
         [
             "Message indicating that a duplicate has been found.",
-            (PRESS_ENTER, ""),
+            (NamesReviewer.PRESS_ENTER, ""),
             "Keep the first version",
             ("Answer: ", "1"),
         ]
@@ -291,7 +299,7 @@ def test_different_duplicate_documents_keep_second(no_display, tmp_path, custom_
     custom_input.set_scenario(
         [
             "Message indicating that a duplicate has been found.",
-            (PRESS_ENTER, ""),
+            (NamesReviewer.PRESS_ENTER, ""),
             "Keep the seconde version",
             ("Answer: ", "2"),
         ]

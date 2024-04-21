@@ -79,7 +79,7 @@ def scan_picture(
 
 
 def export_checkboxes(path: Path | str = ".", debug=False):
-    from .scan.data_handler import DataHandler
+    from ptyx_mcq.scan.data_gestion.data_handler import DataHandler
 
     path = Path(path).expanduser().resolve()
     now = datetime.datetime.now()

@@ -13,8 +13,14 @@ from numpy import ndarray, array, int8, concatenate
 from ptyx.shell import ANSI_CYAN, ANSI_RESET, ANSI_YELLOW, ANSI_GREEN, print_error
 
 from ptyx_mcq.scan.checkbox_analyzer import analyze_checkboxes
-from ptyx_mcq.scan.document_data import DocumentData, PicData, DetectionStatus, RevisionStatus, Page
-from ptyx_mcq.scan.paths_handler import PathsHandler, DirsPaths, FilesPaths
+from ptyx_mcq.scan.data_gestion.document_data import (
+    DocumentData,
+    PicData,
+    DetectionStatus,
+    RevisionStatus,
+    Page,
+)
+from ptyx_mcq.scan.data_gestion.paths_handler import PathsHandler, DirsPaths, FilesPaths
 from ptyx_mcq.scan.pdftools import number_of_pages, extract_pdf_pictures, PIC_EXTS
 from ptyx_mcq.tools.config_parser import (
     Configuration,
@@ -318,6 +324,13 @@ class DataHandler:
         (self.dirs.data / f"{doc_id}.scandata").unlink(missing_ok=True)
         for webp in self.dirs.data.glob(f"{doc_id}-*.webp"):
             webp.unlink()
+
+    def remove_tmp_doc_id(self, tmp_doc_id: DocumentId) -> None:
+        """Remove a temporary document ID.
+
+        This must be called once the document ID conflict has been resolved."""
+        self.data.pop(tmp_doc_id)
+        self.remove_doc_files(tmp_doc_id)
 
     # def replace_doc_files(self, old_doc_id: DocumentId, new_doc_id: DocumentId) -> None:
     #     """Replace all the data files associated with the document of id `old_doc_id`, to match `new_doc_id`.

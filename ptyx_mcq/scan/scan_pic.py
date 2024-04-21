@@ -6,7 +6,7 @@ from numpy import array, amin, amax, ndarray  # , percentile, clip
 from ptyx.shell import print_info, print_warning
 
 from .color import Color
-from .document_data import PicData, Page
+from ptyx_mcq.scan.data_gestion.document_data import PicData, Page
 from .types_declaration import (
     CalibrationError,
     Pixel,

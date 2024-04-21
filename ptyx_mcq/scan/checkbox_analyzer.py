@@ -2,7 +2,7 @@ from functools import partial
 
 from numpy import ndarray
 
-from ptyx_mcq.scan.document_data import DetectionStatus
+from ptyx_mcq.scan.data_gestion.document_data import DetectionStatus
 from ptyx_mcq.scan.square_detection import test_square_color
 from ptyx_mcq.tools.config_parser import OriginalAnswerNumber, OriginalQuestionNumber
 

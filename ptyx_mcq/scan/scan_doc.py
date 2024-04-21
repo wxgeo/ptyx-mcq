@@ -7,9 +7,10 @@ from typing import Union, Optional
 from ptyx.shell import print_warning, ANSI_RESET, ANSI_GREEN
 
 from ptyx_mcq.scan.amend import amend_all
-from ptyx_mcq.scan.conflict_solver import ConflictSolver
-from ptyx_mcq.scan.data_handler import DataHandler
-from ptyx_mcq.scan.document_data import DocumentData, Page
+
+from ptyx_mcq.scan.data_gestion.conflict_handling import ConflictSolver, AnswersReviewer
+from ptyx_mcq.scan.data_gestion.data_handler import DataHandler
+from ptyx_mcq.scan.data_gestion.document_data import DocumentData, Page
 from ptyx_mcq.scan.pdftools import PIC_EXTS
 from ptyx_mcq.scan.scan_pic import (
     scan_picture,
@@ -44,14 +45,6 @@ from ptyx_mcq.tools.config_parser import (
 #    You should have received a copy of the GNU General Public License
 #    along with this program; if not, write to the Free Software
 #    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
-
-
-# File `compilation.py` is in ../.., so we have to "hack" `sys.path` a bit.
-# script_path = dirname(abspath(sys._getframe().f_code.co_filename))
-# sys.path.insert(0, join(script_path, '../..'))
-# from ptyx.compilation import join_files, compile_latex
-
-# from ..make.header import answers_and_score
 
 
 class MCQPictureParser:
@@ -121,7 +114,7 @@ class MCQPictureParser:
         if not pic_path.is_file():
             pic_path = self.data_handler.absolute_pic_path(picture)
         pic_data, array = scan_picture(pic_path, self.config, debug=True)
-        ConflictSolver.display_picture_with_detected_answers(array, pic_data)
+        AnswersReviewer.display_picture_with_detected_answers(array, pic_data)
         print(pic_data)
 
     # def _warn(self, *values, sep=" ", end="\n") -> None:
@@ -247,7 +240,7 @@ class MCQPictureParser:
         # ---------------------------
         # Resolve conflicts manually: unknown student ID, ambiguous answer...
         print("\nAnalyzing collected data:")
-        ConflictSolver(self.data_handler).resolve_conflicts(debug=debug)
+        ConflictSolver(self.data_handler).run()
         # TODO: make checkboxes export optional (this is
         #  only useful for debug)
         self.data_handler.export_checkboxes()
