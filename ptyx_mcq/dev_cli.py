@@ -74,7 +74,7 @@ def scan_picture(
     """Implement `mcq scan` command."""
     from .scan.scan_doc import MCQPictureParser
 
-    MCQPictureParser(path).scan_picture(picture)
+    MCQPictureParser(path).scan_single_picture(picture)
     print_success(f"Picture '{picture}' scanned.")
 
 

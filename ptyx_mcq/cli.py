@@ -334,7 +334,7 @@ def scan(
             )
             print_success("Students' marks successfully generated. :)")
         else:
-            mcq_parser.scan_picture(test_picture)
+            mcq_parser.scan_single_picture(test_picture)
             print_success(f"Picture {test_picture!r} scanned.")
         return mcq_parser
     except KeyboardInterrupt:
