@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
+import concurrent.futures
 import csv
+import os
+import sys
 from math import inf
 from pathlib import Path
 from typing import Union, Optional
@@ -46,6 +49,26 @@ from ptyx_mcq.tools.config_parser import (
 #    You should have received a copy of the GNU General Public License
 #    along with this program; if not, write to the Free Software
 #    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+
+
+class Silent:
+    def __init__(self, silent=True):
+        self.silent = silent
+
+    def __enter__(self):
+        if self.silent:
+            self.stdout = sys.stdout
+            sys.stdout = self
+
+    def __exit__(self, exception_type, value, traceback):
+        if self.silent:
+            sys.stdout = self.stdout
+
+    def write(self, x):
+        pass
+
+    def flush(self):
+        pass
 
 
 class MCQPictureParser:
@@ -130,31 +153,32 @@ class MCQPictureParser:
     #     self.warnings = True
 
     def scan_page(self, num: int, pic_path: Path, debug=False) -> tuple[PicData, ndarray] | None:
-        print("-------------------------------------------------------")
-        print("Page", num)
-        print("File:", pic_path)
+        with Silent():
+            print("-------------------------------------------------------")
+            print("Page", num)
+            print("File:", pic_path)
 
-        # 1) Extract all the data of an image
-        #    ‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾
+            # 1) Extract all the data of an image
+            #    ‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾
 
-        try:
-            pic_data, matrix = scan_picture(
-                self.data_handler.absolute_pic_path(pic_path), config=self.config, debug=debug
-            )
-            # Warning: manual_verification can be None, so the order is important
-            # below : False and None -> False (but None and False -> None).
-            # if (pic_path not in self.data_handler.verified) and manual_verification:
-            #     # TODO: modify pic_data to force manual verification.
-            #     ...
-            # `pic_data` FORMAT is specified in `scan_pic.py`.
-            # (Search for `pic_data =` in `scan_pic.py`).
-            pic_data.pic_path = str(pic_path)
-            return pic_data, matrix
+            try:
+                pic_data, matrix = scan_picture(
+                    self.data_handler.absolute_pic_path(pic_path), config=self.config, debug=debug
+                )
+                # Warning: manual_verification can be None, so the order is important
+                # below : False and None -> False (but None and False -> None).
+                # if (pic_path not in self.data_handler.verified) and manual_verification:
+                #     # TODO: modify pic_data to force manual verification.
+                #     ...
+                # `pic_data` FORMAT is specified in `scan_pic.py`.
+                # (Search for `pic_data =` in `scan_pic.py`).
+                pic_data.pic_path = str(pic_path)
+                return pic_data, matrix
 
-        except CalibrationError:
-            print_warning(f"{pic_path} seems invalid ! Skipping...")
-            self.data_handler.store_skipped_pic(pic_path)
-            return None
+            except CalibrationError:
+                print_warning(f"{pic_path} seems invalid ! Skipping...")
+                self.data_handler.store_skipped_pic(pic_path)
+                return None
 
     def scan_all(
         self,
@@ -175,62 +199,69 @@ class MCQPictureParser:
         # ---------------------------------------
         # Extract informations from the pictures.
         # ---------------------------------------
-
+        print("Processing pages...")
         self.already_seen = {(ID, p) for ID, d in self.data.items() for p in d.pages}
 
-        # Iterate over the pictures not already handled in a previous pass.
-        for i, pic_path in enumerate(self.data_handler.get_pics_list(), start=1):
-            if not (start <= i <= end):
-                continue
-            # Make pic_path relative, so that folder may be moved if needed.
-            pic_path = self.data_handler.relative_pic_path(pic_path)
-            if pic_path in self.data_handler.skipped:
-                continue
+        todo: dict[concurrent.futures.Future[tuple[PicData, ndarray] | None] : int] = {}
+        with concurrent.futures.ProcessPoolExecutor(max_workers=os.cpu_count() - 1) as executor:
+            # Iterate over the pictures not already handled in a previous pass.
+            for i, pic_path in enumerate(self.data_handler.get_pics_list(), start=1):
+                if not (start <= i <= end):
+                    continue
+                # Make pic_path relative, so that folder may be moved if needed.
+                pic_path = self.data_handler.relative_pic_path(pic_path)
+                if pic_path in self.data_handler.skipped:
+                    continue
+                todo[executor.submit(self.scan_page, i, pic_path, debug)] = i
 
-            scan_result = self.scan_page(i, pic_path, debug=debug)
-            if scan_result is None:
-                continue
-            pic_data, matrix = scan_result
-            doc_id = pic_data.doc_id
-            page = pic_data.page
-            # Test whether a previous version of the same page exist:
-            # if the same page has been seen twice, this may be problematic,
-            # so call `._keep_previous_version()` to ask user what to do.
-            # if (doc_id, page) in already_seen and self._keep_previous_version(pic_data):
-            #     # If the user answered to skip the current page, just do it.
-            #     continue
-            if (doc_id, page) in self.already_seen:
-                # There are two versions (at least) of the same document.
-                # Store it for now, with a new temporary id, and resolve conflict later.
-                doc_id = self.data_handler.create_new_temporary_id(doc_id, page)
-            self.already_seen.add((doc_id, page))
+            for future in concurrent.futures.as_completed(todo):
+                i = todo[future]
+                scan_result = future.result()
+                if scan_result is None:
+                    continue
+                pic_data, matrix = scan_result
+                doc_id = pic_data.doc_id
+                page = pic_data.page
+                # Test whether a previous version of the same page exist:
+                # if the same page has been seen twice, this may be problematic,
+                # so call `._keep_previous_version()` to ask user what to do.
+                # if (doc_id, page) in already_seen and self._keep_previous_version(pic_data):
+                #     # If the user answered to skip the current page, just do it.
+                #     continue
+                if (doc_id, page) in self.already_seen:
+                    # There are two versions (at least) of the same document.
+                    # Store it for now, with a new temporary id, and resolve conflict later.
+                    doc_id = self.data_handler.create_new_temporary_id(doc_id, page)
+                self.already_seen.add((doc_id, page))
 
-            # 2) Gather data
-            #    ‾‾‾‾‾‾‾‾‾‾‾
-            name, student_id = self.data_handler.more_infos.get(doc_id, (StudentName(""), StudentId("")))
-            doc_data: DocumentData = self.data.setdefault(
-                doc_id,
-                DocumentData(
-                    pages={},
-                    name=name,
-                    student_id=student_id,
-                    score=0,
-                    score_per_question={},
-                ),
-            )
-            doc_data.pages[page] = pic_data
+                # 2) Gather data
+                #    ‾‾‾‾‾‾‾‾‾‾‾
+                name, student_id = self.data_handler.more_infos.get(doc_id, (StudentName(""), StudentId("")))
+                doc_data: DocumentData = self.data.setdefault(
+                    doc_id,
+                    DocumentData(
+                        pages={},
+                        name=name,
+                        student_id=student_id,
+                        score=0,
+                        score_per_question={},
+                    ),
+                )
+                doc_data.pages[page] = pic_data
 
-            # 3) 1st page of the test => retrieve the student name
-            #    ‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾
+                # 3) 1st page of the test => retrieve the student name
+                #    ‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾
 
-            if page == 1:
-                if doc_id in self.data_handler.more_infos:
-                    doc_data.name, doc_data.student_id = self.data_handler.more_infos[doc_id]
-                else:
-                    doc_data.name = pic_data.name
+                if page == 1:
+                    if doc_id in self.data_handler.more_infos:
+                        doc_data.name, doc_data.student_id = self.data_handler.more_infos[doc_id]
+                    else:
+                        doc_data.name = pic_data.name
 
-            # Store work in progress, so we can resume process if something fails...
-            self.data_handler.store_doc_data(pic_path.parent.name, doc_id, page, matrix)
+                # Store work in progress, so we can resume process if something fails...
+                print(f"Page {i} processed.")
+                self.data_handler.store_doc_data(pic_path.parent.name, doc_id, page, matrix)
+                del matrix
 
         print("Scan successful.")
 
