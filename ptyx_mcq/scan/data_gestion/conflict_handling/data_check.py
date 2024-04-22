@@ -40,6 +40,26 @@ class DataCheckResult:
     ambiguous_answers: AmbiguousPagesList
 
 
+@dataclass
+class NameReview:
+    doc: DocumentId
+    # actual_name: str = ""
+    reviewed: bool = False
+
+
+@dataclass
+class AnswerReview:
+    doc: DocumentId
+    page: Page
+    reviewed: bool = False
+
+
+class Action(StrEnum):
+    NEXT = ">"
+    BACK = "<"
+    DISCARD = "/"
+
+
 def report_data_issues(check_result: DataCheckResult) -> None:
     for doc_id in check_result.unnamed_docs:
         print_warning(f"• No student name for document {doc_id}.")
@@ -59,19 +79,27 @@ class DataChecker:
         for doc_id, (student_name, student_id) in self.data_storage.more_infos.items():
             self.data[doc_id].name = student_name
             self.data[doc_id].student_id = student_id
+
         print("Searching for unnamed documents...")
         unnamed_docs = self.get_unnamed_docs()
+        print(f"{len(unnamed_docs)} unnamed document(s) found." if unnamed_docs else "OK")
+
         print("Searching for duplicate names...")
         duplicate_names = self.find_duplicate_names()
+        print(f"{len(duplicate_names)} conflict(s) found." if duplicate_names else "OK")
+
         print("Searching for ambiguous answers...")
         ambiguous_answers = self.find_ambiguous_answers()
+        print(f"{len(ambiguous_answers)} page(s) to verify." if ambiguous_answers else "Ok")
+
         return DataCheckResult(
             unnamed_docs=unnamed_docs, duplicate_names=duplicate_names, ambiguous_answers=ambiguous_answers
         )
 
     def get_unnamed_docs(self) -> list[DocumentId]:
-        """Get the list of all unnamed documents."""
-        return [doc_id for doc_id, doc_data in self.data.items() if doc_data.name == ""]
+        """Get the (sorted) list of all unnamed documents ids."""
+        # Sorting documents is cheap and make testing easier.
+        return sorted(doc_id for doc_id, doc_data in self.data.items() if doc_data.name == "")
 
     def find_duplicate_names(self) -> DuplicateNamesDict:
         """Detect if several documents have the same student name.
@@ -82,12 +110,14 @@ class DataChecker:
         duplicate_names: dict[StudentName, list[DocumentId]] = {}
         for doc_id, doc_data in self.data.items():
             name = doc_data.name
-            if name in seen_names:
-                duplicate_names.setdefault(name, [seen_names[name]]).append(doc_id)
-                # matching_doc_id = seen_names[name]
-                # matching_doc_data = self.data[matching_doc_id]
-            else:
-                seen_names[name] = doc_id
+            # Be careful to not count unnamed documents as duplicates!
+            if name:
+                if name in seen_names:
+                    duplicate_names.setdefault(name, [seen_names[name]]).append(doc_id)
+                    # matching_doc_id = seen_names[name]
+                    # matching_doc_data = self.data[matching_doc_id]
+                else:
+                    seen_names[name] = doc_id
         return duplicate_names
 
     def find_ambiguous_answers(self) -> AmbiguousPagesList:
@@ -98,26 +128,6 @@ class DataChecker:
             for page, pic_data in doc_data.pages.items()
             if pic_data.needs_review and Path(pic_data.pic_path) not in self.data_storage.verified
         ]
-
-
-@dataclass
-class NameReview:
-    doc: DocumentId
-    # actual_name: str = ""
-    reviewed: bool = False
-
-
-@dataclass
-class AnswerReview:
-    doc: DocumentId
-    page: Page
-    reviewed: bool = False
-
-
-class Action(StrEnum):
-    NEXT = ">"
-    BACK = "<"
-    DISCARD = "/"
 
 
 class AllDataIssuesFixer:

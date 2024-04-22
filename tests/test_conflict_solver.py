@@ -137,6 +137,47 @@ def test_missing_name2(patched_conflict_solver, custom_input) -> None:
     assert custom_input.is_empty(), f"List of remaining questions/answers: {custom_input.remaining()}"
 
 
+def test_several_missing_names(patched_conflict_solver, custom_input) -> None:
+    """Test interaction if several names are missing.
+
+    In particular, several missing names should not be detected as duplicates!
+    """
+    data = patched_conflict_solver.data
+
+    backup_names: dict[int, StudentName] = {}
+
+    for n in (1, 2, 3):
+        doc_id = DocumentId(n)
+        assert data[doc_id].name != StudentName("")
+        backup_names[n] = data[doc_id].name
+        data[doc_id].name = StudentName("")
+
+    assert data[DocumentId(4)].name == StudentName("Jules de chez Smith")
+
+    # Test a scenario, simulating questions for the user in the terminal and the user's answers.
+    # The variable `scenario` is the list of the successive expected questions and their corresponding answers.
+    custom_input.set_scenario(
+        [
+            (NamesReviewer.PRESS_ENTER, ""),
+            (NamesReviewer.ASK_FOR_NAME, backup_names[1]),
+            (NamesReviewer.CORRECT_Y_N, "Y"),
+            (NamesReviewer.PRESS_ENTER, ""),
+            (NamesReviewer.ASK_FOR_NAME, backup_names[2]),
+            (NamesReviewer.CORRECT_Y_N, "Y"),
+            (NamesReviewer.PRESS_ENTER, ""),
+            (NamesReviewer.ASK_FOR_NAME, backup_names[3]),
+            (NamesReviewer.CORRECT_Y_N, "Y"),
+        ],
+    )
+
+    patched_conflict_solver.run()
+    for n in (1, 2, 3):
+        assert patched_conflict_solver.data[DocumentId(n)].name == backup_names[n]
+
+    # There should be no remaining question.
+    assert custom_input.is_empty(), f"List of remaining questions/answers: {custom_input.remaining()}"
+
+
 def test_missing_name_skip_doc(patched_conflict_solver, custom_input) -> None:
     """Skip a document."""
     doc_data: DocumentData = patched_conflict_solver.data[DocumentId(1)]

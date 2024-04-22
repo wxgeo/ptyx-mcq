@@ -51,6 +51,7 @@ class CustomInput:
         try:
             question, answer = self.scenario[self.index]
         except IndexError as e:
+            print("\033[1;33mSTOP: Unexpected input request!\033[0m")
             raise ValueError(f"Unexpected input request: {text!r}") from e
         assert text == question, (question, answer)
         print("\033[2;95mA:", answer, "\033[0m")
