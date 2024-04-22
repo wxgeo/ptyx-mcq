@@ -9,7 +9,7 @@ from ptyx_mcq.scan.data_gestion.conflict_handling import ConflictSolver, NamesRe
 from ptyx_mcq.scan.data_gestion.conflict_handling.data_check import Action
 from ptyx_mcq.scan.data_gestion.data_handler import DataHandler
 from ptyx_mcq.scan.data_gestion.document_data import DocumentData
-from ptyx_mcq.tools.config_parser import DocumentId, StudentName
+from ptyx_mcq.tools.config_parser import DocumentId, StudentName, StudentId
 from ptyx_mcq.cli import scan
 
 from .toolbox import TEST_DIR
@@ -173,6 +173,53 @@ def test_several_missing_names(patched_conflict_solver, custom_input) -> None:
     patched_conflict_solver.run()
     for n in (1, 2, 3):
         assert patched_conflict_solver.data[DocumentId(n)].name == backup_names[n]
+
+    # There should be no remaining question.
+    assert custom_input.is_empty(), f"List of remaining questions/answers: {custom_input.remaining()}"
+
+
+def test_missing_names_autocomplete(patched_conflict_solver, custom_input) -> None:
+    """Test name suggestion."""
+    data = patched_conflict_solver.data
+    id_names = [
+        ("22205649", "Robert Le Hardi"),
+        ("22302844", "Jules Le Preux"),
+        ("22212706", "Edouard Le Couard"),
+        ("22306921", "Jules de chez Smith"),
+    ]
+
+    for n in range(len(id_names)):
+        assert data[DocumentId(n + 1)].name == StudentName(id_names[n][1])
+        data[DocumentId(n + 1)].name = StudentName("")
+        # assert data[DocumentId(n + 1)].student_id == StudentId(id_names[n][0])
+
+    # Test a scenario, simulating questions for the user in the terminal and the user's answers.
+    # The variable `scenario` is the list of the successive expected questions and their corresponding answers.
+    custom_input.set_scenario(
+        [
+            (NamesReviewer.PRESS_ENTER, ""),
+            (NamesReviewer.ASK_FOR_NAME, "Rob"),
+            (NamesReviewer.ASK_FOR_NAME, "ok"),
+            (NamesReviewer.CORRECT_Y_N, "Y"),
+            (NamesReviewer.PRESS_ENTER, ""),
+            (NamesReviewer.ASK_FOR_NAME, "223028"),
+            (NamesReviewer.ASK_FOR_NAME, "OK"),
+            (NamesReviewer.CORRECT_Y_N, "Y"),
+            (NamesReviewer.PRESS_ENTER, ""),
+            (NamesReviewer.ASK_FOR_NAME, "Couard"),
+            (NamesReviewer.ASK_FOR_NAME, "OK"),
+            (NamesReviewer.CORRECT_Y_N, "Y"),
+            (NamesReviewer.PRESS_ENTER, ""),
+            (NamesReviewer.ASK_FOR_NAME, "12306921"),
+            (NamesReviewer.ASK_FOR_NAME, "Ok"),
+            (NamesReviewer.CORRECT_Y_N, "Y"),
+        ],
+    )
+
+    patched_conflict_solver.run()
+
+    for n in range(len(id_names)):
+        assert data[DocumentId(n + 1)].name == StudentName(id_names[n][1])
 
     # There should be no remaining question.
     assert custom_input.is_empty(), f"List of remaining questions/answers: {custom_input.remaining()}"

@@ -207,7 +207,7 @@ class NamesReviewer:
         to_review.reviewed = True
         return action
 
-    def _suggest_id(self, incorrect_student_id: str) -> None:
+    def _suggest_id(self, incorrect_student_id: str) -> StudentId:
         """Print a suggestion of student name, based on provided id.
 
         The name associated with the most closely matching id will be suggested.
@@ -217,9 +217,10 @@ class NamesReviewer:
             return levenshtein_distance(incorrect_student_id, id_)
 
         suggestion: StudentId = min(self.students_ids, key=_proximity)
-        print(f"Suggestion: {suggestion} ({self.students_ids[suggestion]})")
+        print(f"Suggestion: {suggestion} → {self.students_ids[suggestion]} (write `ok` to validate it).")
+        return suggestion
 
-    def _suggest_name(self, incorrect_name: str) -> None:
+    def _suggest_name(self, incorrect_name: str) -> StudentName:
         """Print a suggestion of student name, based on provided name and existing ones."""
         incorrect_name = incorrect_name.lower()
         if self.students_ids:
@@ -227,7 +228,7 @@ class NamesReviewer:
         elif self.data_storage.config.students_list:
             names = list(self.data_storage.config.students_list)
         else:
-            return
+            return StudentName("")
 
         # Strategy 1: search if a name is almost the same.
         def _proximity(name_: StudentName):
@@ -259,7 +260,8 @@ class NamesReviewer:
                         # Giving up...
                         name = StudentName("")
         if name:
-            print(f"Suggestion: {name}")
+            print(f"Suggestion: {name} (write `ok` to validate it).")
+        return name
 
     def enter_name_and_id(
         self, doc_id: DocumentId, default: str = ""
@@ -283,6 +285,7 @@ class NamesReviewer:
             f"   - Use {Action.BACK} to go back to previous document.\n"
             f"   - Use {Action.NEXT} to go to next document, keeping current name."
         )
+        suggestion = StudentName("")
         while action is None:
             # ----------------------------------------
             # Display the top of the scanned document.
@@ -298,6 +301,10 @@ class NamesReviewer:
             # -------------------------
             # Handle the user's answer.
             # -------------------------
+            if user_input.lower() == "ok":
+                user_input = suggestion
+            suggestion = StudentName("")
+
             if user_input == Action.DISCARD:
                 # Discard this document. It will be removed later.
                 print_info(f"Discarding document {doc_id}.")
@@ -328,15 +335,15 @@ class NamesReviewer:
                     # but probably a misspelled student id!
                     print("Unknown ID.")
                     # So, suggest the more closely related existing id.
-                    self._suggest_id(user_input)
+                    suggestion = self.students_ids[self._suggest_id(user_input)]
                 else:
                     print("Unknown name.")
-                    self._suggest_name(user_input)
+                    suggestion = self._suggest_name(user_input)
             elif self.data_storage.config.students_list:
                 if user_input in self.data_storage.config.students_list:
                     action = Action.NEXT
                 else:
-                    self._suggest_name(user_input)
+                    suggestion = self._suggest_name(user_input)
             elif user_input:
                 name = StudentName(user_input)
 
