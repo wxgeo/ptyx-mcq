@@ -9,7 +9,7 @@ from ptyx_mcq.scan.data_gestion.conflict_handling import ConflictSolver, NamesRe
 from ptyx_mcq.scan.data_gestion.conflict_handling.data_check import Action
 from ptyx_mcq.scan.data_gestion.data_handler import DataHandler
 from ptyx_mcq.scan.data_gestion.document_data import DocumentData
-from ptyx_mcq.tools.config_parser import DocumentId, StudentName, StudentId
+from ptyx_mcq.tools.config_parser import DocumentId, StudentName
 from ptyx_mcq.cli import scan
 
 from .toolbox import TEST_DIR
