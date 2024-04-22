@@ -12,7 +12,11 @@ from ptyx.shell import (
     ANSI_BOLD,
 )
 
-from ptyx_mcq.scan.evaluation_strategies import AnswersData, ScoreData, EvaluationStrategies
+from ptyx_mcq.scan.score_management.evaluation_strategies import (
+    AnswersData,
+    ScoreData,
+    EvaluationStrategies,
+)
 
 if TYPE_CHECKING:
     from ptyx_mcq.scan.scan_doc import MCQPictureParser

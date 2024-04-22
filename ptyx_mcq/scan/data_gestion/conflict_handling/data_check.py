@@ -8,7 +8,7 @@ from numpy import ndarray
 
 from ptyx.shell import print_error, print_warning, print_info
 
-from ptyx_mcq.scan.color import Color, RGB
+from ptyx_mcq.tools.rgb import Color, RGB
 from ptyx_mcq.scan.data_gestion.data_handler import DataHandler
 from ptyx_mcq.scan.data_gestion.document_data import (
     Page,
@@ -16,8 +16,8 @@ from ptyx_mcq.scan.data_gestion.document_data import (
     RevisionStatus,
     PicData,
 )
-from ptyx_mcq.scan.image_viewer import ImageViewer
-from ptyx_mcq.scan.tools import levenshtein_distance
+from ptyx_mcq.scan.picture_analyze.image_viewer import ImageViewer
+from ptyx_mcq.tools.math import levenshtein_distance
 from ptyx_mcq.tools.config_parser import (
     DocumentId,
     ApparentQuestionNumber,

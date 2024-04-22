@@ -16,11 +16,11 @@ from typing import Literal
 from PIL import Image, ImageDraw
 from ptyx.shell import print_success, print_warning, print_info, print_error
 
-from ptyx_mcq.scan.color import Color
+from ptyx_mcq.tools.rgb import Color
 
 from ptyx_mcq.scan.data_gestion.data_handler import DataHandler
 from ptyx_mcq.scan.data_gestion.document_data import Page, DocumentData, PicData
-from ptyx_mcq.scan.image_viewer import ImageViewer
+from ptyx_mcq.scan.picture_analyze.image_viewer import ImageViewer
 from ptyx_mcq.tools.config_parser import DocumentId, OriginalQuestionNumber
 
 DuplicatePagesDict = dict[tuple[DocumentId, Page], list[DocumentId]]

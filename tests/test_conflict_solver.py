@@ -37,7 +37,7 @@ def no_display(monkeypatch):
         else:
             return subprocess.Popen(["sleep", "0"], stdin=subprocess.DEVNULL)
 
-    monkeypatch.setattr("ptyx_mcq.scan.image_viewer.ImageViewer.display", display)
+    monkeypatch.setattr("ptyx_mcq.scan.picture_analyze.image_viewer.ImageViewer.display", display)
 
 
 @pytest.fixture

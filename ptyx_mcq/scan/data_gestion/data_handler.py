@@ -12,7 +12,7 @@ from numpy import ndarray, array, int8, concatenate
 
 from ptyx.shell import ANSI_CYAN, ANSI_RESET, ANSI_YELLOW, ANSI_GREEN, print_error
 
-from ptyx_mcq.scan.checkbox_analyzer import analyze_checkboxes
+from ptyx_mcq.scan.picture_analyze.checkbox_analyzer import analyze_checkboxes
 from ptyx_mcq.scan.data_gestion.document_data import (
     DocumentData,
     PicData,
@@ -21,7 +21,7 @@ from ptyx_mcq.scan.data_gestion.document_data import (
     Page,
 )
 from ptyx_mcq.scan.data_gestion.paths_handler import PathsHandler, DirsPaths, FilesPaths
-from ptyx_mcq.scan.pdftools import number_of_pages, extract_pdf_pictures, PIC_EXTS
+from ptyx_mcq.scan.pdf.pdftools import number_of_pages, extract_pdf_pictures, PIC_EXTS
 from ptyx_mcq.tools.config_parser import (
     Configuration,
     get_answers_with_status,

@@ -6,17 +6,17 @@ from typing import Union, Optional
 
 from ptyx.shell import print_warning, ANSI_RESET, ANSI_GREEN
 
-from ptyx_mcq.scan.amend import amend_all
+from ptyx_mcq.scan.pdf.amend import amend_all
 
 from ptyx_mcq.scan.data_gestion.conflict_handling import ConflictSolver, AnswersReviewer
 from ptyx_mcq.scan.data_gestion.data_handler import DataHandler
 from ptyx_mcq.scan.data_gestion.document_data import DocumentData, Page
-from ptyx_mcq.scan.pdftools import PIC_EXTS
-from ptyx_mcq.scan.scan_pic import (
+from ptyx_mcq.scan.pdf.pdftools import PIC_EXTS
+from ptyx_mcq.scan.picture_analyze.scan_pic import (
     scan_picture,
 )
-from ptyx_mcq.scan.types_declaration import CalibrationError
-from ptyx_mcq.scan.scores_manager import ScoresManager
+from ptyx_mcq.scan.picture_analyze.types_declaration import CalibrationError
+from ptyx_mcq.scan.score_management.scores_manager import ScoresManager
 from ptyx_mcq.tools.config_parser import (
     StudentId,
     StudentName,

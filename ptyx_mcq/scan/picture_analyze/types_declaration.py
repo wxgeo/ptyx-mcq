@@ -3,7 +3,7 @@ from typing import Sequence
 
 from numpy import ndarray
 
-from ptyx_mcq.scan.color import RGB, Color
+from ptyx_mcq.tools.rgb import RGB, Color
 
 
 # --------------------------

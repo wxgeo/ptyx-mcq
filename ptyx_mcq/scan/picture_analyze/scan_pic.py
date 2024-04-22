@@ -5,28 +5,28 @@ from numpy import array, amin, amax, ndarray  # , percentile, clip
 
 from ptyx.shell import print_info, print_warning
 
-from .color import Color
+from ptyx_mcq.tools.rgb import Color
 from ptyx_mcq.scan.data_gestion.document_data import PicData, Page
-from .types_declaration import (
+from ptyx_mcq.scan.picture_analyze.types_declaration import (
     CalibrationError,
     Pixel,
     Shape,
     Rectangle,
 )
-from .calibration import calibrate
-from .square_detection import (
+from ptyx_mcq.scan.picture_analyze.calibration import calibrate
+from ptyx_mcq.scan.picture_analyze.square_detection import (
     test_square_color,
     find_black_square,
     eval_square_color,
     adjust_checkbox,
 )
-from .tools import round
-from .image_viewer import ImageViewer
-from ..parameters import (
+from ptyx_mcq.tools.math import round
+from ptyx_mcq.scan.picture_analyze.image_viewer import ImageViewer
+from ptyx_mcq.parameters import (
     SQUARE_SIZE_IN_CM,
     CELL_SIZE_IN_CM,
 )
-from ..tools.config_parser import (
+from ptyx_mcq.tools.config_parser import (
     real2apparent,
     Configuration,
     StudentIdFormat,

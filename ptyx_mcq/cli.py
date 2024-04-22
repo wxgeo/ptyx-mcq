@@ -506,7 +506,7 @@ def update(path: Path, force=False, clean=False) -> None:
 
 def strategies() -> None:
     """Display all evaluation modes with a description."""
-    from .scan.evaluation_strategies import EvaluationStrategies
+    from ptyx_mcq.scan.score_management.evaluation_strategies import EvaluationStrategies
 
     strategies_list = EvaluationStrategies.get_all_strategies()
     print(f"\n{ANSI_REVERSE_PURPLE}[ Available strategies ]{ANSI_RESET}")
