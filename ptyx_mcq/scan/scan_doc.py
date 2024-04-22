@@ -4,13 +4,14 @@ from math import inf
 from pathlib import Path
 from typing import Union, Optional
 
+from numpy import ndarray
 from ptyx.shell import print_warning, ANSI_RESET, ANSI_GREEN
 
 from ptyx_mcq.scan.pdf.amend import amend_all
 
 from ptyx_mcq.scan.data_gestion.conflict_handling import ConflictSolver, AnswersReviewer
 from ptyx_mcq.scan.data_gestion.data_handler import DataHandler
-from ptyx_mcq.scan.data_gestion.document_data import DocumentData, Page
+from ptyx_mcq.scan.data_gestion.document_data import DocumentData, Page, PicData
 from ptyx_mcq.scan.pdf.pdftools import PIC_EXTS
 from ptyx_mcq.scan.picture_analyze.scan_pic import (
     scan_picture,
@@ -59,6 +60,10 @@ class MCQPictureParser:
         # self.warnings = False
         self.data_handler = DataHandler(Path(path), input_dir=input_dir, output_dir=output_dir)
         self.scores_manager = ScoresManager(self)
+        # Set `already_seen` will contain all seen (ID, page) couples.
+        # It is used to catch a hypothetical scanning problem:
+        # we have to be sure that the same page on the same test is not seen twice.
+        self.already_seen: set[tuple[DocumentId, Page]] = set()
 
     @property
     def config(self):
@@ -124,7 +129,7 @@ class MCQPictureParser:
     #     self.data_handler.write_log(msg)
     #     self.warnings = True
 
-    def scan_page(self, num: int, pic_path: Path, already_seen: set[tuple[DocumentId, Page]], debug=False):
+    def scan_page(self, num: int, pic_path: Path, debug=False) -> tuple[PicData, ndarray] | None:
         print("-------------------------------------------------------")
         print("Page", num)
         print("File:", pic_path)
@@ -144,54 +149,12 @@ class MCQPictureParser:
             # `pic_data` FORMAT is specified in `scan_pic.py`.
             # (Search for `pic_data =` in `scan_pic.py`).
             pic_data.pic_path = str(pic_path)
-            print()
+            return pic_data, matrix
 
         except CalibrationError:
             print_warning(f"{pic_path} seems invalid ! Skipping...")
             self.data_handler.store_skipped_pic(pic_path)
-            return
-
-        doc_id = pic_data.doc_id
-        page = pic_data.page
-
-        # Test whether a previous version of the same page exist:
-        # if the same page has been seen twice, this may be problematic,
-        # so call `._keep_previous_version()` to ask user what to do.
-        # if (doc_id, page) in already_seen and self._keep_previous_version(pic_data):
-        #     # If the user answered to skip the current page, just do it.
-        #     continue
-        if (doc_id, page) in already_seen:
-            # There are two versions (at least) of the same document.  │    │
-            # Store it for now, with a new temporary id, and resolve conflict later.
-            doc_id = self.data_handler.create_new_temporary_id(doc_id, page)
-        already_seen.add((doc_id, page))
-
-        # 2) Gather data
-        #    ‾‾‾‾‾‾‾‾‾‾‾
-        name, student_id = self.data_handler.more_infos.get(doc_id, (StudentName(""), StudentId("")))
-        doc_data: DocumentData = self.data.setdefault(
-            doc_id,
-            DocumentData(
-                pages={},
-                name=name,
-                student_id=student_id,
-                score=0,
-                score_per_question={},
-            ),
-        )
-        doc_data.pages[page] = pic_data
-
-        # 3) 1st page of the test => retrieve the student name
-        #    ‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾
-
-        if page == 1:
-            if doc_id in self.data_handler.more_infos:
-                doc_data.name, doc_data.student_id = self.data_handler.more_infos[doc_id]
-            else:
-                doc_data.name = pic_data.name
-
-        # Store work in progress, so we can resume process if something fails...
-        self.data_handler.store_doc_data(pic_path.parent.name, doc_id, page, matrix)
+            return None
 
     def scan_all(
         self,
@@ -213,12 +176,7 @@ class MCQPictureParser:
         # Extract informations from the pictures.
         # ---------------------------------------
 
-        # Set `already_seen` will contain all seen (ID, page) couples.
-        # It is used to catch a hypothetical scanning problem:
-        # we have to be sure that the same page on the same test is not seen twice.
-        already_seen: set[tuple[DocumentId, Page]] = set(
-            (ID, p) for ID, d in self.data.items() for p in d.pages
-        )
+        self.already_seen = {(ID, p) for ID, d in self.data.items() for p in d.pages}
 
         # Iterate over the pictures not already handled in a previous pass.
         for i, pic_path in enumerate(self.data_handler.get_pics_list(), start=1):
@@ -229,7 +187,50 @@ class MCQPictureParser:
             if pic_path in self.data_handler.skipped:
                 continue
 
-            self.scan_page(i, pic_path, already_seen, debug=debug)
+            scan_result = self.scan_page(i, pic_path, debug=debug)
+            if scan_result is None:
+                continue
+            pic_data, matrix = scan_result
+            doc_id = pic_data.doc_id
+            page = pic_data.page
+            # Test whether a previous version of the same page exist:
+            # if the same page has been seen twice, this may be problematic,
+            # so call `._keep_previous_version()` to ask user what to do.
+            # if (doc_id, page) in already_seen and self._keep_previous_version(pic_data):
+            #     # If the user answered to skip the current page, just do it.
+            #     continue
+            if (doc_id, page) in self.already_seen:
+                # There are two versions (at least) of the same document.
+                # Store it for now, with a new temporary id, and resolve conflict later.
+                doc_id = self.data_handler.create_new_temporary_id(doc_id, page)
+            self.already_seen.add((doc_id, page))
+
+            # 2) Gather data
+            #    ‾‾‾‾‾‾‾‾‾‾‾
+            name, student_id = self.data_handler.more_infos.get(doc_id, (StudentName(""), StudentId("")))
+            doc_data: DocumentData = self.data.setdefault(
+                doc_id,
+                DocumentData(
+                    pages={},
+                    name=name,
+                    student_id=student_id,
+                    score=0,
+                    score_per_question={},
+                ),
+            )
+            doc_data.pages[page] = pic_data
+
+            # 3) 1st page of the test => retrieve the student name
+            #    ‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾
+
+            if page == 1:
+                if doc_id in self.data_handler.more_infos:
+                    doc_data.name, doc_data.student_id = self.data_handler.more_infos[doc_id]
+                else:
+                    doc_data.name = pic_data.name
+
+            # Store work in progress, so we can resume process if something fails...
+            self.data_handler.store_doc_data(pic_path.parent.name, doc_id, page, matrix)
 
         print("Scan successful.")
 
