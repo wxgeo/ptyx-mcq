@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
 import concurrent.futures
 import csv
+import gc
 import os
 import sys
+import time
 from math import inf
 from pathlib import Path
-from typing import Union, Optional
+from typing import Union, Optional, Iterator
 
 from numpy import ndarray
 from ptyx.shell import print_warning, ANSI_RESET, ANSI_GREEN
@@ -152,10 +154,9 @@ class MCQPictureParser:
     #     self.data_handler.write_log(msg)
     #     self.warnings = True
 
-    def scan_page(self, num: int, pic_path: Path, debug=False) -> tuple[PicData, ndarray] | None:
+    def scan_page(self, pic_path: Path, debug=False) -> tuple[Path, PicData, ndarray] | Path:
         with Silent():
             print("-------------------------------------------------------")
-            print("Page", num)
             print("File:", pic_path)
 
             # 1) Extract all the data of an image
@@ -173,12 +174,10 @@ class MCQPictureParser:
                 # `pic_data` FORMAT is specified in `scan_pic.py`.
                 # (Search for `pic_data =` in `scan_pic.py`).
                 pic_data.pic_path = str(pic_path)
-                return pic_data, matrix
+                return pic_path, pic_data, matrix
 
             except CalibrationError:
-                print_warning(f"{pic_path} seems invalid ! Skipping...")
-                self.data_handler.store_skipped_pic(pic_path)
-                return None
+                return pic_path
 
     def scan_all(
         self,
@@ -199,27 +198,33 @@ class MCQPictureParser:
         # ---------------------------------------
         # Extract informations from the pictures.
         # ---------------------------------------
-        print("Processing pages...")
+        print("\nProcessing pages...")
         self.already_seen = {(ID, p) for ID, d in self.data.items() for p in d.pages}
 
-        todo: dict[concurrent.futures.Future[tuple[PicData, ndarray] | None] : int] = {}
-        with concurrent.futures.ProcessPoolExecutor(max_workers=os.cpu_count() - 1) as executor:
-            # Iterate over the pictures not already handled in a previous pass.
-            for i, pic_path in enumerate(self.data_handler.get_pics_list(), start=1):
-                if not (start <= i <= end):
-                    continue
-                # Make pic_path relative, so that folder may be moved if needed.
-                pic_path = self.data_handler.relative_pic_path(pic_path)
-                if pic_path in self.data_handler.skipped:
-                    continue
-                todo[executor.submit(self.scan_page, i, pic_path, debug)] = i
+        tasks: list[Path] = []
+        for i, pic_path in enumerate(self.data_handler.get_pics_list(), start=1):
+            if not (start <= i <= end):
+                continue
+            # Make pic_path relative, so that folder may be moved if needed.
+            pic_path = self.data_handler.relative_pic_path(pic_path)
+            if pic_path in self.data_handler.skipped:
+                continue
+            tasks.append(pic_path)
+        # Experimentally, memory usage increases drastically without speed benefits when using more than 2 cpus.
+        with concurrent.futures.ProcessPoolExecutor(max_workers=min(2, os.cpu_count())) as executor:
+            # Use an iterator, to limit memory consumption.
+            todo = (executor.submit(self.scan_page, pic_path, debug) for pic_path in tasks)
 
-            for future in concurrent.futures.as_completed(todo):
-                i = todo[future]
+            # t = time.time()
+            for i, future in enumerate(concurrent.futures.as_completed(todo), start=1):
                 scan_result = future.result()
-                if scan_result is None:
+                # IMPORTANT: remove future references from todo to release memory!
+                del future
+                if isinstance(scan_result, Path):
+                    print_warning(f"{scan_result} seems invalid ! Skipping...")
+                    self.data_handler.store_skipped_pic(scan_result)
                     continue
-                pic_data, matrix = scan_result
+                pic_path, pic_data, matrix = scan_result
                 doc_id = pic_data.doc_id
                 page = pic_data.page
                 # Test whether a previous version of the same page exist:
@@ -259,11 +264,15 @@ class MCQPictureParser:
                         doc_data.name = pic_data.name
 
                 # Store work in progress, so we can resume process if something fails...
-                print(f"Page {i} processed.")
-                self.data_handler.store_doc_data(pic_path.parent.name, doc_id, page, matrix)
-                del matrix
 
-        print("Scan successful.")
+                self.data_handler.store_doc_data(pic_path.parent.name, doc_id, page, matrix)
+                del matrix, scan_result
+                gc.collect()
+                print(f"Page {i} processed.", end="\r")
+                # print(time.time() - t)
+                # t = time.time()
+
+        print("\nScan successful.")
 
         # ---------------------------
         # Read checkboxes
