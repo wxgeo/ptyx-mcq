@@ -1,6 +1,7 @@
 import csv
 import signal
 from hashlib import blake2b
+from io import BytesIO
 from multiprocessing import Pool
 from pathlib import Path
 from shutil import rmtree
@@ -35,9 +36,9 @@ from ptyx_mcq.tools.config_parser import (
 from ptyx_mcq.tools.extend_literal_eval import extended_literal_eval
 
 
-def save_webp(matrix: ndarray, path: Path | str, lossless=False) -> None:
+def save_webp(matrix: ndarray, path_or_stream: Path | str | BytesIO, lossless=False) -> None:
     """Save image content as a WEBP image."""
-    Image.fromarray((255 * matrix).astype(int8)).save(str(path), format="WEBP", lossless=lossless)
+    Image.fromarray((255 * matrix).astype(int8)).save(path_or_stream, format="WEBP", lossless=lossless)
 
 
 def pic_names_iterator(data: dict[DocumentId, DocumentData]) -> Iterator[Path]:

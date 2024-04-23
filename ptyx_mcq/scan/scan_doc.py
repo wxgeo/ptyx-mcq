@@ -1,16 +1,16 @@
 #!/usr/bin/env python3
 import concurrent.futures
 import csv
-import gc
+import multiprocessing
 import os
 import sys
 import time
 from math import inf
 from pathlib import Path
-from typing import Union, Optional, Iterator
+from typing import Union, Optional
 
 from numpy import ndarray
-from ptyx.shell import print_warning, ANSI_RESET, ANSI_GREEN
+from ptyx.shell import print_warning, ANSI_RESET, ANSI_GREEN, print_success
 
 from ptyx_mcq.scan.pdf.amend import amend_all
 
@@ -154,8 +154,8 @@ class MCQPictureParser:
     #     self.data_handler.write_log(msg)
     #     self.warnings = True
 
-    def scan_page(self, pic_path: Path, debug=False) -> tuple[Path, PicData, ndarray] | Path:
-        with Silent():
+    def scan_page(self, pic_path: Path, silent=True, debug=False) -> tuple[Path, PicData, ndarray] | Path:
+        with Silent(silent):
             print("-------------------------------------------------------")
             print("File:", pic_path)
 
@@ -201,7 +201,7 @@ class MCQPictureParser:
         print("\nProcessing pages...")
         self.already_seen = {(ID, p) for ID, d in self.data.items() for p in d.pages}
 
-        tasks: list[Path] = []
+        to_analyze: list[Path] = []
         for i, pic_path in enumerate(self.data_handler.get_pics_list(), start=1):
             if not (start <= i <= end):
                 continue
@@ -209,17 +209,18 @@ class MCQPictureParser:
             pic_path = self.data_handler.relative_pic_path(pic_path)
             if pic_path in self.data_handler.skipped:
                 continue
-            tasks.append(pic_path)
-        # Experimentally, memory usage increases drastically without speed benefits when using more than 2 cpus.
-        with concurrent.futures.ProcessPoolExecutor(max_workers=min(2, os.cpu_count())) as executor:
-            # Use an iterator, to limit memory consumption.
-            todo = (executor.submit(self.scan_page, pic_path, debug) for pic_path in tasks)
+            to_analyze.append(pic_path)
 
-            # t = time.time()
+        # Experimentally, memory usage increases drastically without speed benefits when using more than 2 cpus.
+        with concurrent.futures.ProcessPoolExecutor(
+            max_workers=min(2, os.cpu_count() or 1), mp_context=multiprocessing.get_context("spawn")
+        ) as executor:
+            # Use an iterator, to limit memory consumption.
+            todo = (executor.submit(self.scan_page, pic_path, True, debug) for pic_path in to_analyze)
+
+            t = time.time()
             for i, future in enumerate(concurrent.futures.as_completed(todo), start=1):
                 scan_result = future.result()
-                # IMPORTANT: remove future references from todo to release memory!
-                del future
                 if isinstance(scan_result, Path):
                     print_warning(f"{scan_result} seems invalid ! Skipping...")
                     self.data_handler.store_skipped_pic(scan_result)
@@ -265,14 +266,16 @@ class MCQPictureParser:
 
                 # Store work in progress, so we can resume process if something fails...
 
+                print("[", time.time() - t, "]")
                 self.data_handler.store_doc_data(pic_path.parent.name, doc_id, page, matrix)
-                del matrix, scan_result
-                gc.collect()
-                print(f"Page {i} processed.", end="\r")
-                # print(time.time() - t)
-                # t = time.time()
+                # del matrix, scan_result
+                # gc.collect()
+                # print(f"Page {i} processed.", end="\r")
+                print(time.time() - t)
+                t = time.time()
 
-        print("\nScan successful.")
+        # gc.collect()
+        print_success("Scan successful.")
 
         # ---------------------------
         # Read checkboxes
