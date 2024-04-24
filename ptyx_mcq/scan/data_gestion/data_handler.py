@@ -152,35 +152,6 @@ class CheckboxesDataAnalyzer:
         else:
             self._parallel_checkboxes_analyze(number_of_processes=number_of_processes)
 
-    # TODO: to remove, integrate display.
-    def old_analyze_checkboxes(self, display=False):
-        """Determine whether each checkbox is checked or not, and update data accordingly."""
-        for doc_id, doc_data in self.data.items():
-            if all(
-                len(pic_data.detection_status) == len(pic_data.positions)
-                for pic_data in doc_data.pages.values()
-            ):
-                # The checkboxes of this document were already analyzed during a previous scan.
-                continue
-
-            checkboxes = {
-                key: val for page in doc_data.pages for key, val in self.get_checkboxes(doc_id, page).items()
-            }
-            detection_status = analyze_checkboxes(checkboxes)
-            for page, pic_data in doc_data.pages.items():
-                for q, a in pic_data.positions:
-                    pic_data.answered.setdefault(q, set())
-                    status = pic_data.detection_status[(q, a)] = detection_status[(q, a)]
-                    if DetectionStatus.seems_checked(status):
-                        pic_data.answered[q].add(a)
-
-                # Store results, to be able to interrupt and resume scan.
-                self.data_handler.store_doc_data(str(Path(pic_data.pic_path).parent), doc_id, page)
-            if display:
-                self.display_analyze_results(doc_id)
-            else:
-                print(f"Analyzing checkboxes of document {doc_id}...")
-
     # -----------------------------------------
     #     Display checkboxes analyze results
     # =========================================
