@@ -1,6 +1,10 @@
 import random
 
-from ptyx_mcq.scan.evaluation_strategies import EvaluationStrategies, AnswersData, ScoreData
+from ptyx_mcq.scan.score_management.evaluation_strategies import (
+    EvaluationStrategies,
+    AnswersData,
+    ScoreData,
+)
 
 
 # noinspection PyTypeChecker

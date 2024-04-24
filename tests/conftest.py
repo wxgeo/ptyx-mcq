@@ -47,13 +47,14 @@ class CustomInput:
             # This is only comments.
             custom_print(comment, label="Note", color="blue", bold=False)
             self.index += 1
-        print("Q:", text)
+        print("\033[2;96mQ:", text, "\033[0m")
         try:
             question, answer = self.scenario[self.index]
         except IndexError as e:
+            print("\033[1;33mSTOP: Unexpected input request!\033[0m")
             raise ValueError(f"Unexpected input request: {text!r}") from e
         assert text == question, (question, answer)
-        print("A:", answer)
+        print("\033[2;95mA:", answer, "\033[0m")
         self.index += 1
         return answer
 

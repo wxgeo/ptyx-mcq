@@ -14,12 +14,12 @@ from os.path import join
 
 from PIL import ImageDraw, ImageFont
 from PIL.Image import Image
-from ptyx_mcq.scan.data_handler import DataHandler
-from .document_data import DocumentData
+from ptyx_mcq.scan.data_gestion.data_handler import DataHandler
+from ptyx_mcq.scan.data_gestion.document_data import DocumentData
 
-from .types_declaration import Pixel
-from .color import Color, RGB
-from ..tools.config_parser import DocumentId, OriginalQuestionNumber, QuestionNumberOrDefault
+from ptyx_mcq.scan.picture_analyze.types_declaration import Pixel
+from ptyx_mcq.tools.rgb import Color, RGB
+from ptyx_mcq.tools.config_parser import DocumentId, OriginalQuestionNumber, QuestionNumberOrDefault
 
 
 # if TYPE_CHECKING:

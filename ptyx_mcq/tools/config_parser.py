@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Any, TypeVar, TypedDict, Literal, NewType, TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from ptyx_mcq.scan.document_data import Page
+    from ptyx_mcq.scan.data_gestion.document_data import Page
 
 T = TypeVar("T")
 K = TypeVar("K", bound=typing.Hashable)

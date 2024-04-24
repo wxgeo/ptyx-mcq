@@ -23,6 +23,7 @@ def extract_pdf_pictures(pdf_file: Path, dest: Path, verbose=True) -> None:
     doc = fitz.Document(pdf_file)
     if verbose:
         print(f"Extracting pages from '{pdf_file}' as pictures...")
+    # noinspection PyTypeChecker
     for i, page in enumerate(doc.pages()):
         # Extract picture if the page contains only a picture (this is quite fast).
         if _contain_only_a_single_image(page):

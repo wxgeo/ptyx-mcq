@@ -74,12 +74,12 @@ def scan_picture(
     """Implement `mcq scan` command."""
     from .scan.scan_doc import MCQPictureParser
 
-    MCQPictureParser(path).scan_picture(picture)
+    MCQPictureParser(path).scan_single_picture(picture)
     print_success(f"Picture '{picture}' scanned.")
 
 
 def export_checkboxes(path: Path | str = ".", debug=False):
-    from .scan.data_handler import DataHandler
+    from ptyx_mcq.scan.data_gestion.data_handler import DataHandler
 
     path = Path(path).expanduser().resolve()
     now = datetime.datetime.now()
@@ -94,7 +94,7 @@ def export_checkboxes(path: Path | str = ".", debug=False):
         print("\nLoad data...")
         handler.reload()
         print("\nExporting pictures...")
-        handler.export_checkboxes(export_all=True, path=Path(tmp_dir), compact=True)
+        handler.checkboxes.export_checkboxes(export_all=True, path=Path(tmp_dir), compact=True)
         print("\nCreating archive...")
         with tarfile.open(path / tar_name, "w") as tar:
             tar.add(tmp_dir, arcname=date)

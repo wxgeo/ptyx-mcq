@@ -7,8 +7,8 @@ from PIL import Image
 from PIL.PyAccess import PyAccess
 from numpy import ndarray, int8
 
-from ptyx_mcq.scan.color import Color, RGB
-from ptyx_mcq.scan.types_declaration import (
+from ptyx_mcq.tools.rgb import Color, RGB
+from ptyx_mcq.scan.picture_analyze.types_declaration import (
     Shape,
     Rectangle,
     Area,

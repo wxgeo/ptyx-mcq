@@ -149,11 +149,21 @@ def main(args: Optional[list] = None) -> None:
         help="Delete all cached data. The scanning process will restart from the beginning.",
     )
     scan_parser.add_argument(
+        "--cores",
+        metavar="N",
+        type=int,
+        default=0,
+        help="Set the number of cores to use (when set to 0 (default),"
+        " the number of cores will be set automatically)."
+        " Setting cores to 1 will disable multiprocessing and make scanning more verbose.",
+    )
+    # TODO: reimplement --verify (with tests) or remove it.
+    scan_parser.add_argument(
         "--verify",
         "--manual-verification",
         choices=("always", "never", "auto"),
         default="auto",
-        help="If set to `always`, then for each page scanned, display a picture of "
+        help="[UNMAINTAINED] If set to `always`, then for each page scanned, display a picture of "
         "the interpretation by the detection algorithm, "
         "for manual verification.\n"
         "If set to `never`, always assume algorithm is right.\n"
@@ -308,6 +318,7 @@ def make(
 def scan(
     path: Path,
     reset: bool = False,
+    cores: int = 0,
     verify: Literal["auto", "always", "never"] = "auto",
     test_picture: Path = None,
     debug: bool = False,
@@ -327,14 +338,12 @@ def scan(
             manual_verification = None
         mcq_parser = MCQPictureParser(path)
         if test_picture is None:
-            mcq_parser.scan_all(
-                reset=reset,
-                manual_verification=manual_verification,
-                debug=debug,
+            mcq_parser.run(
+                manual_verification=manual_verification, number_of_processes=cores, debug=debug, reset=reset
             )
             print_success("Students' marks successfully generated. :)")
         else:
-            mcq_parser.scan_picture(test_picture)
+            mcq_parser.scan_single_picture(test_picture)
             print_success(f"Picture {test_picture!r} scanned.")
         return mcq_parser
     except KeyboardInterrupt:
@@ -506,7 +515,7 @@ def update(path: Path, force=False, clean=False) -> None:
 
 def strategies() -> None:
     """Display all evaluation modes with a description."""
-    from .scan.evaluation_strategies import EvaluationStrategies
+    from ptyx_mcq.scan.score_management.evaluation_strategies import EvaluationStrategies
 
     strategies_list = EvaluationStrategies.get_all_strategies()
     print(f"\n{ANSI_REVERSE_PURPLE}[ Available strategies ]{ANSI_RESET}")

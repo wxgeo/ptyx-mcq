@@ -6,20 +6,21 @@ Created on Tue Oct 27 22:40:40 2020
 @author: nicolas
 """
 import builtins
-import pickle
-from os.path import expanduser
+
+# import pickle
+# from os.path import expanduser
 
 
-def tmp_store(obj):
-    """For debugging."""
-    with open(expanduser("~/tmp.pickle"), "wb") as f:
-        pickle.dump(obj, f)
-
-
-def tmp_load():
-    """For debugging."""
-    with open(expanduser("~/tmp.pickle"), "rb") as f:
-        return pickle.load(f)
+# def tmp_store(obj):
+#     """For debugging."""
+#     with open(expanduser("~/tmp.pickle"), "wb") as f:
+#         pickle.dump(obj, f)
+#
+#
+# def tmp_load():
+#     """For debugging."""
+#     with open(expanduser("~/tmp.pickle"), "rb") as f:
+#         return pickle.load(f)
 
 
 def round(f, n=None):

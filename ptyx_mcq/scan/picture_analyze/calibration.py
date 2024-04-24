@@ -8,10 +8,10 @@ from numpy import ndarray, flipud, fliplr, zeros, amin, dot, array
 from ptyx.shell import print_warning
 
 from ptyx_mcq.parameters import SQUARE_SIZE_IN_CM, CALIBRATION_SQUARE_SIZE, CALIBRATION_SQUARE_POSITION
-from ptyx_mcq.scan.color import Color
-from ptyx_mcq.scan.square_detection import eval_square_color, find_black_square
-from ptyx_mcq.scan.tools import round
-from ptyx_mcq.scan.types_declaration import (
+from ptyx_mcq.tools.rgb import Color
+from ptyx_mcq.scan.picture_analyze.square_detection import eval_square_color, find_black_square
+from ptyx_mcq.tools.math import round
+from ptyx_mcq.scan.picture_analyze.types_declaration import (
     Pixel,
     MissingSquare,
     Rectangle,
@@ -21,7 +21,7 @@ from ptyx_mcq.scan.types_declaration import (
     Area,
     IdBandNotFound,
 )
-from ptyx_mcq.scan.image_viewer import ImageViewer
+from ptyx_mcq.scan.picture_analyze.image_viewer import ImageViewer
 
 
 ValidCornerStringValues = Literal["TL", "TR", "BL", "BR"]

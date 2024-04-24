@@ -13,7 +13,7 @@ from ptyx.latex_generator import Compiler
 from ptyx.shell import print_error, print_info
 from ptyx.utilities import force_hardlink_to
 
-from ptyx_mcq.scan.document_data import Page
+from ptyx_mcq.scan.data_gestion.document_data import Page
 from ptyx_mcq.tools.io_tools import get_file_or_sysexit
 from ptyx_mcq.tools.config_parser import Configuration
 from ptyx_mcq.make.exercises_parsing import wrap_exercise
