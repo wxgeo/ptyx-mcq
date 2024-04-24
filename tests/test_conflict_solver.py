@@ -178,6 +178,91 @@ def test_several_missing_names(patched_conflict_solver, custom_input) -> None:
     assert custom_input.is_empty(), f"List of remaining questions/answers: {custom_input.remaining()}"
 
 
+def test_missing_names_navigation(patched_conflict_solver, custom_input) -> None:
+    """Test interaction if several names are missing.
+
+    In particular, several missing names should not be detected as duplicates!
+    """
+    data = patched_conflict_solver.data
+
+    backup_names: dict[int, StudentName] = {}
+
+    for n in (1, 2, 3, 4):
+        doc_id = DocumentId(n)
+        assert data[doc_id].name != StudentName("")
+        backup_names[n] = data[doc_id].name
+        data[doc_id].name = StudentName("")
+
+    # Test a scenario, simulating questions for the user in the terminal and the user's answers.
+    # The variable `scenario` is the list of the successive expected questions and their corresponding answers.
+    custom_input.set_scenario(
+        [
+            "DOC1 - WRONG NAME",
+            (NamesReviewer.PRESS_ENTER, ""),
+            # set (wrong) 1st document name, automatically go to 2nd
+            (NamesReviewer.ASK_FOR_NAME, backup_names[3]),
+            (NamesReviewer.CORRECT_Y_N, "Y"),
+            # ----------------
+            "DOC2 - BACK TO 1",
+            (NamesReviewer.PRESS_ENTER, ""),
+            # back to 1st document
+            (NamesReviewer.ASK_FOR_NAME, Action.BACK),
+            # ----------------
+            "DOC1 - RIGHT NAME",
+            (NamesReviewer.PRESS_ENTER, ""),
+            # set 1st document name, automatically go to 2nd
+            (NamesReviewer.ASK_FOR_NAME, backup_names[1]),
+            (NamesReviewer.CORRECT_Y_N, "Y"),
+            # ----------------
+            "DOC2 - WRONG NAME",
+            (NamesReviewer.PRESS_ENTER, ""),
+            # set (wrong) 2nd document name, automatically go to 3rd
+            (NamesReviewer.ASK_FOR_NAME, backup_names[4]),
+            (NamesReviewer.CORRECT_Y_N, "Y"),
+            # ----------------
+            "DOC3 - RIGHT NAME",
+            (NamesReviewer.PRESS_ENTER, ""),
+            # set 3rd document name, automatically go to 4th
+            (NamesReviewer.ASK_FOR_NAME, backup_names[3]),
+            (NamesReviewer.CORRECT_Y_N, "Y"),
+            # ----------------
+            "DOC4 - BACK TO 3",
+            (NamesReviewer.PRESS_ENTER, ""),
+            # back to 3rd document
+            (NamesReviewer.ASK_FOR_NAME, Action.BACK),
+            # ----------------
+            "DOC3 - BACK TO 2",
+            (NamesReviewer.PRESS_ENTER, ""),
+            # back to 2nd document
+            (NamesReviewer.ASK_FOR_NAME, Action.BACK),
+            # ----------------
+            "DOC2 - RIGHT NAME",
+            (NamesReviewer.PRESS_ENTER, ""),
+            # set 2nd document name, automatically go to 3rd
+            (NamesReviewer.ASK_FOR_NAME, backup_names[2]),
+            (NamesReviewer.CORRECT_Y_N, "Y"),
+            # ----------------
+            "DOC3 - GO TO 4",
+            (NamesReviewer.PRESS_ENTER, ""),
+            # go directly to 4th document
+            (NamesReviewer.ASK_FOR_NAME, Action.NEXT),
+            # ----------------
+            "DOC4 - RIGHT NAME",
+            (NamesReviewer.PRESS_ENTER, ""),
+            # set 4th document name
+            (NamesReviewer.ASK_FOR_NAME, backup_names[4]),
+            (NamesReviewer.CORRECT_Y_N, "Y"),
+        ],
+    )
+
+    patched_conflict_solver.run()
+    for n in (1, 2, 3):
+        assert patched_conflict_solver.data[DocumentId(n)].name == backup_names[n]
+
+    # There should be no remaining question.
+    assert custom_input.is_empty(), f"List of remaining questions/answers: {custom_input.remaining()}"
+
+
 def test_missing_names_autocomplete(patched_conflict_solver, custom_input) -> None:
     """Test name suggestion."""
     data = patched_conflict_solver.data
@@ -252,7 +337,8 @@ def test_duplicate_name(patched_conflict_solver, custom_input):
     """Skip a document."""
     student_names = {i: patched_conflict_solver.data[DocumentId(i)].name for i in (1, 2, 3, 4)}
     assert list(student_names.values()) == STUDENT_NAMES
-    # Create duplicate name conflict
+
+    # Create duplicate name conflict: give the same name to documents 1 and 2.
     patched_conflict_solver.data[DocumentId(2)].name = student_names[1]
 
     # Test a scenario, simulating questions for the user in the terminal and the user's answers.
@@ -275,16 +361,16 @@ def test_duplicate_name(patched_conflict_solver, custom_input):
             # Confirm.
             (NamesReviewer.CORRECT_Y_N, ""),
             "II) Resolve the newly created conflict between doc 2 and doc 3.",
-            # "II.1) DOC 2",
-            # (NamesReviewer.PRESS_ENTER, ""),
-            # # Give the right name this time.
-            # (NamesReviewer.ASK_FOR_NAME, student_names[2]),
-            # # Confirm.
-            # (NamesReviewer.CORRECT_Y_N, ""),
+            "II.1) DOC 2",
+            (NamesReviewer.PRESS_ENTER, ""),
+            # Give the right name this time.
+            (NamesReviewer.ASK_FOR_NAME, student_names[2]),
+            # Confirm.
+            (NamesReviewer.CORRECT_Y_N, ""),
             "II.2) DOC 3",
             (NamesReviewer.PRESS_ENTER, ""),
             # Keep current name.
-            (NamesReviewer.ASK_FOR_NAME, student_names[2]),
+            (NamesReviewer.ASK_FOR_NAME, "ok"),
             # Confirm.
             (NamesReviewer.CORRECT_Y_N, ""),
         ],
