@@ -308,14 +308,12 @@ def test_blank_page_inserted(tmp_path):
     scan(copy)
     print(copy / ".scan/scores.csv")
     print(origin / "reference_scores.csv")
-    assert (copy / ".scan/scores.csv").read_text(encoding="utf8") == (
-        origin / "reference_scores.csv"
-    ).read_text(encoding="utf8")
 
-    def csv_lines_set(path: Path):
-        return set(path.read_text(encoding="utf8").split("\n"))
+    def same_file(path: Path, path2: Path) -> bool:
+        return path.read_text(encoding="utf8") == path2.read_text(encoding="utf8")
 
-    assert csv_lines_set(copy / ".scan/infos.csv") == csv_lines_set(origin / "reference_infos.csv")
+    assert same_file(copy / ".scan/scores.csv", origin / "reference_scores.csv")
+    assert same_file(copy / ".scan/infos.csv", origin / "reference_infos.csv")
 
 
 def test_empty_document(no_display, tmp_path, custom_input):

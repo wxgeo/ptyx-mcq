@@ -4,7 +4,8 @@ import csv
 import multiprocessing
 import os
 import sys
-import time
+
+# import time
 from io import BytesIO
 from math import inf
 from pathlib import Path
@@ -107,16 +108,17 @@ class MCQPictureParser:
         """
         # Generate CSV file with ID and pictures names for all students.
         info_path = self.data_handler.files.infos
-        info = [
+        # Sort data to make testing easier.
+        info = sorted(
             (
                 doc_data.name,
                 doc_data.student_id,
                 doc_id,
                 doc_data.score,
-                [doc_data.pages[p].pic_path for p in doc_data.pages],
+                sorted(doc_data.pages[p].pic_path for p in doc_data.pages),
             )
             for doc_id, doc_data in self.data.items()
-        ]
+        )
 
         with open(info_path, "w", newline="") as csvfile:
             writerow = csv.writer(csvfile).writerow
@@ -284,7 +286,7 @@ class MCQPictureParser:
         self,
         start: int = 1,
         end: Union[int, float] = inf,
-        cores: int = 0,
+        number_of_processes: int = 1,
         reset: bool = False,
         debug: bool = False,
     ) -> None:
@@ -307,17 +309,15 @@ class MCQPictureParser:
         self.already_seen = {(ID, p) for ID, d in self.data.items() for p in d.pages}
 
         to_analyze = self._collect_pages(start, end)
-        if cores <= 0:
-            _cores = os.cpu_count()
-            number_of_processes = 1 if _cores is None else min(_cores - 1, CPU_PHYSICAL_CORES)
-        else:
-            number_of_processes = cores
+        if number_of_processes <= 0:
+            cores = os.cpu_count()
+            number_of_processes = 1 if cores is None else min(cores - 1, CPU_PHYSICAL_CORES)
         if number_of_processes == 1:
             self._serial_scanning(to_analyze, debug=debug)
         else:
-            t = time.time()
+            # t = time.time()
             self._parallel_scanning(to_analyze, number_of_processes=number_of_processes, debug=debug)
-            print(time.time() - t)
+            # print(time.time() - t)
 
         # gc.collect()
         print_success("Scan successful.")
@@ -326,7 +326,7 @@ class MCQPictureParser:
         # Read checkboxes
         # ---------------------------
         # Test whether each checkbox was checked.
-        self.data_handler.checkboxes.analyze_checkboxes()
+        self.data_handler.checkboxes.analyze_checkboxes(number_of_processes=number_of_processes)
 
     def solve_conflicts(self):
         """Resolve conflicts manually: unknown student ID, ambiguous answer..."""
@@ -359,7 +359,7 @@ class MCQPictureParser:
         start: int = 1,
         end: Union[int, float] = inf,
         manual_verification: Optional[bool] = None,
-        cores: int = 0,
+        number_of_processes: int = 0,
         debug: bool = False,
         reset: bool = False,
     ) -> None:
@@ -373,7 +373,9 @@ class MCQPictureParser:
         """
 
         # Extract information from scanned documents.
-        self.analyze_pages(start=start, end=end, cores=cores, reset=reset, debug=debug)
+        self.analyze_pages(
+            start=start, end=end, number_of_processes=number_of_processes, reset=reset, debug=debug
+        )
 
         # Resolve detected problems.
         self.solve_conflicts()

@@ -338,7 +338,9 @@ def scan(
             manual_verification = None
         mcq_parser = MCQPictureParser(path)
         if test_picture is None:
-            mcq_parser.run(manual_verification=manual_verification, cores=cores, debug=debug, reset=reset)
+            mcq_parser.run(
+                manual_verification=manual_verification, number_of_processes=cores, debug=debug, reset=reset
+            )
             print_success("Students' marks successfully generated. :)")
         else:
             mcq_parser.scan_single_picture(test_picture)
