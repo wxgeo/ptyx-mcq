@@ -149,11 +149,21 @@ def main(args: Optional[list] = None) -> None:
         help="Delete all cached data. The scanning process will restart from the beginning.",
     )
     scan_parser.add_argument(
+        "--cores",
+        metavar="N",
+        type=int,
+        default=0,
+        help="Set the number of cores to use (when set to 0 (default),"
+        " the number of cores will be set automatically)."
+        " Setting cores to 1 will disable multiprocessing and make scanning more verbose.",
+    )
+    # TODO: reimplement --verify (with tests) or remove it.
+    scan_parser.add_argument(
         "--verify",
         "--manual-verification",
         choices=("always", "never", "auto"),
         default="auto",
-        help="If set to `always`, then for each page scanned, display a picture of "
+        help="[UNMAINTAINED] If set to `always`, then for each page scanned, display a picture of "
         "the interpretation by the detection algorithm, "
         "for manual verification.\n"
         "If set to `never`, always assume algorithm is right.\n"
@@ -308,6 +318,7 @@ def make(
 def scan(
     path: Path,
     reset: bool = False,
+    cores: int = 0,
     verify: Literal["auto", "always", "never"] = "auto",
     test_picture: Path = None,
     debug: bool = False,
@@ -327,11 +338,7 @@ def scan(
             manual_verification = None
         mcq_parser = MCQPictureParser(path)
         if test_picture is None:
-            mcq_parser.scan_all(
-                reset=reset,
-                manual_verification=manual_verification,
-                debug=debug,
-            )
+            mcq_parser.run(manual_verification=manual_verification, cores=cores, debug=debug, reset=reset)
             print_success("Students' marks successfully generated. :)")
         else:
             mcq_parser.scan_single_picture(test_picture)

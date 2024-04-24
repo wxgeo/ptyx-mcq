@@ -311,9 +311,11 @@ def test_blank_page_inserted(tmp_path):
     assert (copy / ".scan/scores.csv").read_text(encoding="utf8") == (
         origin / "reference_scores.csv"
     ).read_text(encoding="utf8")
-    assert (copy / ".scan/infos.csv").read_text(encoding="utf8") == (
-        origin / "reference_infos.csv"
-    ).read_text(encoding="utf8")
+
+    def csv_lines_set(path: Path):
+        return set(path.read_text(encoding="utf8").split("\n"))
+
+    assert csv_lines_set(copy / ".scan/infos.csv") == csv_lines_set(origin / "reference_infos.csv")
 
 
 def test_empty_document(no_display, tmp_path, custom_input):

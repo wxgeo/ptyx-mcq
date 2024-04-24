@@ -5,17 +5,19 @@ import multiprocessing
 import os
 import sys
 import time
+from io import BytesIO
 from math import inf
 from pathlib import Path
 from typing import Union, Optional
 
-from numpy import ndarray
+# from numpy import ndarray
 from ptyx.shell import print_warning, ANSI_RESET, ANSI_GREEN, print_success
+from ptyx.sys_info import CPU_PHYSICAL_CORES
 
 from ptyx_mcq.scan.pdf.amend import amend_all
 
 from ptyx_mcq.scan.data_gestion.conflict_handling import ConflictSolver, AnswersReviewer
-from ptyx_mcq.scan.data_gestion.data_handler import DataHandler
+from ptyx_mcq.scan.data_gestion.data_handler import DataHandler, save_webp
 from ptyx_mcq.scan.data_gestion.document_data import DocumentData, Page, PicData
 from ptyx_mcq.scan.pdf.pdftools import PIC_EXTS
 from ptyx_mcq.scan.picture_analyze.scan_pic import (
@@ -98,7 +100,7 @@ class MCQPictureParser:
     def data(self):
         return self.data_handler.data
 
-    def generate_report(self) -> None:
+    def _generate_report(self) -> None:
         """Generate CSV files with some information concerning each student.
 
         Used mainly for debugging.
@@ -124,7 +126,7 @@ class MCQPictureParser:
                 writerow([name, student_id, f"#{doc_id}", score, paths_as_str])
         print(f'Infos stored in "{info_path}"\n')
 
-    def generate_amended_pdf(self) -> None:
+    def _generate_amended_pdf(self) -> None:
         amend_all(self.data_handler)
 
     def scan_single_picture(self, picture: Union[str, Path]) -> None:
@@ -154,7 +156,9 @@ class MCQPictureParser:
     #     self.data_handler.write_log(msg)
     #     self.warnings = True
 
-    def scan_page(self, pic_path: Path, silent=True, debug=False) -> tuple[Path, PicData, ndarray] | Path:
+    def _scan_current_page(
+        self, pic_path: Path, silent=True, debug=False
+    ) -> tuple[Path, PicData, BytesIO] | Path:
         with Silent(silent):
             print("-------------------------------------------------------")
             print("File:", pic_path)
@@ -174,22 +178,123 @@ class MCQPictureParser:
                 # `pic_data` FORMAT is specified in `scan_pic.py`.
                 # (Search for `pic_data =` in `scan_pic.py`).
                 pic_data.pic_path = str(pic_path)
-                return pic_path, pic_data, matrix
+                bytes_io = BytesIO()
+                save_webp(matrix, bytes_io)
+                return pic_path, pic_data, bytes_io
 
             except CalibrationError:
                 return pic_path
 
-    def scan_all(
+    def _collect_pages(self, start: int, end: int | float) -> list[Path]:
+        to_analyze: list[Path] = []
+        for i, pic_path in enumerate(self.data_handler.get_pics_list(), start=1):
+            if not (start <= i <= end):
+                continue
+            # Make pic_path relative, so that folder may be moved if needed.
+            pic_path = self.data_handler.relative_pic_path(pic_path)
+            if pic_path in self.data_handler.skipped:
+                continue
+            to_analyze.append(pic_path)
+        return to_analyze
+
+    def _handle_scan_result(self, scan_result: tuple[Path, PicData, BytesIO] | Path) -> None:
+        if isinstance(scan_result, Path):
+            print_warning(f"{scan_result} seems invalid ! Skipping...")
+            self.data_handler.store_skipped_pic(scan_result)
+            return
+        pic_path, pic_data, bytes_io = scan_result
+        doc_id = pic_data.doc_id
+        page = pic_data.page
+        # Test whether a previous version of the same page exist:
+        # if the same page has been seen twice, this may be problematic,
+        # so call `._keep_previous_version()` to ask user what to do.
+        # if (doc_id, page) in already_seen and self._keep_previous_version(pic_data):
+        #     # If the user answered to skip the current page, just do it.
+        #     continue
+        if (doc_id, page) in self.already_seen:
+            # There are two versions (at least) of the same document.
+            # Store it for now, with a new temporary id, and resolve conflict later.
+            doc_id = self.data_handler.create_new_temporary_id(doc_id, page)
+        self.already_seen.add((doc_id, page))
+
+        # 2) Gather data
+        #    ‾‾‾‾‾‾‾‾‾‾‾
+        name, student_id = self.data_handler.more_infos.get(doc_id, (StudentName(""), StudentId("")))
+        doc_data: DocumentData = self.data.setdefault(
+            doc_id,
+            DocumentData(
+                pages={},
+                name=name,
+                student_id=student_id,
+                score=0,
+                score_per_question={},
+            ),
+        )
+        doc_data.pages[page] = pic_data
+
+        # 3) 1st page of the test => retrieve the student name
+        #    ‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾
+
+        if page == 1:
+            if doc_id in self.data_handler.more_infos:
+                doc_data.name, doc_data.student_id = self.data_handler.more_infos[doc_id]
+            else:
+                doc_data.name = pic_data.name
+
+        # Store work in progress, so we can resume process if something fails...
+
+        # print("[", time.time() - t, "]")
+        self.data_handler.store_doc_data(pic_path.parent.name, doc_id, page, bytes_io)
+        # print(time.time() - t)
+        # t = time.time()
+
+    def _serial_scanning(self, to_analyze: list[Path], debug=False):
+        """Scan all documents using only one process.
+
+        This is usually slower, but easier to debug.
+        """
+        # No multiprocessing
+        for i, pic_path in enumerate(to_analyze, start=1):
+            scan_result: tuple[Path, PicData, BytesIO] | Path = self._scan_current_page(
+                pic_path, silent=False, debug=debug
+            )
+            self._handle_scan_result(scan_result)
+            # print(f"Page {i}/{len(to_analyze)} processed.", end="\r")
+
+    def _parallel_scanning(self, to_analyze: list[Path], number_of_processes: int, debug=False):
+        """Scan all documents using several processes.
+
+        This is default behaviour on most platform, since it takes advantage of multi-cores computers.
+        """
+        with concurrent.futures.ProcessPoolExecutor(
+            max_workers=number_of_processes, mp_context=multiprocessing.get_context("spawn")
+        ) as executor:
+            # Use an iterator, to limit memory consumption.
+            todo = (
+                executor.submit(self._scan_current_page, pic_path, True, debug) for pic_path in to_analyze
+            )
+
+            # t = time.time()
+            for i, future in enumerate(concurrent.futures.as_completed(todo), start=1):
+                scan_result: tuple[Path, PicData, BytesIO] | Path = future.result()
+                self._handle_scan_result(scan_result)
+                print(f"Page {i}/{len(to_analyze)} processed.", end="\r")
+
+    def analyze_pages(
         self,
         start: int = 1,
         end: Union[int, float] = inf,
-        manual_verification: Optional[bool] = None,
-        debug: bool = False,
+        cores: int = 0,
         reset: bool = False,
+        debug: bool = False,
     ) -> None:
-        """Extract information from pdf, calculate scores and annotate documents
-        to display correct answers."""
+        """First stage of the scan process: extract the pictures and read data from them.
 
+        This stage is fully automatic and does not interact with the user.
+        Any detected problem will be left as is and only be fixed in a future stage.
+
+        Update `self.data_handler` with collected information.
+        """
         # Test if the PDF files of the input directory have changed and
         # extract the images from the PDF files if needed.
         print("Search for previous data...")
@@ -201,78 +306,18 @@ class MCQPictureParser:
         print("\nProcessing pages...")
         self.already_seen = {(ID, p) for ID, d in self.data.items() for p in d.pages}
 
-        to_analyze: list[Path] = []
-        for i, pic_path in enumerate(self.data_handler.get_pics_list(), start=1):
-            if not (start <= i <= end):
-                continue
-            # Make pic_path relative, so that folder may be moved if needed.
-            pic_path = self.data_handler.relative_pic_path(pic_path)
-            if pic_path in self.data_handler.skipped:
-                continue
-            to_analyze.append(pic_path)
-
-        # Experimentally, memory usage increases drastically without speed benefits when using more than 2 cpus.
-        with concurrent.futures.ProcessPoolExecutor(
-            max_workers=min(2, os.cpu_count() or 1), mp_context=multiprocessing.get_context("spawn")
-        ) as executor:
-            # Use an iterator, to limit memory consumption.
-            todo = (executor.submit(self.scan_page, pic_path, True, debug) for pic_path in to_analyze)
-
+        to_analyze = self._collect_pages(start, end)
+        if cores <= 0:
+            _cores = os.cpu_count()
+            number_of_processes = 1 if _cores is None else min(_cores - 1, CPU_PHYSICAL_CORES)
+        else:
+            number_of_processes = cores
+        if number_of_processes == 1:
+            self._serial_scanning(to_analyze, debug=debug)
+        else:
             t = time.time()
-            for i, future in enumerate(concurrent.futures.as_completed(todo), start=1):
-                scan_result = future.result()
-                if isinstance(scan_result, Path):
-                    print_warning(f"{scan_result} seems invalid ! Skipping...")
-                    self.data_handler.store_skipped_pic(scan_result)
-                    continue
-                pic_path, pic_data, matrix = scan_result
-                doc_id = pic_data.doc_id
-                page = pic_data.page
-                # Test whether a previous version of the same page exist:
-                # if the same page has been seen twice, this may be problematic,
-                # so call `._keep_previous_version()` to ask user what to do.
-                # if (doc_id, page) in already_seen and self._keep_previous_version(pic_data):
-                #     # If the user answered to skip the current page, just do it.
-                #     continue
-                if (doc_id, page) in self.already_seen:
-                    # There are two versions (at least) of the same document.
-                    # Store it for now, with a new temporary id, and resolve conflict later.
-                    doc_id = self.data_handler.create_new_temporary_id(doc_id, page)
-                self.already_seen.add((doc_id, page))
-
-                # 2) Gather data
-                #    ‾‾‾‾‾‾‾‾‾‾‾
-                name, student_id = self.data_handler.more_infos.get(doc_id, (StudentName(""), StudentId("")))
-                doc_data: DocumentData = self.data.setdefault(
-                    doc_id,
-                    DocumentData(
-                        pages={},
-                        name=name,
-                        student_id=student_id,
-                        score=0,
-                        score_per_question={},
-                    ),
-                )
-                doc_data.pages[page] = pic_data
-
-                # 3) 1st page of the test => retrieve the student name
-                #    ‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾
-
-                if page == 1:
-                    if doc_id in self.data_handler.more_infos:
-                        doc_data.name, doc_data.student_id = self.data_handler.more_infos[doc_id]
-                    else:
-                        doc_data.name = pic_data.name
-
-                # Store work in progress, so we can resume process if something fails...
-
-                print("[", time.time() - t, "]")
-                self.data_handler.store_doc_data(pic_path.parent.name, doc_id, page, matrix)
-                # del matrix, scan_result
-                # gc.collect()
-                # print(f"Page {i} processed.", end="\r")
-                print(time.time() - t)
-                t = time.time()
+            self._parallel_scanning(to_analyze, number_of_processes=number_of_processes, debug=debug)
+            print(time.time() - t)
 
         # gc.collect()
         print_success("Scan successful.")
@@ -281,28 +326,23 @@ class MCQPictureParser:
         # Read checkboxes
         # ---------------------------
         # Test whether each checkbox was checked.
-        self.data_handler.analyze_checkboxes()
+        self.data_handler.checkboxes.analyze_checkboxes()
 
-        # ---------------------------
-        # Resolve detected problems
-        # ---------------------------
-        # Resolve conflicts manually: unknown student ID, ambiguous answer...
+    def solve_conflicts(self):
+        """Resolve conflicts manually: unknown student ID, ambiguous answer..."""
         print("\nAnalyzing collected data:")
         ConflictSolver(self.data_handler).run()
         # TODO: make checkboxes export optional (this is
         #  only useful for debug)
-        self.data_handler.export_checkboxes()
+        self.data_handler.checkboxes.export_checkboxes()
 
-        # ---------------------------
-        # Calculate scores
-        # ---------------------------
-        # Calculate the score, taking care of the chosen mode.
+    def calculate_scores(self):
+        """Calculate the score, taking care of the chosen mode."""
         self.scores_manager.calculate_scores()
         self.scores_manager.print_scores()
 
-        # ---------------------------------------------------
-        # Time to synthesize & store all those informations !
-        # ---------------------------------------------------
+    def generate_documents(self):
+        """Generate all the documents at the end of the process (csv, xlsx and pdf files)."""
         self.scores_manager.generate_csv_file()
         self.scores_manager.generate_xlsx_file()
         cfg_ext = ".ptyx.mcq.config.json"
@@ -311,6 +351,37 @@ class MCQPictureParser:
         xlsx_symlink = Path(cfg_path[: -len(cfg_ext)] + ".scores.xlsx")
         xlsx_symlink.unlink(missing_ok=True)
         xlsx_symlink.symlink_to(self.data_handler.files.xlsx_scores)
-        self.generate_report()
-        self.generate_amended_pdf()
+        self._generate_report()
+        self._generate_amended_pdf()
+
+    def run(
+        self,
+        start: int = 1,
+        end: Union[int, float] = inf,
+        manual_verification: Optional[bool] = None,
+        cores: int = 0,
+        debug: bool = False,
+        reset: bool = False,
+    ) -> None:
+        """Main method: extract pictures, analyze them, calculate scores and generate reports.
+
+        Extract information from pdf, calculate scores and annotate documents
+        to display correct answers.
+
+        If `cores` is 0 or less, cores number is automatically calculated.
+        Set cores to `1` to disable multiprocessing.
+        """
+
+        # Extract information from scanned documents.
+        self.analyze_pages(start=start, end=end, cores=cores, reset=reset, debug=debug)
+
+        # Resolve detected problems.
+        self.solve_conflicts()
+
+        # Calculate scores.
+        self.calculate_scores()
+
+        # Time to synthesize & store all those information!
+        self.generate_documents()
+
         print(f"\n{ANSI_GREEN}Success ! {ANSI_RESET}:)")
