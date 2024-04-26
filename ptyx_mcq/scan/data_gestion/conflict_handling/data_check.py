@@ -171,9 +171,11 @@ class AllDataIssuesFixer:
             position = 0
             print_warning("Conflicts detected.")
             if names_to_review:
-                print_warning(f"Names problems: {len(names_to_review)} documents {tuple(names_to_review)}")
+                print_warning(
+                    f"Names problems on {len(names_to_review)} document(s) {tuple(names_to_review)}."
+                )
             if answers_to_review:
-                print_warning(f"Ambiguous answers: {len(answers_to_review)} page.")
+                print_warning(f"Ambiguous answers on {len(answers_to_review)} page(s).")
             while position < len(names_to_review) + len(answers_to_review):
                 if position < len(names_to_review):
                     doc_id = list(names_to_review)[position]
@@ -207,6 +209,11 @@ class AllDataIssuesFixer:
             # The new entered names might have induced new conflicts.
             names_to_review = self.get_names_to_review()
             answers_to_review = {key: reviewed for key, reviewed in answers_to_review.items() if not reviewed}
+
+
+# --------------------------
+#       Review names
+# ==========================
 
 
 class NamesReviewer:
@@ -408,8 +415,18 @@ class NamesReviewer:
         return name, student_id, action, True
 
 
+# --------------------------
+#      Review answers
+# ==========================
+
+
 class AnswersReviewer:
     """Fix missing names and ambiguous answers issues."""
+
+    ENTER_COMMAND = f"Write {Action.BACK}, {Action.NEXT}, or just press ENTER to review current document's answers:"
+    IS_CORRECT = "Is this correct ? [(y)es/(N)o]"
+    SELECT_QUESTION = "Write a question number, or 0 to escape:"
+    EDIT_ANSWERS = "Add or remove answers (Example: +2 -1 -4 to add answer 2, and remove answers 1 et 4):"
 
     def __init__(self, data_storage: DataHandler):
         self.data_storage = data_storage
@@ -444,13 +461,11 @@ class AnswersReviewer:
         pic_data = self.data[doc_id].pages[page]
         answered = pic_data.answered
         revision_status = pic_data.revision_status
-        print_warning(f"Ambiguous answers for student {self.data[doc_id].name}.")
+        print_warning(f"Ambiguous answers for student {self.data[doc_id].name} (doc {doc_id}, page: {page}).")
         print(
-            f"Commands:\n"
-            f"    - Use {Action.BACK} to go back to previous document."
-            f"    - Use {Action.NEXT} to go directly to next document."
+            f"Tip: write {Action.BACK} to go back to previous document, or {Action.NEXT} to jump directly to next document."
         )
-        match input("Write command, or just press ENTER to edit answers:"):
+        match input(self.ENTER_COMMAND):
             case Action.BACK:
                 return Action.BACK, False
             case Action.NEXT:
@@ -458,9 +473,9 @@ class AnswersReviewer:
 
         while True:
             process = self.display_page_with_detected_answers(doc_id, page)
-            if input("Is this correct ? [(y)es/(N)o]").lower() in ("y", "yes"):
+            if input(self.IS_CORRECT).lower() in ("y", "yes"):
                 break
-            while (q_str := input("Write a question number, or 0 to escape:")) != "0":
+            while (q_str := input(self.SELECT_QUESTION)) != "0":
                 try:
                     q0 = ApparentQuestionNumber(int(q_str))
                     q, _ = apparent2real(q0, None, config, doc_id)
@@ -469,10 +484,7 @@ class AnswersReviewer:
                         raise IndexError(rf"Invalid question number: {q0}")
 
                     checked = answered[q]
-                    a_str = input(
-                        "Add or remove answers "
-                        "(Example: +2 -1 -4 to add answer 2, and remove answers 1 et 4):"
-                    )
+                    a_str = input(self.EDIT_ANSWERS)
                     for val in a_str.split():
                         op, a0 = val[0], ApparentAnswerNumber(int(val[1:]))
                         q, a = apparent2real(q0, a0, config, doc_id)
