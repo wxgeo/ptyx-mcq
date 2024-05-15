@@ -14,7 +14,7 @@ def get_file_or_sysexit(path: Path, *, extension: str) -> Path:
         return get_file_with_extension(path, extension=extension)
     except OSError:
         traceback.print_exc()
-        resolve = f" ({path.resolve()})" if str(path) != path.resolve() else ""
+        resolve = f" ({path.resolve()})" if str(path) != str(path.resolve()) else ""
         print(f"Searching for a '{extension}' file in '{path}'{resolve} failed !")
         print_error(f"No '{extension}' file found.")
         sys.exit(1)

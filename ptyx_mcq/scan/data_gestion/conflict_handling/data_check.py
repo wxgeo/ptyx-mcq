@@ -196,7 +196,7 @@ class AllDataIssuesFixer:
 
             # Apply changes definitively.
             for doc_id in names_to_review:
-                if self.data[doc_id].name == Action.DISCARD:
+                if self.data[doc_id].name == Action.DISCARD.value:
                     doc_data = self.data.pop(doc_id)
                     # For each page of the document, add corresponding picture path
                     # to skipped paths list.
@@ -423,7 +423,9 @@ class NamesReviewer:
 class AnswersReviewer:
     """Fix missing names and ambiguous answers issues."""
 
-    ENTER_COMMAND = f"Write {Action.BACK}, {Action.NEXT}, or just press ENTER to review current document's answers:"
+    ENTER_COMMAND = (
+        f"Write {Action.BACK}, {Action.NEXT}, or just press ENTER to review current document's answers:"
+    )
     IS_CORRECT = "Is this correct ? [(y)es/(N)o]"
     SELECT_QUESTION = "Write a question number, or 0 to escape:"
     EDIT_ANSWERS = "Add or remove answers (Example: +2 -1 -4 to add answer 2, and remove answers 1 et 4):"
@@ -439,7 +441,7 @@ class AnswersReviewer:
         or skip document), and a boolean which indicates if the document as been
         effectively reviewed.
         """
-        if self.data[doc_id].name == "/":
+        if self.data[doc_id].name == Action.DISCARD.value:
             # Skip this document.
             return Action.NEXT, False
         else:
