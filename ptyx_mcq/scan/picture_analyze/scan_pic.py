@@ -417,4 +417,5 @@ def scan_picture(filename: str | Path, config: Configuration, debug=False) -> tu
 
     # Keep matrix separate from other output data, as it is often not wanted
     # when debugging.
+
     return pic_data, m

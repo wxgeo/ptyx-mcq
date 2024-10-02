@@ -83,6 +83,13 @@ class DataChecker:
             except KeyError:
                 print_warning(f"Document {doc_id} not found... Maybe it was discarded previously?")
 
+        # The students name to ID mapping may have been updated
+        # (using `mcq fix` for example).
+        # Let's try again to get names from ID.
+        for doc_id, doc_data in self.data.items():
+            if doc_data.name == "":
+                doc_data.name = self.data_storage.config.students_ids.get(doc_data.student_id, "")
+
         print("Searching for unnamed documents...")
         unnamed_docs = self.get_unnamed_docs()
         print(f"{len(unnamed_docs)} unnamed document(s) found." if unnamed_docs else "OK")
@@ -93,7 +100,7 @@ class DataChecker:
 
         print("Searching for ambiguous answers...")
         ambiguous_answers = self.find_ambiguous_answers()
-        print(f"{len(ambiguous_answers)} page(s) to verify." if ambiguous_answers else "Ok")
+        print(f"{len(ambiguous_answers)} page(s) to verify." if ambiguous_answers else "OK")
 
         return DataCheckResult(
             unnamed_docs=unnamed_docs, duplicate_names=duplicate_names, ambiguous_answers=ambiguous_answers

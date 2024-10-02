@@ -200,6 +200,7 @@ class MCQPictureParser:
         return to_analyze
 
     def _handle_scan_result(self, scan_result: tuple[Path, PicData, BytesIO] | Path) -> None:
+        """Store document retrieved data."""
         if isinstance(scan_result, Path):
             print_warning(f"{scan_result} seems invalid ! Skipping...")
             self.data_handler.store_skipped_pic(scan_result)
@@ -242,8 +243,9 @@ class MCQPictureParser:
                 doc_data.name, doc_data.student_id = self.data_handler.more_infos[doc_id]
             else:
                 doc_data.name = pic_data.name
+                doc_data.student_id = pic_data.student_id
 
-        # Store work in progress, so we can resume process if something fails...
+                # Store work in progress, so we can resume process if something fails...
 
         # print("[", time.time() - t, "]")
         self.data_handler.store_doc_data(pic_path.parent.name, doc_id, page, bytes_io)
@@ -251,7 +253,7 @@ class MCQPictureParser:
         # t = time.time()
 
     def _serial_scanning(self, to_analyze: list[Path], debug=False):
-        """Scan all documents using only one process.
+        """Scan all documents sequentially using only one process.
 
         This is usually slower, but easier to debug.
         """
@@ -264,9 +266,10 @@ class MCQPictureParser:
             # print(f"Page {i}/{len(to_analyze)} processed.", end="\r")
 
     def _parallel_scanning(self, to_analyze: list[Path], number_of_processes: int, debug=False):
-        """Scan all documents using several processes.
+        """Scan all documents using several processes running in parallel.
 
-        This is default behaviour on most platform, since it takes advantage of multi-cores computers.
+        This is default behaviour on most platform, since it takes advantage of multi-cores computers,
+        though it is harder to debug.
         """
         with concurrent.futures.ProcessPoolExecutor(
             max_workers=number_of_processes, mp_context=multiprocessing.get_context("spawn")
@@ -334,7 +337,9 @@ class MCQPictureParser:
         ConflictSolver(self.data_handler).run()
         # TODO: make checkboxes export optional (this is
         #  only useful for debug)
+        print("\nExporting checkboxes...", end=" ")
         self.data_handler.checkboxes.export_checkboxes()
+        print("done.")
 
     def calculate_scores(self):
         """Calculate the score, taking care of the chosen mode."""
