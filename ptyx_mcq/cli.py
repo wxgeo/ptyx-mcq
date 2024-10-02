@@ -8,6 +8,7 @@ ptyx MCQ Command Line Interface
 """
 import os
 import shutil
+import subprocess
 import sys
 import re
 import traceback
@@ -211,10 +212,24 @@ def main(args: Optional[list] = None) -> None:
     fix_parser.set_defaults(func=fix)
 
     # ------------------------------------------
+    #     $ mcq see
+    # ------------------------------------------
+    # create the parser for the "see" command
+    see_parser = add_parser("see", help="Show the pdf corresponding to the given student.")
+    see_parser.add_argument(  # type: ignore[attr-defined]
+        "name",
+        nargs="?",
+        metavar="NAME",
+        type=str,
+        help='The name of the student, or part of it. Wildcard may be used, like "J*hn*" (use quotes then).',
+    )
+    see_parser.set_defaults(func=see)
+
+    # ------------------------------------------
     #     $ mcq update
     # ------------------------------------------
     # create the parser for the "update" command
-    update_parser = add_parser("update", help="Update included files.")
+    update_parser = add_parser("update", help="Update the list of included files.")
     update_parser.add_argument(  # type: ignore[attr-defined]
         "path", nargs="?", metavar="PATH", type=Path, default=".", help="Path of the .ptyx file to update."
     ).completer = FilesCompleter("ptyx")
@@ -286,7 +301,7 @@ def main(args: Optional[list] = None) -> None:
         parser.print_help()
         return
 
-    if func not in (doc_strategies, doc_config):
+    if func not in (doc_strategies, doc_config, see):
         # Make compilation more reproducible, by disabling PYTHONHASHSEED.
         if not os.getenv("PYTHONHASHSEED"):
             os.environ["PYTHONHASHSEED"] = "0"
@@ -458,6 +473,29 @@ def clear(path: Path) -> None:
             print(f"Warning: {e}")
             print(f"Info: '{filepath}' not found...")
     print_success("Directory cleared.")
+
+
+def see(name: str) -> None:
+    """Display the pdf corresponding to the given student."""
+    if "*" not in name:
+        name = f"*{name}*"
+    if not name.endswith(".pdf"):
+        name += ".pdf"
+    directory = Path.cwd() / ".scan/pdf"
+    if not directory.is_dir():
+        print_error("No scan results found, run `mcq scan .` first or change directory.")
+        sys.exit(1)
+    results = list(directory.glob(name))
+    # TODO: use `case_sensitive=False` once python 11 support is dropped.
+    if len(results) > 1:
+        print_warning("Several matching files:")
+        for path in results:
+            print_warning(f"  - {path.stem}")
+    elif len(results) == 0:
+        print_warning("No matching file.")
+    else:
+        print_info(f"Displaying {results[0]}")
+        subprocess.run(["xdg-open", str(results[0])])
 
 
 def fix(path: Path) -> None:
