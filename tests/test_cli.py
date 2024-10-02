@@ -260,9 +260,10 @@ def test_cli(tmp_path: Path) -> None:
     assert set(students_scores) == set(STUDENTS.values()), repr(students_scores)
 
     # ---------------------
-    # Test `mcq strategies`
+    # Test `mcq doc`
     # ---------------------
-    main(["strategies"])
+    main(["doc", "strategies"])
+    main(["doc", "config"])
 
     # ----------------
     # Test `mcq clear`

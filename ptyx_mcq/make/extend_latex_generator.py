@@ -1,7 +1,4 @@
 #!/usr/bin/env python3
-import re
-from dataclasses import dataclass
-
 # --------------------------------------
 #               Compiler
 #    Generate all MCQ versions
@@ -24,9 +21,11 @@ from dataclasses import dataclass
 #    along with this program; if not, write to the Free Software
 #    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
-
+import re
+from dataclasses import dataclass
+from enum import StrEnum, auto
 from pathlib import Path
-from typing import TypedDict, Optional, Set, List, Tuple, Dict, Callable, Literal
+from typing import TypedDict, Optional, Set, List, Tuple, Dict, Callable, Type
 
 from ptyx.errors import PtyxRuntimeError
 from ptyx.printers import sympy2latex
@@ -53,18 +52,80 @@ from .header import (
     IdentifiantError,
 )
 
-# Configuration keys used in the header of the .ptyx file.
-HeaderKeys = Literal["names", "students_ids", "sty", "id_format"]
 
-SCORE_CONFIG_KEYS = {
-    "mode": str,
-    "weight": float,
-    "correct": float,
-    "incorrect": float,
-    "skipped": float,
-    "floor": float,
-    "ceil": float,
+class HeaderConfigKeys(StrEnum):
+    """Configuration keys that can be used in the header of a .ptyx file.
+
+    - ceil:
+        Maximal score per question
+        Example: 1
+    - correct:
+        Score for a correctly answered question.
+        Example: 1
+    - default_score:
+        Default value for missing student.
+        This may be either a number (typically `0`) or a string (like `missing`).
+        Example: X
+    - floor:
+        Minimal score per question.
+        Example: 0
+    - id_format:
+        Currently, the only supported format is `<N> digits`, where <N> can be any positive integer.
+        Example: 8 digits
+    - incorrect:
+        Score for an incorrectly answered question.
+        Example: -2
+    - mode:
+        An evaluation strategy, like `some` or `all`.
+        To see a description of all available strategies, execute `mcq doc strategies`.
+        Example: some
+    - names:
+        The path of a CSV files containing only a student name per line.
+        Example: ~/path/to/my/file.csv
+    - skipped:
+        Score for unanswered questions.
+        Example: -0,5
+    - students_ids:
+        The path of a CSV files containing two columns:
+        the 1st one for the students IDs, and the 2nd one for their names.
+        Example: ~/path/to/my/file.csv
+    - sty:
+        The path to a `.sty` LaTeX file, enabling to customize the rendering of the MCQ.
+    - weight:
+        The weight of each question.
+        Example: 2
+    """
+
+    ceil = auto()
+    correct = auto()
+    default_score = auto()
+    floor = auto()
+    id_format = auto()
+    incorrect = auto()
+    mode = auto()
+    names = auto()
+    skipped = auto()
+    students_ids = auto()
+    sty = auto()
+    weight = auto()
+
+
+# Test that the header configuration keys are fields of `config_parser.Configuration`.
+# assert set(HeaderConfigKeys.__members__).issubset(field.name for field in fields(Configuration))
+
+SCORE_CONFIG_KEYS_TYPES: dict[HeaderConfigKeys, Type] = {
+    HeaderConfigKeys.mode: str,
+    HeaderConfigKeys.weight: float,
+    HeaderConfigKeys.correct: float,
+    HeaderConfigKeys.incorrect: float,
+    HeaderConfigKeys.skipped: float,
+    HeaderConfigKeys.floor: float,
+    HeaderConfigKeys.ceil: float,
 }
+
+
+class InvalidConfiguration(RuntimeError):
+    """Error raised when the configuration is incorrect in the ptyx file header."""
 
 
 class MCQCache(TypedDict):
@@ -566,8 +627,8 @@ class MCQLatexGenerator(LatexGenerator):
                     case key, val:
                         key = key.strip()
                         val = val.strip()
-                        if key in SCORE_CONFIG_KEYS:
-                            val_type = SCORE_CONFIG_KEYS[key]
+                        if key in SCORE_CONFIG_KEYS_TYPES:
+                            val_type = SCORE_CONFIG_KEYS_TYPES[key]
                             getattr(self.mcq_data, key)[self.mcq_question_number] = val_type(val)
                         else:
                             raise NameError(f"Unknown key in #QUESTION_CONFIG: {key!r}.")
@@ -593,38 +654,44 @@ class MCQLatexGenerator(LatexGenerator):
         return "\n".join(r"\usepackage" + package for package in packages)
 
     @staticmethod
-    def _extract_config_from_header(text: str) -> dict[str, str]:
+    def _extract_config_from_header(text: str) -> dict[HeaderConfigKeys, str]:
         def format_key(key_: str) -> str:
             return key_.strip().replace(" ", "_").lower()
 
         # {alias: standard key name}
-        aliases: Dict[str, HeaderKeys] = {
-            "name": "names",
-            "student": "names",
-            "students": "names",
-            "id": "students_ids",
-            "ids": "students_ids",
-            "student_ids": "students_ids",
-            "student_id": "students_ids",
-            "students_id": "students_ids",
-            "package": "sty",
-            "packages": "sty",
-            "id_formats": "id_format",
-            "ids_formats": "id_format",
-            "ids_format": "id_format",
+        aliases: Dict[str, HeaderConfigKeys] = {
+            "name": HeaderConfigKeys.names,
+            "student": HeaderConfigKeys.names,
+            "students": HeaderConfigKeys.names,
+            "id": HeaderConfigKeys.students_ids,
+            "ids": HeaderConfigKeys.students_ids,
+            "student_ids": HeaderConfigKeys.students_ids,
+            "student_id": HeaderConfigKeys.students_ids,
+            "students_id": HeaderConfigKeys.students_ids,
+            "package": HeaderConfigKeys.sty,
+            "packages": HeaderConfigKeys.sty,
+            "id_formats": HeaderConfigKeys.id_format,
+            "ids_formats": HeaderConfigKeys.id_format,
+            "ids_format": HeaderConfigKeys.id_format,
         }
         # Read config: a dictionary is generated from the `key = value` entries.
-        config: Dict[str, str] = {}
+        config: Dict[HeaderConfigKeys, str] = {}
         for line in text.split("\n"):
             line = line.strip()
             if "=" in line:
-                key, val = line.split("=", maxsplit=1)
+                raw_key, val = line.split("=", maxsplit=1)
                 # Normalize the key.
-                key = format_key(key)
-                key = aliases.get(key, key)
-                config[key] = val.strip()
+                key = format_key(raw_key)
+                key = aliases.get(raw_key, key)
+                try:
+                    config[getattr(HeaderConfigKeys, key)] = val.strip()
+                except AttributeError:
+                    raise InvalidConfiguration(
+                        f"Invalid key name in configuration: {key!r}."
+                        " Valid key names: " + ", ".join(HeaderConfigKeys.__members__) + "."
+                    )
             elif line != "":
-                raise RuntimeError(f"Invalid format in configuration: {line!r}.")
+                raise InvalidConfiguration(f"Invalid format in configuration: {line!r}.")
         return config
 
     def _parse_QCM_FOOTER_tag(self, node: Node) -> None:
@@ -650,6 +717,8 @@ class MCQLatexGenerator(LatexGenerator):
         ---------------------------
         # Custom lines to include at the end of the LaTeX preamble.
         ===========================
+
+        The list of the existing configuration keys can be found in `HeaderConfigKeys`.
         """
 
         sty = ""
@@ -664,17 +733,18 @@ class MCQLatexGenerator(LatexGenerator):
         elif check_id_or_name is None:
             code = ""
 
+            # Type of config keys: any valid `config_parser.Configuration` field name.
             config = self._extract_config_from_header(node.arg(0))
             # After the `key = value` entries, the user may append some raw LaTeX code.
             raw_latex = node.arg(1)
 
-            for key, val_type in SCORE_CONFIG_KEYS.items():
-                if key in config:
-                    getattr(self.mcq_data, key)["default"] = val_type(config.pop(key))
+            for score_key, val_type in SCORE_CONFIG_KEYS_TYPES.items():
+                if score_key in config:
+                    getattr(self.mcq_data, score_key)["default"] = val_type(config.pop(score_key))
 
             if "names" in config:
                 # the value must be the path of a CSV file.
-                csv = config.pop("names")
+                csv = config.pop(HeaderConfigKeys.names)
                 if not self.WITH_ANSWERS:
                     students = extract_students_name_from_csv(Path(csv), self.compiler.file_path)
                     code = students_checkboxes(students)
@@ -682,8 +752,8 @@ class MCQLatexGenerator(LatexGenerator):
 
             if "students_ids" in config or "id_format" in config:
                 # config['ids'] must be the path of a CSV file.
-                csv = config.pop("students_ids", "")
-                id_format = config.pop("id_format", "")
+                csv = config.pop(HeaderConfigKeys.students_ids, "")
+                id_format = config.pop(HeaderConfigKeys.id_format, "")
 
                 if not self.WITH_ANSWERS:
                     if csv:
@@ -702,12 +772,13 @@ class MCQLatexGenerator(LatexGenerator):
                     code = student_id_table(*data["id_format"])
 
             if "sty" in config:
-                sty = config.pop("sty")
+                sty = config.pop(HeaderConfigKeys.sty)
 
             if "default_score" in config:
-                self.mcq_data.default_score = config.pop("default_score")
+                self.mcq_data.default_score = config.pop(HeaderConfigKeys.default_score)
 
             # Config should be empty by now !
+            # Warning for old versions of ptyx-mcq:
             for key in config:
                 if key == "scores":
                     right, wrong, skipped = config[key].split()
@@ -728,6 +799,7 @@ class MCQLatexGenerator(LatexGenerator):
 
             \tikz{\draw[dotted] ([xshift=2cm]current page.west) -- ([xshift=-1cm]current page.east);}
             """
+        assert check_id_or_name is not None
 
         header = self.mcq_cache["header"]
         if header is None:

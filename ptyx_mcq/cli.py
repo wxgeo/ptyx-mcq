@@ -9,6 +9,7 @@ ptyx MCQ Command Line Interface
 import os
 import shutil
 import sys
+import re
 import traceback
 from argparse import ArgumentParser, Action, Namespace
 from os import unlink
@@ -56,7 +57,7 @@ def main(args: Optional[list] = None) -> None:
     add_parser = subparsers.add_parser
 
     # ------------------------------------------
-    #     $ mcq  new
+    #     $ mcq new
     # ------------------------------------------
     # create the parser for the "new" command
     new_parser = add_parser("new", help="Create an empty ptyx file.")
@@ -90,7 +91,7 @@ def main(args: Optional[list] = None) -> None:
     new_parser.set_defaults(func=new)
 
     # ------------------------------------------
-    #     $ mcq  make
+    #     $ mcq make
     # ------------------------------------------
     # create the parser for the "make" command
     make_parser = add_parser("make", help="Generate pdf file.")
@@ -131,7 +132,7 @@ def main(args: Optional[list] = None) -> None:
     make_parser.set_defaults(func=make)
 
     # ------------------------------------------
-    #     $ mcq  scan
+    #     $ mcq scan
     # ------------------------------------------
     # create the parser for the "scan" command
     scan_parser = add_parser("scan", help="Generate scores from scanned documents.")
@@ -187,7 +188,7 @@ def main(args: Optional[list] = None) -> None:
     scan_parser.set_defaults(func=scan)
 
     # ------------------------------------------
-    #     $ mcq  clear
+    #     $ mcq clear
     # ------------------------------------------
     # create the parser for the "clear" command
     clear_parser = add_parser("clear", help="Remove every MCQ data but the ptyx file.")
@@ -195,7 +196,7 @@ def main(args: Optional[list] = None) -> None:
     clear_parser.set_defaults(func=clear)
 
     # ------------------------------------------
-    #     $ mcq  fix
+    #     $ mcq fix
     # ------------------------------------------
     # create the parser for the "fix" command
     fix_parser = add_parser("fix", help="Update mcq configuration file.")
@@ -210,7 +211,7 @@ def main(args: Optional[list] = None) -> None:
     fix_parser.set_defaults(func=fix)
 
     # ------------------------------------------
-    #     $ mcq  update
+    #     $ mcq update
     # ------------------------------------------
     # create the parser for the "update" command
     update_parser = add_parser("update", help="Update included files.")
@@ -232,7 +233,7 @@ def main(args: Optional[list] = None) -> None:
     update_parser.set_defaults(func=update)
 
     # ------------------------------------------
-    #     $ mcq  create-template
+    #     $ mcq create-template
     # ------------------------------------------
     # create the parser for the "create-template" command
     create_template_parser = add_parser("create-template", help="Create a customisable user template.")
@@ -247,14 +248,20 @@ def main(args: Optional[list] = None) -> None:
     create_template_parser.set_defaults(func=create_template)
 
     # ------------------------------------------
-    #     $ mcq  strategies
+    #     $ mcq doc
     # ------------------------------------------
-    # create the parser for the "strategies" command
-    strategies_parser = add_parser("strategies", help="List available evaluation strategies.")
-    strategies_parser.set_defaults(func=strategies)
+    # create the parser for the "doc" command
+    doc_parser = add_parser(
+        "doc", help="Display information about available options and evaluation strategies."
+    )
+    add_doc_parser = doc_parser.add_subparsers().add_parser
+    strategies_parser = add_doc_parser("strategies", help="Document available evaluation strategies.")
+    strategies_parser.set_defaults(func=doc_strategies)
+    config_parser = add_doc_parser("config", help="Document ptyx files configuration options.")
+    config_parser.set_defaults(func=doc_config)
 
     # ------------------------------------------
-    #     $ mcq  add-autocompletion
+    #     $ mcq add-autocompletion
     # ------------------------------------------
     # create the parser for the "add-autocompletion" command
     install_shell_completion_parser = add_parser(
@@ -279,13 +286,14 @@ def main(args: Optional[list] = None) -> None:
         parser.print_help()
         return
 
-    # Make compilation more reproducible, by disabling PYTHONHASHSEED.
-    if not os.getenv("PYTHONHASHSEED"):
-        os.environ["PYTHONHASHSEED"] = "0"
-        os.execv(sys.executable, [sys.executable] + sys.argv)
-    else:
-        print("PYTHONHASHSEED:", os.getenv("PYTHONHASHSEED"))
-    assert os.getenv("PYTHONHASHSEED")
+    if func not in (doc_strategies, doc_config):
+        # Make compilation more reproducible, by disabling PYTHONHASHSEED.
+        if not os.getenv("PYTHONHASHSEED"):
+            os.environ["PYTHONHASHSEED"] = "0"
+            os.execv(sys.executable, [sys.executable] + sys.argv)
+        else:
+            print("PYTHONHASHSEED:", os.getenv("PYTHONHASHSEED"))
+        assert os.getenv("PYTHONHASHSEED")
 
     func(**kwargs)
 
@@ -515,22 +523,56 @@ def update(path: Path, force=False, clean=False) -> None:
     print_success("The list of included files was successfully updated.")
 
 
-def strategies() -> None:
-    """Display all evaluation modes with a description."""
-    from ptyx_mcq.scan.score_management.evaluation_strategies import EvaluationStrategies
+def _document_options(title: str, options_info: dict[str, str]) -> None:
+    """Helper function to display all the available options for a given category in the terminal.
 
-    strategies_list = EvaluationStrategies.get_all_strategies()
-    print(f"\n{ANSI_REVERSE_PURPLE}[ Available strategies ]{ANSI_RESET}")
-    print(", ".join(strategies_list))
+    After listing all the options, each option will be described.
+    """
+    # Display options list.
+    print(f"\n{ANSI_REVERSE_PURPLE}[ {title} ]{ANSI_RESET}")
+    print(", ".join(options_info))
     print()
+    # Describe each option.
     print(f"\n{ANSI_REVERSE_PURPLE}[ Details ]{ANSI_RESET}")
-    for name in strategies_list:
-        print(f"\n {ANSI_BLUE}╭───╴{ANSI_RESET}{ANSI_REVERSE_BLUE} {name} {ANSI_RESET} ")
+    for option_name, option_doc in options_info.items():
+        print(f"\n {ANSI_BLUE}╭───╴{ANSI_RESET}{ANSI_REVERSE_BLUE} {option_name} {ANSI_RESET} ")
         print(f" {ANSI_BLUE}│{ANSI_RESET} ")
-        for line in getattr(EvaluationStrategies, name).__doc__.strip().split("\n"):
+        for line in option_doc.split("\n"):
             print(f" {ANSI_BLUE}│{ANSI_RESET} " + line.strip())
         print(f" {ANSI_BLUE}│{ANSI_RESET} ")
         print(f" {ANSI_BLUE}╰───╴{ANSI_RESET}")
+
+
+def doc_strategies() -> None:
+    """Display all evaluation modes with a description."""
+    from ptyx_mcq.scan.score_management.evaluation_strategies import EvaluationStrategies
+
+    strategies = EvaluationStrategies.get_all_strategies()
+    _document_options(
+        title="Available strategies",
+        options_info={name: getattr(EvaluationStrategies, name).__doc__.strip() for name in strategies},
+    )
+
+
+def doc_config() -> None:
+    """Display all ptyx files configuration keys with a description."""
+    from ptyx_mcq.make.extend_latex_generator import HeaderConfigKeys
+
+    keys = HeaderConfigKeys.__members__
+    current_key: str | None = None
+    info: dict[str, list[str]] = {}
+    for line in HeaderConfigKeys.__doc__.split("\n"):  # type: ignore
+        if match := re.match(" {4}- (\\w+):", line):
+            current_key = match.group(1)
+            if current_key not in keys:
+                raise RuntimeError(f"Unknown option: {current_key!r}")
+            info[current_key] = []
+        elif current_key is not None:
+            info[current_key].append(line.strip())
+
+    _document_options(
+        title="Ptyx files configuration options", options_info={key: "\n".join(info[key]) for key in info}
+    )
 
 
 def create_template(name: str = "default") -> None:
