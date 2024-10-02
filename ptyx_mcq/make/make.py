@@ -21,9 +21,9 @@ from ptyx_mcq.make.exercises_parsing import wrap_exercise
 DEFAULT_PTYX_MCQ_COMPILATION_OPTIONS = CompilationOptions(same_number_of_pages_compact=True, compress=True)
 
 
-def generate_config_file(_compiler: Compiler) -> None:
-    mcq_data: Configuration = _compiler.latex_generator.mcq_data
-    file_path = _compiler.file_path
+def generate_config_file(compiler: Compiler) -> None:
+    mcq_data: Configuration = compiler.latex_generator.mcq_data  # type: ignore
+    file_path = compiler.file_path
     assert file_path is not None
     folder = file_path.parent
     name = file_path.stem

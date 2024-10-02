@@ -228,7 +228,7 @@ def test_unsafe_update(tmp_path):
     # Update is unsafe.
     with pytest.raises(UnsafeUpdate) as exc_info:
         update_file(ptyx_path)
-        assert exc_info.value == f"Update of {tmp_path}/new_include_syntax.ptyx does not seem safe."
+    assert exc_info.value.args[0] == f"Update of {tmp_path}/new_include_syntax.ptyx does not seem safe."
 
     # But we can force it.
     update_file(ptyx_path, force=True)

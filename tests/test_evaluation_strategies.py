@@ -1,3 +1,5 @@
+# mypy: disable-error-code = "arg-type"
+
 import random
 
 from ptyx_mcq.scan.score_management.evaluation_strategies import (

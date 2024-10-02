@@ -100,7 +100,7 @@ def test_MCQ_shuffling(tmp_path):
         version = question.children[0]
         assert isinstance(version, Node)
         assert version.name == "VERSION"
-        question_text = version.children[1].strip()
+        question_text = version.children[1].strip()  # type: ignore
         qlist.append(question_text.split()[0])
         if "must follow" in question_text:
             assert question.name == "CONSECUTIVE_QUESTION"

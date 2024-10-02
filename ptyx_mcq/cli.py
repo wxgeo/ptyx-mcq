@@ -10,7 +10,7 @@ import os
 import shutil
 import sys
 import traceback
-from argparse import ArgumentParser
+from argparse import ArgumentParser, Action, Namespace
 from os import unlink
 from pathlib import Path
 from typing import Optional, Literal, Iterable, TYPE_CHECKING
@@ -40,7 +40,9 @@ if TYPE_CHECKING:
 
 
 class TemplatesCompleter(argcomplete.completers.BaseCompleter):
-    def __call__(self, **kwargs) -> Iterable[str]:
+    def __call__(  # type: ignore[override]
+        self, *, prefix: str, action: Action, parser: ArgumentParser, parsed_args: Namespace
+    ) -> Iterable[str]:
         return ["original"] + [
             template.name for template in _get_user_templates_path().glob("*") if template.is_dir()
         ]
@@ -468,7 +470,7 @@ def fix(path: Path) -> None:
     for doc_id in config.ordering:
         compiler.get_latex(PTYX_NUM=doc_id)
     # Update configuration
-    data: Configuration = compiler.latex_generator.mcq_data
+    data: Configuration = compiler.latex_generator.mcq_data  # type: ignore
     # Test compatibility of `data` with `config`:
     # The number of questions and their ordering should not have changed,
     # the same holds for the answers (but their labelling as correct

@@ -26,7 +26,7 @@ from dataclasses import dataclass
 
 
 from pathlib import Path
-from typing import TypedDict, Optional, Set, List, Tuple, Dict, Callable
+from typing import TypedDict, Optional, Set, List, Tuple, Dict, Callable, Literal
 
 from ptyx.errors import PtyxRuntimeError
 from ptyx.printers import sympy2latex
@@ -53,6 +53,8 @@ from .header import (
     IdentifiantError,
 )
 
+# Configuration keys used in the header of the .ptyx file.
+HeaderKeys = Literal["names", "students_ids", "sty", "id_format"]
 
 SCORE_CONFIG_KEYS = {
     "mode": str,
@@ -596,7 +598,7 @@ class MCQLatexGenerator(LatexGenerator):
             return key_.strip().replace(" ", "_").lower()
 
         # {alias: standard key name}
-        alias = {
+        aliases: Dict[str, HeaderKeys] = {
             "name": "names",
             "student": "names",
             "students": "names",
@@ -619,7 +621,7 @@ class MCQLatexGenerator(LatexGenerator):
                 key, val = line.split("=", maxsplit=1)
                 # Normalize the key.
                 key = format_key(key)
-                key = alias.get(key, key)
+                key = aliases.get(key, key)
                 config[key] = val.strip()
             elif line != "":
                 raise RuntimeError(f"Invalid format in configuration: {line!r}.")

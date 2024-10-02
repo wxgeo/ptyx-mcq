@@ -73,7 +73,8 @@ def extended_literal_eval(node_or_string, names: dict = None):
             isinstance(node, Call)
             and isinstance(node.func, Name)
             and node.func.id == "set"
-            and node.args == node.keywords == []
+            and node.args == []
+            and node.keywords == []
         ):
             return set()
         elif isinstance(node, Call) and isinstance(node.func, Name) and node.func.id in names:
