@@ -17,13 +17,21 @@ class ProcessInterrupted(BaseException):
     """Process was aborted by user."""
 
 
-def get_file_or_sysexit(path: Path, *, extension: str) -> Path:
-    """Get the path of the ptyx file corresponding to the given `path`.
+def is_ptyx_file(path: Path) -> bool:
+    """Test whether the file looks like a pTyX file."""
+    if not path.is_file():
+        return False
+    with open(path) as f:
+        return "#LOAD{mcq}" in f.read(1000)
+
+
+def get_file_or_sysexit(path: Path, *, extension: str, autodetect_ptyx_files=True) -> Path:
+    """Get the path of the file corresponding to the given `path`, with given extension.
 
     If the file is not found, exit calling `sys.exit(1)`.
     """
     try:
-        return get_file_with_extension(path, extension=extension)
+        return get_file_with_extension(path, extension=extension, autodetect_ptyx_files=autodetect_ptyx_files)
     except OSError:
         traceback.print_exc()
         resolve = f" ({path.resolve()})" if str(path) != str(path.resolve()) else ""
@@ -32,17 +40,21 @@ def get_file_or_sysexit(path: Path, *, extension: str) -> Path:
         raise FatalError
 
 
-def get_file_with_extension(path: Path, *, extension) -> Path:
+def get_file_with_extension(path: Path, *, extension, autodetect_ptyx_files=True) -> Path:
     """Get the path of the ptyx file corresponding to the given `path`.
 
     If `path` is already the path of a ptyx file, just return `path` unchanged.
     Else, `path` must be a directory which contains a single ptyx file, and the path
     of this ptyx file is returned.
 
+
+
     Raise `FileNotFoundError` if `path` is neither a directory nor a ptyx file, or if `path`
     is a directory but contains no ptyx file or several ptyx files.
     """
     path = path.expanduser().resolve()
+    if autodetect_ptyx_files and extension == ".ptyx" and is_ptyx_file(path):
+        return path
     if path.suffix == extension:
         if not path.is_file():
             raise FileNotFoundError(f"File '{path}' not found.")

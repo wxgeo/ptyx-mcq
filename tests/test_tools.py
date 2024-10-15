@@ -1,4 +1,6 @@
 from ptyx_mcq.tools.extend_literal_eval import extended_literal_eval
+from ptyx_mcq.tools.io_tools import is_ptyx_file
+from .toolbox import TEST_DIR
 
 
 def test_extend_literal_eval():
@@ -12,3 +14,8 @@ def test_extend_literal_eval():
     assert type(a) is A
     assert a == A([1, 2, float("inf")])
     assert not (a == [1, 2, float("inf")])  # Do not test with !=, since it is not reimplemented.
+
+
+def test_is_ptyx_file():
+    assert is_ptyx_file(TEST_DIR / "data/ptyx-files/minimal-working-example/minimal-working-example.ptyx")
+    assert not is_ptyx_file(TEST_DIR / "data/ptyx-files/minimal-working-example/minimal-working-example.tex")
