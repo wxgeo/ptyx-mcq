@@ -33,7 +33,7 @@ from ptyx.shell import (
 )
 
 from ptyx_mcq.tools.config_parser import Configuration
-from ptyx_mcq.tools.io_tools import get_file_or_sysexit
+from ptyx_mcq.tools.io_tools import get_file_or_sysexit, FatalError
 
 if TYPE_CHECKING:
     # Import `MCQPictureParser` ONLY when type checking!
@@ -310,7 +310,10 @@ def main(args: Optional[list] = None) -> None:
             print("PYTHONHASHSEED:", os.getenv("PYTHONHASHSEED"))
         assert os.getenv("PYTHONHASHSEED")
 
-    func(**kwargs)
+    try:
+        func(**kwargs)
+    except FatalError:
+        sys.exit(1)
 
 
 def make(

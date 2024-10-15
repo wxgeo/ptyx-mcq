@@ -5,6 +5,15 @@ from pathlib import Path
 from ptyx.shell import print_error
 
 
+class FatalError(RuntimeError):
+    """Request main script to exit on current error.
+
+    Not that ptyx-mcq main script won't display any traceback for this error.
+    The rational is that any traceback should have been printed before, and
+    then a meaningful error summary, which should be the last printed information.
+    """
+
+
 def get_file_or_sysexit(path: Path, *, extension: str) -> Path:
     """Get the path of the ptyx file corresponding to the given `path`.
 
@@ -17,7 +26,7 @@ def get_file_or_sysexit(path: Path, *, extension: str) -> Path:
         resolve = f" ({path.resolve()})" if str(path) != str(path.resolve()) else ""
         print(f"Searching for a '{extension}' file in '{path}'{resolve} failed !")
         print_error(f"No '{extension}' file found.")
-        sys.exit(1)
+        raise FatalError
 
 
 def get_file_with_extension(path: Path, *, extension) -> Path:
