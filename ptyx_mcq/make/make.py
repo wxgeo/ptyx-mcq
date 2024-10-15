@@ -1,7 +1,6 @@
 """
 Generate pdf file from raw mcq file.
 """
-import sys
 import tempfile
 from functools import partial
 from pathlib import Path
@@ -14,7 +13,7 @@ from ptyx.shell import print_error, print_info
 from ptyx.utilities import force_hardlink_to
 
 from ptyx_mcq.scan.data_gestion.document_data import Page
-from ptyx_mcq.tools.io_tools import get_file_or_sysexit
+from ptyx_mcq.tools.io_tools import get_file_or_sysexit, FatalError
 from ptyx_mcq.tools.config_parser import Configuration
 from ptyx_mcq.make.exercises_parsing import wrap_exercise
 
@@ -109,7 +108,7 @@ def make_command(
         if input("A previous compiled version exist, overwrite it (y∕N) ?") not in ("y", "Y"):
             print_info("You may use `mcq scan --force` or `mcq scan -f` to force recompilation.")
             print_error("Conflict with a previous file, no file was generated.")
-            sys.exit(1)
+            raise FatalError
     print(f"Reading {ptyx_filename}...")
     compiler = Compiler(path=ptyx_filename)
 

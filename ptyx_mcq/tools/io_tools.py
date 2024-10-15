@@ -1,17 +1,20 @@
-import sys
 import traceback
 from pathlib import Path
 
 from ptyx.shell import print_error
 
 
-class FatalError(RuntimeError):
+class FatalError(BaseException):
     """Request main script to exit on current error.
 
     Not that ptyx-mcq main script won't display any traceback for this error.
     The rational is that any traceback should have been printed before, and
     then a meaningful error summary, which should be the last printed information.
     """
+
+
+class ProcessInterrupted(BaseException):
+    """Process was aborted by user."""
 
 
 def get_file_or_sysexit(path: Path, *, extension: str) -> Path:

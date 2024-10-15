@@ -60,14 +60,13 @@ One may include some PTYX code of course.
 
     """
 import re
-import sys
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from ptyx.extensions import CompilerExtension
     from ptyx.latex_generator import Compiler
 
-from ptyx_mcq.tools.io_tools import print_error
+from ptyx_mcq.tools.io_tools import print_error, FatalError
 
 
 def extend_compiler() -> "CompilerExtension":
@@ -161,7 +160,7 @@ def main(text: str, compiler: "Compiler") -> str:
             f"Hint: command `mcq update {getattr(compiler.file_path, 'name', '<PTYX-FILE-PATH>')}` "
             "may fix it."
         )
-        sys.exit(1)
+        raise FatalError
     additional_header_lines = autodetect_smallgraphlib(text)
 
     # Call extended_python extension.

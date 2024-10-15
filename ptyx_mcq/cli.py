@@ -33,7 +33,7 @@ from ptyx.shell import (
 )
 
 from ptyx_mcq.tools.config_parser import Configuration
-from ptyx_mcq.tools.io_tools import get_file_or_sysexit, FatalError
+from ptyx_mcq.tools.io_tools import get_file_or_sysexit, FatalError, ProcessInterrupted
 
 if TYPE_CHECKING:
     # Import `MCQPictureParser` ONLY when type checking!
@@ -216,7 +216,7 @@ def main(args: Optional[list] = None) -> None:
     # ------------------------------------------
     # create the parser for the "see" command
     see_parser = add_parser("see", help="Show the pdf corresponding to the given student.")
-    see_parser.add_argument(  # type: ignore[attr-defined]
+    see_parser.add_argument(
         "name",
         nargs="?",
         metavar="NAME",
@@ -312,6 +312,8 @@ def main(args: Optional[list] = None) -> None:
 
     try:
         func(**kwargs)
+    except ProcessInterrupted:
+        sys.exit(0)
     except FatalError:
         sys.exit(1)
 
@@ -340,7 +342,7 @@ def make(
             traceback.print_exc()
         print()
         print_error("`mcq make` failed to build document (see above for details).")
-        sys.exit(1)
+        raise FatalError
 
 
 def scan(
@@ -378,7 +380,7 @@ def scan(
         print()
         print_warning("Script interrupted.")
         print_info("Relaunch it to resume scan process.")
-        sys.exit(0)
+        raise ProcessInterrupted
 
 
 def new(path: Path, include: Path = None, template="") -> None:
@@ -392,7 +394,7 @@ def new(path: Path, include: Path = None, template="") -> None:
     # Create the new MCQ.
     if path.exists():
         print_error(f"Path {path} already exists.")
-        sys.exit(1)
+        raise FatalError
     else:
         print(f"Using template from '{template_path}'.")
         shutil.copytree(template_path, path)
@@ -444,7 +446,7 @@ def get_template_path(template_name: str = "") -> Path:
         template_path = user_templates_path / template_name
     if not template_path.is_dir():
         print_error(f"I can't use template {template_name!r}: '{template_path}' directory not found.")
-        sys.exit(1)
+        raise FatalError
     return template_path
 
 
@@ -487,7 +489,7 @@ def see(name: str) -> None:
     directory = Path.cwd() / ".scan/pdf"
     if not directory.is_dir():
         print_error("No scan results found, run `mcq scan .` first or change directory.")
-        sys.exit(1)
+        raise FatalError
     results = list(directory.glob(name))
     # TODO: use `case_sensitive=False` once python 11 support is dropped.
     if len(results) > 1:
@@ -529,7 +531,7 @@ def fix(path: Path) -> None:
         sep = len(cmd) * "-"
         cmd = f"{sep}\n{cmd}\n{sep}\n"
         print_error("Questions or answers changed.\n" "You must run a full compilation:\n" + cmd)
-        sys.exit(1)
+        raise FatalError
 
     # Get back the positions of checkboxes from last full compilation.
     data.id_table_pos = config.id_table_pos
@@ -620,11 +622,11 @@ def create_template(name: str = "default") -> None:
     """Create default user template."""
     if name == "original":
         print_error(f"Name {name!r} is reserved, please choose another template name.")
-        sys.exit(1)
+        raise FatalError
     user_template = PlatformDirs().user_config_path / f"ptyx-mcq/templates/{name}"
     if user_template.is_dir():
         print_error(f"Folder {user_template} already exist, choose a different template name.")
-        sys.exit(1)
+        raise FatalError
     default_template = Path(__file__).resolve().parent / "templates/original"
     shutil.copytree(default_template, user_template)
     print_success(f"Template created at {user_template}. Edit the inner files to customize it.")
@@ -634,13 +636,13 @@ def install_shell_completion(shell: str = "bash") -> None:
     """Enable completion for the `mcq` command in the shell (bash by default)."""
     if shell != "bash":
         print_error(f"Sorry, {shell} completion not yet supported. :-(")
-        sys.exit(1)
+        raise FatalError
     if not os.access(__file__, os.X_OK):
         print_error(
             f"Unable to install completion since {__file__} is not executable. Fix it with:\n"
             f"chmod u+x {__file__}"
         )
-        sys.exit(1)
+        raise FatalError
 
     dev_cli = __file__.replace("cli.py", "dev_cli.py")
     done = []

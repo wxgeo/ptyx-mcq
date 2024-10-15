@@ -88,7 +88,9 @@ class DataChecker:
         # Let's try again to get names from ID.
         for doc_id, doc_data in self.data.items():
             if doc_data.name == "":
-                doc_data.name = self.data_storage.config.students_ids.get(doc_data.student_id, "")
+                doc_data.name = self.data_storage.config.students_ids.get(
+                    doc_data.student_id, StudentName("")
+                )
 
         print("Searching for unnamed documents...")
         unnamed_docs = self.get_unnamed_docs()

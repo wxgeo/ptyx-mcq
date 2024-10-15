@@ -3,11 +3,11 @@
 # @unique
 # class Levels(Enum):
 #     ROOT, QCM, SECTION, QUESTION, VERSION, ANSWERS_BLOCK, NEW_ANSWER = range(7)
-import sys
 import re
 from typing import Iterable
 
 from ptyx.utilities import extract_verbatim_tag_content, restore_verbatim_tag_content, find_closing_bracket
+from ptyx_mcq.tools.io_tools import FatalError
 
 from ptyx_mcq import print_error
 from ptyx_mcq.make.parser_tools import is_new_exercise_start, is_mcq_start, is_mcq_end, is_section_start
@@ -95,7 +95,7 @@ def generate_ptyx_code(text: str, additional_header_lines: Iterable[str] = ()) -
                 print_error(
                     "Unable to compile document. Maybe a missing `*` at the beginning of the question?"
                 )
-                sys.exit(1)
+                raise FatalError
         elif level == "NEW_ANSWER":
             content.append("{%s}{%s}" % (kw["n"], kw["correct"]))
 
