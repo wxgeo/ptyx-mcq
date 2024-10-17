@@ -15,6 +15,7 @@ from typing import Union, Optional
 from ptyx.shell import print_warning, ANSI_RESET, ANSI_GREEN, print_success
 from ptyx.sys_info import CPU_PHYSICAL_CORES
 
+from ptyx_mcq.parameters import CONFIG_FILE_EXTENSION
 from ptyx_mcq.scan.pdf.amend import amend_all
 
 from ptyx_mcq.scan.data_gestion.conflict_handling import ConflictSolver, AnswersReviewer
@@ -350,10 +351,9 @@ class MCQPictureParser:
         """Generate all the documents at the end of the process (csv, xlsx and pdf files)."""
         self.scores_manager.generate_csv_file()
         self.scores_manager.generate_xlsx_file()
-        cfg_ext = ".ptyx.mcq.config.json"
         cfg_path = str(self.data_handler.paths.configfile)
-        assert cfg_path.endswith(cfg_ext)
-        xlsx_symlink = Path(cfg_path[: -len(cfg_ext)] + ".scores.xlsx")
+        assert cfg_path.endswith(CONFIG_FILE_EXTENSION)
+        xlsx_symlink = Path(cfg_path[: -len(CONFIG_FILE_EXTENSION)] + ".scores.xlsx")
         xlsx_symlink.unlink(missing_ok=True)
         xlsx_symlink.symlink_to(self.data_handler.files.xlsx_scores)
         self._generate_report()

@@ -12,6 +12,7 @@ from ptyx.latex_generator import Compiler
 from ptyx.shell import print_error, print_info
 from ptyx.utilities import force_hardlink_to
 
+from ptyx_mcq.parameters import CONFIG_FILE_EXTENSION
 from ptyx_mcq.scan.data_gestion.document_data import Page
 from ptyx_mcq.tools.io_tools import get_file_or_sysexit, FatalError
 from ptyx_mcq.tools.config_parser import Configuration
@@ -52,7 +53,7 @@ def generate_config_file(compiler: Compiler) -> None:
                 page_, x_, y_ = [s.strip("p() \n") for s in v.split(",")]
                 checkboxes_positions.setdefault(Page(int(page_)), {})[k] = (float(x_), float(y_))
 
-    mcq_data.dump(file_path.with_suffix(".ptyx.mcq.config.json"))
+    mcq_data.dump(file_path.with_suffix(CONFIG_FILE_EXTENSION))
 
 
 def compile_exercise_to_latex(path: Path, **context: Any) -> tuple[str, Path]:
@@ -104,7 +105,7 @@ def make_command(
         context = {}
 
     ptyx_filename = get_file_or_sysexit(path, extension=".ptyx")
-    if ptyx_filename.with_suffix(".ptyx.mcq.config.json").is_file() and not force:
+    if ptyx_filename.with_suffix(CONFIG_FILE_EXTENSION).is_file() and not force:
         if input("A previous compiled version exist, overwrite it (y∕N) ?") not in ("y", "Y"):
             print_info("You may use `mcq scan --force` or `mcq scan -f` to force recompilation.")
             print_error("Conflict with a previous file, no file was generated.")

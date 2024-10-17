@@ -3,6 +3,7 @@ from pathlib import Path
 from shutil import rmtree
 from time import strftime
 
+from ptyx_mcq.parameters import CONFIG_FILE_EXTENSION
 from ptyx_mcq.tools.io_tools import get_file_or_sysexit
 
 
@@ -30,7 +31,7 @@ class DirsPaths:
 class PathsHandler:
     """Handles the different files and directories used by the scanner.
 
-    The most import file for scanning is the configuration file, with extension ".ptyx.mcq.config.json".
+    The most import file for scanning is the configuration file, with extension "CONFIG_FILE_EXTENSION".
     """
 
     configfile: Path
@@ -38,7 +39,7 @@ class PathsHandler:
     output_dir: Path
 
     def __init__(self, config_path: Path, input_dir: Path = None, output_dir: Path = None):
-        self.configfile = get_file_or_sysexit(config_path, extension=".ptyx.mcq.config.json")
+        self.configfile = get_file_or_sysexit(config_path, extension=CONFIG_FILE_EXTENSION)
 
         root = self.configfile.parent
 

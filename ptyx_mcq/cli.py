@@ -32,6 +32,7 @@ from ptyx.shell import (
     ANSI_BLUE,
 )
 
+from ptyx_mcq.parameters import CONFIG_FILE_EXTENSION
 from ptyx_mcq.tools.config_parser import Configuration
 from ptyx_mcq.tools.io_tools import get_file_or_sysexit, FatalError, ProcessInterrupted
 
@@ -468,7 +469,7 @@ def clear(path: Path) -> None:
             print(f"Info: '{directory}' not found...")
     for filepath in (
         ptyxfile_path.with_suffix(".pdf"),
-        ptyxfile_path.with_suffix(".ptyx.mcq.config.json"),
+        ptyxfile_path.with_suffix(CONFIG_FILE_EXTENSION),
         ptyxfile_path.with_name(f".{filename}.plain-ptyx"),
         ptyxfile_path.with_name(f"{ptyxfile_path.stem}-corr.pdf"),
     ):
@@ -510,7 +511,7 @@ def fix(path: Path) -> None:
     """
     from ptyx.latex_generator import Compiler
 
-    config_file = get_file_or_sysexit(path, extension=".ptyx.mcq.config.json")
+    config_file = get_file_or_sysexit(path, extension=CONFIG_FILE_EXTENSION)
     print(f"Reading {config_file}...")
     config = Configuration.load(config_file)
     ptyx_filename = get_file_or_sysexit(path, extension=".ptyx")
@@ -536,7 +537,7 @@ def fix(path: Path) -> None:
     # Get back the positions of checkboxes from last full compilation.
     data.id_table_pos = config.id_table_pos
     data.boxes = config.boxes
-    data.dump(config_file.parent / (config_file.name.split(".")[0] + ".ptyx.mcq.config.json"))
+    data.dump(config_file.parent / (config_file.name.split(".")[0] + CONFIG_FILE_EXTENSION))
     print_success("Configuration file was successfully updated.")
 
 
