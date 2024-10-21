@@ -1,4 +1,6 @@
-from ptyx_mcq.scan.data_gestion.conflict_handling import AnswersReviewer
+from ptyx_mcq.scan.data_gestion.conflict_handling.data_check.cl_implementation import (
+    ClAnswersReviewer as AnswersReviewer,
+)
 from ptyx_mcq.scan.data_gestion.document_data import DocumentData, Page, RevisionStatus
 from ptyx_mcq.tools.config_parser import (
     DocumentId,

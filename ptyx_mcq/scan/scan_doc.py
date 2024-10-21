@@ -14,11 +14,12 @@ from typing import Union, Optional
 # from numpy import ndarray
 from ptyx.shell import print_warning, ANSI_RESET, ANSI_GREEN, print_success
 from ptyx.sys_info import CPU_PHYSICAL_CORES
+from ptyx_mcq.scan.data_gestion.conflict_handling.data_check.cl_implementation import ClAnswersReviewer
 
 from ptyx_mcq.parameters import CONFIG_FILE_EXTENSION
 from ptyx_mcq.scan.pdf.amend import amend_all
 
-from ptyx_mcq.scan.data_gestion.conflict_handling import ConflictSolver, AnswersReviewer
+from ptyx_mcq.scan.data_gestion.conflict_handling import ConflictSolver
 from ptyx_mcq.scan.data_gestion.data_handler import DataHandler, save_webp
 from ptyx_mcq.scan.data_gestion.document_data import DocumentData, Page, PicData
 from ptyx_mcq.scan.pdf.pdftools import PIC_EXTS
@@ -58,6 +59,12 @@ from ptyx_mcq.tools.config_parser import (
 
 
 class Silent:
+    """A context manager enabling to discard any stdout output for a while.
+
+    with Silent():
+        ...
+    """
+
     def __init__(self, silent=True):
         self.silent = silent
 
@@ -149,7 +156,7 @@ class MCQPictureParser:
         if not pic_path.is_file():
             pic_path = self.data_handler.absolute_pic_path(picture)
         pic_data, array = scan_picture(pic_path, self.config, debug=True)
-        AnswersReviewer.display_picture_with_detected_answers(array, pic_data)
+        ClAnswersReviewer.display_picture_with_detected_answers(array, pic_data)
         print(pic_data)
 
     # def _warn(self, *values, sep=" ", end="\n") -> None:

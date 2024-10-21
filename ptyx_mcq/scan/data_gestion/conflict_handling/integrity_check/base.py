@@ -1,26 +1,11 @@
-"""
-This module contains tools to check data completeness, ie:
-    - all documents are complete (no missing page)
-    - there are no duplicates (each document/page must appear only once)
-
-Main classes:
-    - `IntegrityChecker`: report integrity problems.
-    - `FixIntegrityIssues`: fix reported issues (if possible), with user help.
-
-The function `report_integrity_issues()`
-
-"""
+from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Literal
 
-from PIL import Image, ImageDraw
 from ptyx.shell import print_success, print_warning, print_info, print_error
-
-from ptyx_mcq.tools.rgb import Color
 
 from ptyx_mcq.scan.data_gestion.data_handler import DataHandler
 from ptyx_mcq.scan.data_gestion.document_data import Page, DocumentData, PicData
-from ptyx_mcq.scan.picture_analyze.image_viewer import ImageViewer
 from ptyx_mcq.tools.config_parser import DocumentId, OriginalQuestionNumber
 
 DuplicatePagesDict = dict[tuple[DocumentId, Page], list[DocumentId]]
@@ -42,6 +27,65 @@ class IntegrityCheckResult:
     resolved_conflicts: DuplicatePagesDict
     missing_pages: MissingPages
     missing_questions: MissingQuestions
+
+
+class AbstractIntegrityIssuesFixer(ABC):
+    """Abstract class to build an integrity issues' fixer.
+
+    All interaction methods must be implemented."""
+
+    def __init__(self, data_storage: DataHandler):
+        self.data_storage = data_storage
+        self.data = self.data_storage.data
+
+    @abstractmethod
+    def select_version(
+        self, scanned_doc_id: DocumentId, temp_doc_id: DocumentId, page: Page
+    ) -> Literal[1, 2]:
+        """Ask user what to do is two versions of the same page exist, with conflicting data.
+
+        It may mean the page has been scanned twice with different scan qualities, but it could
+        also indicate a more serious problem (for example, tests with the same ID
+        have been given to different students !).
+        Anyway, we should signal the problem to the user, and ask him
+        what he wants to do.
+
+        Return the number of the version to keep, either 1 or 2.
+        """
+        ...
+
+    def run(self, check_results: IntegrityCheckResult) -> None:
+        if check_results.missing_questions:
+            # Don't raise an error for pages not found (only a warning in log)
+            # since if all questions were found, they were probably only empty pages.
+            # However, an error must be raised for missing questions.
+            #            if input("Should we skip missing questions? (y/n)").lower() != "y":
+            raise MissingQuestion("Questions not seen! (Look at message above).")
+        else:
+            print_success("Data integrity successfully verified.")
+
+        while check_results.conflicts:
+            conflict = next(iter(check_results.conflicts))
+            scanned_id, page = conflict
+            for tmp_doc_id in check_results.conflicts.pop(conflict):
+                if self.select_version(scanned_id, tmp_doc_id, page) == 1:
+                    # Remove the second version.
+                    self.data_storage.remove_tmp_doc_id(tmp_doc_id)
+                else:
+                    # Remove first version:
+                    # we must replace the data and the files corresponding to this page
+                    # by the new version (corresponding to id `tmp_doc_id`).
+                    # Warning: All other data of document `scanned_id` (i.e. the data for all the other pages)
+                    # must be kept unchanged!
+                    self.data[scanned_id].pages[page] = self.data.pop(tmp_doc_id).pages[page]
+                    data_dir = self.data_storage.dirs.data
+                    # Replace the WEBP image.
+                    (data_dir / f"{tmp_doc_id}-{page}.webp").replace(data_dir / f"{scanned_id}-{page}.webp")
+                    # Create an updated `scanned_id` .scandata file.
+                    # Warning: we can't simply replace it with the `tmp_doc_id` .scandata file, because it would only
+                    # contain the data corresponding to this page, not the other ones.
+                    self.data_storage.write_scandata_file(scanned_id)
+        assert len(self.data_storage.get_all_temporary_ids()) == 0, self.data_storage.get_all_temporary_ids()
 
 
 class IntegrityChecker:
@@ -130,96 +174,7 @@ class IntegrityChecker:
         return missing_pages, missing_questions
 
 
-class FixIntegrityIssues:
-    """
-    Interact with the user to fix previously found problems.
-
-    Main method is `run()`.
-    """
-
-    def __init__(self, data_storage: DataHandler):
-        self.data_storage = data_storage
-        self.data = self.data_storage.data
-
-    def run(self, check_results: IntegrityCheckResult) -> None:
-        if check_results.missing_questions:
-            # Don't raise an error for pages not found (only a warning in log)
-            # if all questions were found, this was probably empty pages.
-            if input("Should we skip missing questions? (y/n)").lower() != "y":
-                raise MissingQuestion("Questions not seen! (Look at message above).")
-        else:
-            print_success("Data integrity successfully verified.")
-
-        while check_results.conflicts:
-            conflict = next(iter(check_results.conflicts))
-            scanned_id, page = conflict
-            for tmp_doc_id in check_results.conflicts.pop(conflict):
-                if self._select_version(scanned_id, tmp_doc_id, page) == 1:
-                    # Remove the second version.
-                    self.data_storage.remove_tmp_doc_id(tmp_doc_id)
-                else:
-                    # Remove first version:
-                    # we must replace the data and the files corresponding to this page
-                    # by the new version (corresponding to id `tmp_doc_id`).
-                    # Warning: All other data of document `scanned_id` (i.e. the data for all the other pages)
-                    # must be kept unchanged!
-                    self.data[scanned_id].pages[page] = self.data.pop(tmp_doc_id).pages[page]
-                    data_dir = self.data_storage.dirs.data
-                    # Replace the WEBP image.
-                    (data_dir / f"{tmp_doc_id}-{page}.webp").replace(data_dir / f"{scanned_id}-{page}.webp")
-                    # Create an updated `scanned_id` .scandata file.
-                    # Warning: we can't simply replace it with the `tmp_doc_id` .scandata file, because it would only
-                    # contain the data corresponding to this page, not the other ones.
-                    self.data_storage.write_scandata_file(scanned_id)
-        assert len(self.data_storage.get_all_temporary_ids()) == 0, self.data_storage.get_all_temporary_ids()
-
-    def _select_version(
-        self, scanned_doc_id: DocumentId, temp_doc_id: DocumentId, page: Page
-    ) -> Literal[1, 2]:
-        """Ask user what to do is two versions of the same page exist, with conflicting data.
-
-        It may mean the page has been scanned twice with different scan qualities, but it could
-        also indicate a more serious problem (for example, tests with the same ID
-        have been given to different students !).
-        Anyway, we should signal the problem to the user, and ask him
-        what he wants to do.
-
-        Return the number of the version to keep, either 1 or 2.
-        """
-        pic_path1 = self.data[scanned_doc_id].pages[page].pic_path
-        pic_path1 = self.data_storage.absolute_pic_path(pic_path1)
-        pic_path2 = self.data[temp_doc_id].pages[page].pic_path
-        pic_path2 = self.data_storage.absolute_pic_path(pic_path2)
-        # assert isinstance(pic_path1, str)
-        # assert isinstance(pic_path2, str)
-        print_warning(
-            f"Page {page} of test #{scanned_doc_id} seen twice " f'(in "{pic_path1}" and "{pic_path2}") !'
-        )
-        print("Choose which version to keep:")
-        input("-- Press ENTER --")
-        action = ""
-
-        while action not in ("1", "2"):
-            self._display_duplicates(scanned_doc_id, temp_doc_id, page)
-            print("What must we do ?")
-            print("- Keep only 1st one (1)")
-            print("- Keep only 2nd one (2)")
-            print("If you want to see the pictures again, juste press ENTER.")
-            action = input("Answer: ")
-
-        return 1 if action == "1" else 2
-
-    def _display_duplicates(self, scanned_doc_id: DocumentId, temp_doc_id: DocumentId, page: Page) -> None:
-        # im1 = Image.open(pic_path1)
-        # im2 = Image.open(pic_path2)
-        im1 = self.data_storage.get_pic(scanned_doc_id, page)
-        im2 = self.data_storage.get_pic(temp_doc_id, page)
-        dst = Image.new("RGB", (im1.width + im2.width, height := min(im1.height, im2.height)))
-        dst.paste(im1, (0, 0))
-        dst.paste(im2, (im1.width, 0))
-        ImageDraw.Draw(dst).line([(im1.width, 0), (im1.width, height)], fill=Color.blue)
-
-        ImageViewer(image=dst).display()
+# FIXME: the following function is not used anymore, remove it?
 
 
 def report_integrity_issues(integrity_check_results: IntegrityCheckResult):

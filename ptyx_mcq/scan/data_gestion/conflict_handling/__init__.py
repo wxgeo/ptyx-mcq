@@ -1,10 +1,5 @@
-from ptyx_mcq.scan.data_gestion.conflict_handling.data_check import (
-    DataChecker,
-    AllDataIssuesFixer,
-    AnswersReviewer,
-    NamesReviewer,
-)
-from ptyx_mcq.scan.data_gestion.conflict_handling.integrity_check import IntegrityChecker, FixIntegrityIssues
+from ptyx_mcq.scan.data_gestion.conflict_handling.data_check.base import DataChecker, AllDataIssuesFixer
+from ptyx_mcq.scan.data_gestion.conflict_handling.integrity_check.base import IntegrityChecker
 from ptyx_mcq.scan.data_gestion.data_handler import DataHandler
 
 
@@ -14,10 +9,12 @@ class ConflictSolver:
         self.data = data_storage.data
 
     def run(self):
+        from ptyx_mcq.scan.data_gestion.conflict_handling.config import Config
+
         # Check that all documents are scanned completely, and only once.
         integrity_check_results = IntegrityChecker(self.data_storage).run()
         # Fix found issues.
-        FixIntegrityIssues(self.data_storage).run(integrity_check_results)
+        Config.IntegrityIssuesFixer(self.data_storage).run(integrity_check_results)
         # Search for data's inconsistencies: duplicate or missing names, ambiguous answers.
         data_check_results = DataChecker(self.data_storage).run()
         # Fix found issues.
@@ -26,10 +23,4 @@ class ConflictSolver:
 
 __all__ = [
     "ConflictSolver",
-    "IntegrityChecker",
-    "FixIntegrityIssues",
-    "DataChecker",
-    "AllDataIssuesFixer",
-    "NamesReviewer",
-    "AnswersReviewer",
 ]

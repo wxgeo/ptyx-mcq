@@ -1,0 +1,218 @@
+from abc import ABC
+from dataclasses import dataclass
+from enum import StrEnum
+from pathlib import Path
+
+from ptyx.shell import print_warning
+
+
+from ptyx_mcq.scan.data_gestion.data_handler import DataHandler
+from ptyx_mcq.scan.data_gestion.document_data import Page
+from ptyx_mcq.tools.config_parser import DocumentId, StudentName
+
+UnnamedDocsList = list[DocumentId]
+AmbiguousPagesList = list[tuple[DocumentId, Page]]
+DuplicateNamesDict = dict[StudentName, list[DocumentId]]
+
+
+@dataclass
+class DataCheckResult:
+    unnamed_docs: UnnamedDocsList
+    duplicate_names: DuplicateNamesDict
+    ambiguous_answers: AmbiguousPagesList
+
+
+class Action(StrEnum):
+    NEXT = ">"
+    BACK = "<"
+    DISCARD = "/"
+
+
+class AbstractNamesReviewer(ABC):
+    """"""
+
+    def __init__(self, data_storage: DataHandler):
+        self.data_storage = data_storage
+        self.data = data_storage.data
+        self.students_ids = self.data_storage.config.students_ids
+
+
+class AbstractAnswersReviewer(ABC):
+    """"""
+
+    def __init__(self, data_storage: DataHandler):
+        self.data_storage = data_storage
+        self.data = self.data_storage.data
+
+
+# -----------------------
+#      Main class
+# =======================
+
+
+class AllDataIssuesFixer(ABC):
+    """Fix missing names and ambiguous answers issues."""
+
+    def __init__(
+        self,
+        data_storage: DataHandler,
+    ):
+        from ptyx_mcq.scan.data_gestion.conflict_handling.config import Config
+
+        self.data_storage = data_storage
+        self.data = self.data_storage.data
+        self.data_checker = DataChecker(data_storage)
+        self.name_reviewer = Config.NamesReviewer(data_storage)
+        self.answers_reviewer = Config.AnswersReviewer(data_storage)
+
+    def get_names_to_review(self) -> dict[DocumentId, bool]:
+        check_results = self.data_checker.run()
+        return {doc_id: False for doc_id in check_results.unnamed_docs} | {
+            doc_id: False for name, docs in check_results.duplicate_names.items() for doc_id in docs
+        }
+
+    def run(self, check_result: DataCheckResult) -> None:
+        """Resolve conflicts manually: unknown student ID, ambiguous answer..."""
+        # Each operation is independent of the other ones,
+        # and user should be able to navigate between them.
+
+        # The boolean indicates whether the document was reviewed.
+        # TODO: No need to use a dict, since `reviewed` boolean is never used for `names_to_review`.
+        #       A list should be enough.
+        names_to_review: dict[DocumentId, bool] = {doc_id: False for doc_id in check_result.unnamed_docs}
+        names_to_review.update(
+            (doc_id, False) for name, docs in check_result.duplicate_names.items() for doc_id in docs
+        )
+        # The boolean indicates whether the document was reviewed.
+        answers_to_review: dict[tuple[DocumentId, Page], bool] = {
+            (doc, page): False for doc, page in check_result.ambiguous_answers
+        }
+
+        while len(names_to_review) + len(answers_to_review) > 0:
+            position = 0
+            print_warning("Conflicts detected.")
+            if names_to_review:
+                print_warning(
+                    f"Names problems on {len(names_to_review)} document(s) {tuple(names_to_review)}."
+                )
+            if answers_to_review:
+                print_warning(f"Ambiguous answers on {len(answers_to_review)} page(s).")
+            while position < len(names_to_review) + len(answers_to_review):
+                if position < len(names_to_review):
+                    doc_id = list(names_to_review)[position]
+                    action, reviewed = self.name_reviewer.review_name(doc_id)
+                    names_to_review[doc_id] |= reviewed
+                    # Verify that the new name has not induced a new conflict.
+                    for _doc_id in self.data:
+                        if _doc_id != doc_id and self.data[_doc_id].name == self.data[doc_id].name:
+                            names_to_review[doc_id] = False
+                else:
+                    doc_id, page = list(answers_to_review)[position - len(names_to_review)]
+                    action, reviewed = self.answers_reviewer.review_answer(doc_id, page)
+                    answers_to_review[(doc_id, page)] |= reviewed
+                if action == Action.NEXT:
+                    position += 1
+                elif action == Action.BACK:
+                    position = max(0, position - 1)
+
+            # Apply changes definitively.
+            for doc_id in names_to_review:
+                if self.data[doc_id].name == Action.DISCARD.value:
+                    doc_data = self.data.pop(doc_id)
+                    # For each page of the document, add corresponding picture path
+                    # to skipped paths list.
+                    # If `mcq scan` is run again, those pictures will be skipped.
+                    for pic_data in doc_data.pages.values():
+                        self.data_storage.store_skipped_pic(Path(pic_data.pic_path))
+                    # Remove also all corresponding data files.
+                    self.data_storage.remove_doc_files(doc_id)
+
+            # The new entered names might have induced new conflicts.
+            names_to_review = self.get_names_to_review()
+            answers_to_review = {key: reviewed for key, reviewed in answers_to_review.items() if not reviewed}
+
+
+class DataChecker:
+    """Check for missing data."""
+
+    def __init__(self, data_storage: DataHandler):
+        self.data_storage = data_storage
+        self.data = self.data_storage.data
+
+    def run(self) -> DataCheckResult:
+        # First, complete missing information with previous scan data, if any.
+        for doc_id, (student_name, student_id) in self.data_storage.more_infos.items():
+            try:
+                self.data[doc_id].name = student_name
+                self.data[doc_id].student_id = student_id
+            except KeyError:
+                print_warning(f"Document {doc_id} not found... Maybe it was discarded previously?")
+
+        # The students name to ID mapping may have been updated
+        # (using `mcq fix` for example).
+        # Let's try again to get names from ID.
+        for doc_id, doc_data in self.data.items():
+            if doc_data.name == "":
+                doc_data.name = self.data_storage.config.students_ids.get(
+                    doc_data.student_id, StudentName("")
+                )
+
+        print("Searching for unnamed documents...")
+        unnamed_docs = self.get_unnamed_docs()
+        print(f"{len(unnamed_docs)} unnamed document(s) found." if unnamed_docs else "OK")
+
+        print("Searching for duplicate names...")
+        duplicate_names = self.find_duplicate_names()
+        print(f"{len(duplicate_names)} conflict(s) found." if duplicate_names else "OK")
+
+        print("Searching for ambiguous answers...")
+        ambiguous_answers = self.find_ambiguous_answers()
+        print(f"{len(ambiguous_answers)} page(s) to verify." if ambiguous_answers else "OK")
+
+        return DataCheckResult(
+            unnamed_docs=unnamed_docs, duplicate_names=duplicate_names, ambiguous_answers=ambiguous_answers
+        )
+
+    def get_unnamed_docs(self) -> list[DocumentId]:
+        """Get the (sorted) list of all unnamed documents ids."""
+        # Sorting documents is cheap and make testing easier.
+        return sorted(doc_id for doc_id, doc_data in self.data.items() if doc_data.name == "")
+
+    def find_duplicate_names(self) -> DuplicateNamesDict:
+        """Detect if several documents have the same student name.
+
+        Return a dictionary associating each conflicting name with the corresponding documents.
+        """
+        seen_names: dict[StudentName, DocumentId] = {}
+        duplicate_names: dict[StudentName, list[DocumentId]] = {}
+        # Sorting documents is cheap and make testing easier.
+        for doc_id in sorted(self.data):
+            name = self.data[doc_id].name
+            # Be careful to not count unnamed documents as duplicates!
+            if name:
+                if name in seen_names:
+                    duplicate_names.setdefault(name, [seen_names[name]]).append(doc_id)
+                    # matching_doc_id = seen_names[name]
+                    # matching_doc_data = self.data[matching_doc_id]
+                else:
+                    seen_names[name] = doc_id
+        return duplicate_names
+
+    def find_ambiguous_answers(self) -> AmbiguousPagesList:
+        # The answers are ambiguous and were not already manually verified in a previous scan.
+        return [
+            (doc_id, page)
+            for doc_id, doc_data in self.data.items()
+            for page, pic_data in doc_data.pages.items()
+            if pic_data.needs_review and Path(pic_data.pic_path) not in self.data_storage.verified
+        ]
+
+
+# FIXME: the following function is not used anymore, remove it?
+
+
+def report_data_issues(check_result: DataCheckResult) -> None:
+    for doc_id in check_result.unnamed_docs:
+        print_warning(f"• No student name for document {doc_id}.")
+    for name, doc_ids in check_result.duplicate_names.items():
+        print_warning(f"• Same student name {name!r} on documents {','.join(map(str, doc_ids))}.")
