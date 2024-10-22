@@ -1,4 +1,4 @@
-from abc import ABC
+from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from enum import StrEnum
 from pathlib import Path
@@ -36,6 +36,15 @@ class AbstractNamesReviewer(ABC):
         self.data = data_storage.data
         self.students_ids = self.data_storage.config.students_ids
 
+    @abstractmethod
+    def review_name(self, doc_id: DocumentId) -> tuple[Action, bool]:
+        """Review the document name.
+
+        Return the action to do (go to next document, go back to previous one,
+        or skip document), and a boolean which indicates if the document as been
+        effectively reviewed.
+        """
+
 
 class AbstractAnswersReviewer(ABC):
     """"""
@@ -43,6 +52,14 @@ class AbstractAnswersReviewer(ABC):
     def __init__(self, data_storage: DataHandler):
         self.data_storage = data_storage
         self.data = self.data_storage.data
+
+    @abstractmethod
+    def review_answer(self, doc_id: DocumentId, page: Page) -> tuple[Action, bool]:
+        """Review the student answers.
+
+        Return the action to do (go to next document, go back to previous one,
+        or skip document), and a boolean which indicates if the document as been
+        effectively reviewed."""
 
 
 # -----------------------

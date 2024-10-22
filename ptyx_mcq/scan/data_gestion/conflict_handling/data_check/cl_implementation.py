@@ -11,6 +11,7 @@ from ptyx_mcq.scan.data_gestion.conflict_handling.data_check.base import (
     AbstractNamesReviewer,
     AbstractAnswersReviewer,
 )
+from ptyx_mcq.tools.misc import copy_docstring
 from ptyx_mcq.tools.rgb import Color, RGB
 from ptyx_mcq.scan.data_gestion.document_data import (
     Page,
@@ -44,13 +45,8 @@ class ClNamesReviewer(AbstractNamesReviewer):
     PRESS_ENTER = "-- Press ENTER --"
     CORRECT_Y_N = "Is it correct? (Y/n)"
 
+    @copy_docstring(AbstractNamesReviewer.review_name)
     def review_name(self, doc_id: DocumentId) -> tuple[Action, bool]:
-        """Review the document name.
-
-        Return the action to do (go to next document, go back to previous one,
-        or skip document), and a boolean which indicates if the document as been
-        effectively reviewed.
-        """
         first_page = self.data[doc_id].pages.get(Page(1))
         if first_page is None:
             print_error(f"No first page found for document {doc_id}!")
@@ -250,13 +246,8 @@ class ClAnswersReviewer(AbstractAnswersReviewer):
     SELECT_QUESTION = "Write a question number, or 0 to escape:"
     EDIT_ANSWERS = "Add or remove answers (Example: +2 -1 -4 to add answer 2, and remove answers 1 et 4):"
 
+    @copy_docstring(AbstractAnswersReviewer.review_answer)
     def review_answer(self, doc_id: DocumentId, page: Page) -> tuple[Action, bool]:
-        """Review the student answers.
-
-        Return the action to do (go to next document, go back to previous one,
-        or skip document), and a boolean which indicates if the document as been
-        effectively reviewed.
-        """
         if self.data[doc_id].name == Action.DISCARD.value:
             # Skip this document.
             return Action.NEXT, False
