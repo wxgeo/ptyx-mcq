@@ -1,16 +1,17 @@
-import string
-import subprocess
+from subprocess import Popen, CompletedProcess
 from pathlib import Path
 
 from numpy import ndarray
 
-from ptyx.shell import print_warning, print_info
+from ptyx.shell import print_warning
 
 from ptyx_mcq.scan.data_gestion.conflict_handling.data_check.base import (
     Action,
     AbstractNamesReviewer,
     AbstractAnswersReviewer,
+    AbstractDocHeaderDisplayer,
 )
+from ptyx_mcq.scan.data_gestion.data_handler import DataHandler
 from ptyx_mcq.tools.misc import copy_docstring
 from ptyx_mcq.tools.rgb import Color, RGB
 from ptyx_mcq.scan.data_gestion.document_data import (
@@ -35,6 +36,34 @@ from ptyx_mcq.tools.config_parser import (
 # ==========================
 
 
+class ClDocHeaderDisplayer(AbstractDocHeaderDisplayer):
+    def __init__(self, data_storage: DataHandler, doc_id: DocumentId):
+        array = data_storage.get_matrix(doc_id, Page(1))
+        width = array.shape[1]
+        self.viewer = ImageViewer(array=array[0 : int(3 / 4 * width), :])
+        self.process: CompletedProcess | Popen | None = None
+
+    def __enter__(self):
+        return self
+
+    def display(self) -> None:
+        """Display the top of the scanned document.
+
+        Don't relaunch process if it is still alive.
+        """
+        # `self.process.poll() is not None`: it means that the process is dead.
+        if (
+            self.process is None
+            or isinstance(self.process, CompletedProcess)
+            or self.process.poll() is not None
+        ):
+            self.process = self.viewer.display(wait=False)
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        assert self.process is not None and not isinstance(self.process, CompletedProcess)
+        self.process.terminate()
+
+
 class ClNamesReviewer(AbstractNamesReviewer):
     """Command line names' reviewer.
 
@@ -51,18 +80,33 @@ class ClNamesReviewer(AbstractNamesReviewer):
             print(f"Suggestion: {name} (write `ok` to validate it).")
         return name
 
+    @copy_docstring(AbstractNamesReviewer._ask_user_for_name)
+    def _ask_user_for_name(self, suggestion: StudentName) -> StudentName:
+        """Ask the user to read the name."""
+        user_input = input("Name, ID or command: ").strip()
+        if user_input.lower() == "ok":
+            user_input = suggestion
+        return StudentName(user_input)
+
+    @copy_docstring(AbstractNamesReviewer._does_user_confirm)
+    def _does_user_confirm(self) -> bool:
+        """Ask user to confirm its choice.
+
+        Return True if user validate its choice, False else."""
+        while (is_correct := input(self.CORRECT_Y_N).lower()) not in (
+            "y",
+            "yes",
+            "",
+            "n",
+            "no",
+        ):
+            pass
+        return is_correct not in ("n", "no")
+
     @copy_docstring(AbstractNamesReviewer.enter_name_and_id)
     def enter_name_and_id(
         self, doc_id: DocumentId, default: StudentName
     ) -> tuple[StudentName, StudentId, Action, bool]:
-        array = self.data_storage.get_matrix(doc_id, Page(1))
-        width = array.shape[1]
-        viewer = ImageViewer(array=array[0 : int(3 / 4 * width), :])
-        process = None
-        name = StudentName("")
-        student_id = StudentId("")
-        action: Action | None = None
-
         print(f"[Document {doc_id}]")
         print(f"Please verify student name or ID (current name: {default!r}).")
         print("Please read the name on the picture which will be displayed now.")
@@ -73,85 +117,7 @@ class ClNamesReviewer(AbstractNamesReviewer):
             f"   - Use {Action.BACK} to go back to previous document.\n"
             f"   - Use {Action.NEXT} ou `ok` to go to next document, keeping current name."
         )
-        suggestion = default
-        while action is None:
-            # ----------------------------------------
-            # Display the top of the scanned document.
-            # ----------------------------------------
-            # Don't relaunch process if it is still alive.
-            # (process.poll() is not None for dead processes.)
-            if process is None or process.poll() is not None:
-                process = viewer.display(wait=False)
-            # ------------------------------
-            # Ask the user to read the name.
-            # ------------------------------
-            user_input = input("Name, ID or command: ").strip()
-            # -------------------------
-            # Handle the user's answer.
-            # -------------------------
-            if user_input.lower() == "ok":
-                user_input = suggestion
-            suggestion = StudentName("")
-
-            if user_input == Action.DISCARD:
-                # Discard this document. It will be removed later.
-                print_info(f"Discarding document {doc_id}.")
-                return StudentName(user_input), StudentId("-1"), Action.NEXT, True
-            elif user_input == Action.BACK:
-                print("Navigating back to previous document.")
-                return StudentName(default), StudentId(student_id), Action.BACK, False
-            elif user_input == Action.NEXT:
-                print("Navigating to next document.")
-                return StudentName(default), StudentId(student_id), Action.NEXT, True
-            elif self.students_ids:
-                if user_input in self.students_ids:
-                    # This is in fact not a name, but a known student id,
-                    # so convert it to a name.
-                    name, student_id = self.students_ids[StudentId(user_input)], StudentId(user_input)
-                    action = Action.NEXT
-                elif user_input in self.students_ids.values():
-                    for _student_id, _name in self.students_ids.items():
-                        if _name == user_input:
-                            break
-                    # noinspection PyUnboundLocalVariable
-                    name = StudentName(_name)
-                    # noinspection PyUnboundLocalVariable
-                    student_id = StudentId(_student_id)
-                    action = Action.NEXT
-                elif any((digit in user_input) for digit in string.digits):
-                    # If `name` contains a digit, this is not a student name,
-                    # but probably a misspelled student id!
-                    print("Unknown ID.")
-                    # So, suggest the more closely related existing id.
-                    suggestion = self.students_ids[self._suggest_id(user_input)]
-                else:
-                    print("Unknown name.")
-                    suggestion = self._suggest_name(user_input)
-            elif self.data_storage.config.students_list:
-                if user_input in self.data_storage.config.students_list:
-                    action = Action.NEXT
-                else:
-                    suggestion = self._suggest_name(user_input)
-            elif user_input:
-                name = StudentName(user_input)
-
-            if action is not None:
-                print(f"Name: {name}")
-                while (is_correct := input(self.CORRECT_Y_N).lower()) not in (
-                    "y",
-                    "yes",
-                    "",
-                    "n",
-                    "no",
-                ):
-                    pass
-                if is_correct in ("n", "no"):
-                    action = None
-        assert process is not None
-        process.terminate()
-        # Keep track of manually entered information (will be useful if the scan has to be run again later!)
-        self.data_storage.store_additional_info(doc_id=doc_id, name=name, student_id=student_id)
-        return name, student_id, action, True
+        return super().enter_name_and_id(doc_id, default)
 
 
 # --------------------------
@@ -250,14 +216,14 @@ class ClAnswersReviewer(AbstractAnswersReviewer):
         process.terminate()
         return Action.NEXT, True
 
-    def display_page_with_detected_answers(self, doc_id: DocumentId, page: Page) -> subprocess.Popen:
+    def display_page_with_detected_answers(self, doc_id: DocumentId, page: Page) -> Popen:
         """Display the page with its checkboxes colored following their detection status."""
         array = self.data_storage.get_matrix(doc_id, page)
         pic_data = self.data[doc_id].pages[page]
         return self.display_picture_with_detected_answers(array, pic_data)
 
     @staticmethod
-    def display_picture_with_detected_answers(array: ndarray, pic_data: PicData) -> subprocess.Popen:
+    def display_picture_with_detected_answers(array: ndarray, pic_data: PicData) -> Popen:
         """Display the picture of the MCQ with its checkboxes colored following their detection status."""
         viewer = ImageViewer(array=array)
         colors: dict[DetectionStatus | RevisionStatus, RGB] = {

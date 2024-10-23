@@ -1,9 +1,11 @@
-from abc import ABC, abstractmethod
+import string
+from abc import ABC, abstractmethod, ABCMeta
+from contextlib import AbstractContextManager
 from dataclasses import dataclass
 from enum import StrEnum
 from pathlib import Path
 
-from ptyx.shell import print_warning, print_error
+from ptyx.shell import print_warning, print_error, print_info
 
 from ptyx_mcq.scan.data_gestion.data_handler import DataHandler
 from ptyx_mcq.scan.data_gestion.document_data import Page
@@ -28,15 +30,27 @@ class Action(StrEnum):
     DISCARD = "/"
 
 
-class AbstractNamesReviewer(ABC):
-    """"""
+class AbstractDocHeaderDisplayer(AbstractContextManager, ABC):
+    """Abstract class."""
+
+    # noinspection PyUnusedLocal
+    @abstractmethod
+    def __init__(self, data_storage: DataHandler, doc_id: DocumentId):
+        ...
+
+    @abstractmethod
+    def display(self) -> None:
+        """Display document header."""
+
+
+class AbstractNamesReviewer(ABC, metaclass=ABCMeta):
+    """Abstract class."""
 
     def __init__(self, data_storage: DataHandler):
         self.data_storage = data_storage
         self.data = data_storage.data
         self.students_ids = self.data_storage.config.students_ids
 
-    @abstractmethod
     def enter_name_and_id(
         self, doc_id: DocumentId, default: StudentName
     ) -> tuple[StudentName, StudentId, Action, bool]:
@@ -48,6 +62,77 @@ class AbstractNamesReviewer(ABC):
         and a boolean which indicates if the document as been
         effectively reviewed.
         """
+        name = StudentName("")
+        student_id = StudentId("")
+        action: Action | None = None
+
+        suggestion = default
+
+        from ptyx_mcq.scan.data_gestion.conflict_handling.config import Config
+
+        with Config.DocHeaderDisplayer(self.data_storage, doc_id) as doc_header_displayer:
+            while action is None:
+                doc_header_displayer.display()
+
+                # ------------------------------
+                # Ask the user to read the name.
+                # ------------------------------
+                user_input = self._ask_user_for_name(suggestion)
+
+                # -------------------------
+                # Handle the user's answer.
+                # -------------------------
+                suggestion = StudentName("")
+
+                if user_input == Action.DISCARD:
+                    # Discard this document. It will be removed later.
+                    print_info(f"Discarding document {doc_id}.")
+                    return StudentName(user_input), StudentId("-1"), Action.NEXT, True
+                elif user_input == Action.BACK:
+                    print("Navigating back to previous document.")
+                    return StudentName(default), StudentId(student_id), Action.BACK, False
+                elif user_input == Action.NEXT:
+                    print("Navigating to next document.")
+                    return StudentName(default), StudentId(student_id), Action.NEXT, True
+                elif self.students_ids:
+                    if user_input in self.students_ids:
+                        # This is in fact not a name, but a known student id,
+                        # so convert it to a name.
+                        name, student_id = self.students_ids[StudentId(user_input)], StudentId(user_input)
+                        action = Action.NEXT
+                    elif user_input in self.students_ids.values():
+                        for _student_id, _name in self.students_ids.items():
+                            if _name == user_input:
+                                break
+                        # noinspection PyUnboundLocalVariable
+                        name = StudentName(_name)
+                        # noinspection PyUnboundLocalVariable
+                        student_id = StudentId(_student_id)
+                        action = Action.NEXT
+                    elif any((digit in user_input) for digit in string.digits):
+                        # If `name` contains a digit, this is not a student name,
+                        # but probably a misspelled student id!
+                        print("Unknown ID.")
+                        # So, suggest the more closely related existing id.
+                        suggestion = self.students_ids[self._suggest_id(user_input)]
+                    else:
+                        print("Unknown name.")
+                        suggestion = self._suggest_name(user_input)
+                elif self.data_storage.config.students_list:
+                    if user_input in self.data_storage.config.students_list:
+                        action = Action.NEXT
+                    else:
+                        suggestion = self._suggest_name(user_input)
+                elif user_input:
+                    name = StudentName(user_input)
+
+                if action is not None:
+                    print(f"Name: {name}")
+                    if not self._does_user_confirm():
+                        action = None
+        # Keep track of manually entered information (will be useful if the scan has to be run again later!)
+        self.data_storage.store_additional_info(doc_id=doc_id, name=name, student_id=student_id)
+        return name, student_id, action, True
 
     def review_name(self, doc_id: DocumentId) -> tuple[Action, bool]:
         """Review the document name.
@@ -125,6 +210,18 @@ class AbstractNamesReviewer(ABC):
                         # Giving up...
                         name = StudentName("")
         return name
+
+    @abstractmethod
+    def _ask_user_for_name(self, suggestion):
+        """Ask the user to read the name."""
+        ...
+
+    @abstractmethod
+    def _does_user_confirm(self):
+        """Ask user to confirm its choice.
+
+        Return True if user validate its choice, False else."""
+        pass
 
 
 class AbstractAnswersReviewer(ABC):

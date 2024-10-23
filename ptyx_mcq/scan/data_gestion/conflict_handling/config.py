@@ -3,10 +3,12 @@ from typing import Any
 from ptyx_mcq.scan.data_gestion.conflict_handling.data_check.base import (
     AbstractNamesReviewer,
     AbstractAnswersReviewer,
+    AbstractDocHeaderDisplayer,
 )
 from ptyx_mcq.scan.data_gestion.conflict_handling.data_check.cl_implementation import (
     ClNamesReviewer,
     ClAnswersReviewer,
+    ClDocHeaderDisplayer,
 )
 from ptyx_mcq.scan.data_gestion.conflict_handling.integrity_check.cl_implementation import (
     ClIntegrityIssuesFixer,
@@ -23,4 +25,6 @@ class Config:
     NamesReviewer: type[AbstractNamesReviewer] = ClNamesReviewer
     AnswersReviewer: type[AbstractAnswersReviewer] = ClAnswersReviewer
     IntegrityIssuesFixer: type[AbstractIntegrityIssuesFixer] = ClIntegrityIssuesFixer
+    DocHeaderDisplayer: type[AbstractDocHeaderDisplayer] = ClDocHeaderDisplayer
+
     extensions_data: dict[str, Any] = {}
