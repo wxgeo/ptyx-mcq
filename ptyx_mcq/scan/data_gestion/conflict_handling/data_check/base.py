@@ -263,7 +263,7 @@ class AbstractAnswersReviewer(ABC, metaclass=ABCMeta):
 # =======================
 
 
-class AllDataIssuesFixer(ABC):
+class DefaultAllDataIssuesFixer:
     """Fix missing names and ambiguous answers issues."""
 
     def __init__(
