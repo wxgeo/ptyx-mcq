@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Literal
 
 from ptyx.shell import print_success, print_warning, print_info, print_error
@@ -38,6 +39,10 @@ class AbstractIntegrityIssuesFixer(ABC):
         self.data_storage = data_storage
         self.data = self.data_storage.data
 
+    def _get_pic_path(self, doc_id: DocumentId, page: Page) -> Path:
+        pic_path: str = self.data[doc_id].pages[page].pic_path
+        return self.data_storage.absolute_pic_path(pic_path)
+
     @abstractmethod
     def select_version(
         self, scanned_doc_id: DocumentId, temp_doc_id: DocumentId, page: Page
@@ -68,6 +73,11 @@ class AbstractIntegrityIssuesFixer(ABC):
             conflict = next(iter(check_results.conflicts))
             scanned_id, page = conflict
             for tmp_doc_id in check_results.conflicts.pop(conflict):
+                print_warning(
+                    f"Page {page} of test #{scanned_id} seen twice"
+                    f' (in "{self._get_pic_path(scanned_id, page)}"'
+                    f' and "{self._get_pic_path(tmp_doc_id, page)}")!'
+                )
                 if self.select_version(scanned_id, tmp_doc_id, page) == 1:
                     # Remove the second version.
                     self.data_storage.remove_tmp_doc_id(tmp_doc_id)

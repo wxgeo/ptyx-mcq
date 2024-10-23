@@ -320,7 +320,7 @@ class DataHandler:
         """Return picture path relatively to the `.scan/pic/` parent directory."""
         return Path(pic_path).relative_to(self.dirs.pic)
 
-    def absolute_pic_path(self, pic_path: str | Path):
+    def absolute_pic_path(self, pic_path: str | Path) -> Path:
         return self.dirs.pic / pic_path
 
     def get_configuration(self, path: Path) -> Configuration:

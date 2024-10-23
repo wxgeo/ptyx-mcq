@@ -3,12 +3,12 @@ from dataclasses import dataclass
 from enum import StrEnum
 from pathlib import Path
 
-from ptyx.shell import print_warning
-
+from ptyx.shell import print_warning, print_error
 
 from ptyx_mcq.scan.data_gestion.data_handler import DataHandler
 from ptyx_mcq.scan.data_gestion.document_data import Page
-from ptyx_mcq.tools.config_parser import DocumentId, StudentName
+from ptyx_mcq.tools.config_parser import DocumentId, StudentName, StudentId
+from ptyx_mcq.tools.math import levenshtein_distance
 
 UnnamedDocsList = list[DocumentId]
 AmbiguousPagesList = list[tuple[DocumentId, Page]]
@@ -37,6 +37,18 @@ class AbstractNamesReviewer(ABC):
         self.students_ids = self.data_storage.config.students_ids
 
     @abstractmethod
+    def enter_name_and_id(
+        self, doc_id: DocumentId, default: StudentName
+    ) -> tuple[StudentName, StudentId, Action, bool]:
+        """Ask user to read student name and id for current document.
+
+        Return the given student name (empty if no name was provided),
+        the student id (same remark), the action to do
+        (go to next document, go back to previous one, or skip document),
+        and a boolean which indicates if the document as been
+        effectively reviewed.
+        """
+
     def review_name(self, doc_id: DocumentId) -> tuple[Action, bool]:
         """Review the document name.
 
@@ -44,6 +56,75 @@ class AbstractNamesReviewer(ABC):
         or skip document), and a boolean which indicates if the document as been
         effectively reviewed.
         """
+        first_page = self.data[doc_id].pages.get(Page(1))
+        if first_page is None:
+            print_error(f"No first page found for document {doc_id}!")
+            return Action.NEXT, False
+
+        # Ask user for name.
+        student_name, student_id, action, reviewed = self.enter_name_and_id(
+            doc_id, default=self.data[doc_id].name
+        )
+
+        # Store name and student id.
+        self.data[doc_id].name = student_name
+        self.data[doc_id].student_id = student_id
+        self.data_storage.more_infos[doc_id] = (student_name, student_id)
+        return action, reviewed
+
+    def _suggest_id(self, incorrect_student_id: str) -> StudentId:
+        """Print a suggestion of student name, based on provided id.
+
+        The name associated with the most closely matching id will be suggested.
+        """
+
+        def _proximity(id_):
+            return levenshtein_distance(incorrect_student_id, id_)
+
+        suggestion: StudentId = min(self.students_ids, key=_proximity)
+        print(f"Suggestion: {suggestion} → {self.students_ids[suggestion]} (write `ok` to validate it).")
+        return suggestion
+
+    def _suggest_name(self, incorrect_name: str) -> StudentName:
+        """Print a suggestion of student name, based on provided name and existing ones."""
+        incorrect_name = incorrect_name.lower()
+        if self.students_ids:
+            names = list(self.students_ids.values())
+        elif self.data_storage.config.students_list:
+            names = list(self.data_storage.config.students_list)
+        else:
+            return StudentName("")
+
+        # Strategy 1: search if a name is almost the same.
+        def _proximity(name_: StudentName):
+            return levenshtein_distance(incorrect_name, name_)
+
+        suggestion: StudentName = min(names, key=_proximity)
+
+        if levenshtein_distance(incorrect_name, suggestion) <= 3:
+            name = suggestion
+        else:
+            # Strategy 2: search if it is the start of a name.
+            for name in names:
+                if name.lower().startswith(incorrect_name):
+                    break
+            else:
+                # Strategy 3: search if it is the start of any part of a name.
+                for name in names:
+                    if any(part.startswith(incorrect_name) for part in name.lower().split()):
+                        break
+                else:
+                    # Strategy 4: search if it is a substring of any part of a name, or reciprocally.
+                    for name in names:
+                        if any(
+                            (part in incorrect_name or incorrect_name in part)
+                            for part in name.lower().split()
+                        ):
+                            break
+                    else:
+                        # Giving up...
+                        name = StudentName("")
+        return name
 
 
 class AbstractAnswersReviewer(ABC):

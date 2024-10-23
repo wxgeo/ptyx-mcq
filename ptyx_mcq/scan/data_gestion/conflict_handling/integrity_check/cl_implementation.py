@@ -13,7 +13,6 @@ The function `report_integrity_issues()`
 from typing import Literal
 
 from PIL import Image, ImageDraw
-from ptyx.shell import print_warning
 
 from ptyx_mcq.scan.data_gestion.conflict_handling.integrity_check.base import (
     AbstractIntegrityIssuesFixer,
@@ -38,15 +37,6 @@ class ClIntegrityIssuesFixer(AbstractIntegrityIssuesFixer):
     def select_version(
         self, scanned_doc_id: DocumentId, temp_doc_id: DocumentId, page: Page
     ) -> Literal[1, 2]:
-        pic_path1 = self.data[scanned_doc_id].pages[page].pic_path
-        pic_path1 = self.data_storage.absolute_pic_path(pic_path1)
-        pic_path2 = self.data[temp_doc_id].pages[page].pic_path
-        pic_path2 = self.data_storage.absolute_pic_path(pic_path2)
-        # assert isinstance(pic_path1, str)
-        # assert isinstance(pic_path2, str)
-        print_warning(
-            f"Page {page} of test #{scanned_doc_id} seen twice " f'(in "{pic_path1}" and "{pic_path2}") !'
-        )
         print("Choose which version to keep:")
         input("-- Press ENTER --")
         action = ""

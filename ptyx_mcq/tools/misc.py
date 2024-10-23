@@ -1,3 +1,6 @@
+import io
+import sys
+from types import TracebackType
 from typing import Callable, TypeVar
 
 F = TypeVar("F", bound=Callable)
@@ -18,3 +21,37 @@ def copy_docstring(src: Callable) -> Callable[[F], F]:
         return dest
 
     return my_decorator
+
+
+# The following class is used by ptyx-mcq-editor and ptyx-mcq-corrector.
+
+
+class CaptureLog(io.StringIO):
+    """Context manager used to capture a copy of stdout and stderr output.
+
+    Both stdout and stderr are directed to stdout,
+    and a copy is then kept in memory to be able to retrieve the output's content later.
+
+    Use CaptureLog.getvalue() to retrieve the output's content *before* leaving
+    this context manager."""
+
+    def __enter__(self) -> "CaptureLog":
+        self.previous_stdout = sys.stdout
+        self.previous_stderr = sys.stderr
+        sys.stdout = self
+        sys.stderr = self
+        return self
+
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None,
+    ) -> None:
+        sys.stdout = self.previous_stdout
+        sys.stderr = self.previous_stderr
+        self.close()
+
+    def write(self, s: str, /) -> int:
+        self.previous_stdout.write(s)
+        return super().write(s)
