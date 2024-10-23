@@ -323,6 +323,9 @@ class DataHandler:
     def absolute_pic_path(self, pic_path: str | Path) -> Path:
         return self.dirs.pic / pic_path
 
+    def absolute_pic_path_for_page(self, doc_id: DocumentId, page: Page) -> Path:
+        return self.absolute_pic_path(self.data[doc_id].pages[page].pic_path)
+
     def get_configuration(self, path: Path) -> Configuration:
         """Read configuration file, load configuration and calculate maximal score too."""
         cfg: Configuration = Configuration.load(path)

@@ -81,7 +81,7 @@ class ClNamesReviewer(AbstractNamesReviewer):
         return name
 
     @copy_docstring(AbstractNamesReviewer._ask_user_for_name)
-    def _ask_user_for_name(self, suggestion: StudentName) -> StudentName:
+    def _ask_user_for_name(self, suggestion: str, doc_id: DocumentId) -> str:
         """Ask the user to read the name."""
         user_input = input("Name, ID or command: ").strip()
         if user_input.lower() == "ok":
@@ -163,7 +163,8 @@ class ClAnswersReviewer(AbstractAnswersReviewer):
         revision_status = pic_data.revision_status
         print_warning(f"Ambiguous answers for student {self.data[doc_id].name} (doc {doc_id}, page: {page}).")
         print(
-            f"Tip: write {Action.BACK} to go back to previous document, or {Action.NEXT} to jump directly to next document."
+            f"Tip: write {Action.BACK} to go back to previous document,"
+            f" or {Action.NEXT} to jump directly to next document."
         )
         match input(self.ENTER_COMMAND):
             case Action.BACK:

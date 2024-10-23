@@ -77,7 +77,7 @@ class AbstractNamesReviewer(ABC, metaclass=ABCMeta):
                 # ------------------------------
                 # Ask the user to read the name.
                 # ------------------------------
-                user_input = self._ask_user_for_name(suggestion)
+                user_input = self._ask_user_for_name(suggestion=suggestion, doc_id=doc_id)
 
                 # -------------------------
                 # Handle the user's answer.
@@ -212,7 +212,7 @@ class AbstractNamesReviewer(ABC, metaclass=ABCMeta):
         return name
 
     @abstractmethod
-    def _ask_user_for_name(self, suggestion):
+    def _ask_user_for_name(self, suggestion: str, doc_id: DocumentId) -> str:
         """Ask the user to read the name."""
         ...
 
