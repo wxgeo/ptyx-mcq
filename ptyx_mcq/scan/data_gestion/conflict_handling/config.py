@@ -4,6 +4,7 @@ from ptyx_mcq.scan.data_gestion.conflict_handling.data_check.base import (
     AbstractNamesReviewer,
     AbstractAnswersReviewer,
     AbstractDocHeaderDisplayer,
+    DefaultAllDataIssuesFixer,
 )
 from ptyx_mcq.scan.data_gestion.conflict_handling.data_check.cl_implementation import (
     ClNamesReviewer,
@@ -26,5 +27,6 @@ class Config:
     AnswersReviewer: type[AbstractAnswersReviewer] = ClAnswersReviewer
     IntegrityIssuesFixer: type[AbstractIntegrityIssuesFixer] = ClIntegrityIssuesFixer
     DocHeaderDisplayer: type[AbstractDocHeaderDisplayer] = ClDocHeaderDisplayer
+    AllDataIssuesFixer: type[DefaultAllDataIssuesFixer] = DefaultAllDataIssuesFixer
 
     extensions_data: dict[str, Any] = {}

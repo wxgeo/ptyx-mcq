@@ -1,4 +1,4 @@
-from ptyx_mcq.scan.data_gestion.conflict_handling.data_check.base import DataChecker, AllDataIssuesFixer
+from ptyx_mcq.scan.data_gestion.conflict_handling.data_check.base import DataChecker
 from ptyx_mcq.scan.data_gestion.conflict_handling.integrity_check.base import IntegrityChecker
 from ptyx_mcq.scan.data_gestion.data_handler import DataHandler
 
@@ -18,7 +18,7 @@ class ConflictSolver:
         # Search for data's inconsistencies: duplicate or missing names, ambiguous answers.
         data_check_results = DataChecker(self.data_storage).run()
         # Fix found issues.
-        AllDataIssuesFixer(self.data_storage).run(check_result=data_check_results)
+        Config.AllDataIssuesFixer(self.data_storage).run(check_result=data_check_results)
 
 
 __all__ = [
