@@ -1,5 +1,4 @@
 from subprocess import Popen, CompletedProcess
-from pathlib import Path
 
 from numpy import ndarray
 
@@ -137,26 +136,8 @@ class ClAnswersReviewer(AbstractAnswersReviewer):
     SELECT_QUESTION = "Write a question number, or 0 to escape:"
     EDIT_ANSWERS = "Add or remove answers (Example: +2 -1 -4 to add answer 2, and remove answers 1 et 4):"
 
-    @copy_docstring(AbstractAnswersReviewer.review_answer)
-    def review_answer(self, doc_id: DocumentId, page: Page) -> tuple[Action, bool]:
-        if self.data[doc_id].name == Action.DISCARD.value:
-            # Skip this document.
-            return Action.NEXT, False
-        else:
-            pic_data = self.data[doc_id].pages[page]
-            action, reviewed = self.edit_answers(doc_id, page)
-            self.data_storage.store_verified_pic(Path(pic_data.pic_path))
-            return action, reviewed
-
+    @copy_docstring(AbstractAnswersReviewer.edit_answers)
     def edit_answers(self, doc_id: DocumentId, page: Page) -> tuple[Action, bool]:
-        """Call interactive editor to change answers.
-
-        MCQ parser internal state `self.data` will be modified accordingly.
-
-        Return the action to do (go to next document, go back to previous one,
-        or skip document), and a boolean which indicates if the document as been
-        effectively reviewed.
-        """
         config = self.data_storage.config
         pic_data = self.data[doc_id].pages[page]
         answered = pic_data.answered

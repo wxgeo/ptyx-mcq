@@ -224,20 +224,38 @@ class AbstractNamesReviewer(ABC, metaclass=ABCMeta):
         pass
 
 
-class AbstractAnswersReviewer(ABC):
+class AbstractAnswersReviewer(ABC, metaclass=ABCMeta):
     """"""
 
     def __init__(self, data_storage: DataHandler):
         self.data_storage = data_storage
         self.data = self.data_storage.data
 
-    @abstractmethod
     def review_answer(self, doc_id: DocumentId, page: Page) -> tuple[Action, bool]:
         """Review the student answers.
 
         Return the action to do (go to next document, go back to previous one,
         or skip document), and a boolean which indicates if the document as been
         effectively reviewed."""
+        if self.data[doc_id].name == Action.DISCARD.value:
+            # Skip this document.
+            return Action.NEXT, False
+        else:
+            pic_data = self.data[doc_id].pages[page]
+            action, reviewed = self.edit_answers(doc_id, page)
+            self.data_storage.store_verified_pic(Path(pic_data.pic_path))
+            return action, reviewed
+
+    @abstractmethod
+    def edit_answers(self, doc_id: DocumentId, page: Page) -> tuple[Action, bool]:
+        """Call interactive editor to change answers.
+
+        MCQ parser internal state `self.data` will be modified accordingly.
+
+        Return the action to do (go to next document, go back to previous one,
+        or skip document), and a boolean which indicates if the document as been
+        effectively reviewed.
+        """
 
 
 # -----------------------
