@@ -55,7 +55,7 @@ def get_file_with_extension(path: Path, *, extension, autodetect_ptyx_files=True
     path = path.expanduser().resolve()
     if autodetect_ptyx_files and extension == ".ptyx" and is_ptyx_file(path):
         return path
-    if path.suffix == extension:
+    if path.name.endswith(extension):
         if not path.is_file():
             raise FileNotFoundError(f"File '{path}' not found.")
     else:
