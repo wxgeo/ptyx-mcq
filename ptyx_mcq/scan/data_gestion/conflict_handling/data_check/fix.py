@@ -7,7 +7,7 @@ from pathlib import Path
 from ptyx.shell import print_warning, print_error, print_info
 
 from ptyx_mcq.scan.data_gestion.conflict_handling import DataChecker
-from ptyx_mcq.scan.data_gestion.conflict_handling.data_check.checker import DataCheckResult
+from ptyx_mcq.scan.data_gestion.conflict_handling.data_check.check import DataCheckResult
 
 from ptyx_mcq.scan.data_gestion.data_handler import DataHandler
 from ptyx_mcq.scan.data_gestion.document_data import Page

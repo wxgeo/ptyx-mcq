@@ -4,7 +4,7 @@ from numpy import ndarray
 
 from ptyx.shell import print_warning
 
-from ptyx_mcq.scan.data_gestion.conflict_handling.data_check.base import (
+from ptyx_mcq.scan.data_gestion.conflict_handling.data_check.fix import (
     Action,
     AbstractNamesReviewer,
     AbstractAnswersReviewer,

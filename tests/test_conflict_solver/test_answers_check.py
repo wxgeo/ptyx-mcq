@@ -1,4 +1,4 @@
-from ptyx_mcq.scan.data_gestion.conflict_handling.data_check.cl_implementation import (
+from ptyx_mcq.scan.data_gestion.conflict_handling.data_check.cl_fix import (
     ClAnswersReviewer as AnswersReviewer,
 )
 from ptyx_mcq.scan.data_gestion.document_data import DocumentData, Page, RevisionStatus

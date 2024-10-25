@@ -3,7 +3,7 @@ from typing import Literal
 
 from ptyx.shell import print_success, print_warning
 
-from ptyx_mcq.scan.data_gestion.conflict_handling.integrity_check.checker import (
+from ptyx_mcq.scan.data_gestion.conflict_handling.integrity_check.check import (
     MissingQuestion,
     IntegrityCheckResult,
 )
@@ -71,6 +71,6 @@ class AbstractIntegrityIssuesFixer(ABC):
                     (data_dir / f"{tmp_doc_id}-{page}.webp").replace(data_dir / f"{scanned_id}-{page}.webp")
                     # Create an updated `scanned_id` .scandata file.
                     # Warning: we can't simply replace it with the `tmp_doc_id` .scandata file, because it would only
-                    # contain the data corresponding to this page, not the other ones.
+                    # contain the data corresponding to this page and not to all the document's pages.
                     self.data_storage.write_scandata_file(scanned_id)
         assert len(self.data_storage.get_all_temporary_ids()) == 0, self.data_storage.get_all_temporary_ids()

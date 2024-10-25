@@ -1,7 +1,7 @@
-from ptyx_mcq.scan.data_gestion.conflict_handling.data_check.cl_implementation import (
+from ptyx_mcq.scan.data_gestion.conflict_handling.data_check.cl_fix import (
     ClNamesReviewer as NamesReviewer,
 )
-from ptyx_mcq.scan.data_gestion.conflict_handling.data_check.base import Action
+from ptyx_mcq.scan.data_gestion.conflict_handling.data_check.fix import Action
 from ptyx_mcq.scan.data_gestion.document_data import DocumentData
 from ptyx_mcq.tools.config_parser import DocumentId, StudentName
 

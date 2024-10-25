@@ -14,7 +14,7 @@ from typing import Union, Optional
 # from numpy import ndarray
 from ptyx.shell import print_warning, ANSI_RESET, ANSI_GREEN, print_success
 from ptyx.sys_info import CPU_PHYSICAL_CORES
-from ptyx_mcq.scan.data_gestion.conflict_handling.data_check.cl_implementation import ClAnswersReviewer
+from ptyx_mcq.scan.data_gestion.conflict_handling.data_check.cl_fix import ClAnswersReviewer
 
 from ptyx_mcq.parameters import CONFIG_FILE_EXTENSION
 from ptyx_mcq.scan.pdf.amend import amend_all
