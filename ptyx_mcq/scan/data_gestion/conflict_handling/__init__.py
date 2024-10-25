@@ -1,5 +1,5 @@
-from ptyx_mcq.scan.data_gestion.conflict_handling.data_check.base import DataChecker
-from ptyx_mcq.scan.data_gestion.conflict_handling.integrity_check.base import IntegrityChecker
+from ptyx_mcq.scan.data_gestion.conflict_handling.data_check.checker import DataChecker
+from ptyx_mcq.scan.data_gestion.conflict_handling.integrity_check.checker import IntegrityChecker
 from ptyx_mcq.scan.data_gestion.data_handler import DataHandler
 
 
