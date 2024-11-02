@@ -587,7 +587,7 @@ class MCQLatexGenerator(LatexGenerator):
 
         # Shuffle and generate LaTeX.
         # randfunc.shuffle(answers)
-        self.write("\n\n" r"\begin{minipage}{\textwidth}" "\n")
+        self.write("\n\n" r"\begin{minipage}{\textwidth}\begin{flushleft}" "\n")
         n = self.mcq_question_number
         for k, ans in enumerate(answers, 1):
             self._open_answer(
@@ -595,7 +595,7 @@ class MCQLatexGenerator(LatexGenerator):
             )
             self.write(ans)
             self._close_answer()
-        self.write("\n\n\\end{minipage}")
+        self.write("\n\n\\end{flushleft}\\end{minipage}")
 
     def _parse_L_ANSWERS_tag(self, node: Node) -> None:
         raise DeprecationWarning(
