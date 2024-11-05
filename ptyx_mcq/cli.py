@@ -52,8 +52,14 @@ class TemplatesCompleter(argcomplete.completers.BaseCompleter):
 
 
 # noinspection PyTypeHints
-def main(args: Optional[list] = None) -> None:
-    """Main entry point, called whenever `mcq` command is executed."""
+def main(args: Optional[list] = None, _set_pythonhashseed_to_zero=True) -> None:
+    """Main entry point, called whenever the `mcq` command is executed.
+
+    Advanced parameter `_set_pythonhashseed_to_zero`: It should be left to `True` in normal usage
+    (it restarts the python process if needed to disable hash randomness, making the MCQ generation more deterministic).
+    However, you must set it to `False` when using debugging in PyCharm (and possibly other IDE), otherwise a crash
+    occurs, since PyCharm don't expect the python process to be restarted.
+    """
     parser = ArgumentParser(description="Generate and manage pdf MCQs.")
     subparsers = parser.add_subparsers()
     add_parser = subparsers.add_parser
@@ -304,12 +310,12 @@ def main(args: Optional[list] = None) -> None:
 
     if func not in (doc_strategies, doc_config, see):
         # Make compilation more reproducible, by disabling PYTHONHASHSEED.
-        if not os.getenv("PYTHONHASHSEED"):
+        if not os.getenv("PYTHONHASHSEED") and _set_pythonhashseed_to_zero:
             os.environ["PYTHONHASHSEED"] = "0"
             os.execv(sys.executable, [sys.executable] + sys.argv)
         else:
             print("PYTHONHASHSEED:", os.getenv("PYTHONHASHSEED"))
-        assert os.getenv("PYTHONHASHSEED")
+        assert os.getenv("PYTHONHASHSEED") or not _set_pythonhashseed_to_zero
 
     try:
         func(**kwargs)

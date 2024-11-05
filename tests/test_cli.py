@@ -16,7 +16,7 @@ import fitz  # type: ignore
 from ptyx.shell import print_info
 
 from ptyx_mcq.cli import main
-from ptyx_mcq.parameters import CELL_SIZE_IN_CM
+from ptyx_mcq.parameters import CELL_SIZE_IN_CM, DEFAULT_TEMPLATE_NAME
 from ptyx_mcq.tools.rgb import Color, RGB
 from ptyx_mcq.tools.math import round
 from ptyx_mcq.tools.config_parser import (
@@ -142,7 +142,7 @@ def test_many_docs(tmp_path):
     number_of_documents = 10
     path = tmp_path / "mcq"
     # Test mcq new
-    main(["new", str(path), "--template", "original"])
+    main(["new", str(path), "--template", DEFAULT_TEMPLATE_NAME])
     assert "new.ptyx" in listdir(path)
     # Test mcq make
     main(["make", str(path), "-n", str(number_of_documents)])
@@ -164,7 +164,7 @@ def test_cli(tmp_path: Path) -> None:
     # ----------------
     # Test `mcq new`
     # ----------------
-    main(["new", str(path), "--template", "original"])
+    main(["new", str(path), "--template", DEFAULT_TEMPLATE_NAME])
     assert "new.ptyx" in listdir(path)
 
     with open(path / "new.ptyx") as ptyxfile:
@@ -190,7 +190,7 @@ def test_cli(tmp_path: Path) -> None:
     # Test `mcq new PATH -i INCLUDE_PATH`
     # -----------------------------------
     path2 = tmp_path / "mcq-2"
-    main(["new", str(path2), "-i", str(path / "questions"), "-t", "original"])
+    main(["new", str(path2), "-i", str(path / "questions"), "-t", DEFAULT_TEMPLATE_NAME])
     assert "new.ptyx" in listdir(path)
     assert not (path2 / "questions").exists()
 
@@ -297,7 +297,7 @@ def _pdf_look_the_same(pdf_file1: Path, pdf_file2: Path) -> bool:
 def test_make_for_review(tmp_path):
     path = tmp_path / "new dir with non-ascii characters like éhô"
     targets = TEST_DIR / "data/cli-tests/pdf-targets"
-    main(["new", str(path), "--template", "original"])
+    main(["new", str(path), "--template", DEFAULT_TEMPLATE_NAME])
     assert not (path / "new.review.pdf").is_file()
     main(["make", str(path), "--for-review"])
     assert (path / "new.review.pdf").is_file()
@@ -309,7 +309,7 @@ def test_make_for_review(tmp_path):
 def test_make_force(tmp_path):
     path = tmp_path / "new dir"
     targets = TEST_DIR / "data/cli-tests/pdf-targets"
-    main(["new", str(path), "--template", "original"])
+    main(["new", str(path), "--template", DEFAULT_TEMPLATE_NAME])
     main(["make", str(path)])
     assert _pdf_look_the_same(path / "new.pdf", targets / "vanilla-version.pdf")
     assert not _pdf_look_the_same(path / "new.pdf", targets / "for-review-version.pdf")
@@ -322,7 +322,7 @@ def test_make_force(tmp_path):
 def test_make_without_force(tmp_path, custom_input):
     path = tmp_path / "new dir"
     targets = TEST_DIR / "data/cli-tests/pdf-targets"
-    main(["new", str(path), "--template", "original"])
+    main(["new", str(path), "--template", DEFAULT_TEMPLATE_NAME])
     main(["make", str(path)])
     assert _pdf_look_the_same(path / "new.pdf", targets / "vanilla-version.pdf")
 
