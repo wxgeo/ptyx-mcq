@@ -20,7 +20,7 @@ publish: build
 
 fix:
 	poetry run black .
-	poetry run ruff --fix ptyx_mcq tests
+	poetry run ruff check --fix ptyx_mcq tests
 
 test:
 	poetry run pytest -n auto tests/

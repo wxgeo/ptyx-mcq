@@ -34,7 +34,7 @@ myst-parser = "^1.0.0"
 # Version 7.29+ are buggy !
 python-semantic-release = "7.28.1"
 ptyx = {path = "../ptyx", develop = true}
-ruff = "^0.2.1"
+ruff = "^0.7.2"
 pytest-xdist = "^3.5.0"
 
 [tool.poetry.scripts]
@@ -49,7 +49,9 @@ mcq = "ptyx_mcq"
 testpaths = [
     "tests",
 ]
-
+filterwarnings = [
+    'ignore:builtin type swigvarlink has no __module__ attribute:DeprecationWarning',
+]
 
 [tool.mypy]
 implicit_optional = true
@@ -84,7 +86,7 @@ passenv = HOME
 allowlist_externals = poetry
 commands =
     poetry install -v
-    poetry run ruff ptyx_mcq tests
+    poetry run ruff check ptyx_mcq tests
     poetry run mypy ptyx_mcq tests
     poetry run pytest -n auto tests
 """
