@@ -2,7 +2,7 @@ import shutil
 from pathlib import Path
 
 from platformdirs import PlatformDirs
-from ptyx.shell import print_error, print_success
+from ptyx.shell import print_error, print_success, ANSI_CYAN, ANSI_RESET, ANSI_PURPLE
 
 from ptyx_mcq import FatalError
 from ptyx_mcq.parameters import DEFAULT_TEMPLATE_NAME, DEFAULT_TEMPLATE_FULLPATH
@@ -24,12 +24,12 @@ def create_template(name: str = "default") -> None:
 
 def list_templates() -> None:
     """List all available templates."""
-    print("Default pTyX-MCQ template:)")
-    print(f" {DEFAULT_TEMPLATE_NAME}")
-    print("User templates:")
+    print("Default pTyX-MCQ template:")
+    print(f" {ANSI_PURPLE}{DEFAULT_TEMPLATE_NAME}{ANSI_RESET}")
+    print("User-created templates:")
     for path in get_user_templates_path().glob("*"):
         if path.is_dir():
-            print(f"• {path.name}")
+            print(f"- {ANSI_CYAN}{path.name}{ANSI_RESET}")
 
 
 def get_template_path(template_name: str = "") -> Path:

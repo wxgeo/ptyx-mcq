@@ -81,10 +81,51 @@ class Handlers(StrEnum):
     update_config_file = "ptyx_mcq.other_commands.update.update_config_file"
     update_exercises = "ptyx_mcq.other_commands.update.update_exercises"
     see = "ptyx_mcq.other_commands.see.see"
+    create_templates = "ptyx_mcq.other_commands.template.create_template"
     list_templates = "ptyx_mcq.other_commands.template.list_templates"
     doc_config = "ptyx_mcq.other_commands.doc.doc_config"
     doc_strategies = "ptyx_mcq.other_commands.doc.doc_strategies"
     install_shell_completion = "ptyx_mcq.other_commands.install.install_shell_completion"
+
+
+def main(args: Optional[list] = None, _restart_process_if_needed=True) -> None:
+    """Main entry point, called whenever the `mcq` command is executed.
+
+    Advanced parameter `_restart_process_if_needed`: It should be left to `True` in normal usage
+    (it restarts the python process if needed to disable hash randomness, making the MCQ generation more deterministic).
+    However, you must set it to `False` when using debugging in PyCharm (and possibly other IDE), otherwise a crash
+    occurs, since PyCharm don't expect the python process to be restarted.
+    """
+    parser = create_mcq_arg_parser()
+    argcomplete.autocomplete(parser, always_complete_options=False)
+    parsed_args = parser.parse_args(args)
+
+    try:
+        # Launch the function corresponding to the given subcommand.
+        kwargs = vars(parsed_args)
+        # print(kwargs)
+        handler: str = kwargs.pop("handler")
+    except KeyError:
+        # No subcommand passed.
+        kwargs.pop("subparser", parser).print_help()
+        return
+
+    if kwargs.pop("enforce_determinism", False) and _restart_process_if_needed:
+        # Make compilation more reproducible, by disabling PYTHONHASHSEED.
+        if not os.getenv("PYTHONHASHSEED"):
+            os.environ["PYTHONHASHSEED"] = "0"
+            os.execv(sys.executable, [sys.executable] + sys.argv)
+        else:
+            print("PYTHONHASHSEED:", os.getenv("PYTHONHASHSEED"))
+        assert os.getenv("PYTHONHASHSEED")
+
+    try:
+        # Launch corresponding handler.
+        get_handler(handler)(**kwargs)
+    except ProcessInterrupted:
+        sys.exit(0)
+    except FatalError:
+        sys.exit(1)
 
 
 # noinspection PyTypeHints
@@ -235,16 +276,33 @@ def create_mcq_arg_parser() -> ArgumentParser:
     clear_parser.set_defaults(handler=Handlers.clear)
 
     # ------------------------------------------
+    #     $ mcq see
+    # ==========================================
+    # create the parser for the "see" command
+    see_parser = add_parser("see", help="Show the pdf corresponding to the given student.")
+    see_parser.add_argument(
+        "name",
+        nargs="?",
+        metavar="NAME",
+        type=str,
+        help='The name of the student, or part of it. Wildcard may be used, like "J*hn*" (use quotes then).',
+    )
+    see_parser.set_defaults(handler=Handlers.see)
+
+    # ------------------------------------------
     #     $ mcq update
     # ==========================================
-    # create the parser for the "update" command
-    update_parser = add_parser("update", help="Update some files of the MCQ directory.")
+    # create the parser for the "sync" command
+    update_parser = add_parser("update", help="Update/synchronize some files of the MCQ directory.")
+    update_parser.set_defaults(subparser=update_parser)
     add_update_parser = update_parser.add_subparsers().add_parser
 
     # $ mcq update config-file
     # ------------------------
     # create the parser for the "update config-file" command
-    update_config_file_parser = add_update_parser("config-file", help="Update mcq configuration file.")
+    update_config_file_parser = add_update_parser(
+        "config-file", help="Synchronize the mcq configuration file with the .ptyx file."
+    )
     update_config_file_parser.add_argument(  # type: ignore[attr-defined]
         "path",
         nargs="?",
@@ -279,24 +337,11 @@ def create_mcq_arg_parser() -> ArgumentParser:
     update_exercices_parser.set_defaults(handler=Handlers.update_exercises)
 
     # ------------------------------------------
-    #     $ mcq see
-    # ==========================================
-    # create the parser for the "see" command
-    see_parser = add_parser("see", help="Show the pdf corresponding to the given student.")
-    see_parser.add_argument(
-        "name",
-        nargs="?",
-        metavar="NAME",
-        type=str,
-        help='The name of the student, or part of it. Wildcard may be used, like "J*hn*" (use quotes then).',
-    )
-    see_parser.set_defaults(handler=Handlers.see)
-
-    # ------------------------------------------
     #     $ mcq template
     # ==========================================
     # create the parser for the "template" command
     template_parser = add_parser("template", help="Manage templates.")
+    template_parser.set_defaults(subparser=template_parser)
     add_template_parser = template_parser.add_subparsers().add_parser
 
     # $ mcq template create
@@ -311,7 +356,7 @@ def create_mcq_arg_parser() -> ArgumentParser:
         default="default",
         help="The template name must be a valid new directory name.",
     )
-    create_template_parser.set_defaults(handler="ptyx_mcq.other_commands.template.create_template")
+    create_template_parser.set_defaults(handler=Handlers.create_templates)
 
     # $ mcq template list
     # -------------------
@@ -326,6 +371,7 @@ def create_mcq_arg_parser() -> ArgumentParser:
     doc_parser = add_parser(
         "doc", help="Display information about available options and evaluation strategies."
     )
+    doc_parser.set_defaults(subparser=doc_parser)
     add_doc_parser = doc_parser.add_subparsers().add_parser
 
     # $ mcq doc strategies
@@ -344,6 +390,7 @@ def create_mcq_arg_parser() -> ArgumentParser:
     # create the parser for the "install" command
     # create the parser for the "doc" command
     install_parser = add_parser("install", help="Manage pTyX-MCQ installation.")
+    install_parser.set_defaults(subparser=install_parser)
     add_install_parser = install_parser.add_subparsers().add_parser
 
     # $ mcq install shell-completion
@@ -360,45 +407,6 @@ def create_mcq_arg_parser() -> ArgumentParser:
     # TODO: enable to update pTyX-MCQ version.
 
     return parser
-
-
-def main(args: Optional[list] = None, _restart_process_if_needed=True) -> None:
-    """Main entry point, called whenever the `mcq` command is executed.
-
-    Advanced parameter `_restart_process_if_needed`: It should be left to `True` in normal usage
-    (it restarts the python process if needed to disable hash randomness, making the MCQ generation more deterministic).
-    However, you must set it to `False` when using debugging in PyCharm (and possibly other IDE), otherwise a crash
-    occurs, since PyCharm don't expect the python process to be restarted.
-    """
-    parser = create_mcq_arg_parser()
-    argcomplete.autocomplete(parser, always_complete_options=False)
-    parsed_args = parser.parse_args(args)
-
-    try:
-        # Launch the function corresponding to the given subcommand.
-        kwargs = vars(parsed_args)
-        handler: str = kwargs.pop("handler")
-    except KeyError:
-        # No subcommand passed.
-        parser.print_help()
-        return
-
-    if kwargs.pop("enforce_determinism", False) and _restart_process_if_needed:
-        # Make compilation more reproducible, by disabling PYTHONHASHSEED.
-        if not os.getenv("PYTHONHASHSEED"):
-            os.environ["PYTHONHASHSEED"] = "0"
-            os.execv(sys.executable, [sys.executable] + sys.argv)
-        else:
-            print("PYTHONHASHSEED:", os.getenv("PYTHONHASHSEED"))
-        assert os.getenv("PYTHONHASHSEED")
-
-    try:
-        # Launch corresponding handler.
-        get_handler(handler)(**kwargs)
-    except ProcessInterrupted:
-        sys.exit(0)
-    except FatalError:
-        sys.exit(1)
 
 
 if __name__ == "__main__":
