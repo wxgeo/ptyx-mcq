@@ -5,12 +5,11 @@
 ## Objectif
 
 Garder l'accès à tous les conflits même *après* le scan.
-Cela permet de relancer la résolution des conflits pour un ou plusieurs documents.
+Cela permet de relancer la résolution des conflits pour un ou plusieurs documents seulement.
 
 ## Nouvelle structure proposée
 - Nouvelle commande `mcq fix doc <doc> <page>` ou `mcq fix doc <doc>` ou encore `mcq fix name <student-name-or-id>`.
   Cette nouvelle commande permet de déclencher une résolution de conflits manuelle pour la ou les pages en question.
-  Au passage, il faut renommer `mcq fix` en `mcq fix config-file`.
 - Génération d'un fichier `patchs/<doc-id>.scandata`.
   Un fichier du dossier `patch` a donc le même format qu'un fichier `.scandata` du dossier `data/`.
 - Le dossier `data` est subdivisée en 3 sous-répertoires :
@@ -18,7 +17,7 @@ Cela permet de relancer la résolution des conflits pour un ou plusieurs documen
   * `data/conflicts` : un fichier récapitulant les conflits rencontrés.
   * `data/patchs` : data modifiées manuellement (via le processus de résolution des conflits)
 
-On peut rajouter quelques outil en ligen de commande:
+On peut rajouter quelques outil en ligne de commande:
 - un outil permettant de générer un rapport (à l'attention de l'utilisateur) résumant les conflits détectés.
   `mcq issues list` par exemple.
 - un outil permettant de lancer une résolution manuelle des conflits:
@@ -30,10 +29,10 @@ On peut rajouter quelques outil en ligen de commande:
   * La première page contient également le nom et l'identifiant de l'étudiant.
   Ainsi, s'il y a 2 pages, un fichier contient potentiellement 3 actions correctives.
 - On peut aussi éditer manuellement des informations d'un fichier `patchs/<doc-id>.scandata`, pour modifier les données récupérées automatiquement.
-
+- Il faut renommer `mcq fix` en `mcq update config-file` (plus explicite) et `mcq update` en `mcq update imports`.
 
 ## Autres actions envisagées
-- Supprimer les données en double : le nom et l'ID de l'étudiant sont à la fois stockées dans la 1re page
+- Supprimer les données en double : actuellement, le nom et l'ID de l'étudiant sont à la fois stockées dans la 1re page
   et dans une clé à part des data du document.
 
 ## Et l'intégrité ?
