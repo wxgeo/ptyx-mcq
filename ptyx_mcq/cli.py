@@ -32,7 +32,7 @@ from ptyx.shell import (
     ANSI_BLUE,
 )
 
-from ptyx_mcq.parameters import CONFIG_FILE_EXTENSION
+from ptyx_mcq.parameters import CONFIG_FILE_EXTENSION, DEFAULT_TEMPLATE_NAME, DEFAULT_TEMPLATE_FULLPATH
 from ptyx_mcq.tools.config_parser import Configuration
 from ptyx_mcq.tools.io_tools import get_file_or_sysexit, FatalError, ProcessInterrupted
 
@@ -46,7 +46,7 @@ class TemplatesCompleter(argcomplete.completers.BaseCompleter):
     def __call__(  # type: ignore[override]
         self, *, prefix: str, action: Action, parser: ArgumentParser, parsed_args: Namespace
     ) -> Iterable[str]:
-        return ["original"] + [
+        return [DEFAULT_TEMPLATE_NAME] + [
             template.name for template in _get_user_templates_path().glob("*") if template.is_dir()
         ]
 
@@ -87,7 +87,7 @@ def main(args: Optional[list] = None) -> None:
         help=(
             "Specify the name of the template to use.\nIf not specified, search for a template named "
             "'default' in the user config directory, or use the default template.\n"
-            "One may force the use of the default template by writing 'original'."
+            f"One may force the use of the default template by writing '{DEFAULT_TEMPLATE_NAME}'."
         ),
     ).completer = TemplatesCompleter()  # type: ignore[attr-defined]
     new_parser.set_defaults(func=new)
@@ -435,7 +435,7 @@ def get_template_path(template_name: str = "") -> Path:
     If not found, a default template is applied.
     """
     # Default template:
-    template_path = Path(__file__).resolve().parent / "templates/original"
+    template_path = DEFAULT_TEMPLATE_FULLPATH
     # Directory of the eventual user templates:
     user_templates_path = _get_user_templates_path()
     if template_name == "":
@@ -443,7 +443,7 @@ def get_template_path(template_name: str = "") -> Path:
         user_default_template_path = user_templates_path / "default"
         if user_default_template_path.is_dir():
             template_path = user_default_template_path
-    elif template_name != "original":
+    elif template_name != DEFAULT_TEMPLATE_NAME:
         template_path = user_templates_path / template_name
     if not template_path.is_dir():
         print_error(f"I can't use template {template_name!r}: '{template_path}' directory not found.")
@@ -621,14 +621,14 @@ def doc_config() -> None:
 
 def create_template(name: str = "default") -> None:
     """Create default user template."""
-    if name == "original":
+    if name == DEFAULT_TEMPLATE_NAME:
         print_error(f"Name {name!r} is reserved, please choose another template name.")
         raise FatalError
     user_template = PlatformDirs().user_config_path / f"ptyx-mcq/templates/{name}"
     if user_template.is_dir():
         print_error(f"Folder {user_template} already exist, choose a different template name.")
         raise FatalError
-    default_template = Path(__file__).resolve().parent / "templates/original"
+    default_template = DEFAULT_TEMPLATE_FULLPATH
     shutil.copytree(default_template, user_template)
     print_success(f"Template created at {user_template}. Edit the inner files to customize it.")
 

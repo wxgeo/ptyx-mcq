@@ -7,14 +7,14 @@ from ptyx.latex_generator import Compiler
 from ptyx.utilities import extract_verbatim_tag_content, restore_verbatim_tag_content
 from ptyx.shell import print_info, print_warning
 
-import ptyx_mcq
 from ptyx_mcq.make.parser_tools import is_new_exercise_start
 from ptyx_mcq.tools.io_tools import get_file_or_sysexit
+from ptyx_mcq.parameters import DEFAULT_TEMPLATE_FULLPATH
 
 
 def wrap_exercise(code: str, doc_path: Path = None) -> str:
     """Add a minimal header to mcq exercises to make them compilation-ready."""
-    template = (Path(ptyx_mcq.__file__).parent / "templates/original/new.ptyx").read_text()
+    template = (DEFAULT_TEMPLATE_FULLPATH / "new.ptyx").read_text()
     code = improve_ex_file_content(code, ex_file_path=doc_path)
     # re.sub() doesn't seem to work when "\dfrac" is in the replacement string... using re.split() instead.
     before, _, after = re.split("(<<<.+>>>)", template, flags=re.MULTILINE | re.DOTALL)

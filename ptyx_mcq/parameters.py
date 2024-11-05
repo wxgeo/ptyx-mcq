@@ -1,4 +1,16 @@
-# Unit: cm
+from pathlib import Path
+
+# The root of the package, i.e. the `ptyx_mcq` directory.
+PACKAGE_ROOT = Path(__file__).resolve().parent
+
+# Default template path
+DEFAULT_TEMPLATE_DIR = "data/templates"
+DEFAULT_TEMPLATE_NAME = "original"
+DEFAULT_TEMPLATE_FULLPATH = PACKAGE_ROOT / DEFAULT_TEMPLATE_DIR / DEFAULT_TEMPLATE_NAME
+
+CONFIG_FILE_EXTENSION = ".ptyx.mcq.config.json"
+
+# Various dimensions, given in cm.
 CALIBRATION_SQUARE_POSITION = 1
 CALIBRATION_SQUARE_SIZE = 0.5
 SQUARE_SIZE_IN_CM = 0.25
@@ -9,4 +21,3 @@ MARGIN_LEFT_IN_CM = 1.5
 MARGIN_RIGHT_IN_CM = 1.5
 MARGIN_TOP_IN_CM = 2.5
 MARGIN_BOTTOM_IN_CM = 2
-CONFIG_FILE_EXTENSION = ".ptyx.mcq.config.json"
