@@ -100,14 +100,16 @@ def main(args: Optional[list] = None, _restart_process_if_needed=True) -> None:
     argcomplete.autocomplete(parser, always_complete_options=False)
     parsed_args = parser.parse_args(args)
 
+    subparser = parser
     try:
         # Launch the function corresponding to the given subcommand.
         kwargs = vars(parsed_args)
+        subparser = kwargs.pop("subparser", parser)
         # print(kwargs)
         handler: str = kwargs.pop("handler")
     except KeyError:
         # No subcommand passed.
-        kwargs.pop("subparser", parser).print_help()
+        subparser.print_help()
         return
 
     if kwargs.pop("enforce_determinism", False) and _restart_process_if_needed:
