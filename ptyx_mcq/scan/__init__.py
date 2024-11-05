@@ -1,0 +1,44 @@
+from pathlib import Path
+from typing import Literal, Optional
+
+from ptyx.shell import print_success, print_warning, print_info
+
+from ptyx_mcq.scan.scan_doc import MCQPictureParser
+from ptyx_mcq.tools.io_tools import ProcessInterrupted
+
+
+def scan(
+    path: Path,
+    reset: bool = False,
+    cores: int = 0,
+    verify: Literal["auto", "always", "never"] = "auto",
+    test_picture: Path = None,
+    debug: bool = False,
+) -> "MCQPictureParser":
+    """Implement `mcq scan` command.
+
+    Returned `MCQPictureParser` instance may be used by tests to check results.
+    """
+
+    try:
+        if verify == "always":
+            manual_verification: Optional[bool] = True
+        elif verify == "never":
+            manual_verification = False
+        else:
+            manual_verification = None
+        mcq_parser = MCQPictureParser(path)
+        if test_picture is None:
+            mcq_parser.run(
+                manual_verification=manual_verification, number_of_processes=cores, debug=debug, reset=reset
+            )
+            print_success("Students' marks successfully generated. :)")
+        else:
+            mcq_parser.scan_single_picture(test_picture)
+            print_success(f"Picture {test_picture!r} scanned.")
+        return mcq_parser
+    except KeyboardInterrupt:
+        print()
+        print_warning("Script interrupted.")
+        print_info("Relaunch it to resume scan process.")
+        raise ProcessInterrupted

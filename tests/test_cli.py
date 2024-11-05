@@ -15,7 +15,7 @@ import fitz  # type: ignore
 
 from ptyx.shell import print_info
 
-from ptyx_mcq.cli import main
+from ptyx_mcq.cli import main, Handlers, get_handler
 from ptyx_mcq.parameters import CELL_SIZE_IN_CM, DEFAULT_TEMPLATE_NAME
 from ptyx_mcq.tools.rgb import Color, RGB
 from ptyx_mcq.tools.math import round
@@ -151,6 +151,12 @@ def test_many_docs(tmp_path):
     assert "new-corr.pdf" not in listdir(path)
 
 
+def test_handlers() -> None:
+    """Test that all command line handlers do still exist."""
+    for handler in Handlers:
+        assert callable(get_handler(handler))
+
+
 def test_cli(tmp_path: Path) -> None:
     number_of_documents = 2
     # Make a temporary directory
@@ -239,7 +245,7 @@ def test_cli(tmp_path: Path) -> None:
     with open(path / "new.ptyx", "w", encoding="utf8") as f:
         f.write(content.replace("# default score =", "default score ="))
 
-    main(["fix", str(path)])
+    main(["update", "config-file", str(path)])
     config = Configuration.load(path / "new.ptyx.mcq.config.json")
     assert new_student_name in config.students_ids.values(), repr(path / "new.ptyx.mcq.config.json")
     main(["scan", str(path)])
