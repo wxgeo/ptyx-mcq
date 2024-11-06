@@ -23,13 +23,21 @@ On peut rajouter quelques outil en ligne de commande:
 - un outil permettant de lancer une résolution manuelle des conflits:
   `mcq issues fix`
 
+## Nouvel algorithme
+On peut scinder en deux la phase de scan :
+- extraction des infos brutes de chaque document : ID document, localisation dans la matrice des cases à cocher (ID étudiant et réponses).
+- analyse des informations. Cela permet d'effectuer une analyse globale des documents, et non page par page, ce qui peut
+  améliorer l'algo de détection des réponses.
+  
+Ensuite, on conserve la phase de résolution des conflits.
+
 ## Remarques :
 - À partir d'un fichier `patchs/<doc-id>.scandata`, on peut retrouver toutes les actions correctives effectuées sur le document.
   * Les données de chaque page correspond à une action corrective.
   * La première page contient également le nom et l'identifiant de l'étudiant.
   Ainsi, s'il y a 2 pages, un fichier contient potentiellement 3 actions correctives.
 - On peut aussi éditer manuellement des informations d'un fichier `patchs/<doc-id>.scandata`, pour modifier les données récupérées automatiquement.
-- Il faut renommer `mcq fix` en `mcq update config-file` (plus explicite) et `mcq update` en `mcq update imports`.
+- DONE: Il faut renommer `mcq fix` en `mcq update config-file` (plus explicite) et `mcq update` en `mcq update imports`.
 
 ## Autres actions envisagées
 - Supprimer les données en double : actuellement, le nom et l'ID de l'étudiant sont à la fois stockées dans la 1re page

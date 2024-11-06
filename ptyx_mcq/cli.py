@@ -78,9 +78,11 @@ class Handlers(StrEnum):
     make = "ptyx_mcq.make.make"
     scan = "ptyx_mcq.scan.scan"
     clear = "ptyx_mcq.other_commands.clear.clear"
+    see = "ptyx_mcq.other_commands.see.see"
+    fix_doc = "ptyx_mcq.other_commands.fix.fix_doc"
+    fix_name = "ptyx_mcq.other_commands.fix.fix_name"
     update_config_file = "ptyx_mcq.other_commands.update.update_config_file"
     update_exercises = "ptyx_mcq.other_commands.update.update_exercises"
-    see = "ptyx_mcq.other_commands.see.see"
     create_templates = "ptyx_mcq.other_commands.template.create_template"
     list_templates = "ptyx_mcq.other_commands.template.list_templates"
     doc_config = "ptyx_mcq.other_commands.doc.doc_config"
@@ -292,9 +294,63 @@ def create_mcq_arg_parser() -> ArgumentParser:
     see_parser.set_defaults(handler=Handlers.see)
 
     # ------------------------------------------
+    #     $ mcq fix
+    # ==========================================
+    # create the parser for the "fix" command
+    fix_parser = add_parser("fix", help="Resolve the conflicts for the specified documents.")
+    fix_parser.set_defaults(subparser=fix_parser)
+    add_fix_parser = fix_parser.add_subparsers().add_parser
+
+    # $ mcq fix doc
+    # ------------------------
+    # create the parser for the "fix doc" command
+    fix_doc_parser = add_fix_parser("doc", help="Resolve conflicts concerning the students answers.")
+    fix_doc_parser.add_argument(
+        "-d",
+        "--doc",
+        metavar="DOC",
+        type=int,
+        help="The identifiant of the document.",
+    )  # TODO: add a completer ?
+    fix_doc_parser.add_argument(
+        "-p",
+        "--page",
+        metavar="PAGE",
+        type=int,
+        help="The page of the document.",
+    )  # TODO: add a completer ?
+    fix_doc_parser.add_argument(
+        "-n",
+        "--name",
+        metavar="NAME",
+        type=str,
+        help="The name of the student.",
+    )  # TODO: add a completer ?
+    fix_doc_parser.add_argument(
+        "-i",
+        "--id",
+        metavar="ID",
+        type=str,
+        help="The identifiant of the student.",
+    )  # TODO: add a completer ?
+    fix_doc_parser.set_defaults(handler=Handlers.fix_doc)
+
+    # $ mcq fix name
+    # ------------------------
+    # create the parser for the "fix name" command
+    fix_name_parser = add_fix_parser("name", help="Resolve conflicts concerning the students name.")
+    fix_name_parser.add_argument(
+        "--doc",
+        metavar="DOC",
+        type=int,
+        help="The identifiant of the document.",
+    )  # TODO: add a completer ?
+    fix_doc_parser.set_defaults(handler=Handlers.fix_name)
+
+    # ------------------------------------------
     #     $ mcq update
     # ==========================================
-    # create the parser for the "sync" command
+    # create the parser for the "update" command
     update_parser = add_parser("update", help="Update/synchronize some files of the MCQ directory.")
     update_parser.set_defaults(subparser=update_parser)
     add_update_parser = update_parser.add_subparsers().add_parser
