@@ -11,7 +11,7 @@ keywords = ["python", "tikz", "latex", "pdf", "exam", "mcq", "student"]
 [tool.poetry.dependencies]
 python = "^3.10"
 Pillow = ">=9.2"
-ptyx = "^28.2"
+ptyx = "^29"
 smallgraphlib = ">=0.10"
 platformdirs = "^4"
 openpyxl = ">=3.1.2"

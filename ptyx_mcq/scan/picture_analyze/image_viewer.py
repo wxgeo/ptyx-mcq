@@ -1,10 +1,13 @@
 import subprocess
 import tempfile
 from os.path import join
-from typing import overload, Literal
+from typing import overload, Literal, TYPE_CHECKING
 
 from PIL import Image
-from PIL.PyAccess import PyAccess
+
+if TYPE_CHECKING:
+    # noinspection PyProtectedMember
+    from PIL._imaging import PixelAccess
 from numpy import ndarray, int8
 
 from ptyx_mcq.tools.rgb import Color, RGB
@@ -122,7 +125,7 @@ class ImageViewer:
         for rectangle in self._shapes:
             self._draw_rectangle(rectangle)
 
-    def _set_pixel(self, pixels: PyAccess, i: int, j: int, color: RGB) -> None:
+    def _set_pixel(self, pixels: "PixelAccess", i: int, j: int, color: RGB) -> None:
         if 0 <= i < self.image.height and 0 <= j < self.image.width:
             pixels[j, i] = color
 
@@ -144,7 +147,7 @@ class ImageViewer:
 
         color = rectangle.color
         thickness = rectangle.thickness
-        pixels: PyAccess = self.image.load()  # type:ignore
+        pixels: "PixelAccess" = self.image.load()
 
         if rectangle.fill:
             for i in range(i1, i2 + 1):
