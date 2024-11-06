@@ -10,14 +10,11 @@ keywords = ["python", "tikz", "latex", "pdf", "exam", "mcq", "student"]
 
 [tool.poetry.dependencies]
 python = "^3.10"
-numpy = "^1.23.0"
-Pillow = "^9.2"
-sympy = "~1.11"
-pymupdf = "^1.21.1"
+Pillow = ">=9.2"
 ptyx = "^28.2"
 smallgraphlib = ">=0.10"
 platformdirs = "^4"
-openpyxl = "^3.1.2"
+openpyxl = ">=3.1.2"
 argcomplete = "^3.1.2"
 
 
@@ -26,7 +23,7 @@ types-openpyxl = "^3.1.0.12"
 types-Pillow = "^9.0.20"
 pytest = "^7"
 mypy = "^1.0"
-black = "^23.3.0"
+black = "^24.10.0"
 tox = "^4.14"
 sphinx-autodoc-typehints = "^1.18.3"
 sphinx-rtd-theme = "^1.0.0"#
