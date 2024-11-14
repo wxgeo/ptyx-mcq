@@ -298,7 +298,7 @@ class MCQLatexGenerator(LatexGenerator):
                 print("* " + s)
             print(stars)
             raise SameAnswerError(
-                "Same answer proposed twice in MCQ (see message above for more information) !",
+                f"Same answer proposed twice in MCQ: {raw_code}!",
                 answer=raw_code,
             )
         else:
