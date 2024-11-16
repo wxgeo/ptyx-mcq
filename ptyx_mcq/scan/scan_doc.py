@@ -22,15 +22,13 @@ from ptyx_mcq.scan.pdf.amend import amend_all
 from ptyx_mcq.scan.data_gestion.conflict_handling import ConflictSolver
 from ptyx_mcq.scan.data_gestion.data_handler import DataHandler, save_webp
 from ptyx_mcq.scan.data_gestion.document_data import DocumentData, Page, PicData
-from ptyx_mcq.scan.pdf.pdftools import PIC_EXTS
+from ptyx_mcq.scan.pdf.utilities import PIC_EXTS
 from ptyx_mcq.scan.picture_analyze.scan_pic import (
     scan_picture,
 )
 from ptyx_mcq.scan.picture_analyze.types_declaration import CalibrationError
 from ptyx_mcq.scan.score_management.scores_manager import ScoresManager
 from ptyx_mcq.tools.config_parser import (
-    StudentId,
-    StudentName,
     DocumentId,
 )
 
@@ -96,10 +94,6 @@ class MCQPictureParser:
         # self.warnings = False
         self.data_handler = DataHandler(Path(path), input_dir=input_dir, output_dir=output_dir)
         self.scores_manager = ScoresManager(self)
-        # Set `already_seen` will contain all seen (ID, page) couples.
-        # It is used to catch a hypothetical scanning problem:
-        # we have to be sure that the same page on the same test is not seen twice.
-        self.already_seen: set[tuple[DocumentId, Page]] = set()
 
     @property
     def config(self):
@@ -114,6 +108,10 @@ class MCQPictureParser:
 
         Used mainly for debugging.
         """
+        # TODO: Rewrite it.
+        #       A XLSX file should be generated, with all scan information.
+        #       - some stats (number of pdf, pages...)
+        #       - all conflicts solved, notably duplicate pages found
         # Generate CSV file with ID and pictures names for all students.
         info_path = self.data_handler.files.infos
         # Sort data to make testing easier.
@@ -141,6 +139,8 @@ class MCQPictureParser:
 
     def scan_single_picture(self, picture: Union[str, Path]) -> None:
         """This is used for debugging (it allows to test one page specifically)."""
+        # TODO: Still useful?
+        #       Test it or remove it.
         # f1-pic-003.jpg (page 25)
         # f12-pic-005.jpg
         # f12-pic-003.jpg
@@ -230,30 +230,17 @@ class MCQPictureParser:
 
         # 2) Gather data
         #    ‾‾‾‾‾‾‾‾‾‾‾
-        name, student_id = self.data_handler.more_infos.get(doc_id, (StudentName(""), StudentId("")))
         doc_data: DocumentData = self.data.setdefault(
             doc_id,
             DocumentData(
                 pages={},
-                name=name,
-                student_id=student_id,
                 score=0,
                 score_per_question={},
             ),
         )
         doc_data.pages[page] = pic_data
 
-        # 3) 1st page of the test => retrieve the student name
-        #    ‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾
-
-        if page == 1:
-            if doc_id in self.data_handler.more_infos:
-                doc_data.name, doc_data.student_id = self.data_handler.more_infos[doc_id]
-            else:
-                doc_data.name = pic_data.name
-                doc_data.student_id = pic_data.student_id
-
-                # Store work in progress, so we can resume process if something fails...
+        # Store work in progress, so we can resume process if something fails...
 
         # print("[", time.time() - t, "]")
         self.data_handler.store_doc_data(pic_path.parent.name, doc_id, page, bytes_io)

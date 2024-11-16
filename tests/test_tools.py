@@ -1,10 +1,31 @@
 import shutil
 
 import pytest
+import numpy as np
 
 from ptyx_mcq.tools.extend_literal_eval import extended_literal_eval
 from ptyx_mcq.tools.io_tools import is_ptyx_file, get_file_with_extension
+from ptyx_mcq.tools.pic import load_webp, save_webp, convert_to_webp
 from .toolbox import TEST_DIR
+
+
+def calculate_rmse(image1, image2):
+    """
+    Calculate the Root Mean Squared Error (RMSE) between two images.
+    """
+    # Convert images to NumPy arrays
+    array1 = np.array(image1)
+    array2 = np.array(image2)
+
+    # Ensure both images have the same dimensions
+    if array1.shape != array2.shape:
+        raise ValueError("Images do not have the same dimensions.")
+
+    # Compute the mean squared error
+    mse = np.mean((array1 - array2) ** 2)
+
+    # Return the square root of the MSE (RMSE)
+    return np.sqrt(mse)
 
 
 def test_extend_literal_eval():
@@ -48,3 +69,20 @@ def test_get_file_with_extension():
         assert get_file_with_extension(path, extension=".ptyx") == path
     with pytest.raises(FileNotFoundError):
         assert get_file_with_extension(path.parent, extension=".ptyx") == path
+
+
+def test_webp(tmp_path):
+    """Test WEBP image manipulation:
+    - loading to numpy array
+    - saving from numpy array
+    - conversion from other image type
+    """
+    tolerance = 0.01
+    tmp_file = tmp_path / "tmp.webp"
+    array = load_webp(TEST_DIR / "data/scan-results-samples/mcq.webp")
+    array2 = load_webp(TEST_DIR / "data/scan-results-samples/mcq2.webp")
+    save_webp(array, tmp_file)
+    assert calculate_rmse(load_webp(tmp_file), array) < tolerance
+    convert_to_webp(TEST_DIR / "data/scan-results-samples/mcq.png", tmp_file)
+    assert calculate_rmse(load_webp(tmp_file), array) < tolerance
+    assert calculate_rmse(array, array2) > tolerance

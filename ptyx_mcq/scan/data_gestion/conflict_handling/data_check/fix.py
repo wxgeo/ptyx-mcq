@@ -26,8 +26,7 @@ class AbstractDocHeaderDisplayer(AbstractContextManager, ABC):
 
     # noinspection PyUnusedLocal
     @abstractmethod
-    def __init__(self, data_storage: DataHandler, doc_id: DocumentId):
-        ...
+    def __init__(self, data_storage: DataHandler, doc_id: DocumentId): ...
 
     @abstractmethod
     def display(self) -> None:

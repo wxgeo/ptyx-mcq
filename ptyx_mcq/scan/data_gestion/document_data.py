@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from enum import Enum, auto
 from typing import NewType
 
+from ptyx_mcq.scan.picture_analyze.types_declaration import Pixel
 from ptyx_mcq.tools.config_parser import (
     DocumentId,
     StudentId,
@@ -46,35 +47,61 @@ class PicData:
     doc_id: DocumentId
     # page number:
     page: Page
-    name: StudentName
-    student_id: StudentId
-    # answers checked by the student for each question:
-    answered: OriginalQuestionAnswersDict
     # Position of each checkbox in the page:
-    positions: dict[tuple[OriginalQuestionNumber, OriginalAnswerNumber], tuple[int, int]]
-    cell_size: int
-    # Translation table ({question number before shuffling: after shuffling})
-    questions_nums_conversion: dict[OriginalQuestionNumber, ApparentQuestionNumber]
-    detection_status: dict[tuple[OriginalQuestionNumber, OriginalAnswerNumber], DetectionStatus]
-    revision_status: dict[tuple[OriginalQuestionNumber, OriginalAnswerNumber], RevisionStatus]
+    positions: dict[tuple[OriginalQuestionNumber, OriginalAnswerNumber], Pixel]
+    id_table_position: Pixel
     pic_path: str
 
-    @property
-    def needs_review(self):
-        return (
-            DetectionStatus.PROBABLY_CHECKED in self.detection_status.values()
-            or DetectionStatus.PROBABLY_UNCHECKED in self.detection_status.values()
-        )
+
+# @dataclass(kw_only=True)
+# class PicData:
+#     # ID of the document:
+#     doc_id: DocumentId
+#     # page number:
+#     page: Page
+#     name: StudentName
+#     student_id: StudentId
+#     # answers checked by the student for each question:
+#     answered: OriginalQuestionAnswersDict
+#     # Position of each checkbox in the page:
+#     positions: dict[tuple[OriginalQuestionNumber, OriginalAnswerNumber], tuple[int, int]]
+#     cell_size: int
+#     # Translation table ({question number before shuffling: after shuffling})
+#     questions_nums_conversion: dict[OriginalQuestionNumber, ApparentQuestionNumber]
+#     detection_status: dict[tuple[OriginalQuestionNumber, OriginalAnswerNumber], DetectionStatus]
+#     revision_status: dict[tuple[OriginalQuestionNumber, OriginalAnswerNumber], RevisionStatus]
+#     pic_path: str
+#
+#     @property
+#     def needs_review(self):
+#         return (
+#             DetectionStatus.PROBABLY_CHECKED in self.detection_status.values()
+#             or DetectionStatus.PROBABLY_UNCHECKED in self.detection_status.values()
+#         )
 
 
 @dataclass(kw_only=True)
 class DocumentData:
     pages: dict[Page, PicData]
-    name: StudentName
-    student_id: StudentId
     score: float
     score_per_question: dict[OriginalQuestionNumber, float]  # {question: score}
 
     @property
     def answered(self) -> ChainMap[OriginalQuestionNumber, set[OriginalAnswerNumber]]:
         return ChainMap(*(pic_data.answered for pic_data in self.pages.values()))
+
+    @property
+    def name(self) -> StudentName:
+        return self.pages[Page(1)].name
+
+    @name.setter
+    def name(self, value: StudentName) -> None:
+        self.pages[Page(1)].name = value
+
+    @property
+    def student_id(self) -> StudentId:
+        return self.pages[Page(1)].student_id
+
+    @student_id.setter
+    def student_id(self, value: StudentId) -> None:
+        self.pages[Page(1)].student_id = value

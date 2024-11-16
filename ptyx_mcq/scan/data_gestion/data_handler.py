@@ -24,7 +24,8 @@ from ptyx_mcq.scan.data_gestion.document_data import (
     Page,
 )
 from ptyx_mcq.scan.data_gestion.paths_handler import PathsHandler, DirsPaths, FilesPaths
-from ptyx_mcq.scan.pdf.pdftools import number_of_pages, extract_pdf_pictures, PIC_EXTS
+from ptyx_mcq.scan.pdf.utilities import number_of_pages, PIC_EXTS
+from ptyx_mcq.scan.pdf.extract import extract_pdf_pictures
 from ptyx_mcq.tools.config_parser import (
     Configuration,
     get_answers_with_status,
@@ -39,11 +40,6 @@ from ptyx_mcq.tools.extend_literal_eval import extended_literal_eval
 
 
 CheckboxAnalyzeResult = dict[tuple[OriginalQuestionNumber, OriginalAnswerNumber], DetectionStatus]
-
-
-def save_webp(matrix: ndarray, path_or_stream: Path | str | BytesIO, lossless=False) -> None:
-    """Save image content as a WEBP image."""
-    Image.fromarray((255 * matrix).astype(int8)).save(path_or_stream, format="WEBP", lossless=lossless)
 
 
 def pic_names_iterator(data: dict[DocumentId, DocumentData]) -> Iterator[Path]:
@@ -466,59 +462,59 @@ class DataHandler:
         with open(self.files.verified, "a", newline="", encoding="utf8") as file:
             file.write(f"{verified_pic}\n")
 
-    def _generate_current_pdf_hashes(self) -> dict[str, Path]:
-        """Return the hashes of all the pdf files found in `scan/` directory.
+    # def _generate_current_pdf_hashes(self) -> dict[str, Path]:
+    #     """Return the hashes of all the pdf files found in `scan/` directory.
+    #
+    #     Return: {hash: pdf path}
+    #     """
+    #     hashes = dict()
+    #     for path in self.paths.input_dir.glob("**/*.pdf"):
+    #         with open(path, "rb") as pdf_file:
+    #             hashes[blake2b(pdf_file.read(), digest_size=20).hexdigest()] = path
+    #     return hashes
 
-        Return: {hash: pdf path}
-        """
-        hashes = dict()
-        for path in self.paths.input_dir.glob("**/*.pdf"):
-            with open(path, "rb") as pdf_file:
-                hashes[blake2b(pdf_file.read(), digest_size=20).hexdigest()] = path
-        return hashes
+    # def _update_input_data(self) -> None:
+    #     """Test if input data has changed, and update it if needed."""
+    #     hash2pdf: dict[str, Path] = self._generate_current_pdf_hashes()
+    #
+    #     self._remove_obsolete_files(hash2pdf)
+    #
+    #     # For each new pdf files, extract all pictures
+    #     to_extract: list[tuple[Path, Path]] = []
+    #     with Pool() as pool:
+    #         for pdfhash, pdfpath in hash2pdf.items():
+    #             folder = self.dirs.pic / pdfhash
+    #             if not folder.is_dir():
+    #                 to_extract.append((pdfpath, folder))
+    #             elif number_of_pages(pdfpath) != len(
+    #                 [f for f in folder.iterdir() if f.suffix.lower() in PIC_EXTS]
+    #             ):
+    #                 # Extraction was probably interrupted
+    #                 rmtree(folder)
+    #                 folder.mkdir()
+    #                 to_extract.append((pdfpath, folder))
+    #         if to_extract:
+    #             print("Extracting pictures from pdf...")
+    #             pool.starmap(extract_pdf_pictures, to_extract)
 
-    def _update_input_data(self) -> None:
-        """Test if input data has changed, and update it if needed."""
-        hash2pdf: dict[str, Path] = self._generate_current_pdf_hashes()
-
-        self._remove_obsolete_files(hash2pdf)
-
-        # For each new pdf files, extract all pictures
-        to_extract: list[tuple[Path, Path]] = []
-        with Pool() as pool:
-            for pdfhash, pdfpath in hash2pdf.items():
-                folder = self.dirs.pic / pdfhash
-                if not folder.is_dir():
-                    to_extract.append((pdfpath, folder))
-                elif number_of_pages(pdfpath) != len(
-                    [f for f in folder.iterdir() if f.suffix.lower() in PIC_EXTS]
-                ):
-                    # Extraction was probably interrupted
-                    rmtree(folder)
-                    folder.mkdir()
-                    to_extract.append((pdfpath, folder))
-            if to_extract:
-                print("Extracting pictures from pdf...")
-                pool.starmap(extract_pdf_pictures, to_extract)
-
-    def _remove_obsolete_files(self, hash2pdf: dict[str, Path]) -> None:
-        """For each removed pdf files, remove corresponding pictures and data."""
-        for path in self.dirs.pic.iterdir():
-            if not path.is_dir():
-                raise RuntimeError(
-                    f'Folder "{path.parent}" should only contain folders.\n'
-                    "You may clean it manually, or remove it with following command:\n"
-                    f'rm -r "{path.parent}"'
-                )
-            if path.name not in hash2pdf:
-                rmtree(path)
-        for path in self.dirs.data.glob("*.index"):
-            if path.stem not in hash2pdf:
-                with open(path) as f:
-                    doc_ids = set(f.read().split())
-                for doc_id in doc_ids:
-                    self.remove_doc_files(DocumentId(int(doc_id)))
-                path.unlink()
+    # def _remove_obsolete_files(self, hash2pdf: dict[str, Path]) -> None:
+    #     """For each removed pdf files, remove corresponding pictures and data."""
+    #     for path in self.dirs.pic.iterdir():
+    #         if not path.is_dir():
+    #             raise RuntimeError(
+    #                 f'Folder "{path.parent}" should only contain folders.\n'
+    #                 "You may clean it manually, or remove it with following command:\n"
+    #                 f'rm -r "{path.parent}"'
+    #             )
+    #         if path.name not in hash2pdf:
+    #             rmtree(path)
+    #     for path in self.dirs.data.glob("*.index"):
+    #         if path.stem not in hash2pdf:
+    #             with open(path) as f:
+    #                 doc_ids = set(f.read().split())
+    #             for doc_id in doc_ids:
+    #                 self.remove_doc_files(DocumentId(int(doc_id)))
+    #             path.unlink()
 
     def remove_doc_files(self, doc_id: DocumentId) -> None:
         """Remove all the data files associated with the document of id `doc_id`."""

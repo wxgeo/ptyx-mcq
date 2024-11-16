@@ -17,7 +17,7 @@ from ptyx.shell import print_info
 
 from ptyx_mcq.cli import main, Handlers, get_handler
 from ptyx_mcq.parameters import CELL_SIZE_IN_CM, DEFAULT_TEMPLATE_NAME
-from ptyx_mcq.tools.rgb import Color, RGB
+from ptyx_mcq.tools.colors import Color, RGB
 from ptyx_mcq.tools.math import round
 from ptyx_mcq.tools.config_parser import (
     Configuration,

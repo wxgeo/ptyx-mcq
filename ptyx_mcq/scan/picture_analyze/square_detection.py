@@ -2,7 +2,7 @@ from typing import Literal, Iterator, Iterable
 
 from numpy import array, nonzero, transpose, ndarray
 
-from ptyx_mcq.scan.picture_analyze.types_declaration import Pixel
+from ptyx_mcq.scan.picture_analyze.types_declaration import Pixel, Col, Line
 from ptyx_mcq.scan.picture_analyze.image_viewer import color2debug
 
 
@@ -73,9 +73,9 @@ def find_black_rectangle(
     # Find a black pixel, starting from top left corner,
     # and scanning line by line (i.e. from top to bottom).
     if mode == "row":
-        black_pixels: Iterable = nonzero(m)
+        black_pixels: Iterable[Pixel] = nonzero(m)  # type: ignore
     elif mode == "column":
-        black_pixels = reversed(nonzero(transpose(array(m))))
+        black_pixels = reversed(nonzero(transpose(array(m))))  # type: ignore
     else:
         raise RuntimeError("Unknown mode: %s. Mode should be either 'row' or 'column'." % repr(mode))
     if debug:
@@ -209,8 +209,8 @@ def find_black_square(
 
 def test_square_color(
     m: ndarray,
-    i: int,
-    j: int,
+    i: Line,
+    j: Col,
     size: int,
     proportion: float = 0.3,
     gray_level: float = 0.75,
@@ -240,7 +240,7 @@ def test_square_color(
     return square.sum() > proportion * len(square) ** 2 and core.sum() > proportion * len(core) ** 2
 
 
-def eval_square_color(m: ndarray, i: int, j: int, size: int, margin: int = 0, _debug=False) -> float:
+def eval_square_color(m: ndarray, i: Line, j: Col, size: int, margin: int = 0, _debug=False) -> float:
     """Return an indicator of blackness, which is a float in range (0, 1).
     The bigger the float returned, the darker the square.
 
@@ -262,8 +262,8 @@ def eval_square_color(m: ndarray, i: int, j: int, size: int, margin: int = 0, _d
 
 
 def adjust_checkbox(
-    m: ndarray, i: int, j: int, size: int, level1: float = 0.5, level2: float = 0.6, delta: int = 5
-):
+    m: ndarray, i: Line, j: Col, size: int, level1: float = 0.5, level2: float = 0.6, delta: int = 5
+) -> Pixel:
     # return (i, j)
     # Try to adjust top edge of the checkbox
     i0, j0 = i, j

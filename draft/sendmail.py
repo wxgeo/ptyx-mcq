@@ -1,6 +1,7 @@
 """
 Warning: This module is just a (non-working) draft !
 """
+
 # flake8: noqa
 
 import smtplib

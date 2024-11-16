@@ -21,3 +21,6 @@ MARGIN_LEFT_IN_CM = 1.5
 MARGIN_RIGHT_IN_CM = 1.5
 MARGIN_TOP_IN_CM = 2.5
 MARGIN_BOTTOM_IN_CM = 2
+
+# The image format used to store the pictures extracted from the input pdf files.
+IMAGE_FORMAT = "webp"

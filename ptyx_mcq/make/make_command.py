@@ -1,6 +1,7 @@
 """
 Generate pdf file from raw mcq file.
 """
+
 import tempfile
 from functools import partial
 from pathlib import Path
@@ -131,7 +132,7 @@ def make_command(
         all_info, _ = make(
             ptyx_filename,
             number_of_documents=num,
-            options=DEFAULT_PTYX_MCQ_COMPILATION_OPTIONS.updated(start=start, quiet=quiet)
+            options=DEFAULT_PTYX_MCQ_COMPILATION_OPTIONS.updated(start=start, quiet=quiet),
             # cpu_cores=1,
         )
         generate_config_file(compiler)

@@ -12,7 +12,7 @@ from ptyx_mcq.scan.data_gestion.conflict_handling.data_check.fix import (
 )
 from ptyx_mcq.scan.data_gestion.data_handler import DataHandler
 from ptyx_mcq.tools.misc import copy_docstring
-from ptyx_mcq.tools.rgb import Color, RGB
+from ptyx_mcq.tools.colors import Color, RGB
 from ptyx_mcq.scan.data_gestion.document_data import (
     Page,
     DetectionStatus,

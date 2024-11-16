@@ -10,7 +10,7 @@ if TYPE_CHECKING:
     from PIL._imaging import PixelAccess
 from numpy import ndarray, int8
 
-from ptyx_mcq.tools.rgb import Color, RGB
+from ptyx_mcq.tools.colors import Color, RGB
 from ptyx_mcq.scan.picture_analyze.types_declaration import (
     Shape,
     Rectangle,

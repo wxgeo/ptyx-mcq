@@ -5,7 +5,7 @@ from numpy import array, amin, amax, ndarray  # , percentile, clip
 
 from ptyx.shell import print_info, print_warning
 
-from ptyx_mcq.tools.rgb import Color
+from ptyx_mcq.tools.colors import Color
 from ptyx_mcq.scan.data_gestion.document_data import PicData, Page
 from ptyx_mcq.scan.picture_analyze.types_declaration import (
     CalibrationError,
@@ -232,10 +232,13 @@ def read_student_name(m: ndarray, students: list[StudentName], top: int, f_squar
     return student_name
 
 
-def adjust_contrast(m: ndarray, filename: str, debug=False) -> ndarray:
+def adjust_contrast(m: ndarray, filename: str = None, debug=False) -> ndarray:
     """Increase contrast if needed.
 
-    The lightest pixel must be white, the darkest must be black."""
+    The lightest pixel must be white, the darkest must be black.
+
+    `filename` is only used to print a sensible warning if contrats could not be adjusted,
+    so it may in fact be any string, providing information about image source to help debugging."""
     min_val = amin(m)
     max_val = amax(m)
     if debug:

@@ -8,7 +8,7 @@ from numpy import ndarray, flipud, fliplr, zeros, amin, dot, array
 from ptyx.shell import print_warning
 
 from ptyx_mcq.parameters import SQUARE_SIZE_IN_CM, CALIBRATION_SQUARE_SIZE, CALIBRATION_SQUARE_POSITION
-from ptyx_mcq.tools.rgb import Color
+from ptyx_mcq.tools.colors import Color
 from ptyx_mcq.scan.picture_analyze.square_detection import eval_square_color, find_black_square
 from ptyx_mcq.tools.math import round
 from ptyx_mcq.scan.picture_analyze.types_declaration import (
@@ -20,6 +20,8 @@ from ptyx_mcq.scan.picture_analyze.types_declaration import (
     CalibrationSquaresNotFound,
     Area,
     IdBandNotFound,
+    Col,
+    Line,
 )
 from ptyx_mcq.scan.picture_analyze.image_viewer import ImageViewer
 
@@ -181,7 +183,7 @@ class CornersPositions:
 CORNER_NAMES: tuple[ValidCornerStringValues] = ("TL", "TR", "BL", "BR")  # type:ignore
 
 
-def find_black_cell(grid, width: int, height: int, detection_level: float) -> tuple[int, int]:
+def find_black_cell(grid, width: int, height: int, detection_level: float) -> Pixel:
     """Find the "first" black-enough pixel in the grid.
 
      This pixel corresponds to a black (or almost black) square in the original picture.
@@ -205,7 +207,7 @@ def find_black_cell(grid, width: int, height: int, detection_level: float) -> tu
             #                j0 = half*j   # before running this code.
             #                color2debug(m, (i0, j0), (i0 + half, j0 + half))
             if grid[i, j] < detection_level:
-                return i, j
+                return Line(i), Col(j)
     raise MissingSquare("Corner square not found.")
 
 
@@ -216,7 +218,7 @@ def find_corner_square(
     *,
     max_whiteness: float = 0.55,
     tolerance: float = 0.2,
-) -> tuple[int, int]:
+) -> Pixel:
     """Find the calibration black square of the given corner.
 
     The idea of the algorithm is the following:
@@ -491,7 +493,7 @@ def _detect_four_squares(
         for corner in positions:
             pos = positions[corner]
             assert pos is not None
-            darkness[corner] = eval_square_color(m, *pos, square_size)
+            darkness[corner] = eval_square_color(m, *pos, square_size)  # type: ignore
 
         lighter_corner = min(darkness, key=darkness.get)  # type: ignore
         if darkness[lighter_corner] < 0.4:
@@ -539,8 +541,8 @@ def _detect_four_squares(
 def find_document_id_band(m: ndarray, i: int, j1: int, j2: int, square_size: int) -> Rectangle:
     """Return the top left corner (coordinates in pixels) of the document ID band first square."""
     margin = square_size
-    i1, i2 = i - margin, i + square_size + margin
-    j1, j2 = j1 + 3 * square_size, j2 - 2 * square_size
+    i1, i2 = Line(i - margin), Line(i + square_size + margin)
+    j1, j2 = Col(j1 + 3 * square_size), Col(j2 - 2 * square_size)
     search_area = m[i1:i2, j1:j2]
     try:
         i3, j3 = find_black_square(
@@ -690,7 +692,7 @@ def calibrate(pic: Image.Image, m: ndarray, debug=False) -> tuple[ndarray, float
         positions.flip()
         # ~ color2debug(m)
         (i1, j1), (i2, j2) = area_defined_by_corners(positions)
-        # Redetect calibration squares.
+        # Detect calibration squares once again.
         # ~ positions, (i1, j1), (i2, j2) = detect_four_squares(m, square_size, cm, debug=debug)
         try:
             first_id_square = find_document_id_band(m, i1, j1, j2, square_size)

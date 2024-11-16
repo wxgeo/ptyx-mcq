@@ -10,6 +10,7 @@ Main classes:
 The function `report_integrity_issues()`
 
 """
+
 from typing import Literal
 
 from PIL import Image, ImageDraw
@@ -18,7 +19,7 @@ from ptyx_mcq.scan.data_gestion.conflict_handling.integrity_check.fix import (
     AbstractIntegrityIssuesFixer,
 )
 from ptyx_mcq.tools.misc import copy_docstring
-from ptyx_mcq.tools.rgb import Color
+from ptyx_mcq.tools.colors import Color
 
 from ptyx_mcq.scan.data_gestion.document_data import Page
 from ptyx_mcq.scan.picture_analyze.image_viewer import ImageViewer

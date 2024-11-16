@@ -1,16 +1,18 @@
 from dataclasses import dataclass
-from typing import Sequence
+from typing import Sequence, NewType
 
 from numpy import ndarray
 
-from ptyx_mcq.tools.rgb import RGB, Color
+from ptyx_mcq.tools.colors import RGB, Color
 
 
 # --------------------------
 #         POSITIONS
 # ==========================
 
-Pixel = tuple[int, int]
+Line = NewType("Line", int)
+Col = NewType("Col", int)
+Pixel = tuple[Line, Col]
 FloatPosition = tuple[float, float]
 
 
@@ -45,7 +47,7 @@ class Rectangle(Shape):
     @property
     def end(self) -> Pixel:
         assert self.height is not None
-        return self.position[0] + self.height, self.position[1] + self.width
+        return Line(self.position[0] + self.height), Col(self.position[1] + self.width)
 
 
 @dataclass
