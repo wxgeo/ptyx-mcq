@@ -15,6 +15,8 @@ from numpy import ndarray, array, int8, concatenate
 
 from ptyx.shell import ANSI_CYAN, ANSI_RESET, ANSI_YELLOW, ANSI_GREEN, print_error
 
+from ptyx_mcq.parameters import IMAGE_FORMAT
+from ptyx_mcq.scan.pdf.extract import PdfCollection
 from ptyx_mcq.scan.picture_analyze.checkbox_analyzer import analyze_checkboxes
 from ptyx_mcq.scan.data_gestion.document_data import (
     DocumentData,
@@ -24,8 +26,7 @@ from ptyx_mcq.scan.data_gestion.document_data import (
     Page,
 )
 from ptyx_mcq.scan.data_gestion.paths_handler import PathsHandler, DirsPaths, FilesPaths
-from ptyx_mcq.scan.pdf.utilities import number_of_pages, PIC_EXTS
-from ptyx_mcq.scan.pdf.extract import extract_pdf_pictures
+from ptyx_mcq.scan.pdf.utilities import number_of_pages
 from ptyx_mcq.tools.config_parser import (
     Configuration,
     get_answers_with_status,
@@ -246,6 +247,7 @@ class DataHandler:
 
     def __init__(self, config_path: Path, input_dir: Path = None, output_dir: Path = None):
         self.paths = PathsHandler(config_path=config_path, input_dir=input_dir, output_dir=output_dir)
+        self.input_pdf = PdfCollection(self)
         # All data extracted from pdf files.
         self.data: dict[DocumentId, DocumentData] = {}
         # Additional information entered manually.
@@ -310,7 +312,7 @@ class DataHandler:
 
     def get_pics_list(self):
         """Return sorted pics list."""
-        return sorted(f for f in self.dirs.pic.glob("*/*") if f.suffix.lower() in PIC_EXTS)
+        return sorted(f for f in self.dirs.pic.glob("*/*") if f.suffix.lower() == IMAGE_FORMAT)
 
     def relative_pic_path(self, pic_path: str | Path):
         """Return picture path relatively to the `.scan/pic/` parent directory."""

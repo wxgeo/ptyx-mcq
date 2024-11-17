@@ -3,8 +3,9 @@ from enum import Enum
 from math import hypot, atan, degrees
 from typing import Literal, Iterator
 
+import numpy as np
 from PIL import Image
-from numpy import ndarray, flipud, fliplr, zeros, amin, dot, array
+from numpy import ndarray, flipud, fliplr, zeros, amin, dot, array, amax
 from ptyx.shell import print_warning
 
 from ptyx_mcq.parameters import SQUARE_SIZE_IN_CM, CALIBRATION_SQUARE_SIZE, CALIBRATION_SQUARE_POSITION
@@ -24,7 +25,7 @@ from ptyx_mcq.scan.picture_analyze.types_declaration import (
     Line,
 )
 from ptyx_mcq.scan.picture_analyze.image_viewer import ImageViewer
-
+from ptyx_mcq.tools.pic import array_to_image
 
 ValidCornerStringValues = Literal["TL", "TR", "BL", "BR"]
 
@@ -60,6 +61,16 @@ class HPosition(_VHPosition):
 
     LEFT = -1
     RIGHT = 1
+
+
+@dataclass
+class CalibrationData:
+    """Data returned by the calibration process."""
+
+    h_pixels_per_mm: float
+    v_pixels_per_mm: float
+    top_left_corner_position: Pixel
+    id_band_position: Pixel
 
 
 @dataclass(frozen=True)
@@ -560,14 +571,14 @@ def find_document_id_band(m: ndarray, i: int, j1: int, j2: int, square_size: int
     return Rectangle((i3, j3), square_size)
 
 
-def calibrate(pic: Image.Image, m: ndarray, debug=False) -> tuple[ndarray, float, float, Pixel, Pixel]:
+def calibrate(m: ndarray, debug=False) -> tuple[ndarray, CalibrationData]:
     """Detect picture resolution and ensure correct orientation."""
     # Ensure that the picture orientation is portrait, not landscape.
     height, width = m.shape
     print(f"Picture dimensions : {height}px x {width}px.")
 
     if height < width:
-        pic, m = transform(pic, "transpose", method=Image.ROTATE_90)
+        m = np.rot90(m)
         height, width = m.shape
 
     assert width <= height
@@ -647,13 +658,18 @@ def calibrate(pic: Image.Image, m: ndarray, debug=False) -> tuple[ndarray, float
     rotation = (rotation_h + 1.5 * rotation_v) / 2.5
 
     print(f"Rotate picture: {round(rotation, 4)}°")
-    pic, m = transform(
-        pic,
-        "rotate",
+    array_to_image(m).rotate(
         rotation,
         resample=Image.Resampling.BICUBIC,
-        expand=True,
+        fillcolor=255,
     )
+    # pic, m = transform(
+    #     pic,
+    #     "rotate",
+    #     rotation,
+    #     resample=Image.Resampling.BICUBIC,
+    #     expand=True,
+    # )
 
     (i1, j1), (i2, j2) = tl, br
 
@@ -678,9 +694,11 @@ def calibrate(pic: Image.Image, m: ndarray, debug=False) -> tuple[ndarray, float
 
     except IdBandNotFound as e:
         debug_info.extend(e.details)
+
         # Orientation probably incorrect.
         print("Reversed page detected: 180° rotation.")
-        pic, m = transform(pic, "transpose", method=Image.ROTATE_180)
+        m = np.flip(m, (0, 1))
+
         height, width = m.shape
         for corner, position in positions.items():
             i, j = position
@@ -725,17 +743,37 @@ def calibrate(pic: Image.Image, m: ndarray, debug=False) -> tuple[ndarray, float
     # ~ input('- pause -')
 
     assert positions.TL is not None
-    return m, h_pixels_per_mm, v_pixels_per_mm, positions.TL, first_id_square.position
+    return m, CalibrationData(h_pixels_per_mm, v_pixels_per_mm, positions.TL, first_id_square.position)
 
 
-def transform(pic: Image.Image, transformation: str, *args, **kw) -> tuple[Image.Image, ndarray]:
-    """Return a transformed version of `pic` and its matrix."""
-    # cf. http://stackoverflow.com/questions/5252170/
-    # specify-image-filling-color-when-rotating-in-python-with-pil-and-setting-expand
-    rgba = pic.convert("RGBA")
-    rgba = getattr(rgba, transformation)(*args, **kw)
-    white = Image.new("RGBA", rgba.size, (255, 255, 255, 255))
-    out = Image.composite(rgba, white, rgba)
-    pic = out.convert(pic.mode)
-    # noinspection PyTypeChecker
-    return pic, array(pic) / 255.0
+# def transform(pic: Image.Image, transformation: str, *args, **kw) -> tuple[Image.Image, ndarray]:
+#     """Return a transformed version of `pic` and its matrix."""
+#     # cf. http://stackoverflow.com/questions/5252170/
+#     # specify-image-filling-color-when-rotating-in-python-with-pil-and-setting-expand
+#     rgba = pic.convert("RGBA")
+#     rgba = getattr(rgba, transformation)(*args, **kw)
+#     white = Image.new("RGBA", rgba.size, (255, 255, 255, 255))
+#     out = Image.composite(rgba, white, rgba)
+#     pic = out.convert(pic.mode)
+#     # noinspection PyTypeChecker
+#     return pic, array(pic) / 255.0
+def adjust_contrast(m: ndarray, filename: str = None, debug=False) -> ndarray:
+    """Increase contrast if needed.
+
+    The lightest pixel must be white, the darkest must be black.
+
+    `filename` is only used to print a sensible warning if contrats could not be adjusted,
+    so it may in fact be any string, providing information about image source to help debugging."""
+    min_val = amin(m)
+    max_val = amax(m)
+    if debug:
+        print("Trying to maximize contrast..")
+        print(f"Old range: {min_val} - {max_val}")
+    if min_val > 0 or max_val < 255 and max_val - min_val > 0.2:
+        m = (m - min_val) / (max_val - min_val)
+        if debug:
+            print(f"New range: {amin(m)} - {amax(m)}")
+            # ImageViewer(m).display()
+    else:
+        print_warning(f"Not enough contrast in picture {filename!r}!")
+    return m

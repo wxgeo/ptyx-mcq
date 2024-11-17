@@ -20,9 +20,8 @@ from ptyx_mcq.parameters import CONFIG_FILE_EXTENSION
 from ptyx_mcq.scan.pdf.amend import amend_all
 
 from ptyx_mcq.scan.data_gestion.conflict_handling import ConflictSolver
-from ptyx_mcq.scan.data_gestion.data_handler import DataHandler, save_webp
+from ptyx_mcq.scan.data_gestion.data_handler import DataHandler
 from ptyx_mcq.scan.data_gestion.document_data import DocumentData, Page, PicData
-from ptyx_mcq.scan.pdf.utilities import PIC_EXTS
 from ptyx_mcq.scan.picture_analyze.scan_pic import (
     scan_picture,
 )
@@ -370,6 +369,10 @@ class MCQPictureParser:
         If `cores` is 0 or less, cores number is automatically calculated.
         Set cores to `1` to disable multiprocessing.
         """
+        print("Read input data...")
+        self.data_handler.paths.make_dirs()
+        self.data_handler.input_pdf.prepare_input_data()
+        exit(0)
 
         # Extract information from scanned documents.
         self.analyze_pages(

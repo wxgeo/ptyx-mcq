@@ -10,6 +10,12 @@ def array_to_image(matrix: ndarray) -> Image:
     return Image.fromarray((255 * matrix).astype(int8))
 
 
+def image_to_array(image: Image) -> ndarray:
+    """Convert a PIL Image to a grayscale numpy array."""
+    # "L" -> Convert to grayscale picture.
+    return array(image.convert("L")) / 255
+
+
 def save_webp(matrix: ndarray, path_or_stream: Path | str | BytesIO, lossless=False) -> None:
     """Save image content as a WEBP image."""
     array_to_image(matrix).save(path_or_stream, format="WEBP", lossless=lossless)
@@ -17,7 +23,7 @@ def save_webp(matrix: ndarray, path_or_stream: Path | str | BytesIO, lossless=Fa
 
 def load_webp(webp: Path) -> ndarray:
     """Load a WEBP image as a grayscale numpy array."""
-    return array(Image.open(str(webp)).convert("L")) / 255
+    return image_to_array(Image.open(str(webp)))
 
 
 def convert_to_webp(src: Path, dest: Path, lossless=False) -> None:
