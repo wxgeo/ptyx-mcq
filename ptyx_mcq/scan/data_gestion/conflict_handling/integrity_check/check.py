@@ -3,8 +3,8 @@ from dataclasses import dataclass
 from ptyx.shell import print_warning, print_info, print_error
 
 from ptyx_mcq.scan.data_gestion.data_handler import DataHandler
-from ptyx_mcq.scan.data_gestion.document_data import Page, DocumentData, PicData
-from ptyx_mcq.tools.config_parser import DocumentId, OriginalQuestionNumber
+from ptyx_mcq.scan.data_gestion.document_data import DocumentData, PicData
+from ptyx_mcq.tools.config_parser import DocumentId, OriginalQuestionNumber, Page
 
 DuplicatePagesDict = dict[tuple[DocumentId, Page], list[DocumentId]]
 MissingPages = dict[DocumentId, list[Page]]

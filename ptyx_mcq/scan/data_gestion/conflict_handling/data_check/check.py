@@ -1,15 +1,17 @@
 from dataclasses import dataclass
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from ptyx.shell import print_warning
 
-from ptyx_mcq.scan.data_gestion.data_handler import DataHandler
-from ptyx_mcq.scan.data_gestion.document_data import Page
-from ptyx_mcq.tools.config_parser import DocumentId, StudentName
+from ptyx_mcq.tools.config_parser import DocumentId, StudentName, Page
 
 UnnamedDocsList = list[DocumentId]
 AmbiguousPagesList = list[tuple[DocumentId, Page]]
 DuplicateNamesDict = dict[StudentName, list[DocumentId]]
+
+if TYPE_CHECKING:
+    from ptyx_mcq.scan.data_gestion.data_handler import DataHandler
 
 
 @dataclass
@@ -22,7 +24,7 @@ class DataCheckResult:
 class DataChecker:
     """Check for missing data."""
 
-    def __init__(self, data_storage: DataHandler):
+    def __init__(self, data_storage: "DataHandler"):
         self.data_storage = data_storage
         self.data = self.data_storage.data
 

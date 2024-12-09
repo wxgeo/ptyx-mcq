@@ -17,7 +17,7 @@ def scan(
 ) -> "MCQPictureParser":
     """Implement `mcq scan` command.
 
-    Returned `MCQPictureParser` instance may be used by tests to check results.
+    Return a `MCQPictureParser` instance, which may be used by tests to check the scan's result.
     """
 
     try:

@@ -1,6 +1,13 @@
 # Notes sur une nouvelle architecture potentielle de gestion des conflits
 
 
+-------------------
+
+***WARNING : Ce fichier n'est pas à jour.***
+
+***Lire la nouvelle version : `new-main-scan-algorithm.md`.***
+
+-------------------
 
 ## Objectif
 

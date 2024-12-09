@@ -10,8 +10,7 @@ from ptyx_mcq.scan.data_gestion.conflict_handling import DataChecker
 from ptyx_mcq.scan.data_gestion.conflict_handling.data_check.check import DataCheckResult
 
 from ptyx_mcq.scan.data_gestion.data_handler import DataHandler
-from ptyx_mcq.scan.data_gestion.document_data import Page
-from ptyx_mcq.tools.config_parser import DocumentId, StudentName, StudentId
+from ptyx_mcq.tools.config_parser import DocumentId, StudentName, StudentId, Page
 from ptyx_mcq.tools.math import levenshtein_distance
 
 
@@ -26,7 +25,8 @@ class AbstractDocHeaderDisplayer(AbstractContextManager, ABC):
 
     # noinspection PyUnusedLocal
     @abstractmethod
-    def __init__(self, data_storage: DataHandler, doc_id: DocumentId): ...
+    def __init__(self, data_storage: DataHandler, doc_id: DocumentId):
+        ...
 
     @abstractmethod
     def display(self) -> None:

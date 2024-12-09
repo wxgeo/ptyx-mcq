@@ -14,9 +14,8 @@ from ptyx.shell import print_error, print_info
 from ptyx.utilities import force_hardlink_to
 
 from ptyx_mcq.parameters import CONFIG_FILE_EXTENSION
-from ptyx_mcq.scan.data_gestion.document_data import Page
 from ptyx_mcq.tools.io_tools import get_file_or_sysexit, FatalError
-from ptyx_mcq.tools.config_parser import Configuration
+from ptyx_mcq.tools.config_parser import Configuration, Page
 from ptyx_mcq.make.exercises_parsing import wrap_exercise
 
 DEFAULT_PTYX_MCQ_COMPILATION_OPTIONS = CompilationOptions(same_number_of_pages_compact=True, compress=True)

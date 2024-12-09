@@ -21,9 +21,8 @@ from ptyx_mcq.scan.data_gestion.conflict_handling.integrity_check.fix import (
 from ptyx_mcq.tools.misc import copy_docstring
 from ptyx_mcq.tools.colors import Color
 
-from ptyx_mcq.scan.data_gestion.document_data import Page
 from ptyx_mcq.scan.picture_analyze.image_viewer import ImageViewer
-from ptyx_mcq.tools.config_parser import DocumentId
+from ptyx_mcq.tools.config_parser import DocumentId, Page
 
 
 class ClIntegrityIssuesFixer(AbstractIntegrityIssuesFixer):

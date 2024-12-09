@@ -14,7 +14,6 @@ from ptyx_mcq.scan.data_gestion.data_handler import DataHandler
 from ptyx_mcq.tools.misc import copy_docstring
 from ptyx_mcq.tools.colors import Color, RGB
 from ptyx_mcq.scan.data_gestion.document_data import (
-    Page,
     DetectionStatus,
     RevisionStatus,
     PicData,
@@ -27,6 +26,7 @@ from ptyx_mcq.tools.config_parser import (
     ApparentAnswerNumber,
     StudentName,
     StudentId,
+    Page,
 )
 
 

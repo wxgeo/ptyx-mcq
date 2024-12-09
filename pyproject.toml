@@ -35,7 +35,7 @@ ruff = "^0.7.2"
 pytest-xdist = "^3.5.0"
 
 [tool.poetry.scripts]
-mcq = 'ptyx_mcq.cli:main'
+newmcq = 'ptyx_mcq.cli:main'
 mcq-dev = 'ptyx_mcq.dev_cli:main'
 
 [tool.poetry.plugins."ptyx.extensions"]

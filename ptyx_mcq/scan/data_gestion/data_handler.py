@@ -23,7 +23,6 @@ from ptyx_mcq.scan.data_gestion.document_data import (
     PicData,
     DetectionStatus,
     RevisionStatus,
-    Page,
 )
 from ptyx_mcq.scan.data_gestion.paths_handler import PathsHandler, DirsPaths, FilesPaths
 from ptyx_mcq.scan.pdf.utilities import number_of_pages
@@ -36,6 +35,7 @@ from ptyx_mcq.tools.config_parser import (
     OriginalQuestionAnswersDict,
     OriginalQuestionNumber,
     OriginalAnswerNumber,
+    Page,
 )
 from ptyx_mcq.tools.extend_literal_eval import extended_literal_eval
 

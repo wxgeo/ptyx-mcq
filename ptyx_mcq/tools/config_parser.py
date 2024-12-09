@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Any, TypeVar, TypedDict, Literal, NewType, TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from ptyx_mcq.scan.data_gestion.document_data import Page
+    pass
 
 T = TypeVar("T")
 K = TypeVar("K", bound=typing.Hashable)
@@ -389,3 +389,6 @@ def _get_apparent_num_answers_with_status(
             }
         correct_answers_by_id[doc_id] = correct_answers
     return correct_answers_by_id
+
+
+Page = NewType("Page", int)

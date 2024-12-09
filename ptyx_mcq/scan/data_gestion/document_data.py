@@ -1,8 +1,10 @@
 from collections import ChainMap
 from dataclasses import dataclass
 from enum import Enum, auto
-from typing import NewType
+from pathlib import Path
 
+from ptyx_mcq.scan.picture_analyze.calibration import CalibrationData
+from ptyx_mcq.scan.picture_analyze.identify_doc import IdentificationData
 from ptyx_mcq.scan.picture_analyze.types_declaration import Pixel
 from ptyx_mcq.tools.config_parser import (
     DocumentId,
@@ -12,9 +14,8 @@ from ptyx_mcq.tools.config_parser import (
     ApparentQuestionNumber,
     OriginalQuestionNumber,
     OriginalAnswerNumber,
+    Page,
 )
-
-Page = NewType("Page", int)
 
 
 class DetectionStatus(Enum):
@@ -43,14 +44,37 @@ class RevisionStatus(Enum):
 
 @dataclass(kw_only=True)
 class PicData:
-    # ID of the document:
-    doc_id: DocumentId
-    # page number:
-    page: Page
-    # Position of each checkbox in the page:
-    positions: dict[tuple[OriginalQuestionNumber, OriginalAnswerNumber], Pixel]
-    id_table_position: Pixel
-    pic_path: str
+    # # Position of each checkbox in the page:
+    # positions: dict[tuple[OriginalQuestionNumber, OriginalAnswerNumber], Pixel]
+    # id_table_position: Pixel
+    pic_path: Path
+    calibration_data: CalibrationData
+    identification_data: IdentificationData
+
+    @property
+    def doc_id(self) -> DocumentId:
+        """The id of the original document."""
+        return self.identification_data.doc_id
+
+    @property
+    def page(self) -> Page:
+        """The page number in the original document."""
+        return self.identification_data.page
+
+    def xy2ij(self, x: float, y: float) -> Pixel:
+        """Convert (x, y) position (mm) to pixel coordinates (i, j).
+
+        (x, y) is the position from the bottom left of the page in mm,
+        as given by LaTeX.
+        (i, j) is the position in pixel coordinates, where i is the line and j the
+        column, starting from the top left of the image.
+        """
+        # Top left square is printed at 1 cm from the left and the top of the sheet.
+        # 29.7 cm - 1 cm = 28.7 cm (A4 sheet format = 21 cm x 29.7 cm)
+        top, left = self.calibration_data.top_left_corner_position
+        v_resolution = self.calibration_data.v_pixels_per_mm
+        h_resolution = self.calibration_data.h_pixels_per_mm
+        return Pixel(round((287 - y) * v_resolution + top), round((x - 10) * h_resolution + left))
 
 
 # @dataclass(kw_only=True)

@@ -194,7 +194,7 @@ def find_black_rectangle(
             # ~ print(to_avoid)
             if debug:
                 input("-- pause --")
-            yield i, j
+            yield int(i), int(j)  # convert from np.int64 to int.
 
 
 def find_black_square(

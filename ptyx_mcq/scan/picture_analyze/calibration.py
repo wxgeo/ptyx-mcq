@@ -8,7 +8,12 @@ from PIL import Image
 from numpy import ndarray, flipud, fliplr, zeros, amin, dot, array, amax
 from ptyx.shell import print_warning
 
-from ptyx_mcq.parameters import SQUARE_SIZE_IN_CM, CALIBRATION_SQUARE_SIZE, CALIBRATION_SQUARE_POSITION
+from ptyx_mcq.parameters import (
+    SQUARE_SIZE_IN_CM,
+    CALIBRATION_SQUARE_SIZE,
+    CALIBRATION_SQUARE_POSITION,
+    CELL_SIZE_IN_CM,
+)
 from ptyx_mcq.tools.colors import Color
 from ptyx_mcq.scan.picture_analyze.square_detection import eval_square_color, find_black_square
 from ptyx_mcq.tools.math import round
@@ -63,12 +68,14 @@ class HPosition(_VHPosition):
     RIGHT = 1
 
 
-@dataclass
+@dataclass(kw_only=True)
 class CalibrationData:
     """Data returned by the calibration process."""
 
     h_pixels_per_mm: float
     v_pixels_per_mm: float
+    f_cell_size: float
+    f_square_size: float
     top_left_corner_position: Pixel
     id_band_position: Pixel
 
@@ -229,6 +236,7 @@ def find_corner_square(
     *,
     max_whiteness: float = 0.55,
     tolerance: float = 0.2,
+    debug=False,
 ) -> Pixel:
     """Find the calibration black square of the given corner.
 
@@ -352,7 +360,8 @@ def find_corner_square(
 
     # Test the result. If the square is too dim, raise LookupError.
     whiteness_measure = m[i0 : i0 + size, j0 : j0 + size].sum() / size**2
-    print(f"Corner square {corner} found...")
+    if debug:
+        print(f"Corner square {corner} found...")
     #    color2debug(m, (i0, j0), (i0 + size, j0 + size))
     if whiteness_measure > max_whiteness:
         print(f"WARNING: Corner square {corner} not found " f"(not dark enough: {whiteness_measure}!)")
@@ -408,7 +417,8 @@ def detect_four_squares(
     debug=False,
 ) -> tuple[CornersPositions, Pixel, Pixel]:
     for tolerance in range(20, 50, 5):
-        print(f"Searching for calibration corners ({tolerance=})...")
+        if debug:
+            print(f"Searching for calibration corners ({tolerance=})...")
         try:
             return _detect_four_squares(
                 m,
@@ -441,7 +451,7 @@ def _detect_four_squares(
     positions = CornersPositions()
     for corner in CORNERS:
         try:
-            i, j = find_corner_square(m, square_size, corner, tolerance=tolerance)
+            i, j = find_corner_square(m, square_size, corner, tolerance=tolerance, debug=debug)
             # ~ # We may have only detected a part of the square by restricting
             # ~ # the search area, so extend search by the size of the square.
             # ~ i, j = find_corner_square(m, square_size, corner, h + square_size,
@@ -459,7 +469,8 @@ def _detect_four_squares(
     # folded for example), it will be generated from the others.
 
     #    color2debug(m)
-    print(f"Corners detected: {len(positions)}")
+    if debug:
+        print(f"Corners detected: {len(positions)}")
     if len(positions) <= 2:
         raise CalibrationSquaresNotFound("Only 2 squares found, calibration failed !", details=debug_info)
 
@@ -489,11 +500,13 @@ def _detect_four_squares(
             if orthogonal(corner, positions):
                 number_of_orthogonal_corners += 1
                 orthogonal_corner = corner
-        print(f"Number of orthogonal corners: {number_of_orthogonal_corners}")
+        if debug:
+            print(f"Number of orthogonal corners: {number_of_orthogonal_corners}")
         if number_of_orthogonal_corners == 1:
             # noinspection PyUnboundLocalVariable
             opposite_corner = orthogonal_corner.opposite_corner
-            print(f"Removing {opposite_corner.name} corner (not orthogonal!)")
+            if debug:
+                print(f"Removing {opposite_corner.name} corner (not orthogonal!)")
             del positions[opposite_corner]
 
     if len(positions) == 4:
@@ -575,7 +588,8 @@ def calibrate(m: ndarray, debug=False) -> tuple[ndarray, CalibrationData]:
     """Detect picture resolution and ensure correct orientation."""
     # Ensure that the picture orientation is portrait, not landscape.
     height, width = m.shape
-    print(f"Picture dimensions : {height}px x {width}px.")
+    if debug:
+        print(f"Picture dimensions : {height}px x {width}px.")
 
     if height < width:
         m = np.rot90(m)
@@ -586,7 +600,8 @@ def calibrate(m: ndarray, debug=False) -> tuple[ndarray, CalibrationData]:
     # Calculate resolution (DPI and dots per cm).
     cm = m.shape[1] / 21
     # Unit conversion: 1 inch = 2.54 cm
-    print(f"Detect pixels/cm: {cm} (dpi: {2.54*cm})")
+    if debug:
+        print(f"Detect pixels/cm: {cm} (dpi: {2.54*cm})")
 
     # Evaluate approximately squares size using image dpi.
     # Square size is equal to SQUARE_SIZE_IN_CM in theory, but this varies
@@ -630,7 +645,8 @@ def calibrate(m: ndarray, debug=False) -> tuple[ndarray, CalibrationData]:
     positions: CornersPositions
     # First pass is usually not worth displaying when debugging.
     positions, *_ = detect_four_squares(m, calib_square, cm, debug=False)
-    print(positions)
+    if debug:
+        print(positions)
 
     tl = positions.TL
     tr = positions.TR
@@ -644,20 +660,23 @@ def calibrate(m: ndarray, debug=False) -> tuple[ndarray, CalibrationData]:
     (i1, j1), (i2, j2) = bl, br
     rotation_h2 = atan((i2 - i1) / (j2 - j1))
     rotation_h = degrees(0.5 * (rotation_h1 + rotation_h2))
-    print("Detected rotation (h): %s degrees." % round(rotation_h, 4))
+    if debug:
+        print("Detected rotation (h): %s degrees." % round(rotation_h, 4))
 
     (i1, j1), (i2, j2) = tl, bl
     rotation_v1 = atan((j1 - j2) / (i2 - i1))
     (i1, j1), (i2, j2) = tr, br
     rotation_v2 = atan((j1 - j2) / (i2 - i1))
     rotation_v = degrees(0.5 * (rotation_v1 + rotation_v2))
-    print("Detected rotation (v): %s degrees." % round(rotation_v, 4))
+    if debug:
+        print("Detected rotation (v): %s degrees." % round(rotation_v, 4))
 
     # Rotate page.
     # (rotation_v should be a bit more precise than rotation_h).
     rotation = (rotation_h + 1.5 * rotation_v) / 2.5
 
-    print(f"Rotate picture: {round(rotation, 4)}°")
+    if debug:
+        print(f"Rotate picture: {round(rotation, 4)}°")
     array_to_image(m).rotate(
         rotation,
         resample=Image.Resampling.BICUBIC,
@@ -682,7 +701,8 @@ def calibrate(m: ndarray, debug=False) -> tuple[ndarray, CalibrationData]:
     # 29.7 cm - (margin top + margin bottom + 1 square height)
     v_pixels_per_mm = (i2 - i1) / (297 - calib_shift_mm)
     cm = 10 * (h_pixels_per_mm + 1.5 * v_pixels_per_mm) / 2.5
-    print(f"Detect pixels/cm: {cm}")
+    if debug:
+        print(f"Detect pixels/cm: {cm}")
 
     # Detect calibration squares again, to enhance accuracy.
     positions, (i1, j1), (i2, j2) = detect_four_squares(m, calib_square, cm, debug=debug)
@@ -696,7 +716,8 @@ def calibrate(m: ndarray, debug=False) -> tuple[ndarray, CalibrationData]:
         debug_info.extend(e.details)
 
         # Orientation probably incorrect.
-        print("Reversed page detected: 180° rotation.")
+        if debug:
+            print("Reversed page detected: 180° rotation.")
         m = np.flip(m, (0, 1))
 
         height, width = m.shape
@@ -742,8 +763,27 @@ def calibrate(m: ndarray, debug=False) -> tuple[ndarray, CalibrationData]:
         ImageViewer(array=m, *debug_info).display()
     # ~ input('- pause -')
 
+    pixels_per_mm = (h_pixels_per_mm + 1.5 * v_pixels_per_mm) / 2.5
+
+    # We should now have an accurate value for square size.
+    f_square_size = SQUARE_SIZE_IN_CM * pixels_per_mm * 10
+    f_cell_size = CELL_SIZE_IN_CM * pixels_per_mm * 10
+
+    if debug:
+        square_size = round(f_square_size)
+        print("Square size final value (pixels): %s (%s)" % (square_size, f_square_size))
+        cell_size = round(f_cell_size)
+        print("Cell size final value (pixels): %s (%s)" % (cell_size, f_cell_size))
+
     assert positions.TL is not None
-    return m, CalibrationData(h_pixels_per_mm, v_pixels_per_mm, positions.TL, first_id_square.position)
+    return m, CalibrationData(
+        h_pixels_per_mm=h_pixels_per_mm,
+        v_pixels_per_mm=v_pixels_per_mm,
+        f_square_size=f_square_size,
+        f_cell_size=f_cell_size,
+        top_left_corner_position=positions.TL,
+        id_band_position=first_id_square.position,
+    )
 
 
 # def transform(pic: Image.Image, transformation: str, *args, **kw) -> tuple[Image.Image, ndarray]:
@@ -775,5 +815,6 @@ def adjust_contrast(m: ndarray, filename: str = None, debug=False) -> ndarray:
             print(f"New range: {amin(m)} - {amax(m)}")
             # ImageViewer(m).display()
     else:
+        ImageViewer(array=m).display()
         print_warning(f"Not enough contrast in picture {filename!r}!")
     return m

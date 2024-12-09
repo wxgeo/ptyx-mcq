@@ -21,15 +21,12 @@ from ptyx_mcq.scan.pdf.amend import amend_all
 
 from ptyx_mcq.scan.data_gestion.conflict_handling import ConflictSolver
 from ptyx_mcq.scan.data_gestion.data_handler import DataHandler
-from ptyx_mcq.scan.data_gestion.document_data import DocumentData, Page, PicData
+from ptyx_mcq.scan.data_gestion.document_data import DocumentData, PicData
 from ptyx_mcq.scan.picture_analyze.scan_pic import (
     scan_picture,
 )
 from ptyx_mcq.scan.picture_analyze.types_declaration import CalibrationError
 from ptyx_mcq.scan.score_management.scores_manager import ScoresManager
-from ptyx_mcq.tools.config_parser import (
-    DocumentId,
-)
 
 
 # -----------------------------------------
@@ -371,8 +368,11 @@ class MCQPictureParser:
         """
         print("Read input data...")
         self.data_handler.paths.make_dirs()
-        self.data_handler.input_pdf.prepare_input_data()
+        # TODO: number_of_processes=number_of_processes
+        pdf_data = self.data_handler.input_pdf.collect_data(number_of_processes=1)
         exit(0)
+
+        # ---------- WORK IN PROGRESS ---------
 
         # Extract information from scanned documents.
         self.analyze_pages(

@@ -1,11 +1,12 @@
 # Nouvel algorithm de scan
 
-## Objectif
-Garder l'accès à tous les conflits même *après* le scan.
-Cela permet de relancer la résolution des conflits pour un ou plusieurs documents seulement.
+## 1. Objectifs
+- Garder l'accès à tous les conflits même *après* le scan.
+  Cela permet de relancer la résolution des conflits pour un ou plusieurs documents seulement.
+- Pouvoir afficher une synthèse de toutes les opérations effectuées, ou un log plus détaillé si besoin.
 
-## Étapes
-### Récupération des images
+## 2. Étape 1 - Récupération et analyse des images scannées
+### 2.1 Préliminaires
 Extraction de toutes les images des PDF dans un dossier `pic`.
 On génère dans `pic` un sous-dossier par PDF.
 Le nom du sous-dossier est un hash du contenu du PDF.
@@ -15,52 +16,102 @@ Avant d'extraire le contenu du PDF, on vérifie si un dossier `pic/<hash-pdf>` e
 - Si le contenu est incorrect (moins d'images que de pages dans le pdf), on extrait uniquement les images manquantes 
   (l'extraction avait probablement été interrompue).
 
+On doit aussi supprimer les anciens dossiers correspondant aux pdf supprimés, **ainsi que toutes les données associées** !
+Tous les dossiers `pics/<pdf-hash>` dont le hash ne correspond à plus aucun pdf sont ainsi supprimés.
+
+### 2.2 Arborescence
+Le dossier `<hash-pdf>` contiendra :
+- toutes les pages du pdf après extraction et normalisation, sous forme d'image `.webp`.
+- un sous-dossier `calibration`, contenant un fichier par page indiquant comment la calibration a été effectuée.
+- un sous-dossier `identification`, contenant un fichier par page indiquant à quel document et quelle page du document
+  correspond la page du pdf.
+- un sous-dossier `review`, contenant un fichier par page indiquant les résultats de l'analyse de toutes les cases à cocher.
+  
+Exemple, pour un fichier pdf de hash `00d68ea2ab8af0932bee516ee60a79cdeb5fb1d0` et possédant 2 pages,
+on aura généré à terme les dossiers et fichier suivants :
+```
+    pic
+    └── 00d68ea2ab8af0932bee516ee60a79cdeb5fb1d0
+        ├── 1.webp
+        ├── 2.webp
+        ├── calibration
+        │   ├── 1
+        │   └── 2
+        ├── identification
+        │   ├── 1
+        │   └── 2
+        └── review
+            ├── 1
+            └── 2
+```
+
+### 2.3 Sous-étapes
+#### 2.3.1 Extraction du contenu de la page scannée
 Chaque image extraite est :
 - normalisée (convertie en niveaux de gris, avec un contraste augmenté).
 - pivotée, après avoir détecté les 4 carrés de référence marquant les coins de la page.
 
-Un fichier `<pdf-hash>/<pdf-page>.pic-calibration` est généré, contenant :
+Un fichier `<pdf-hash>/calibration/<num-page-scannée>` est généré, contenant :
 - la résolution horizontale (px/mm)
 - la résolution verticale (px/mm)
 - la position des 4 coins (px)
 - la position de la bande d'identification du document (px)
 
-L'image rectifiée est stockée dans un fichier `<pdf-hash>/<pdf-page>.webp` (l'image originale extraite - généralement du `.jpeg`-  n'est pas conservée). 
+(En mémoire, ces données sont stockées dans un objet de classe `CalibrationData`). 
 
-Si une page ne semble pas correspondre à une page de QCM (page vierge par exemple), on génère un fichier `<pdf-hash>/<pdf-page>.skip` pour indiquer qu'il ne s'agit pas d'une page manquante.
+L'image rectifiée elle-même est alors stockée dans un fichier `<pdf-hash>/<num-page-scannée>.webp`, pour éviter
+de surcharger la mémoire. 
+(Quant à l'image originale, c'est-à-dire avant rectification, elle n'est pas conservée). 
 
-On doit aussi supprimer les anciens dossiers correspondant aux pdf supprimés, **ainsi que toutes les données associées** !
-Tous les dossiers `pics/<pdf-hash>` dont le hash ne correspond à plus aucun dossier sont ainsi supprimés.
+Si une page ne semble pas correspondre à une page de QCM (page vierge par exemple), 
+on génère un fichier `<pdf-hash>/<pdf-page>.skip` pour indiquer que la page a bien été traitée.
 
-
-### Récupération des données des images
-Pour chaque image, on génère (dans le même dossier `pic`) un fichier `<pdf-hash>/<num-image>.pic-data`.
+#### 2.3.2 Récupération des données des images
+Pour chaque image, on génère un fichier `<pdf-hash>/identification/<num-page-scannée>`.
 Celui-ci contient toutes les infos brutes de l'image :
 - Le numéro du document
-- La localisation (en pixels) dans l'image de toutes les cases à cocher :
-  * la position du bloc d'identification (nom/identifiant de l'étudiant)
-  * les cases correspondant aux réponses ((q, a) -> (ligne, colonne))
+- Le numéro de page dans le document
 
-### Consolidation des données.
-Création de fichiers `.pic-index` dans un dossier `index` associant à chaque identifiant de document et chaque page la ou les images correspondantes.
-(S'il y a plusieurs images associées au même document, il y a un conflit potentiel.)
+(En mémoire, ces données sont stockées dans un objet de classe `IdentificationData`). 
 
-Exemple : fichier `<num-document>.index`, contenant 1 ligne par page.
+### 2.4 Consolidation des données.
+Création de fichiers `data/index/<num-document>` associant à chaque identifiant de document 
+et chaque page la ou les images correspondantes.
+Remarque : il peut parfois arriver qu'il y ait plusieurs images associées au même document :
+- soit qu'un document ait été scanné plusieurs fois (en partie ou en totalité), ce qui n'est pas bien grave.
+- soit que plusieurs étudiants aient eu le même numéro de document, ce qui est beaucoup plus problématique.
+
+Exemple de contenu de fichier : 
 ```
 <pdf-hash>/1,<other-pdf-hash>/34,<pdf-hash>/12
 <pdf-hash>/14
 ```
+La 1re ligne du fichier liste les pages scannées correspondant à la 1re page du document,
+la 2e ligne du fichier liste les pages scannées correspondant à la 2e page du document,
+etc.
+
+Idéalement, il ne devrait y avoir qu'une seule page scannée associée à chaque page du document,
+sinon (voir remarque plus haut) c'est qu'il y a un conflit potentiel 
+(il y aura effectivement conflit si le contenu diffère après analyse).
+
+### Récupération de la position des cases à cocher
+On récupère la localisation (en pixels) dans l'image de toutes les cases à cocher :
+  * la position du bloc d'identification (nom/identifiant de l'étudiant)
+  * les cases correspondant aux réponses ((q, a) -> (ligne, colonne))
 
 ### Analyse automatique des checkboxes
 À partir des données de l'image, on détecte si chaque case semble cochée ou non. 
-L'analyse se fait globalement sur tout le document, et non page par page, ce qui augmente sa précision.
+L'analyse se fait globalement sur toutes les pages associées à un document, et non page par page, ce qui augmente sa précision.
 On récupère également ainsi le nom de l'étudiant et son identifiant.
-On génère ainsi pour chaque image un fichier `<pdf-hash>/<num-image>.pic-review`.
+On génère ainsi pour chaque page scannée un fichier `<pdf-hash>/review/<num-page-scannée>`.
 
 Celui-ci contient :
-- le cas échéant (page 1), l'identifiant de l'étudiant
-- le cas échéant (page 1), le nom de l'étudiant
+- le cas échéant (sur la 1re page), l'identifiant de l'étudiant
+- le cas échéant (sur la 1re page également), le nom de l'étudiant
 - le statut de chaque case (`UNCHECKED`, `CHECKED`, `PROBABLY_UNCHECKED`, `PROBABLY_CHECKED`)
+
+L'intérêt de générer un fichier par page scannée (et non par document ou par page du document initial)
+est de gérer plus facilement les conflits (pages scannées en double par exemple).
 
 ### Détection des conflits
 Génération de la liste des conflits :
@@ -69,12 +120,13 @@ Génération de la liste des conflits :
 - cases au statut ambigu (`PROBABLY_UNCHECKED`, `PROBABLY_CHECKED`)
 
 ### Résolution automatique des conflits d'intégrité si possible
-Si deux images contiennent les mêmes données (même fichier `<pdf-hash>/<num-image>.pic-review`), on n'en garde qu'une seule.
+Si deux images contiennent les mêmes données (fichiers `<pdf-hash>/review/<num-page-scannée>` identiques), 
+on n'en garde qu'une seule.
 
 ### Résolution manuelle des conflits
 Dossier `fix`.
 - conflits d'intégrité :
-  Résolution sauvegardée dans un fichier `index.fix` contenant des lignes au format :
+  Résolution sauvegardée dans un fichier `index` contenant des lignes au format :
   `<num-document>-<page>:<pdf-hash>/<num-image>`
 - conflits de nom/identifiant.
   Résolutions sauvegardée dans un fichier `<num-document>.fix-doc` contenant 2 lignes :

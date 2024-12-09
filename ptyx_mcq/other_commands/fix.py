@@ -1,6 +1,4 @@
-from ptyx_mcq.scan.data_gestion.document_data import Page
-
-from ptyx_mcq.tools.config_parser import DocumentId, StudentName, StudentId
+from ptyx_mcq.tools.config_parser import DocumentId, StudentName, StudentId, Page
 
 
 def fix_doc(

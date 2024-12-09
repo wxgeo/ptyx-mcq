@@ -8,8 +8,7 @@ from ptyx_mcq.scan.data_gestion.conflict_handling.integrity_check.check import (
     IntegrityCheckResult,
 )
 from ptyx_mcq.scan.data_gestion.data_handler import DataHandler
-from ptyx_mcq.scan.data_gestion.document_data import Page
-from ptyx_mcq.tools.config_parser import DocumentId
+from ptyx_mcq.tools.config_parser import DocumentId, Page
 
 
 class AbstractIntegrityIssuesFixer(ABC):
