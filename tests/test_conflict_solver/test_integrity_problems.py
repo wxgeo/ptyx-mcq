@@ -4,7 +4,7 @@ from pathlib import Path
 import pytest
 
 from ptyx_mcq.scan import scan
-from ptyx_mcq.scan.data_gestion.conflict_handling.data_check.cl_fix import (
+from ptyx_mcq.scan.data.conflict_gestion.data_check.cl_fix import (
     ClNamesReviewer as NamesReviewer,
 )
 from tests.test_conflict_solver import DATA_DIR

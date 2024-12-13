@@ -1,20 +1,20 @@
 from typing import Any
 
-from ptyx_mcq.scan.data_gestion.conflict_handling.data_check.fix import (
+from ptyx_mcq.scan.data.conflict_gestion.data_check.fix import (
     AbstractNamesReviewer,
     AbstractAnswersReviewer,
     AbstractDocHeaderDisplayer,
     DefaultAllDataIssuesFixer,
 )
-from ptyx_mcq.scan.data_gestion.conflict_handling.data_check.cl_fix import (
+from ptyx_mcq.scan.data.conflict_gestion.data_check.cl_fix import (
     ClNamesReviewer,
     ClAnswersReviewer,
     ClDocHeaderDisplayer,
 )
-from ptyx_mcq.scan.data_gestion.conflict_handling.integrity_check.cl_fix import (
+from ptyx_mcq.scan.data.conflict_gestion.integrity_check.cl_fix import (
     ClIntegrityIssuesFixer,
 )
-from ptyx_mcq.scan.data_gestion.conflict_handling.integrity_check.fix import AbstractIntegrityIssuesFixer
+from ptyx_mcq.scan.data.conflict_gestion.integrity_check.fix import AbstractIntegrityIssuesFixer
 
 
 class Config:

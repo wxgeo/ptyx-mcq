@@ -15,7 +15,7 @@ from typing import Literal
 
 from PIL import Image, ImageDraw
 
-from ptyx_mcq.scan.data_gestion.conflict_handling.integrity_check.fix import (
+from ptyx_mcq.scan.data.conflict_gestion.integrity_check.fix import (
     AbstractIntegrityIssuesFixer,
 )
 from ptyx_mcq.tools.misc import copy_docstring

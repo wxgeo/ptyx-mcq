@@ -79,6 +79,10 @@ class CalibrationData:
     top_left_corner_position: Pixel
     id_band_position: Pixel
 
+    @property
+    def cell_size(self) -> int:
+        return round(self.f_cell_size)
+
 
 @dataclass(frozen=True)
 class Corner:

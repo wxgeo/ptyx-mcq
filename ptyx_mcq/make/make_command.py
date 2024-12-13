@@ -15,10 +15,22 @@ from ptyx.utilities import force_hardlink_to
 
 from ptyx_mcq.parameters import CONFIG_FILE_EXTENSION
 from ptyx_mcq.tools.io_tools import get_file_or_sysexit, FatalError
-from ptyx_mcq.tools.config_parser import Configuration, Page
+from ptyx_mcq.tools.config_parser import (
+    Configuration,
+    Page,
+    OriginalQuestionNumber,
+    OriginalAnswerNumber,
+    CbxRef,
+)
 from ptyx_mcq.make.exercises_parsing import wrap_exercise
 
 DEFAULT_PTYX_MCQ_COMPILATION_OPTIONS = CompilationOptions(same_number_of_pages_compact=True, compress=True)
+
+
+def _get_question_answer_num(tag: str) -> tuple[OriginalQuestionNumber, OriginalAnswerNumber]:
+    """Get the question and answer numbers from the checkbox LaTeX tag."""
+    q, a = map(int, tag[1:].split("-"))
+    return OriginalQuestionNumber(q), OriginalAnswerNumber(a)
 
 
 def generate_config_file(compiler: Compiler) -> None:
@@ -38,20 +50,21 @@ def generate_config_file(compiler: Compiler) -> None:
             filename = f"{name}-{n}.pos"
         full_path = folder / ".compile" / name / filename
         # For each page of the document, give the position of every answer's checkbox.
-        checkboxes_positions: dict[Page, dict[str, tuple[float, float]]] = {}
+        checkboxes_positions: dict[Page, dict[CbxRef, tuple[float, float]]] = {}
         mcq_data.boxes[n] = checkboxes_positions
         with open(full_path) as f:
             for line in f:
-                k, v = line.split(": ", 1)
-                k = k.strip()
-                if k == "ID-table":
+                tag, pos = line.split(": ", 1)
+                tag = tag.strip()
+                if tag == "ID-table":
                     if id_table_pos is None:
-                        x, y = (float(s.strip("() \n")) for s in v.split(","))
+                        x, y = (float(s.strip("() \n")) for s in pos.split(","))
                         id_table_pos = x, y
                         mcq_data.id_table_pos = id_table_pos
-                    continue
-                page_, x_, y_ = [s.strip("p() \n") for s in v.split(",")]
-                checkboxes_positions.setdefault(Page(int(page_)), {})[k] = (float(x_), float(y_))
+                else:
+                    page_, x_, y_ = [s.strip("p() \n") for s in pos.split(",")]
+                    q, a = _get_question_answer_num(tag)
+                    checkboxes_positions.setdefault(Page(int(page_)), {})[(q, a)] = (float(x_), float(y_))
 
     mcq_data.dump(file_path.with_suffix(CONFIG_FILE_EXTENSION))
 

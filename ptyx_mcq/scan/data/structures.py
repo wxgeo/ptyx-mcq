@@ -29,9 +29,9 @@ class DetectionStatus(Enum):
     def __repr__(self):
         return self.name
 
-    @classmethod
-    def seems_checked(cls, status: "DetectionStatus") -> bool:
-        return status in (cls.CHECKED, cls.PROBABLY_CHECKED)
+    @property
+    def seems_checked(self) -> bool:
+        return self in (DetectionStatus.CHECKED, DetectionStatus.PROBABLY_CHECKED)
 
 
 class RevisionStatus(Enum):
@@ -74,7 +74,7 @@ class PicData:
         top, left = self.calibration_data.top_left_corner_position
         v_resolution = self.calibration_data.v_pixels_per_mm
         h_resolution = self.calibration_data.h_pixels_per_mm
-        return Pixel(round((287 - y) * v_resolution + top), round((x - 10) * h_resolution + left))
+        return Pixel((round((287 - y) * v_resolution + top), round((x - 10) * h_resolution + left)))
 
 
 # @dataclass(kw_only=True)
@@ -129,3 +129,16 @@ class DocumentData:
     @student_id.setter
     def student_id(self, value: StudentId) -> None:
         self.pages[Page(1)].student_id = value
+
+
+@dataclass
+class ReviewData:
+    student_id: StudentId
+    student_name: StudentName
+    checkboxes: dict[tuple[OriginalQuestionNumber, OriginalAnswerNumber], DetectionStatus]
+
+
+@dataclass
+class Student:
+    id: StudentId
+    name: StudentName

@@ -1,3 +1,4 @@
+import re
 import typing
 from dataclasses import dataclass, asdict, field
 import json
@@ -22,6 +23,8 @@ QuestionNumber = OriginalQuestionNumber | ApparentQuestionNumber
 OriginalAnswerNumber = NewType("OriginalAnswerNumber", int)
 ApparentAnswerNumber = NewType("ApparentAnswerNumber", int)
 AnswerNumber = OriginalAnswerNumber | ApparentAnswerNumber
+
+CbxRef = tuple[OriginalQuestionNumber, OriginalAnswerNumber]
 
 
 class OrderingConfiguration(TypedDict):
@@ -117,12 +120,23 @@ class Configuration:
     students_ids: dict[StudentId, StudentName] = field(default_factory=dict)
     students_list: list[StudentName] = field(default_factory=list)
     ordering: dict[DocumentId, OrderingConfiguration] = field(default_factory=dict)
-    # ordering: {NUM: {'questions': [2,1,3...],
+    # ordering: {<doc num>: {'questions': [2,1,3...],
     #                  'answers': {1: [(2, True), (1, False), (3, True)...], ...}}, ...}
-    boxes: dict[DocumentId, dict["Page", dict[str, tuple[float, float]]]] = field(default_factory=dict)
-    # boxes: {NUM: {'tag': 'p4, (23.456, 34.667)', ...}, ...}
+    boxes: dict[DocumentId, dict["Page", dict[CbxRef, tuple[float, float]]]] = field(default_factory=dict)
+    # boxes: {<doc num>: {<page num>: {"Q<question num>-<answer num>": (<x-coordinate>, <y-coordinate>), ...}, ...}
     id_table_pos: tuple[float, float] | None = None
-    max_score: float | None = None
+
+    @property
+    def max_score(self) -> float:
+        default_mode = self.mode["default"]
+        default_correct = self.correct["default"]
+        max_score: float = 0
+        # Take a random student test, and calculate max score for it.
+        # Maximal score = (number of questions)x(score when answer is correct)
+        for q in next(iter(self.ordering.values()))["questions"]:
+            if self.mode.get(q, default_mode) != "skip":
+                max_score += self.correct.get(q, default_correct)
+        return max_score
 
     def dump(self, path: Path | str) -> None:
         """Dump `cfg` dict to `path` as json."""
@@ -186,14 +200,22 @@ def encode2js(o, formatter=(lambda s: s), _level=0) -> str:
         return _dumps(o)
 
 
-def keys2int(d: dict[str, T]) -> dict[int | str, T]:
-    return {(int(k) if k.isdecimal() else k): v for k, v in d.items()}
+def _decode_key(key: str) -> str | int | tuple[int, int]:
+    if key.isdecimal():
+        return int(key)
+    elif m := re.match(r"\((\d+), (\d+)\)", key):
+        return int(m.group(1)), int(m.group(2))
+    return key
+
+
+def _decode_all_keys(d: dict[str, T]) -> dict[int | str | tuple, T]:
+    return {_decode_key(k): v for k, v in d.items()}
 
 
 # TODO: Use Configuration types directly to convert keys and values
 #       automatically when decoding the JSON configuration file.
 def decodejs(js: str) -> dict[str, Any]:
-    d = json.loads(js, object_hook=keys2int)
+    d = json.loads(js, object_hook=_decode_all_keys)
     new_d: dict[str, Any] = {}
     # Strip '-' from keys and convert them to lower case.
     for key in d:

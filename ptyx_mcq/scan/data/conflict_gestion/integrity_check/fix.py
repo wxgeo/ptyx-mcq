@@ -3,11 +3,11 @@ from typing import Literal
 
 from ptyx.shell import print_success, print_warning
 
-from ptyx_mcq.scan.data_gestion.conflict_handling.integrity_check.check import (
+from ptyx_mcq.scan.data.conflict_gestion.integrity_check.check import (
     MissingQuestion,
     IntegrityCheckResult,
 )
-from ptyx_mcq.scan.data_gestion.data_handler import DataHandler
+from ptyx_mcq.scan.data.main_manager import DataHandler
 from ptyx_mcq.tools.config_parser import DocumentId, Page
 
 

@@ -14,14 +14,14 @@ from typing import Union, Optional
 # from numpy import ndarray
 from ptyx.shell import print_warning, ANSI_RESET, ANSI_GREEN, print_success
 from ptyx.sys_info import CPU_PHYSICAL_CORES
-from ptyx_mcq.scan.data_gestion.conflict_handling.data_check.cl_fix import ClAnswersReviewer
+from ptyx_mcq.scan.data.conflict_gestion.data_check.cl_fix import ClAnswersReviewer
 
 from ptyx_mcq.parameters import CONFIG_FILE_EXTENSION
 from ptyx_mcq.scan.pdf.amend import amend_all
 
-from ptyx_mcq.scan.data_gestion.conflict_handling import ConflictSolver
-from ptyx_mcq.scan.data_gestion.data_handler import DataHandler
-from ptyx_mcq.scan.data_gestion.document_data import DocumentData, PicData
+from ptyx_mcq.scan.data.conflict_gestion import ConflictSolver
+from ptyx_mcq.scan.data.main_manager import DataHandler
+from ptyx_mcq.scan.data.structures import DocumentData, PicData
 from ptyx_mcq.scan.picture_analyze.scan_pic import (
     scan_picture,
 )
@@ -294,25 +294,25 @@ class MCQPictureParser:
         # Test if the PDF files of the input directory have changed and
         # extract the images from the PDF files if needed.
         print("Search for previous data...")
-        self.data_handler.reload(reset=reset)
+        self.data_handler.initialize(reset=reset)
 
         # ---------------------------------------
         # Extract informations from the pictures.
         # ---------------------------------------
         print("\nProcessing pages...")
-        self.already_seen = {(ID, p) for ID, d in self.data.items() for p in d.pages}
 
-        to_analyze = self._collect_pages(start, end)
         if number_of_processes <= 0:
             cores = os.cpu_count()
             number_of_processes = 1 if cores is None else min(cores - 1, CPU_PHYSICAL_CORES)
-        if number_of_processes == 1:
-            self._serial_scanning(to_analyze, debug=debug)
-        else:
-            # t = time.time()
-            self._parallel_scanning(to_analyze, number_of_processes=number_of_processes, debug=debug)
-            # print(time.time() - t)
 
+        # TODO: number_of_processes=number_of_processes
+        # Extract all pdf files' data.
+        self.data_handler.input_pdf.collect_data(number_of_processes=1)
+        # Keep a track of the index, to make debugging easier.
+        self.data_handler.save_index()
+        # Review pictures.
+        cbx_state = self.data_handler.checkboxes.checkboxes_state
+        # Extract information from scanned documents.
         # gc.collect()
         print_success("Scan successful.")
 
@@ -320,7 +320,7 @@ class MCQPictureParser:
         # Read checkboxes
         # ---------------------------
         # Test whether each checkbox was checked.
-        self.data_handler.checkboxes.analyze_checkboxes(number_of_processes=number_of_processes)
+        # self.data_handler.checkboxes.analyze_checkboxes(number_of_processes=number_of_processes)
 
     def solve_conflicts(self):
         """Resolve conflicts manually: unknown student ID, ambiguous answer..."""
@@ -367,17 +367,15 @@ class MCQPictureParser:
         Set cores to `1` to disable multiprocessing.
         """
         print("Read input data...")
+        # Create directories.
         self.data_handler.paths.make_dirs()
-        # TODO: number_of_processes=number_of_processes
-        pdf_data = self.data_handler.input_pdf.collect_data(number_of_processes=1)
-        exit(0)
 
-        # ---------- WORK IN PROGRESS ---------
-
-        # Extract information from scanned documents.
         self.analyze_pages(
             start=start, end=end, number_of_processes=number_of_processes, reset=reset, debug=debug
         )
+
+        exit(0)
+        # ---------- WORK IN PROGRESS ---------
 
         # Resolve detected problems.
         self.solve_conflicts()

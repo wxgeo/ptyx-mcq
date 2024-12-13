@@ -6,10 +6,10 @@ from pathlib import Path
 
 from ptyx.shell import print_warning, print_error, print_info
 
-from ptyx_mcq.scan.data_gestion.conflict_handling import DataChecker
-from ptyx_mcq.scan.data_gestion.conflict_handling.data_check.check import DataCheckResult
+from ptyx_mcq.scan.data.conflict_gestion import DataChecker
+from ptyx_mcq.scan.data.conflict_gestion.data_check.check import DataCheckResult
 
-from ptyx_mcq.scan.data_gestion.data_handler import DataHandler
+from ptyx_mcq.scan.data.main_manager import DataHandler
 from ptyx_mcq.tools.config_parser import DocumentId, StudentName, StudentId, Page
 from ptyx_mcq.tools.math import levenshtein_distance
 
@@ -58,7 +58,7 @@ class AbstractNamesReviewer(ABC, metaclass=ABCMeta):
 
         suggestion = default
 
-        from ptyx_mcq.scan.data_gestion.conflict_handling.config import Config
+        from ptyx_mcq.scan.data.conflict_gestion.config import Config
 
         with Config.DocHeaderDisplayer(self.data_storage, doc_id) as doc_header_displayer:
             while action is None:
@@ -260,7 +260,7 @@ class DefaultAllDataIssuesFixer:
         self,
         data_storage: DataHandler,
     ):
-        from ptyx_mcq.scan.data_gestion.conflict_handling.config import Config
+        from ptyx_mcq.scan.data.conflict_gestion.config import Config
 
         self.data_storage = data_storage
         self.data = self.data_storage.data

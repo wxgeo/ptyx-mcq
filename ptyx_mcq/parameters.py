@@ -4,7 +4,7 @@ from pathlib import Path
 PACKAGE_ROOT = Path(__file__).resolve().parent
 
 # Default template path
-DEFAULT_TEMPLATE_DIR = "data/templates"
+DEFAULT_TEMPLATE_DIR = "assets/templates"
 DEFAULT_TEMPLATE_NAME = "original"
 DEFAULT_TEMPLATE_FULLPATH = PACKAGE_ROOT / DEFAULT_TEMPLATE_DIR / DEFAULT_TEMPLATE_NAME
 

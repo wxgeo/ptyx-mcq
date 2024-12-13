@@ -13,8 +13,8 @@ from fitz import Pixmap
 from ptyx.shell import print_warning
 
 from ptyx_mcq.parameters import IMAGE_FORMAT
-from ptyx_mcq.scan.data_gestion.document_data import PicData
-from ptyx_mcq.scan.data_gestion.paths_handler import PathsHandler
+from ptyx_mcq.scan.data.structures import PicData
+from ptyx_mcq.scan.data.paths_manager import PathsHandler
 from ptyx_mcq.scan.picture_analyze.calibration import calibrate, CalibrationData, adjust_contrast
 from ptyx_mcq.scan.picture_analyze.identify_doc import read_doc_id_and_page, IdentificationData
 from ptyx_mcq.scan.picture_analyze.types_declaration import CalibrationError
@@ -24,18 +24,32 @@ from ptyx_mcq.tools.extend_literal_eval import extended_literal_eval
 from ptyx_mcq.tools.pic import array_to_image, image_to_array
 
 if TYPE_CHECKING:
-    from ptyx_mcq.scan.data_gestion.data_handler import DataHandler
+    from ptyx_mcq.scan.data.main_manager import DataHandler
 
 
 PdfHash = NewType("PdfHash", str)
-PdfData = dict[PdfHash, dict[int, PicData]]
+PicNum = NewType("PicNum", int)
+PdfData = dict[PdfHash, dict[PicNum, PicData]]
 
 
 class PdfCollection:
-    """Manage all input pdf, and extract its content."""
+    """
+    Manage all input pdf, and extract its content.
+
+    The main method is `.collect_data()`, which populates
+    the `.data` dictionary.
+    """
 
     def __init__(self, data_handler: "DataHandler"):
         self.data_handler = data_handler
+        self._data: PdfData | None = None
+
+    @property
+    def data(self) -> PdfData:
+        if self._data is None:
+            self.collect_data()
+            assert self._data is not None
+        return self._data
 
     @property
     def paths(self) -> PathsHandler:
@@ -56,7 +70,7 @@ class PdfCollection:
         self, hash2pdf: dict[PdfHash, Path], number_of_processes: int | None = PdfData
     ) -> PdfData:
         # For each new pdf files, extract all pictures
-        to_extract: list[tuple[Path, Path, int]] = []
+        to_extract: list[tuple[Path, Path, PicNum]] = []
         pdf_data: PdfData = {}
 
         # TODO: use ThreadPool instead?
@@ -67,7 +81,7 @@ class PdfCollection:
                 # (Resume an interrupted scan without extracting again previously extracted pages).
                 to_extract.extend(
                     [
-                        (pdfpath, folder, page_num)
+                        (pdfpath, folder, PicNum(page_num))
                         for page_num in range(number_of_pages(pdfpath))
                         if not (folder / f"{page_num}.pic-data").is_file()
                     ]
@@ -90,9 +104,9 @@ class PdfCollection:
                 # Only extract a page if the corresponding .pic-data file is not found.
                 # (Resume an interrupted scan without extracting again previously extracted pages).
                 print(f"Extracting page {page_num + 1} from '{pdfpath}'...")
-                pic_data = extract_pdf_page(pdfpath, folder, page_num)
+                pic_data = extract_pdf_page(pdfpath, folder, PicNum(page_num))
                 if pic_data is not None:
-                    pdf_data.setdefault(folder.name, {})[page_num] = pic_data
+                    pdf_data.setdefault(folder.name, {})[PicNum(page_num)] = pic_data
         return pdf_data
 
     def collect_data(self, number_of_processes=1) -> PdfData:
@@ -107,9 +121,10 @@ class PdfCollection:
         # 2. Extract all data from existing pdf files
         # (if not already done in a previous run).
         if number_of_processes == 1:
-            return self._sequential_collect(hash2pdf)
+            self._data = self._sequential_collect(hash2pdf)
         else:
-            return self._parallel_collect(hash2pdf, number_of_processes=number_of_processes)
+            self._data = self._parallel_collect(hash2pdf, number_of_processes=number_of_processes)
+        return self._data
 
     @staticmethod
     def load_pic_data(path: Path) -> PicData:
@@ -146,7 +161,7 @@ class PdfCollection:
                 rmtree(path)
 
 
-def extract_pdf_page(pdf_file: Path, dest: Path, page_num: int) -> PicData | None:
+def extract_pdf_page(pdf_file: Path, dest: Path, page_num: PicNum) -> PicData | None:
     """Extract data corresponding to the given page of the pdf.
 
     Cached data will be used if available and not corrupted.
@@ -206,7 +221,7 @@ def extract_pdf_page(pdf_file: Path, dest: Path, page_num: int) -> PicData | Non
 
 
 def _extract_pdf_page(
-    pdf_file: Path, page_num: int, pic_file: Path, calibration_file: Path, identification_file: Path
+    pdf_file: Path, page_num: PicNum, pic_file: Path, calibration_file: Path, identification_file: Path
 ) -> PicData | None:
     """
     Extract data corresponding to the given page of the pdf.
@@ -234,7 +249,7 @@ def _extract_pdf_page(
     )
 
 
-def _get_page_content_as_array(pdf_file: Path, page_num: int) -> ndarray:
+def _get_page_content_as_array(pdf_file: Path, page_num: PicNum) -> ndarray:
     doc = fitz.Document(pdf_file)
     page = doc[page_num]
     if _contain_only_a_single_image(page):

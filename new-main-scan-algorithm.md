@@ -83,8 +83,8 @@ Remarque : il peut parfois arriver qu'il y ait plusieurs images associées au m�
 
 Exemple de contenu de fichier : 
 ```
-<pdf-hash>/1,<other-pdf-hash>/34,<pdf-hash>/12
-<pdf-hash>/14
+1:<pdf-hash>/1,<other-pdf-hash>/34,<pdf-hash>/12
+2:<pdf-hash>/14
 ```
 La 1re ligne du fichier liste les pages scannées correspondant à la 1re page du document,
 la 2e ligne du fichier liste les pages scannées correspondant à la 2e page du document,
@@ -110,8 +110,15 @@ Celui-ci contient :
 - le cas échéant (sur la 1re page également), le nom de l'étudiant
 - le statut de chaque case (`UNCHECKED`, `CHECKED`, `PROBABLY_UNCHECKED`, `PROBABLY_CHECKED`)
 
-L'intérêt de générer un fichier par page scannée (et non par document ou par page du document initial)
-est de gérer plus facilement les conflits (pages scannées en double par exemple).
+Exemple de contenu de fichier :
+```
+student_id: 5412241
+student_name: William Shakespeare
+1, 1: UNCHECKED
+1, 2: CHECKED
+```
+
+L'intérêt de générer un fichier par page scannée (et non par document ou par page du document initial) est de gérer plus facilement les conflits (pages scannées en double par exemple).
 
 ### Détection des conflits
 Génération de la liste des conflits :

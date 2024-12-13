@@ -8,7 +8,7 @@ from ptyx.shell import print_info, print_warning
 
 from ptyx_mcq.scan.picture_analyze.identify_doc import IdentificationData
 from ptyx_mcq.tools.colors import Color
-from ptyx_mcq.scan.data_gestion.document_data import PicData
+from ptyx_mcq.scan.data.structures import PicData
 from ptyx_mcq.scan.picture_analyze.types_declaration import (
     CalibrationError,
     Pixel,

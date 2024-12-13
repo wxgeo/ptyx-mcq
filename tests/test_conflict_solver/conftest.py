@@ -4,9 +4,9 @@ import subprocess
 import pytest
 from numpy import ndarray, array
 
-from ptyx_mcq.scan.data_gestion.conflict_handling import ConflictSolver
+from ptyx_mcq.scan.data.conflict_gestion import ConflictSolver
 
-from ptyx_mcq.scan.data_gestion.data_handler import DataHandler
+from ptyx_mcq.scan.data.main_manager import DataHandler
 from tests.test_conflict_solver import DATA_DIR
 
 
@@ -28,7 +28,7 @@ def patched_conflict_solver(monkeypatch, tmp_path, no_display):
     shutil.copytree(DATA_DIR / "no-conflict", tmp_path / "no-conflict")
     data_storage = DataHandler(config_path=tmp_path / "no-conflict")
     conflict_solver = ConflictSolver(data_storage)
-    conflict_solver.data_storage.reload()
+    conflict_solver.data_storage.initialize()
 
     # noinspection PyUnusedLocal
     def get_matrix(self, doc_id: int, page: int) -> ndarray:

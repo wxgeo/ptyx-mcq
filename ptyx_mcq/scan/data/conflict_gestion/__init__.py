@@ -1,6 +1,6 @@
-from ptyx_mcq.scan.data_gestion.conflict_handling.data_check.check import DataChecker
-from ptyx_mcq.scan.data_gestion.conflict_handling.integrity_check.check import IntegrityChecker
-from ptyx_mcq.scan.data_gestion.data_handler import DataHandler
+from ptyx_mcq.scan.data.conflict_gestion.data_check.check import DataChecker
+from ptyx_mcq.scan.data.conflict_gestion.integrity_check.check import IntegrityChecker
+from ptyx_mcq.scan.data.main_manager import DataHandler
 
 
 class ConflictSolver:
@@ -9,7 +9,7 @@ class ConflictSolver:
         self.data = data_storage.data
 
     def run(self):
-        from ptyx_mcq.scan.data_gestion.conflict_handling.config import Config
+        from ptyx_mcq.scan.data.conflict_gestion.config import Config
 
         # Check that all documents are scanned completely, and only once.
         integrity_check_results = IntegrityChecker(self.data_storage).run()
