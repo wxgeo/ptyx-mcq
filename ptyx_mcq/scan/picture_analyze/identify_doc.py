@@ -10,7 +10,7 @@ from ptyx_mcq.tools.colors import Color
 from ptyx_mcq.tools.config_parser import DocumentId, Page
 
 
-@dataclass
+@dataclass(frozen=True)
 class IdentificationData:
     # ID of the document:
     doc_id: DocumentId

@@ -1,23 +1,16 @@
-import csv
 import signal
 from io import BytesIO
 from pathlib import Path
 from types import FrameType
-from typing import Iterator
 
-from PIL import Image
-from numpy import ndarray, array
-
-from ptyx.shell import print_error
+from numpy import ndarray
 
 from ptyx_mcq.parameters import IMAGE_FORMAT
-from ptyx_mcq.scan.data.analyze.checkboxes import CheckboxesDataAnalyzer
-from ptyx_mcq.scan.data.extraction import PdfCollection, PdfHash, PicNum
+from ptyx_mcq.scan.data.analyze import PictureAnalyzer
+from ptyx_mcq.scan.data.extraction import PdfCollection
 from ptyx_mcq.scan.data.structures import (
     DocumentData,
-    PicData,
-    DetectionStatus,
-    RevisionStatus,
+    Picture,
 )
 from ptyx_mcq.scan.data.paths_manager import PathsHandler, DirsPaths, FilesPaths
 from ptyx_mcq.tools.config_parser import (
@@ -29,21 +22,15 @@ from ptyx_mcq.tools.config_parser import (
     OriginalQuestionAnswersDict,
     Page,
 )
-from ptyx_mcq.tools.extend_literal_eval import extended_literal_eval
 
 
-def pic_names_iterator(data: dict[DocumentId, DocumentData]) -> Iterator[Path]:
-    """Iterate over all pics found in data (i.e. all the pictures already analysed)."""
-    for doc_data in data.values():
-        for pic_data in doc_data.pages.values():
-            path = Path(pic_data.pic_path)
-            # return pdfhash/picnumber.png
-            yield path.relative_to(path.parent.parent)
-
-
-def split_pic_path(path: Path) -> tuple[PdfHash, PicNum]:
-    """Return the pdf hash and the picture's number from the picture's path."""
-    return PdfHash(path.parent.name), PicNum(int(path.stem))
+# def pic_names_iterator(data: dict[DocumentId, DocumentData]) -> Iterator[Path]:
+#     """Iterate over all pics found in data (i.e. all the pictures already analysed)."""
+#     for doc_data in data.values():
+#         for pic_data in doc_data.pages.values():
+#             path = Path(pic_data.pic_path)
+#             # return pdfhash/picnumber.png
+#             yield path.relative_to(path.parent.parent)
 
 
 class DataHandler:
@@ -77,9 +64,9 @@ class DataHandler:
         # Counter used to generate unique temporary id.
         # This is a negative integer, since all temporary ids will be negative integers.
         self._tmp_ids_counter = -1
-        self.checkboxes = CheckboxesDataAnalyzer(self)
+        self.picture_analyzer = PictureAnalyzer(self)
         # Get for each document and each page the corresponding pictures paths.
-        self._index: dict[DocumentId, dict[Page, set[Path]]] | None = None
+        self._index: dict[DocumentId, dict[Page, set[Picture]]] | None = None
 
     # def student_name_to_doc_id_dict(self) -> dict[StudentName, DocumentId]:
     #     """`student_name_to_doc_id` is used to retrieve the data associated with a name."""
@@ -101,26 +88,22 @@ class DataHandler:
     def output_dir(self):
         return self.paths.output_dir
 
-    def get_pic_data(self, path: Path) -> PicData:
-        pdf_hash, pic_num = split_pic_path(path)
-        return self.input_pdf.data[pdf_hash][pic_num]
-
     def write_log(self, msg: str) -> None:
         with open(self.paths.logfile_path, "a", encoding="utf8") as logfile:
             logfile.write(msg)
 
     @property
-    def index(self) -> dict[DocumentId, dict[Page, set[Path]]]:
+    def index(self) -> dict[DocumentId, dict[Page, set[Picture]]]:
         if self._index is None:
             self._index = self._generate_index()
         return self._index
 
-    def get_document_pic_paths(self, doc_id: DocumentId) -> set[Path]:
-        """Get the paths of all the pics associated with the current document id."""
-        return {path for page_paths in self.index[doc_id].values() for path in page_paths}
+    def get_document_pictures(self, doc_id: DocumentId) -> set[Picture]:
+        """Return all the pictures associated with the current document id."""
+        return {pic for page_pics in self.index[doc_id].values() for pic in page_pics}
 
-    def _generate_index(self) -> dict[DocumentId, dict[Page, set[Path]]]:
-        """Return a dictionary, given for each page of each document the corresponding picture files.
+    def _generate_index(self) -> dict[DocumentId, dict[Page, set[Picture]]]:
+        """Return a dictionary, given for each page of each document the corresponding pictures.
 
         Most of the time, there must be only one single picture for each document page, but the page
         may have been scanned twice.
@@ -129,49 +112,36 @@ class DataHandler:
         for pdf_hash, content in self.input_pdf.data.items():
             for pic_num, pic_data in content.items():
                 self._index.setdefault(pic_data.doc_id, {}).setdefault(pic_data.page, set()).add(
-                    pic_data.pic_path
+                    Picture(path=self.dirs.cache / f"{pdf_hash}/{pic_num}.webp", data=pic_data)
                 )
         return self._index
 
     def save_index(self) -> None:
         (folder := self.dirs.data / "index").mkdir(exist_ok=True)
-        for doc_id, doc_paths in self.index.items():
+        for doc_id, doc_pics in self.index.items():
             (folder / str(doc_id)).write_text(
                 "\n".join(
-                    f"{page}: "
-                    + ", ".join(str(path.with_suffix("").relative_to(path.parent.parent)) for path in paths)
-                    for page, paths in doc_paths.items()
+                    f"{page}: " + ", ".join(pic.encoded_path for pic in page_pics)
+                    for page, page_pics in doc_pics.items()
                 ),
                 encoding="utf8",
             )
 
-    @staticmethod
-    def get_pic(pic_path: Path) -> Image.Image:
-        if not pic_path.is_file():
-            print_error(f"File not found: `{pic_path}`")
-            raise FileNotFoundError(f'"{pic_path}"')
-        try:
-            return Image.open(str(pic_path))
-        except Exception:
-            print_error(f"Error when opening {pic_path}.")
-            raise
-
-    @classmethod
-    def get_matrix(cls, pic_path: Path) -> ndarray:
-        return array(cls.get_pic(pic_path).convert("L")) / 255
-
-    # ==== OLD CODE ====
+    # TODO: remove or update:
+    # ========
+    # OLD CODE
+    # ========
 
     def get_pics_list(self):
         """Return sorted pics list."""
-        return sorted(f for f in self.dirs.pic.glob("*/*") if f.suffix.lower() == IMAGE_FORMAT)
+        return sorted(f for f in self.dirs.cache.glob("*/*") if f.suffix.lower() == IMAGE_FORMAT)
 
     def relative_pic_path(self, pic_path: str | Path):
-        """Return picture path relatively to the `.scan/pic/` parent directory."""
-        return Path(pic_path).relative_to(self.dirs.pic)
+        """Return picture path relatively to the `.scan/cache/` parent directory."""
+        return Path(pic_path).relative_to(self.dirs.cache)
 
     def absolute_pic_path(self, pic_path: str | Path) -> Path:
-        return self.dirs.pic / pic_path
+        return self.dirs.cache / pic_path
 
     def absolute_pic_path_for_page(self, doc_id: DocumentId, page: Page) -> Path:
         return self.absolute_pic_path(self.data[doc_id].pages[page].pic_path)
@@ -292,19 +262,6 @@ class DataHandler:
         """Create (or re-create) the .scandata file containing all the data for document `doc_id`."""
         with open(self.dirs.data / f"{doc_id}.scandata", "w") as f:
             f.write(repr(self.data[doc_id]))
-
-    def store_additional_info(self, doc_id: DocumentId, name: StudentName, student_id: StudentId) -> None:
-        with open(self.files.more_infos, "a", newline="") as csvfile:
-            writerow = csv.writer(csvfile).writerow
-            writerow([str(doc_id), name, student_id])
-
-    def store_skipped_pic(self, skipped_pic: Path) -> None:
-        with open(self.files.skipped, "a", newline="", encoding="utf8") as file:
-            file.write(f"{skipped_pic}\n")
-
-    def store_verified_pic(self, verified_pic: Path) -> None:
-        with open(self.files.verified, "a", newline="", encoding="utf8") as file:
-            file.write(f"{verified_pic}\n")
 
     def remove_doc_files(self, doc_id: DocumentId) -> None:
         """Remove all the data files associated with the document of id `doc_id`."""

@@ -311,7 +311,7 @@ class MCQPictureParser:
         # Keep a track of the index, to make debugging easier.
         self.data_handler.save_index()
         # Review pictures.
-        cbx_state = self.data_handler.checkboxes.checkboxes_state
+        info = self.data_handler.picture_analyzer.info
         # Extract information from scanned documents.
         # gc.collect()
         print_success("Scan successful.")
@@ -329,7 +329,7 @@ class MCQPictureParser:
         # TODO: make checkboxes export optional (this is
         #  only useful for debug)
         print("\nExporting checkboxes...", end=" ")
-        self.data_handler.checkboxes.export_checkboxes()
+        self.data_handler.picture_analyzer.export_checkboxes()
         print("done.")
 
     def calculate_scores(self):

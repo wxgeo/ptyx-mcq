@@ -68,7 +68,7 @@ class HPosition(_VHPosition):
     RIGHT = 1
 
 
-@dataclass(kw_only=True)
+@dataclass(kw_only=True, frozen=True)
 class CalibrationData:
     """Data returned by the calibration process."""
 
@@ -686,8 +686,8 @@ def calibrate(m: ndarray, debug=False) -> tuple[ndarray, CalibrationData]:
         resample=Image.Resampling.BICUBIC,
         fillcolor=255,
     )
-    # pic, m = transform(
-    #     pic,
+    # cache, m = transform(
+    #     cache,
     #     "rotate",
     #     rotation,
     #     resample=Image.Resampling.BICUBIC,

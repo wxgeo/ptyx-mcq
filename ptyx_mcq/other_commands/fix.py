@@ -12,5 +12,5 @@ def fix_doc(
 
 
 def fix_name(doc: DocumentId) -> None:
-    """Launch a verification of the student's name and identifiant for the specified document."""
+    """Launch a verification of the student's name and identifier for the specified document."""
     raise NotImplementedError

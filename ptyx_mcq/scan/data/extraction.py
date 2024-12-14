@@ -15,21 +15,16 @@ from ptyx.shell import print_warning
 from ptyx_mcq.parameters import IMAGE_FORMAT
 from ptyx_mcq.scan.data.structures import PicData
 from ptyx_mcq.scan.data.paths_manager import PathsHandler
+from ptyx_mcq.scan.data.structures import PdfHash, PicNum, PdfData
 from ptyx_mcq.scan.picture_analyze.calibration import calibrate, CalibrationData, adjust_contrast
 from ptyx_mcq.scan.picture_analyze.identify_doc import read_doc_id_and_page, IdentificationData
 from ptyx_mcq.scan.picture_analyze.types_declaration import CalibrationError
-from ptyx_mcq.tools.config_parser import DocumentId
 from ptyx_mcq.scan.pdf.utilities import number_of_pages
 from ptyx_mcq.tools.extend_literal_eval import extended_literal_eval
 from ptyx_mcq.tools.pic import array_to_image, image_to_array
 
 if TYPE_CHECKING:
     from ptyx_mcq.scan.data.main_manager import DataHandler
-
-
-PdfHash = NewType("PdfHash", str)
-PicNum = NewType("PicNum", int)
-PdfData = dict[PdfHash, dict[PicNum, PicData]]
 
 
 class PdfCollection:
@@ -76,7 +71,7 @@ class PdfCollection:
         # TODO: use ThreadPool instead?
         with Pool(number_of_processes) as pool:
             for pdfhash, pdfpath in hash2pdf.items():
-                folder = self.paths.dirs.pic / pdfhash
+                folder = self.paths.dirs.cache / pdfhash
                 # Only append a page if the corresponding .pic-data file is not found.
                 # (Resume an interrupted scan without extracting again previously extracted pages).
                 to_extract.extend(
@@ -99,7 +94,7 @@ class PdfCollection:
     def _sequential_collect(self, hash2pdf: dict[str, Path]) -> PdfData:
         pdf_data: PdfData = {}
         for pdfhash, pdfpath in hash2pdf.items():
-            folder = self.paths.dirs.pic / pdfhash
+            folder = self.paths.dirs.cache / pdfhash
             for page_num in range(number_of_pages(pdfpath)):
                 # Only extract a page if the corresponding .pic-data file is not found.
                 # (Resume an interrupted scan without extracting again previously extracted pages).
@@ -126,27 +121,27 @@ class PdfCollection:
             self._data = self._parallel_collect(hash2pdf, number_of_processes=number_of_processes)
         return self._data
 
-    @staticmethod
-    def load_pic_data(path: Path) -> PicData:
-        return extended_literal_eval(path.read_text(), {"PicData": PicData})
+    # @staticmethod
+    # def load_pic_data(path: Path) -> PicData:
+    #     return extended_literal_eval(path.read_text(), {"PicData": PicData})
 
-    def _get_corresponding_doc_ids(self, pdfhash: PdfHash) -> list[DocumentId]:
-        """Get all the documents id corresponding to the pdf with the given hash.
-
-        Note that:
-        - The same document may appear in several pdf (some pages in one pdf, other pages in another pdf).
-        - This method() relies on the generated `.pic-data` files, so the list may be incomplete
-          (the `.pic-data` may not have been generated yet, or be generated during a previous process which was
-          abruptly interrupted).
-        """
-        return [
-            self.load_pic_data(pic_data_file).doc_id
-            for pic_data_file in (self.paths.dirs["pic"] / pdfhash).glob("*.pic-data")
-        ]
+    # def _get_corresponding_doc_ids(self, pdfhash: PdfHash) -> list[DocumentId]:
+    #     """Get all the documents id corresponding to the pdf with the given hash.
+    #
+    #     Note that:
+    #     - The same document may appear in several pdf (some pages in one pdf, other pages in another pdf).
+    #     - This method() relies on the generated `.pic-data` files, so the list may be incomplete
+    #       (the `.pic-data` may not have been generated yet, or be generated during a previous process which was
+    #       abruptly interrupted).
+    #     """
+    #     return [
+    #         self.load_pic_data(pic_data_file).doc_id
+    #         for pic_data_file in (self.paths.dirs["pic"] / pdfhash).glob("*.pic-data")
+    #     ]
 
     def _remove_obsolete_files(self, hash2pdf: dict[str, Path]) -> None:
         """For each removed pdf files, remove corresponding pictures and data."""
-        for path in self.paths.dirs.pic.iterdir():
+        for path in self.paths.dirs.cache.iterdir():
             # No file should be found, only directories!
             if not path.is_dir():
                 raise RuntimeError(
@@ -156,8 +151,8 @@ class PdfCollection:
                 )
             # Remove any directory whose name don't match any existing pdf file, and all corresponding data.
             if path.name not in hash2pdf:
-                for doc_id in self._get_corresponding_doc_ids(path.name):
-                    self.data_handler.remove_doc_files(DocumentId(int(doc_id)))
+                # for doc_id in self._get_corresponding_doc_ids(path.name):
+                #     self.data_handler.remove_doc_files(DocumentId(int(doc_id)))
                 rmtree(path)
 
 
@@ -212,9 +207,7 @@ def extract_pdf_page(pdf_file: Path, dest: Path, page_num: PicNum) -> PicData | 
             print_warning(f"Unable to load file: {identification_file}")
         if not valid_pic or calibration_data is None or identification_data is None:
             return _extract_pdf_page(pdf_file, page_num, pic_file, calibration_file, identification_file)
-        return PicData(
-            pic_path=pic_file, calibration_data=calibration_data, identification_data=identification_data
-        )
+        return PicData(calibration_data=calibration_data, identification_data=identification_data)
     # Else, parse the scanned page image to retrieve info.
     else:
         return _extract_pdf_page(pdf_file, page_num, pic_file, calibration_file, identification_file)
@@ -243,7 +236,6 @@ def _extract_pdf_page(
     identification_data, _ = read_doc_id_and_page(img_array, calibration_data)
     identification_file.write_text(repr(identification_data), "utf8")
     return PicData(
-        pic_path=pic_file,
         calibration_data=calibration_data,
         identification_data=identification_data,
     )

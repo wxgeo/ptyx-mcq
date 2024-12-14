@@ -310,7 +310,7 @@ def create_mcq_arg_parser() -> ArgumentParser:
         "--doc",
         metavar="DOC",
         type=int,
-        help="The identifiant of the document.",
+        help="The identifier of the document.",
     )  # TODO: add a completer ?
     fix_doc_parser.add_argument(
         "-p",
@@ -331,7 +331,7 @@ def create_mcq_arg_parser() -> ArgumentParser:
         "--id",
         metavar="ID",
         type=str,
-        help="The identifiant of the student.",
+        help="The identifier of the student.",
     )  # TODO: add a completer ?
     fix_doc_parser.set_defaults(handler=Handlers.fix_doc)
 
@@ -343,7 +343,7 @@ def create_mcq_arg_parser() -> ArgumentParser:
         "--doc",
         metavar="DOC",
         type=int,
-        help="The identifiant of the document.",
+        help="The identifier of the document.",
     )  # TODO: add a completer ?
     fix_doc_parser.set_defaults(handler=Handlers.fix_name)
 

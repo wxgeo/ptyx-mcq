@@ -94,7 +94,7 @@ def export_checkboxes(path: Path | str = ".", debug=False):
         print("\nLoad data...")
         handler.initialize()
         print("\nExporting pictures...")
-        handler.checkboxes.export_checkboxes(export_all=True, path=Path(tmp_dir), compact=True)
+        handler.picture_analyzer.export_checkboxes(export_all=True, path=Path(tmp_dir), compact=True)
         print("\nCreating archive...")
         with tarfile.open(path / tar_name, "w") as tar:
             tar.add(tmp_dir, arcname=date)

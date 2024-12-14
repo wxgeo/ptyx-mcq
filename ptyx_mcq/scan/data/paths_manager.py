@@ -9,9 +9,9 @@ from ptyx_mcq.tools.io_tools import get_file_or_sysexit
 
 @dataclass
 class FilesPaths:
-    verified: Path
-    skipped: Path
-    more_infos: Path
+    # verified: Path
+    # skipped: Path
+    # more_infos: Path
     csv_scores: Path
     xlsx_scores: Path
     infos: Path
@@ -21,8 +21,9 @@ class FilesPaths:
 class DirsPaths:
     root: Path
     data: Path
-    cfg: Path
-    pic: Path
+    # cfg: Path
+    cache: Path
+    diff: Path
     log: Path
     pdf: Path
     checkboxes: Path
@@ -53,7 +54,7 @@ class PathsHandler:
         # `.scan` directory is used to write intermediate files.
         # Directory tree:
         # .scan/
-        # .scan/pic -> pictures extracted from the pdf
+        # .scan/cache -> pictures extracted from the pdf
         # .scan/cfg/more_infos.csv -> missing students names.
         # .scan/cfg/verified.csv -> pages already verified.
         # .scan/cfg/skipped.csv -> pages to skip.
@@ -61,21 +62,22 @@ class PathsHandler:
         # .scan/data -> data stored as .scandata files (used to resume interrupted scan).
         # .scan/checkboxes -> directory to export checkboxes, to add regression tests
 
-        cfg = output_dir / "cfg"
+        # cfg = output_dir / "cfg"
         log = output_dir / "log"
         self.dirs = DirsPaths(
             root=root,
-            cfg=cfg,
+            # cfg=cfg,
             data=output_dir / "data",
-            pic=output_dir / "pic",
+            cache=output_dir / "cache",
             pdf=output_dir / "pdf",
             checkboxes=output_dir / "checkboxes",
             log=log,
+            diff=output_dir / "diff",
         )
         self.files = FilesPaths(
-            verified=cfg / "verified.txt",
-            skipped=cfg / "skipped.txt",
-            more_infos=cfg / "more_infos.csv",
+            # verified=cfg / "verified.txt",
+            # skipped=cfg / "skipped.txt",
+            # more_infos=cfg / "more_infos.csv",
             csv_scores=output_dir / "scores.csv",
             xlsx_scores=output_dir / "scores.xlsx",
             infos=output_dir / "infos.csv",

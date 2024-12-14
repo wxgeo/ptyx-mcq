@@ -4,7 +4,7 @@ Analyze the data extracted from the input pdf.
 This means:
 - detecting checkboxes
 - evaluating checkboxes state
-- retrieving student name and identifiant
+- retrieving student name and identifier
 """
 import concurrent.futures
 import multiprocessing
@@ -16,7 +16,7 @@ from numpy import ndarray, concatenate
 from ptyx.shell import ANSI_CYAN, ANSI_RESET, ANSI_GREEN, ANSI_YELLOW
 
 
-from ptyx_mcq.scan.data.structures import DetectionStatus, DocumentData, ReviewData, Student
+from ptyx_mcq.scan.data.structures import DetectionStatus, DocumentData, ReviewData, Student, Picture
 from ptyx_mcq.scan.picture_analyze.checkbox_analyzer import eval_checkbox_color
 from ptyx_mcq.scan.picture_analyze.square_detection import adjust_checkbox, test_square_color
 from ptyx_mcq.scan.picture_analyze.types_declaration import Line, Col
@@ -32,7 +32,6 @@ from ptyx_mcq.tools.pic import save_webp
 if TYPE_CHECKING:
     from ptyx_mcq.scan.data.main_manager import DataHandler
 
-
 CheckboxAnalyzeResult = dict[CbxRef, DetectionStatus]
 CheckboxesPositions = dict[CbxRef, tuple[Line, Col]]
 
@@ -41,7 +40,7 @@ class InvalidFormat(RuntimeError):
     """Raised when a file has an invalid format and cannot be decoded."""
 
 
-class CheckboxesDataAnalyzer:
+class OldCheckboxesDataAnalyzer:
     """Analyze all data checkboxes."""
 
     def __init__(self, data_handler: "DataHandler"):
@@ -56,26 +55,25 @@ class CheckboxesDataAnalyzer:
     def data(self):
         return self.data_handler.data
 
-    @property
-    def pdf_data(self):
-        return self.data_handler.input_pdf.data
+    # @property
+    # def pdf_data(self):
+    #     return self.data_handler.input_pdf.data
 
     @property
     def config(self):
         return self.data_handler.config
 
-    def get_checkboxes_positions(self, pic_path: Path) -> CheckboxesPositions:
+    def get_checkboxes_positions(self, pic: Picture) -> CheckboxesPositions:
         """For the picture saved in `pic_path`, get the checkboxes positions in the pixel's matrix."""
-        pic_data = self.data_handler.get_pic_data(pic_path)
         try:
             # The page may contain no question, so return an empty dict by default.
-            boxes = self.config.boxes[pic_data.doc_id].get(pic_data.page, {})
+            boxes = self.config.boxes[pic.data.doc_id].get(pic.data.page, {})
         except KeyError:
-            print(f"ERROR: doc id:{pic_data.doc_id}, doc page: {pic_data.page}")
+            print(f"ERROR: doc id:{pic.data.doc_id}, doc page: {pic.data.page}")
             raise
-        return {q_a: pic_data.xy2ij(*xy) for q_a, xy in boxes.items()}
+        return {q_a: pic.data.xy2ij(*xy) for q_a, xy in boxes.items()}
 
-    def get_checkboxes(self, pic_path: Path) -> dict[CbxRef, ndarray]:
+    def get_checkboxes(self, pic: Picture) -> dict[CbxRef, ndarray]:
         """For the picture saved in `pic_path`, get all the arrays representing the checkbox pictures."""
         checkboxes: dict[CbxRef, ndarray] = {}
         positions = self.get_checkboxes_positions(pic_path)
@@ -86,9 +84,9 @@ class CheckboxesDataAnalyzer:
             checkboxes[(q, a)] = matrix[i : i + cell_size, j : j + cell_size]
         return checkboxes
 
-    def get_doc_checkboxes_state(self, doc_id: DocumentId) -> dict[Path, dict[CbxRef, DetectionStatus]]:
+    def get_doc_checkboxes_state(self, doc_id: DocumentId) -> dict[Picture, dict[CbxRef, DetectionStatus]]:
         # Get all paths corresponding to the given document id.
-        doc_pic_paths = self.data_handler.get_document_pic_paths(doc_id)
+        doc_pic_paths = self.data_handler.get_document_pictures(doc_id)
         # Analyze each checkbox.
         to_analyze = {pic_path: self.get_checkboxes(pic_path) for pic_path in doc_pic_paths}
         if not to_analyze:
@@ -96,7 +94,7 @@ class CheckboxesDataAnalyzer:
         return analyze_checkboxes(to_analyze)
 
     @property
-    def checkboxes_state(self) -> dict[DocumentId : [Path, dict[CbxRef, DetectionStatus]]]:
+    def checkboxes_state(self) -> dict[DocumentId : [Picture, dict[CbxRef, DetectionStatus]]]:
         """Retrieve the state of each checkbox (checked or not).
 
         The returned dictionary is cached. The method follows this process:
@@ -150,17 +148,19 @@ class CheckboxesDataAnalyzer:
     def save_checkboxes_state(self, doc_id: DocumentId) -> None:
         """Save to disk the checkboxes states for all the pictures associated with the given document id."""
         for path, pic_cbx_state in self.checkboxes_state[doc_id].items():
-            (folder := path.parent / "review/checkboxes").mkdir(exist_ok=True, parents=True)
+            (folder := path.parent / "checkboxes").mkdir(exist_ok=True, parents=True)
             lines = (self._encode_state(q_a, status) for q_a, status in pic_cbx_state.items())
             (folder / path.stem).write_text("\n".join(lines) + "\n", encoding="utf8")
 
-    def load_checkboxes_state(self, doc_id: DocumentId) -> dict[Path, dict[CbxRef, DetectionStatus]] | None:
+    def load_checkboxes_state(
+        self, doc_id: DocumentId
+    ) -> dict[Picture, dict[CbxRef, DetectionStatus]] | None:
         """Load from disk the checkboxes states for all the pictures associated with the given document id."""
-        doc_cbx_states: dict[Path, dict[CbxRef, DetectionStatus]] = {}
-        for page, page_paths in self.data_handler.index[doc_id].items():
-            for pic_path in page_paths:
+        doc_cbx_states: dict[Picture, dict[CbxRef, DetectionStatus]] = {}
+        for page, page_pics in self.data_handler.index[doc_id].items():
+            for pic in page_pics:
                 try:
-                    cbx_state_file = pic_path.parent / "review/checkboxes" / pic_path.stem
+                    cbx_state_file = pic.folder / f"checkboxes/{pic.num}"
                     # Read the file and import its data.
                     result = self._read_cbx_state_file(cbx_state_file)
                     # Now, we should verify that the (<question_num>, <answer_num>) keys
@@ -367,11 +367,11 @@ class CheckboxesDataAnalyzer:
             self._export_document_checkboxes(doc_id, path=path, compact=compact)
 
 
-def _get_max_blackness(blackness: dict[Path, dict[CbxRef, float]]) -> float:
+def _get_max_blackness(blackness: dict[Picture, dict[CbxRef, float]]) -> float:
     return max(max(pic_blackness_values.values(), default=0) for pic_blackness_values in blackness.values())
 
 
-def _get_average_blackness(blackness: dict[Path, dict[CbxRef, float]]) -> float:
+def _get_average_blackness(blackness: dict[Picture, dict[CbxRef, float]]) -> float:
     total = 0.0
     count = 0
     for pic_blackness_values in blackness.values():
@@ -382,16 +382,16 @@ def _get_average_blackness(blackness: dict[Path, dict[CbxRef, float]]) -> float:
 
 
 def analyze_checkboxes(
-    all_checkboxes: dict[Path, dict[CbxRef, ndarray]],
-) -> dict[Path, dict[CbxRef, DetectionStatus]]:
+    all_checkboxes: dict[Picture, dict[CbxRef, ndarray]],
+) -> dict[Picture, dict[CbxRef, DetectionStatus]]:
     """
     Evaluate each checkbox, and estimate if it was checked.
     """
-    detection_status: dict[Path, dict[CbxRef, DetectionStatus]] = {path: {} for path in all_checkboxes}
+    detection_status: dict[Picture, dict[CbxRef, DetectionStatus]] = {path: {} for path in all_checkboxes}
     # Store blackness of checkboxes, to help detect false positives
     # and false negatives.
-    blackness: dict[Path, dict[CbxRef, float]] = {path: {} for path in all_checkboxes}
-    core_blackness: dict[Path, dict[CbxRef, float]] = {path: {} for path in all_checkboxes}
+    blackness: dict[Picture, dict[CbxRef, float]] = {path: {} for path in all_checkboxes}
+    core_blackness: dict[Picture, dict[CbxRef, float]] = {path: {} for path in all_checkboxes}
 
     for pic_path, pic_checkboxes in all_checkboxes.items():
         pic_blackness = blackness[pic_path]
