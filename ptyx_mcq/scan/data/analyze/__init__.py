@@ -15,10 +15,9 @@ from typing import TYPE_CHECKING
 from numpy import ndarray, concatenate
 from ptyx.shell import ANSI_CYAN, ANSI_RESET, ANSI_GREEN, ANSI_YELLOW
 
-from ptyx_mcq.scan.data.analyze.checkboxes import analyze_checkboxes
+from ptyx_mcq.scan.data.analyze.checkboxes import analyze_checkboxes, eval_checkbox_color
 from ptyx_mcq.scan.data.analyze.student_names import read_student_id_and_name
 from ptyx_mcq.scan.data.structures import DetectionStatus, DocumentData, ReviewData, Student, Picture
-from ptyx_mcq.scan.picture_analyze.checkbox_analyzer import eval_checkbox_color
 from ptyx_mcq.scan.picture_analyze.square_detection import adjust_checkbox, test_square_color
 from ptyx_mcq.scan.picture_analyze.types_declaration import Line, Col, Pixel
 from ptyx_mcq.tools.config_parser import (
@@ -187,12 +186,15 @@ class PictureAnalyzer:
                 (folder := pic.dir / "students").mkdir(exist_ok=True)
                 (folder / str(pic.num)).write_text(self._encode_student(student), encoding="utf8")
 
+    def _load_pic_student(self, pic: Picture) -> Student | None:
+        if pic.data.page == 1:
+            return self._decode_student((pic.dir / f"students/{pic.num}").read_text(encoding="utf8"))
+        return None
+
     def load_student(self, doc_id: DocumentId) -> dict[Picture, Student] | None:
+        doc_pics = self.data_handler.get_document_pictures(doc_id)
         try:
-            return {
-                pic: self._decode_student((pic.dir / f"students/{pic.num}").read_text(encoding="utf8"))
-                for pic in self.data_handler.get_document_pictures(doc_id)
-            }
+            return {pic: self._load_pic_student(pic) for pic in doc_pics}
         except (OSError, InvalidFormat):
             return None
 
@@ -200,14 +202,18 @@ class PictureAnalyzer:
     #     Checkboxes
     # ===================
 
-    def get_checkboxes_positions(self, pic: Picture) -> CheckboxesPositions:
-        """Retrieve the checkboxes positions in the pixel's matrix of the picture `pic`."""
+    def _boxes_latex_position(self, doc_id: DocumentId, page: Page) -> dict[CbxRef, tuple[float, float]]:
         try:
             # The page may contain no question, so return an empty dict by default.
-            boxes = self.config.boxes[pic.data.doc_id].get(pic.data.page, {})
+            return self.config.boxes[doc_id].get(page, {})
         except KeyError:
-            print(f"ERROR: doc id:{pic.data.doc_id}, doc page: {pic.data.page}")
+            print(f"ERROR: doc id: {doc_id}, doc page: {page}")
             raise
+
+    def get_checkboxes_positions(self, pic: Picture) -> CheckboxesPositions:
+        """Retrieve the checkboxes positions in the pixel's matrix of the picture `pic`."""
+        # The page may contain no question, so return an empty dict by default.
+        boxes = self._boxes_latex_position(pic.data.doc_id, pic.data.page)
         return {q_a: pic.data.xy2ij(*xy) for q_a, xy in boxes.items()}
 
     def get_checkboxes(self, pic: Picture, matrix: ndarray) -> dict[CbxRef, ndarray]:
@@ -223,7 +229,8 @@ class PictureAnalyzer:
     @staticmethod
     def _encode_state(q_a: CbxRef, status: DetectionStatus) -> str:
         q, a = q_a
-        return f"{q}, {a}: {status}"
+        # `{status!r}` and not `{status}`, to get "CHECKED" and not "DetectionStatus.CHECKED".
+        return f"{q}, {a}: {status!r}"
 
     @staticmethod
     def _decode_state(line: str) -> tuple[CbxRef, DetectionStatus]:
@@ -231,7 +238,7 @@ class PictureAnalyzer:
             q_a, status = line.split(":")
             q, a = q_a.split(",")
             return (OriginalQuestionNumber(int(q)), OriginalAnswerNumber(int(a))), getattr(
-                DetectionStatus, status
+                DetectionStatus, status.strip()
             )
         except (ValueError, AttributeError):
             raise InvalidFormat(f"Incorrect line: {line!r}")
@@ -245,8 +252,9 @@ class PictureAnalyzer:
         """
         pic_cbx_status: dict[CbxRef, DetectionStatus] = {}
         for line in path.open("r", encoding="utf8"):
-            q_a, status = self._decode_state(line)
-            pic_cbx_status[q_a] = status
+            if line := line.strip():
+                q_a, status = self._decode_state(line)
+                pic_cbx_status[q_a] = status
         return pic_cbx_status
 
     def save_checkboxes_state(self, doc_id: DocumentId) -> None:
@@ -270,7 +278,7 @@ class PictureAnalyzer:
                     # Now, we should verify that the (<question_num>, <answer_num>) keys
                     # are the expected one. (Unexpected or missing keys are unlikely,
                     # yet maybe the disk is corrupted?)
-                    expected = set(self.data_handler.config.boxes[doc_id][page])
+                    expected = set(self._boxes_latex_position(doc_id, page))
                     if set(result) == expected:
                         doc_cbx_states[pic] = result
                     else:

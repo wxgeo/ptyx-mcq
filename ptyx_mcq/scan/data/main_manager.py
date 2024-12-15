@@ -68,9 +68,9 @@ class DataHandler:
         # Get for each document and each page the corresponding pictures paths.
         self._index: dict[DocumentId, dict[Page, set[Picture]]] | None = None
 
-    # def student_name_to_doc_id_dict(self) -> dict[StudentName, DocumentId]:
-    #     """`student_name_to_doc_id` is used to retrieve the data associated with a name."""
-    #     return {doc_data["name"]: doc_id for doc_id, doc_data in self.data.items()}
+    def initialize(self, reset=False) -> None:
+        """Load all information from files."""
+        self.paths.make_dirs(reset)
 
     @property
     def dirs(self) -> DirsPaths:
@@ -96,6 +96,8 @@ class DataHandler:
     def index(self) -> dict[DocumentId, dict[Page, set[Picture]]]:
         if self._index is None:
             self._index = self._generate_index()
+            # Keep a track of the index, to make debugging easier.
+            self.save_index()
         return self._index
 
     def get_document_pictures(self, doc_id: DocumentId) -> set[Picture]:
@@ -127,25 +129,6 @@ class DataHandler:
                 encoding="utf8",
             )
 
-    # TODO: remove or update:
-    # ========
-    # OLD CODE
-    # ========
-
-    def get_pics_list(self):
-        """Return sorted pics list."""
-        return sorted(f for f in self.dirs.cache.glob("*/*") if f.suffix.lower() == IMAGE_FORMAT)
-
-    def relative_pic_path(self, pic_path: str | Path):
-        """Return picture path relatively to the `.scan/cache/` parent directory."""
-        return Path(pic_path).relative_to(self.dirs.cache)
-
-    def absolute_pic_path(self, pic_path: str | Path) -> Path:
-        return self.dirs.cache / pic_path
-
-    def absolute_pic_path_for_page(self, doc_id: DocumentId, page: Page) -> Path:
-        return self.absolute_pic_path(self.data[doc_id].pages[page].pic_path)
-
     def get_configuration(self, path: Path) -> Configuration:
         """Read configuration file, load configuration and calculate maximal score too."""
         cfg: Configuration = Configuration.load(path)
@@ -153,118 +136,57 @@ class DataHandler:
         self.neutralized_answers = get_answers_with_status(cfg, correct=None)
         return cfg
 
-    def initialize(self, reset=False) -> None:
-        """Load all information from files."""
-        self.paths.make_dirs(reset)
-        # self._update_input_data()
-        # # Load data from previous run.
-        # self._load_data()
-        # self._load_more_infos()
-        # self._load_manually_verified_pages_list()
-        # self._load_skipped_pictures_list()
+    # TODO: remove or update:
+    # ========
+    # OLD CODE
+    # ========
 
-    # def _load_data(self) -> None:
-    #     """Load cached data from previous scans, if any."""
-    #     if self.dirs.data.is_dir():
-    #         for filename in self.dirs.data.glob("*.scandata"):
-    #             print(f"Loading: {filename}")
-    #             doc_id = DocumentId(int(filename.stem))
-    #             try:
-    #                 with open(filename) as f:
-    #                     self.data[doc_id] = extended_literal_eval(
-    #                         f.read(),
-    #                         {
-    #                             "PicData": PicData,
-    #                             "DocumentData": DocumentData,
-    #                             "CHECKED": DetectionStatus.CHECKED,
-    #                             "UNCHECKED": DetectionStatus.UNCHECKED,
-    #                             "PROBABLY_CHECKED": DetectionStatus.PROBABLY_CHECKED,
-    #                             "PROBABLY_UNCHECKED": DetectionStatus.PROBABLY_UNCHECKED,
-    #                             "MARKED_AS_CHECKED": RevisionStatus.MARKED_AS_CHECKED,
-    #                             "MARKED_AS_UNCHECKED": RevisionStatus.MARKED_AS_UNCHECKED,
-    #                         },
-    #                     )
-    #             except Exception:
-    #                 print(f"ERROR when reading {filename} :")
-    #                 raise
+    # def get_pics_list(self):
+    #     """Return sorted pics list."""
+    #     return sorted(f for f in self.dirs.cache.glob("*/*") if f.suffix.lower() == IMAGE_FORMAT)
 
-    # def _load_more_infos(self) -> None:
-    #     """Retrieve manually entered information (if any)."""
-    #     if self.files.more_infos.is_file():
-    #         with open(self.files.more_infos, "r", newline="") as csvfile:
-    #             reader = csv.reader(csvfile)
-    #             for row in reader:
-    #                 try:
-    #                     doc_id, name, student_id = row
-    #                 except ValueError:
-    #                     doc_id, name = row
-    #                     student_id = ""
-    #                 self.more_infos[DocumentId(int(doc_id))] = (StudentName(name), StudentId(student_id))
-    #             print("Retrieved infos:", self.more_infos)
+    # def relative_pic_path(self, pic_path: str | Path):
+    #     """Return picture path relatively to the `.scan/cache/` parent directory."""
+    #     return Path(pic_path).relative_to(self.dirs.cache)
     #
-    # def _load_manually_verified_pages_list(self):
-    #     """Load the list of manually verified pages. They should not be verified anymore."""
-    #     if self.files.verified.is_file():
-    #         with open(self.files.verified, "r", encoding="utf8", newline="") as file:
-    #             self.verified = set(Path(line.strip()) for line in file.readlines())
-    #             print("Pages manually verified:")
-    #             for path in self.verified:
-    #                 print(f"    • {path}")
+    # def absolute_pic_path(self, pic_path: str | Path) -> Path:
+    #     return self.dirs.cache / pic_path
+    #
+    # def absolute_pic_path_for_page(self, doc_id: DocumentId, page: Page) -> Path:
+    #     return self.absolute_pic_path(self.data[doc_id].pages[page].pic_path)
+    if False:
 
-    # def _load_skipped_pictures_list(self) -> None:
-    #     """List skipped pictures. Next time, they will be skipped with no warning."""
-    #     # All pictures already analyzed in a previous run will be skipped.
-    #     self.skipped = set(pic_names_iterator(self.data))
-    #     # `self.files.skipped` is the path of a text file, listing additional pictures to skip (blank pages for ex.)
-    #     if self.files.skipped.is_file():
-    #         with open(self.files.skipped, "r", encoding="utf8", newline="") as file:
-    #             self.skipped |= set(Path(line.strip()) for line in file.readlines())
-    #             print("Pictures skipped:")
-    #             for path in sorted(self.skipped):
-    #                 print(f"    • {path}")
+        def store_doc_data(
+            self, pdf_hash: str, doc_id: DocumentId, p: int, matrix: ndarray | BytesIO | None = None
+        ) -> None:
+            """Store current scan data to be able to interrupt the scan and then resume it later.
 
-    def store_doc_data(
-        self, pdf_hash: str, doc_id: DocumentId, p: int, matrix: ndarray | BytesIO | None = None
-    ) -> None:
-        """Store current scan data to be able to interrupt the scan and then resume it later.
+            Argument `matrix` may be either a raw numpy array, or a BytesIO instance already in webp format.
+            """
+            # Keyboard interrupts should be delayed until all the data are saved.
+            keyboard_interrupt = False
 
-        Argument `matrix` may be either a raw numpy array, or a BytesIO instance already in webp format.
-        """
-        # Keyboard interrupts should be delayed until all the data are saved.
-        keyboard_interrupt = False
+            def memorize_interrupt(signum: int, frame: FrameType | None) -> None:
+                nonlocal keyboard_interrupt
+                keyboard_interrupt = True
 
-        def memorize_interrupt(signum: int, frame: FrameType | None) -> None:
-            nonlocal keyboard_interrupt
-            keyboard_interrupt = True
+            previous_sigint_handler = signal.signal(signal.SIGINT, memorize_interrupt)
+            # File <pdfhash>.index will index all the documents ids corresponding to this pdf.
+            index_file = self.dirs.data / f"{pdf_hash}.index"
+            if not index_file.is_file() or str(doc_id) not in set(index_file.read_text("utf-8").split()):
+                with open(index_file, "a") as f:
+                    f.write(f"{doc_id}\n")
+            # We will store a compressed version of the matrix (as a webp image).
+            # (It would consume too much memory else).
+            if isinstance(matrix, BytesIO):
+                (self.dirs.data / f"{doc_id}-{p}.webp").write_bytes(matrix.getvalue())
+            elif isinstance(matrix, ndarray):
+                save_webp(matrix, self.dirs.data / f"{doc_id}-{p}.webp")
+            # WARNING !
+            # The `<doc_id>.scandata` file must be stored last, in case the process is interrupted.
+            # This prevents from having non-existing webp files declared in a .scandata file.
+            self.write_scandata_file(doc_id)
 
-        previous_sigint_handler = signal.signal(signal.SIGINT, memorize_interrupt)
-        # File <pdfhash>.index will index all the documents ids corresponding to this pdf.
-        index_file = self.dirs.data / f"{pdf_hash}.index"
-        if not index_file.is_file() or str(doc_id) not in set(index_file.read_text("utf-8").split()):
-            with open(index_file, "a") as f:
-                f.write(f"{doc_id}\n")
-        # We will store a compressed version of the matrix (as a webp image).
-        # (It would consume too much memory else).
-        if isinstance(matrix, BytesIO):
-            (self.dirs.data / f"{doc_id}-{p}.webp").write_bytes(matrix.getvalue())
-        elif isinstance(matrix, ndarray):
-            save_webp(matrix, self.dirs.data / f"{doc_id}-{p}.webp")
-        # WARNING !
-        # The `<doc_id>.scandata` file must be stored last, in case the process is interrupted.
-        # This prevents from having non-existing webp files declared in a .scandata file.
-        self.write_scandata_file(doc_id)
-
-        signal.signal(signal.SIGINT, previous_sigint_handler)
-        if keyboard_interrupt:
-            raise KeyboardInterrupt
-
-    def write_scandata_file(self, doc_id: DocumentId) -> None:
-        """Create (or re-create) the .scandata file containing all the data for document `doc_id`."""
-        with open(self.dirs.data / f"{doc_id}.scandata", "w") as f:
-            f.write(repr(self.data[doc_id]))
-
-    def remove_doc_files(self, doc_id: DocumentId) -> None:
-        """Remove all the data files associated with the document of id `doc_id`."""
-        (self.dirs.data / f"{doc_id}.scandata").unlink(missing_ok=True)
-        for webp in self.dirs.data.glob(f"{doc_id}-*.webp"):
-            webp.unlink()
+            signal.signal(signal.SIGINT, previous_sigint_handler)
+            if keyboard_interrupt:
+                raise KeyboardInterrupt

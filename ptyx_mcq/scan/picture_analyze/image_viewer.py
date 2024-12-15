@@ -16,6 +16,8 @@ from ptyx_mcq.scan.picture_analyze.types_declaration import (
     Rectangle,
     Area,
     Pixel,
+    Col,
+    Line,
 )
 
 
@@ -115,7 +117,7 @@ class ImageViewer:
         if height is None:
             height = width
         i, j = start
-        self.add_area(start, (i + width, j + height), color=color, thickness=thickness, fill=fill)
+        self.add_area(start, (Line(i + width), Col(j + height)), color=color, thickness=thickness, fill=fill)
 
     def clear(self):
         """Clear all previous stored annotations."""

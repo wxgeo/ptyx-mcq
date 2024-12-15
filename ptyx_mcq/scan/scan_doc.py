@@ -22,9 +22,7 @@ from ptyx_mcq.scan.pdf.amend import amend_all
 from ptyx_mcq.scan.data.conflict_gestion import ConflictSolver
 from ptyx_mcq.scan.data.main_manager import DataHandler
 from ptyx_mcq.scan.data.structures import DocumentData, PicData
-from ptyx_mcq.scan.picture_analyze.scan_pic import (
-    scan_picture,
-)
+
 from ptyx_mcq.scan.picture_analyze.types_declaration import CalibrationError
 from ptyx_mcq.scan.score_management.scores_manager import ScoresManager
 
@@ -155,53 +153,17 @@ class MCQPictureParser:
         ClAnswersReviewer.display_picture_with_detected_answers(array, pic_data)
         print(pic_data)
 
-    # def _warn(self, *values, sep=" ", end="\n") -> None:
-    #     """Print to stdout and write to log file."""
-    #     msg = sep.join(str(val) for val in values) + end
-    #     print_warning(msg)
-    #     self.data_handler.write_log(msg)
-    #     self.warnings = True
-
-    def _scan_current_page(
-        self, pic_path: Path, silent=True, debug=False
-    ) -> tuple[Path, PicData, BytesIO] | Path:
-        with Silent(silent):
-            print("-------------------------------------------------------")
-            print("File:", pic_path)
-
-            # 1) Extract all the data of an image
-            #    ‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾
-
-            try:
-                pic_data, matrix = scan_picture(
-                    self.data_handler.absolute_pic_path(pic_path), config=self.config, debug=debug
-                )
-                # Warning: manual_verification can be None, so the order is important
-                # below : False and None -> False (but None and False -> None).
-                # if (pic_path not in self.data_handler.verified) and manual_verification:
-                #     # TODO: modify pic_data to force manual verification.
-                #     ...
-                # `pic_data` FORMAT is specified in `scan_pic.py`.
-                # (Search for `pic_data =` in `scan_pic.py`).
-                pic_data.pic_path = str(pic_path)
-                bytes_io = BytesIO()
-                save_webp(matrix, bytes_io)
-                return pic_path, pic_data, bytes_io
-
-            except CalibrationError:
-                return pic_path
-
-    def _collect_pages(self, start: int, end: int | float) -> list[Path]:
-        to_analyze: list[Path] = []
-        for i, pic_path in enumerate(self.data_handler.get_pics_list(), start=1):
-            if not (start <= i <= end):
-                continue
-            # Make pic_path relative, so that folder may be moved if needed.
-            pic_path = self.data_handler.relative_pic_path(pic_path)
-            if pic_path in self.data_handler.skipped:
-                continue
-            to_analyze.append(pic_path)
-        return to_analyze
+    # def _collect_pages(self, start: int, end: int | float) -> list[Path]:
+    #     to_analyze: list[Path] = []
+    #     for i, pic_path in enumerate(self.data_handler.get_pics_list(), start=1):
+    #         if not (start <= i <= end):
+    #             continue
+    #         # Make pic_path relative, so that folder may be moved if needed.
+    #         pic_path = self.data_handler.relative_pic_path(pic_path)
+    #         if pic_path in self.data_handler.skipped:
+    #             continue
+    #         to_analyze.append(pic_path)
+    #     return to_analyze
 
     def _handle_scan_result(self, scan_result: tuple[Path, PicData, BytesIO] | Path) -> None:
         """Store document retrieved data."""
@@ -308,8 +270,6 @@ class MCQPictureParser:
         # TODO: number_of_processes=number_of_processes
         # Extract all pdf files' data.
         self.data_handler.input_pdf.collect_data(number_of_processes=1)
-        # Keep a track of the index, to make debugging easier.
-        self.data_handler.save_index()
         # Review pictures.
         info = self.data_handler.picture_analyzer.info
         # Extract information from scanned documents.

@@ -1,5 +1,3 @@
-from ptyx_mcq.scan.picture_analyze.checkbox_analyzer import DetectionStatus
-
 UNCHECKED = DetectionStatus.UNCHECKED
 CHECKED = DetectionStatus.CHECKED
 PROBABLY_CHECKED = DetectionStatus.PROBABLY_CHECKED

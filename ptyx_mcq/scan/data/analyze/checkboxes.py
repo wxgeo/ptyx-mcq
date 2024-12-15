@@ -17,7 +17,6 @@ from ptyx.shell import ANSI_CYAN, ANSI_RESET, ANSI_GREEN, ANSI_YELLOW
 
 
 from ptyx_mcq.scan.data.structures import DetectionStatus, DocumentData, ReviewData, Student, Picture
-from ptyx_mcq.scan.picture_analyze.checkbox_analyzer import eval_checkbox_color
 from ptyx_mcq.scan.picture_analyze.square_detection import adjust_checkbox, test_square_color
 from ptyx_mcq.scan.picture_analyze.types_declaration import Line, Col
 from ptyx_mcq.tools.config_parser import (
@@ -478,3 +477,23 @@ def analyze_checkboxes(
                     pic_detection_status[q_a] = DetectionStatus.PROBABLY_CHECKED
 
     return detection_status
+
+
+def eval_checkbox_color(checkbox: ndarray, margin: int = 0) -> float:
+    """Return an indicator of blackness, which is a float in range (0, 1).
+    The bigger the float returned, the darker the square.
+
+    This indicator is useful to compare several squares, and find the blacker one.
+    Note that the core of the square is considered the more important part to assert
+    blackness.
+    """
+    height, width = checkbox.shape
+    assert width == height, (width, height)
+    if width <= 2 * margin:
+        raise ValueError("Square too small for current margins !")
+    # Warning: pixels outside the sheet shouldn't be considered black !
+    # Since we're doing a sum, 0 should represent white and 1 black,
+    # so as if a part of the square is outside the sheet, it is considered
+    # white, not black ! This explains the `1 - m[...]` below.
+    square = 1 - checkbox[margin : width - margin, margin : width - margin]
+    return square.sum() / (width - margin) ** 2
