@@ -23,6 +23,7 @@ class DirsPaths:
     data: Path
     # cfg: Path
     cache: Path
+    index: Path
     diff: Path
     log: Path
     pdf: Path
@@ -49,7 +50,7 @@ class PathsHandler:
         self.input_dir = input_dir
 
         if output_dir is None:
-            output_dir = root / ".scan"
+            output_dir = root / "out"
         self.output_dir = output_dir
         # `.scan` directory is used to write intermediate files.
         # Directory tree:
@@ -67,12 +68,13 @@ class PathsHandler:
         self.dirs = DirsPaths(
             root=root,
             # cfg=cfg,
+            index=output_dir / ".index",
             data=output_dir / "data",
-            cache=output_dir / "cache",
+            cache=output_dir / ".cache",
             pdf=output_dir / "pdf",
             checkboxes=output_dir / "checkboxes",
             log=log,
-            diff=output_dir / "diff",
+            diff=output_dir / ".diff",
         )
         self.files = FilesPaths(
             # verified=cfg / "verified.txt",

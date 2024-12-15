@@ -119,9 +119,8 @@ class DataHandler:
         return self._index
 
     def save_index(self) -> None:
-        (folder := self.dirs.data / "index").mkdir(exist_ok=True)
         for doc_id, doc_pics in self.index.items():
-            (folder / str(doc_id)).write_text(
+            (self.dirs.index / str(doc_id)).write_text(
                 "\n".join(
                     f"{page}: " + ", ".join(pic.encoded_path for pic in page_pics)
                     for page, page_pics in doc_pics.items()

@@ -7,42 +7,45 @@
 
 ## 2. Étape 1 - Récupération et analyse des images scannées
 ### 2.1 Préliminaires
-Extraction de toutes les images des PDF dans un dossier `pic`.
-On génère dans `pic` un sous-dossier par PDF.
+Extraction de toutes les images des PDF dans un dossier `.cache`.
+On génère dans `.cache` un sous-dossier par PDF.
 Le nom du sous-dossier est un hash du contenu du PDF.
 
-Avant d'extraire le contenu du PDF, on vérifie si un dossier `pic/<hash-pdf>` existe déjà.
+Avant d'extraire le contenu du PDF, on vérifie si un dossier `.cache/<hash-pdf>` existe déjà.
 - S'il n'existe pas, on le crée. Il servira à y stocker les images après traitement.
 - Si le contenu est incorrect (moins d'images que de pages dans le pdf), on extrait uniquement les images manquantes 
   (l'extraction avait probablement été interrompue).
 
 On doit aussi supprimer les anciens dossiers correspondant aux pdf supprimés, **ainsi que toutes les données associées** !
-Tous les dossiers `pics/<pdf-hash>` dont le hash ne correspond à plus aucun pdf sont ainsi supprimés.
+Tous les dossiers `.cache/<pdf-hash>` dont le hash ne correspond à plus aucun pdf sont ainsi supprimés.
 
 ### 2.2 Arborescence
 Le dossier `<hash-pdf>` contiendra :
 - toutes les pages du pdf après extraction et normalisation, sous forme d'image `.webp`.
-- un sous-dossier `calibration`, contenant un fichier par page indiquant comment la calibration a été effectuée.
-- un sous-dossier `identification`, contenant un fichier par page indiquant à quel document et quelle page du document
-  correspond la page du pdf.
-- un sous-dossier `review`, contenant un fichier par page indiquant les résultats de l'analyse de toutes les cases à cocher.
+- un sous-dossier `calibration`, contenant un fichier par image indiquant comment la calibration a été effectuée.
+- un sous-dossier `identification`, contenant un fichier par image indiquant à quel document et quelle page du document original
+  correspond l'image.
+- un sous-dossier `checkboxes`, contenant un fichier par image indiquant les résultats de l'analyse de toutes les cases à cocher.
+- un sous-dossier `students`, contenant un fichier pour chaque image correspondant à une 1re page, indiquant le nom et l'identifiant de l'étudiant. 
   
 Exemple, pour un fichier pdf de hash `00d68ea2ab8af0932bee516ee60a79cdeb5fb1d0` et possédant 2 pages,
 on aura généré à terme les dossiers et fichier suivants :
 ```
     pic
     └── 00d68ea2ab8af0932bee516ee60a79cdeb5fb1d0
+        ├── 0.webp
         ├── 1.webp
-        ├── 2.webp
         ├── calibration
-        │   ├── 1
-        │   └── 2
+        │   ├── 0
+        │   └── 1
         ├── identification
-        │   ├── 1
-        │   └── 2
-        └── review
-            ├── 1
-            └── 2
+        │   ├── 0
+        │   └── 1
+        ├── checkboxes
+        │   ├── 0
+        │   └── 1
+        └── students
+            └── 0
 ```
 
 ### 2.3 Sous-étapes
@@ -59,12 +62,12 @@ Un fichier `<pdf-hash>/calibration/<num-page-scannée>` est généré, contenant
 
 (En mémoire, ces données sont stockées dans un objet de classe `CalibrationData`). 
 
-L'image rectifiée elle-même est alors stockée dans un fichier `<pdf-hash>/<num-page-scannée>.webp`, pour éviter
+L'image rectifiée elle-même est alors stockée dans un fichier `<pdf-hash>/<pic-num>.webp`, pour éviter
 de surcharger la mémoire. 
 (Quant à l'image originale, c'est-à-dire avant rectification, elle n'est pas conservée). 
 
 Si une page ne semble pas correspondre à une page de QCM (page vierge par exemple), 
-on génère un fichier `<pdf-hash>/<pdf-page>.skip` pour indiquer que la page a bien été traitée.
+on génère un fichier `<pdf-hash>/<pic-num>.skip` pour indiquer que la page a bien été traitée.
 
 #### 2.3.2 Récupération des données des images
 Pour chaque image, on génère un fichier `<pdf-hash>/identification/<num-page-scannée>`.
