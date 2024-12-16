@@ -15,7 +15,7 @@ from os.path import join
 from PIL import ImageDraw, ImageFont
 from PIL.Image import Image
 from ptyx_mcq.scan.data.main_manager import DataHandler
-from ptyx_mcq.scan.data.structures import DocumentData
+from ptyx_mcq.scan.data.structures import Document
 
 from ptyx_mcq.scan.picture_analyze.types_declaration import Pixel
 from ptyx_mcq.tools.colors import Color, RGB
@@ -72,8 +72,7 @@ def amend_all(data_storage: DataHandler) -> None:
 
 
 def amend_doc(
-    doc_data: DocumentData,
-    doc_id: DocumentId,
+    doc: Document,
     max_score: float,
     max_score_per_question: dict[QuestionNumberOrDefault, float],
     data_storage: DataHandler,

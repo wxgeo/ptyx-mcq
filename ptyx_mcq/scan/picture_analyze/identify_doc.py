@@ -7,7 +7,7 @@ from ptyx_mcq.scan.picture_analyze.square_detection import test_square_color
 from ptyx_mcq.scan.picture_analyze.types_declaration import Pixel, Shape, Rectangle, Col
 from ptyx_mcq.tools.colors import Color
 
-from ptyx_mcq.tools.config_parser import DocumentId, Page
+from ptyx_mcq.tools.config_parser import DocumentId, PageNum
 
 
 @dataclass(frozen=True)
@@ -15,7 +15,7 @@ class IdentificationData:
     # ID of the document:
     doc_id: DocumentId
     # page number:
-    page: Page
+    page: PageNum
 
 
 DebugInfo = list[Shape]
@@ -58,4 +58,4 @@ def read_doc_id_and_page(
     doc_id = doc_id // 256
     print("Test ID read: %s" % doc_id)
 
-    return IdentificationData(DocumentId(doc_id), Page(page)), debug_info
+    return IdentificationData(DocumentId(doc_id), PageNum(page)), debug_info

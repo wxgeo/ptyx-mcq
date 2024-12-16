@@ -122,7 +122,7 @@ class Configuration:
     ordering: dict[DocumentId, OrderingConfiguration] = field(default_factory=dict)
     # ordering: {<doc num>: {'questions': [2,1,3...],
     #                  'answers': {1: [(2, True), (1, False), (3, True)...], ...}}, ...}
-    boxes: dict[DocumentId, dict["Page", dict[CbxRef, tuple[float, float]]]] = field(default_factory=dict)
+    boxes: dict[DocumentId, dict["PageNum", dict[CbxRef, tuple[float, float]]]] = field(default_factory=dict)
     # boxes: {<doc num>: {<page num>: {"Q<question num>-<answer num>": (<x-coordinate>, <y-coordinate>), ...}, ...}
     id_table_pos: tuple[float, float] | None = None
 
@@ -413,4 +413,4 @@ def _get_apparent_num_answers_with_status(
     return correct_answers_by_id
 
 
-Page = NewType("Page", int)
+PageNum = NewType("PageNum", int)

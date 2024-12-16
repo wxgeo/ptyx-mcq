@@ -21,7 +21,6 @@ from ptyx_mcq.scan.pdf.amend import amend_all
 
 from ptyx_mcq.scan.data.conflict_gestion import ConflictSolver
 from ptyx_mcq.scan.data.main_manager import DataHandler
-from ptyx_mcq.scan.data.structures import DocumentData, PicData
 
 from ptyx_mcq.scan.picture_analyze.types_declaration import CalibrationError
 from ptyx_mcq.scan.score_management.scores_manager import ScoresManager
@@ -153,58 +152,6 @@ class MCQPictureParser:
         ClAnswersReviewer.display_picture_with_detected_answers(array, pic_data)
         print(pic_data)
 
-    # def _collect_pages(self, start: int, end: int | float) -> list[Path]:
-    #     to_analyze: list[Path] = []
-    #     for i, pic_path in enumerate(self.data_handler.get_pics_list(), start=1):
-    #         if not (start <= i <= end):
-    #             continue
-    #         # Make pic_path relative, so that folder may be moved if needed.
-    #         pic_path = self.data_handler.relative_pic_path(pic_path)
-    #         if pic_path in self.data_handler.skipped:
-    #             continue
-    #         to_analyze.append(pic_path)
-    #     return to_analyze
-
-    def _handle_scan_result(self, scan_result: tuple[Path, PicData, BytesIO] | Path) -> None:
-        """Store document retrieved data."""
-        if isinstance(scan_result, Path):
-            print_warning(f"{scan_result} seems invalid ! Skipping...")
-            self.data_handler.store_skipped_pic(scan_result)
-            return
-        pic_path, pic_data, bytes_io = scan_result
-        doc_id = pic_data.doc_id
-        page = pic_data.page
-        # Test whether a previous version of the same page exist:
-        # if the same page has been seen twice, this may be problematic,
-        # so call `._keep_previous_version()` to ask user what to do.
-        # if (doc_id, page) in already_seen and self._keep_previous_version(pic_data):
-        #     # If the user answered to skip the current page, just do it.
-        #     continue
-        if (doc_id, page) in self.already_seen:
-            # There are two versions (at least) of the same document.
-            # Store it for now, with a new temporary id, and resolve conflict later.
-            doc_id = self.data_handler.create_new_temporary_id(doc_id, page)
-        self.already_seen.add((doc_id, page))
-
-        # 2) Gather data
-        #    ‾‾‾‾‾‾‾‾‾‾‾
-        doc_data: DocumentData = self.data.setdefault(
-            doc_id,
-            DocumentData(
-                pages={},
-                score=0,
-                score_per_question={},
-            ),
-        )
-        doc_data.pages[page] = pic_data
-
-        # Store work in progress, so we can resume process if something fails...
-
-        # print("[", time.time() - t, "]")
-        self.data_handler.store_doc_data(pic_path.parent.name, doc_id, page, bytes_io)
-        # print(time.time() - t)
-        # t = time.time()
-
     def _serial_scanning(self, to_analyze: list[Path], debug=False):
         """Scan all documents sequentially using only one process.
 
@@ -271,7 +218,7 @@ class MCQPictureParser:
         # Extract all pdf files' data.
         self.data_handler.input_pdf.collect_data(number_of_processes=1)
         # Review pictures.
-        info = self.data_handler.picture_analyzer.info
+        self.data_handler.picture_analyzer.run()
         # Extract information from scanned documents.
         # gc.collect()
         print_success("Scan successful.")

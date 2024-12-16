@@ -1,58 +1,12 @@
-from pathlib import Path
-from typing import TYPE_CHECKING
-
 from numpy import ndarray
 from ptyx.shell import print_warning
 
-from ptyx_mcq.scan.data.structures import Student
+from ptyx_mcq.scan.data.structures import Student, Picture
 from ptyx_mcq.scan.picture_analyze.identify_doc import DebugInfo
 from ptyx_mcq.scan.picture_analyze.square_detection import eval_square_color, test_square_color
 from ptyx_mcq.scan.picture_analyze.types_declaration import Pixel, Rectangle, Line, Col
 from ptyx_mcq.tools.colors import Color
 from ptyx_mcq.tools.config_parser import DocumentId, StudentId, StudentName, StudentIdFormat
-
-if TYPE_CHECKING:
-    from ptyx_mcq.scan.data.main_manager import DataHandler
-
-
-class StudentReader:
-    """Read student name and id."""
-
-    def __init__(self, data_handler: "DataHandler"):
-        self.data_handler: "DataHandler" = data_handler
-        self._students: dict[DocumentId, dict[Path, Student]] | None = None
-
-    def get_position(self, pic_path: Path) -> Pixel | None:
-        """Get the position of the table where students check boxes to indicate their identifier."""
-        pic_data = self.data_handler.get_pic_data(pic_path)
-        pos = self.data_handler.config.id_table_pos
-        return None if pos is None else pic_data.xy2ij(*pos)
-
-    def get_student(self, pic_path: Path) -> Student | None:
-        """
-        Recover the student information from the given picture.
-
-        Return `None` if the document contains no such information.
-        Note that the student name or identifier may be incorrect,
-        since no verification occurs at this stage.
-        """
-        pos = self.get_position(pic_path)
-        return None if pos is None else read_student_id_and_name()
-
-    @staticmethod
-    def _encode_student(student: Student) -> str:
-        return f"{student.name}\n{student.id}\n"
-
-    @staticmethod
-    def _decode_student(file_content: str) -> Student:
-        student_name, student_id = file_content.strip().split("\n")
-        return Student(name=StudentName(student_name), id=StudentId(student_id))
-
-    def save_student(self, doc_id: DocumentId) -> None:
-        ...
-
-    def load_student(self, doc_id: DocumentId) -> Student | None:
-        ...
 
 
 def read_student_id_and_name(

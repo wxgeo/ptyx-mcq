@@ -4,10 +4,10 @@ from typing import TYPE_CHECKING
 
 from ptyx.shell import print_warning
 
-from ptyx_mcq.tools.config_parser import DocumentId, StudentName, Page
+from ptyx_mcq.tools.config_parser import DocumentId, StudentName, PageNum
 
 UnnamedDocsList = list[DocumentId]
-AmbiguousPagesList = list[tuple[DocumentId, Page]]
+AmbiguousPagesList = list[tuple[DocumentId, PageNum]]
 DuplicateNamesDict = dict[StudentName, list[DocumentId]]
 
 if TYPE_CHECKING:

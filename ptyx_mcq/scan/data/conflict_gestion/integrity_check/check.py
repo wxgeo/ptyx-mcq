@@ -3,11 +3,11 @@ from dataclasses import dataclass
 from ptyx.shell import print_warning, print_info, print_error
 
 from ptyx_mcq.scan.data.main_manager import DataHandler
-from ptyx_mcq.scan.data.structures import DocumentData, PicData
-from ptyx_mcq.tools.config_parser import DocumentId, OriginalQuestionNumber, Page
+from ptyx_mcq.scan.data.structures import Picture
+from ptyx_mcq.tools.config_parser import DocumentId, OriginalQuestionNumber, PageNum
 
-DuplicatePagesDict = dict[tuple[DocumentId, Page], list[DocumentId]]
-MissingPages = dict[DocumentId, list[Page]]
+DuplicatePagesDict = dict[tuple[DocumentId, PageNum], list[DocumentId]]
+MissingPages = dict[DocumentId, list[PageNum]]
 MissingQuestions = dict[DocumentId, list[OriginalQuestionNumber]]
 
 
@@ -30,9 +30,9 @@ class IntegrityCheckResult:
 class IntegrityChecker:
     """Test for data integrity: each scanned document must appear only once, and must be complete."""
 
-    def __init__(self, data_storage: DataHandler):
-        self.data_storage = data_storage
-        self.data = self.data_storage.data
+    def __init__(self, data_manager: DataHandler):
+        self.data_manager = data_manager
+        self.data = self.data_manager.data
 
     def run(self) -> IntegrityCheckResult:
         """Main method: check problems, then solve them with user help."""
@@ -53,18 +53,12 @@ class IntegrityChecker:
         Return a list of conflicts, i.e. a dictionary with the different versions of a page
         for the same document.
         """
-        conflicts: dict[tuple[DocumentId, Page], list[DocumentId]] = {}
-        resolved_conflicts: dict[tuple[DocumentId, Page], list[DocumentId]] = {}
-        tmp_doc_id: DocumentId
-        doc_data: DocumentData
-        page: Page
-        pic_data: PicData
-        print(list(self.data))
-        for tmp_doc_id, doc_data in self.data_storage.get_all_temporary_ids().items():
-            assert tmp_doc_id < 0
-            assert len(doc_data.pages) == 1, (tmp_doc_id, list(doc_data.pages))
-            print(tmp_doc_id, list(doc_data.pages))
-            for page, pic_data in doc_data.pages.items():
+        conflicts: dict[tuple[DocumentId, PageNum], set[Picture]] = {}
+        resolved_conflicts: dict[tuple[DocumentId, PageNum], set[Picture]] = {}
+        for doc_id, doc_data in self.data_manager.index.items():
+            for page, pics in doc_data.items():
+                if len(pics) >= 2:
+                    ...
                 print(list(self.data))
                 scanned_id = pic_data.doc_id
                 conflicting_pic_data = self.data[scanned_id].pages[page]
@@ -75,7 +69,7 @@ class IntegrityChecker:
                 if same_data:
                     # Same name and same answers detected for both versions,
                     # so we can safely ignore the new version, and remove `tmp_dic_id` data.
-                    self.data_storage.remove_tmp_doc_id(tmp_doc_id)
+                    self.data_manager.remove_tmp_doc_id(tmp_doc_id)
                     resolved_conflicts.setdefault((scanned_id, page), []).append(tmp_doc_id)
                 else:
                     conflicts.setdefault((scanned_id, page), []).append(tmp_doc_id)
@@ -87,9 +81,9 @@ class IntegrityChecker:
         - all questions must have been seen."""
         missing_questions: MissingQuestions = {}
         missing_pages: MissingPages = {}
-        ordering = self.data_storage.config.ordering
+        ordering = self.data_manager.config.ordering
         for doc_id in self.data:
-            if self.data_storage.is_temp_id(doc_id):
+            if self.data_manager.is_temp_id(doc_id):
                 # This is just a duplicate of an already scanned document, so skip it.
                 continue
             try:
@@ -106,7 +100,7 @@ class IntegrityChecker:
             # All tests may not have the same number of pages, since
             # page breaking will occur at a different place for each test.
             if pages_diff := sorted(
-                set(self.data_storage.config.boxes[doc_id]) - set(self.data[doc_id].pages)
+                set(self.data_manager.config.boxes[doc_id]) - set(self.data[doc_id].pages)
             ):
                 missing_pages[doc_id] = pages_diff
 

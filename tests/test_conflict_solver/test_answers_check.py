@@ -9,7 +9,7 @@ from ptyx_mcq.tools.config_parser import (
     OriginalAnswerNumber,
     ApparentQuestionNumber,
     real2apparent,
-    Page,
+    PageNum,
 )
 from tests.test_conflict_solver.answers_check_data import (
     ANSWERS_CHECK_DATA,
@@ -25,7 +25,7 @@ def test_check_review(patched_conflict_solver, custom_input) -> None:
     """Test to change check status."""
     # Shortcuts:
     doc_id = DocumentId(1)
-    page = Page(1)
+    page = PageNum(1)
     doc_data: DocumentData = patched_conflict_solver.data[doc_id]
     detection_status = doc_data.pages[page].detection_status
     answered = doc_data.pages[page].answered
@@ -76,7 +76,7 @@ def test_check_review(patched_conflict_solver, custom_input) -> None:
     answers: dict[OriginalAnswerNumber, ApparentAnswerNumber | None] = {}
     for i in original_answers_numbers:
         question, answers[i] = real2apparent(
-            original_question_num, i, patched_conflict_solver.data_storage.config, doc_id=doc_id
+            original_question_num, i, patched_conflict_solver.data_manager.config, doc_id=doc_id
         )
 
     # Test a scenario, simulating questions for the user in the terminal and the user's answers.
@@ -114,7 +114,7 @@ def test_check_review_navigation(patched_conflict_solver, custom_input) -> None:
     """Test to change check status."""
     # Shortcuts:
     doc_id = DocumentId(1)
-    config = patched_conflict_solver.data_storage.config
+    config = patched_conflict_solver.data_manager.config
     doc_data: DocumentData = patched_conflict_solver.data[doc_id]
     detection_status = {page: doc_data.pages[page].detection_status for page in doc_data.pages}
     answered = {page: doc_data.pages[page].answered for page in doc_data.pages}
@@ -125,13 +125,13 @@ def test_check_review_navigation(patched_conflict_solver, custom_input) -> None:
     assert answered == ANSWERED
 
     # Modified values:
-    detection_status[Page(1)] |= {(20, 1): PROBABLY_CHECKED, (25, 2): PROBABLY_UNCHECKED}  # type: ignore
-    detection_status[Page(2)] |= {(3, 1): PROBABLY_CHECKED}  # type:ignore
-    detection_status[Page(3)] |= {(30, 2): PROBABLY_UNCHECKED}  # type:ignore
-    answered[Page(1)][OriginalQuestionNumber(20)].add(OriginalAnswerNumber(1))
-    assert OriginalAnswerNumber(2) not in answered[Page(1)][OriginalQuestionNumber(25)]
-    answered[Page(2)][OriginalQuestionNumber(3)].add(OriginalAnswerNumber(1))
-    answered[Page(3)][OriginalQuestionNumber(30)].remove(OriginalAnswerNumber(2))
+    detection_status[PageNum(1)] |= {(20, 1): PROBABLY_CHECKED, (25, 2): PROBABLY_UNCHECKED}  # type: ignore
+    detection_status[PageNum(2)] |= {(3, 1): PROBABLY_CHECKED}  # type:ignore
+    detection_status[PageNum(3)] |= {(30, 2): PROBABLY_UNCHECKED}  # type:ignore
+    answered[PageNum(1)][OriginalQuestionNumber(20)].add(OriginalAnswerNumber(1))
+    assert OriginalAnswerNumber(2) not in answered[PageNum(1)][OriginalQuestionNumber(25)]
+    answered[PageNum(2)][OriginalQuestionNumber(3)].add(OriginalAnswerNumber(1))
+    answered[PageNum(3)][OriginalQuestionNumber(30)].remove(OriginalAnswerNumber(2))
 
     # Since the questions and answers were shuffled when generating the document,
     # we have to retrieve the apparent question number (i.e. the one which appears on the document).
@@ -195,13 +195,13 @@ def test_check_review_navigation(patched_conflict_solver, custom_input) -> None:
     assert custom_input.is_empty(), custom_input.remaining()
 
     assert (
-        revision_status[Page(1)][(OriginalQuestionNumber(25), OriginalAnswerNumber(2))]
+        revision_status[PageNum(1)][(OriginalQuestionNumber(25), OriginalAnswerNumber(2))]
         == RevisionStatus.MARKED_AS_CHECKED
     )
-    assert answered[Page(1)][OriginalQuestionNumber(25)] == {2, 3}
+    assert answered[PageNum(1)][OriginalQuestionNumber(25)] == {2, 3}
 
     assert (
-        revision_status[Page(2)][(OriginalQuestionNumber(3), OriginalAnswerNumber(1))]
+        revision_status[PageNum(2)][(OriginalQuestionNumber(3), OriginalAnswerNumber(1))]
         == RevisionStatus.MARKED_AS_CHECKED
     )
-    assert answered[Page(2)][OriginalQuestionNumber(3)] == {1, 2, 6, 7}
+    assert answered[PageNum(2)][OriginalQuestionNumber(3)] == {1, 2, 6, 7}

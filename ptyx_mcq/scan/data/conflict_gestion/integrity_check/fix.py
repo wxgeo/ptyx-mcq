@@ -8,7 +8,7 @@ from ptyx_mcq.scan.data.conflict_gestion.integrity_check.check import (
     IntegrityCheckResult,
 )
 from ptyx_mcq.scan.data.main_manager import DataHandler
-from ptyx_mcq.tools.config_parser import DocumentId, Page
+from ptyx_mcq.tools.config_parser import DocumentId, PageNum
 
 
 class AbstractIntegrityIssuesFixer(ABC):
@@ -22,7 +22,7 @@ class AbstractIntegrityIssuesFixer(ABC):
 
     @abstractmethod
     def select_version(
-        self, scanned_doc_id: DocumentId, temp_doc_id: DocumentId, page: Page
+        self, scanned_doc_id: DocumentId, temp_doc_id: DocumentId, page: PageNum
     ) -> Literal[1, 2]:
         """Ask user what to do is two versions of the same page exist, with conflicting data.
 

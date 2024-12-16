@@ -5,12 +5,12 @@ from types import FrameType
 
 from numpy import ndarray
 
-from ptyx_mcq.parameters import IMAGE_FORMAT
 from ptyx_mcq.scan.data.analyze import PictureAnalyzer
 from ptyx_mcq.scan.data.extraction import PdfCollection
 from ptyx_mcq.scan.data.structures import (
-    DocumentData,
     Picture,
+    Document,
+    Page,
 )
 from ptyx_mcq.scan.data.paths_manager import PathsHandler, DirsPaths, FilesPaths
 from ptyx_mcq.tools.config_parser import (
@@ -20,7 +20,6 @@ from ptyx_mcq.tools.config_parser import (
     StudentName,
     StudentId,
     OriginalQuestionAnswersDict,
-    Page,
 )
 
 
@@ -45,8 +44,7 @@ class DataHandler:
     def __init__(self, config_path: Path, input_dir: Path = None, output_dir: Path = None):
         self.paths = PathsHandler(config_path=config_path, input_dir=input_dir, output_dir=output_dir)
         self.input_pdf = PdfCollection(self)
-        # All data extracted from pdf files.
-        self.data: dict[DocumentId, DocumentData] = {}
+
         # Additional information entered manually.
         self.more_infos: dict[DocumentId, tuple[StudentName, StudentId]] = {}
         # Manually verified pages.
@@ -60,13 +58,13 @@ class DataHandler:
         # is given to the duplicates, to preserve id unicity until conflicts resolution phase.
         # The true id of the duplicate documents is stored in dict `self.duplicates_alias`:
         # `self.duplicates_alias`: list all alias id used for a scanned document's page.
-        # self.duplicates_alias: dict[[DocumentId, Page], list[DocumentId]] = {}
+        # self.duplicates_alias: dict[[DocumentId, PageNum], list[DocumentId]] = {}
         # Counter used to generate unique temporary id.
         # This is a negative integer, since all temporary ids will be negative integers.
         self._tmp_ids_counter = -1
         self.picture_analyzer = PictureAnalyzer(self)
-        # Get for each document and each page the corresponding pictures paths.
-        self._index: dict[DocumentId, dict[Page, set[Picture]]] | None = None
+        # Navigate between documents.
+        self._index: dict[DocumentId, Document] | None = None
 
     def initialize(self, reset=False) -> None:
         """Load all information from files."""
@@ -93,37 +91,39 @@ class DataHandler:
             logfile.write(msg)
 
     @property
-    def index(self) -> dict[DocumentId, dict[Page, set[Picture]]]:
+    def index(self) -> dict[DocumentId, Document]:
         if self._index is None:
             self._index = self._generate_index()
             # Keep a track of the index, to make debugging easier.
             self.save_index()
         return self._index
 
-    def get_document_pictures(self, doc_id: DocumentId) -> set[Picture]:
-        """Return all the pictures associated with the current document id."""
-        return {pic for page_pics in self.index[doc_id].values() for pic in page_pics}
-
-    def _generate_index(self) -> dict[DocumentId, dict[Page, set[Picture]]]:
-        """Return a dictionary, given for each page of each document the corresponding pictures.
+    def _generate_index(self) -> dict[DocumentId, Document]:
+        """Return the index of all the documents.
 
         Most of the time, there must be only one single picture for each document page, but the page
         may have been scanned twice.
         """
         self._index = {}
         for pdf_hash, content in self.input_pdf.data.items():
-            for pic_num, pic_data in content.items():
-                self._index.setdefault(pic_data.doc_id, {}).setdefault(pic_data.page, set()).add(
-                    Picture(path=self.dirs.cache / f"{pdf_hash}/{pic_num}.webp", data=pic_data)
+            for pic_num, (calibration_data, identification_data) in content.items():
+                self._index.setdefault(
+                    doc_id := identification_data.doc_id, Document(doc_id, {})
+                ).pages.setdefault(page_num := identification_data.page, Page(page_num, [])).pictures.append(
+                    Picture(
+                        path=self.dirs.cache / f"{pdf_hash}/{pic_num}.webp",
+                        calibration_data=calibration_data,
+                        identification_data=identification_data,
+                    )
                 )
         return self._index
 
     def save_index(self) -> None:
-        for doc_id, doc_pics in self.index.items():
+        for doc_id, doc in self.index.items():
             (self.dirs.index / str(doc_id)).write_text(
                 "\n".join(
-                    f"{page}: " + ", ".join(pic.encoded_path for pic in page_pics)
-                    for page, page_pics in doc_pics.items()
+                    f"{page_num}: " + ", ".join(pic.encoded_path for pic in page.pictures)
+                    for page_num, page in doc.pages.items()
                 ),
                 encoding="utf8",
             )
@@ -151,7 +151,7 @@ class DataHandler:
     # def absolute_pic_path(self, pic_path: str | Path) -> Path:
     #     return self.dirs.cache / pic_path
     #
-    # def absolute_pic_path_for_page(self, doc_id: DocumentId, page: Page) -> Path:
+    # def absolute_pic_path_for_page(self, doc_id: DocumentId, page: PageNum) -> Path:
     #     return self.absolute_pic_path(self.data[doc_id].pages[page].pic_path)
     if False:
 

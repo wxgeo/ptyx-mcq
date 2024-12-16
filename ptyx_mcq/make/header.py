@@ -86,7 +86,7 @@ def id_band(doc_id: int, calibration=True) -> str:
     NB:
     - There is no need to provide the page number, since it will be
       handled directly by LaTeX.
-    - Page number can't exceed 255.
+    - PageNum number can't exceed 255.
     - Document number can't exceed 65535.
     """
     if doc_id >= 2**16:

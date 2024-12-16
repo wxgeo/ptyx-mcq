@@ -17,7 +17,7 @@ from ptyx_mcq.parameters import CONFIG_FILE_EXTENSION
 from ptyx_mcq.tools.io_tools import get_file_or_sysexit, FatalError
 from ptyx_mcq.tools.config_parser import (
     Configuration,
-    Page,
+    PageNum,
     OriginalQuestionNumber,
     OriginalAnswerNumber,
     CbxRef,
@@ -50,7 +50,7 @@ def generate_config_file(compiler: Compiler) -> None:
             filename = f"{name}-{n}.pos"
         full_path = folder / ".compile" / name / filename
         # For each page of the document, give the position of every answer's checkbox.
-        checkboxes_positions: dict[Page, dict[CbxRef, tuple[float, float]]] = {}
+        checkboxes_positions: dict[PageNum, dict[CbxRef, tuple[float, float]]] = {}
         mcq_data.boxes[n] = checkboxes_positions
         with open(full_path) as f:
             for line in f:
@@ -64,7 +64,7 @@ def generate_config_file(compiler: Compiler) -> None:
                 else:
                     page_, x_, y_ = [s.strip("p() \n") for s in pos.split(",")]
                     q, a = _get_question_answer_num(tag)
-                    checkboxes_positions.setdefault(Page(int(page_)), {})[(q, a)] = (float(x_), float(y_))
+                    checkboxes_positions.setdefault(PageNum(int(page_)), {})[(q, a)] = (float(x_), float(y_))
 
     mcq_data.dump(file_path.with_suffix(CONFIG_FILE_EXTENSION))
 

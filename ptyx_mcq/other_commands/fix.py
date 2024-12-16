@@ -1,9 +1,9 @@
-from ptyx_mcq.tools.config_parser import DocumentId, StudentName, StudentId, Page
+from ptyx_mcq.tools.config_parser import DocumentId, StudentName, StudentId, PageNum
 
 
 def fix_doc(
     doc: DocumentId | None = None,
-    page: Page | None = None,
+    page: PageNum | None = None,
     student_name: StudentName | None = None,
     student_id: StudentId | None = None,
 ) -> None:

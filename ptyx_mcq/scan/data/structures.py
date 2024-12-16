@@ -20,16 +20,17 @@ from ptyx_mcq.tools.config_parser import (
     ApparentQuestionNumber,
     OriginalQuestionNumber,
     OriginalAnswerNumber,
-    Page,
+    PageNum,
     CbxRef,
 )
 
 
 PdfHash = NewType("PdfHash", str)
 PicNum = NewType("PicNum", int)
+PdfData = dict[PdfHash, dict[PicNum, tuple[CalibrationData, IdentificationData]]]
 
 
-class DetectionStatus(Enum):
+class CbxState(Enum):
     """Status of a checkbox after scan."""
 
     CHECKED = auto()
@@ -42,7 +43,7 @@ class DetectionStatus(Enum):
 
     @property
     def seems_checked(self) -> bool:
-        return self in (DetectionStatus.CHECKED, DetectionStatus.PROBABLY_CHECKED)
+        return self in (CbxState.CHECKED, CbxState.PROBABLY_CHECKED)
 
 
 class RevisionStatus(Enum):
@@ -53,10 +54,25 @@ class RevisionStatus(Enum):
         return self.name
 
 
-@dataclass(kw_only=True, frozen=True)
-class PicData:
+@dataclass
+class Student:
+    id: StudentId
+    name: StudentName
+
+
+# @dataclass
+# class ReviewData:
+#     student: Student | None
+#     checkboxes: dict[CbxRef, CbxState]
+
+
+@dataclass(kw_only=True)
+class Picture:
+    path: Path
     calibration_data: CalibrationData
     identification_data: IdentificationData
+    checkboxes: dict[CbxRef, CbxState] | None = None
+    student: Student | None = None
 
     @property
     def doc_id(self) -> DocumentId:
@@ -64,7 +80,7 @@ class PicData:
         return self.identification_data.doc_id
 
     @property
-    def page(self) -> Page:
+    def page_num(self) -> PageNum:
         """The page number in the original document."""
         return self.identification_data.page
 
@@ -82,27 +98,6 @@ class PicData:
         v_resolution = self.calibration_data.v_pixels_per_mm
         h_resolution = self.calibration_data.h_pixels_per_mm
         return Pixel((round((287 - y) * v_resolution + top), round((x - 10) * h_resolution + left)))
-
-
-PdfData = dict[PdfHash, dict[PicNum, PicData]]
-
-
-@dataclass
-class Student:
-    id: StudentId
-    name: StudentName
-
-
-@dataclass
-class ReviewData:
-    student: Student | None
-    checkboxes: dict[CbxRef, DetectionStatus]
-
-
-@dataclass(frozen=True)
-class Picture:
-    path: Path
-    data: PicData
 
     @property
     def dir(self):
@@ -134,34 +129,31 @@ class Picture:
         return array(self.as_image().convert("L")) / 255
 
 
-# TODO: review or remove:
-# =============
-#     OLD
-# =============
-
-
-@dataclass(kw_only=True)
-class DocumentData:
-    pages: dict[Page, PicData]
-    score: float
-    score_per_question: dict[OriginalQuestionNumber, float]  # {question: score}
+@dataclass
+class Page:
+    page_num: PageNum
+    pictures: list[Picture]
 
     @property
-    def answered(self) -> ChainMap[OriginalQuestionNumber, set[OriginalAnswerNumber]]:
-        return ChainMap(*(pic_data.answered for pic_data in self.pages.values()))
+    def has_conflicts(self):
+        # TODO: no conflict is the data are the same (checkboxes + names).
+        return len(self.pictures) >= 2
 
     @property
-    def name(self) -> StudentName:
-        return self.pages[Page(1)].name
+    def pic(self):
+        if len(self.pictures) == 1:
+            return self.pictures[0]
+        raise ValueError(f"Only one picture expected, but {len(self.pictures)} found.")
 
-    @name.setter
-    def name(self, value: StudentName) -> None:
-        self.pages[Page(1)].name = value
+
+@dataclass
+class Document:
+    doc_id: DocumentId
+    pages: dict[PageNum, Page]
+    score: float | None = None
+    score_per_question: dict[OriginalQuestionNumber, float] | None = None
 
     @property
-    def student_id(self) -> StudentId:
-        return self.pages[Page(1)].student_id
-
-    @student_id.setter
-    def student_id(self, value: StudentId) -> None:
-        self.pages[Page(1)].student_id = value
+    def pictures(self) -> list[Picture]:
+        """Return all the pictures associated with this document."""
+        return [pic for page in self.pages.values() for pic in page.pictures]

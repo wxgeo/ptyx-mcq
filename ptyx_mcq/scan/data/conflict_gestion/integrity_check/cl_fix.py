@@ -22,7 +22,7 @@ from ptyx_mcq.tools.misc import copy_docstring
 from ptyx_mcq.tools.colors import Color
 
 from ptyx_mcq.scan.picture_analyze.image_viewer import ImageViewer
-from ptyx_mcq.tools.config_parser import DocumentId, Page
+from ptyx_mcq.tools.config_parser import DocumentId, PageNum
 
 
 class ClIntegrityIssuesFixer(AbstractIntegrityIssuesFixer):
@@ -35,7 +35,7 @@ class ClIntegrityIssuesFixer(AbstractIntegrityIssuesFixer):
 
     @copy_docstring(AbstractIntegrityIssuesFixer.select_version)
     def select_version(
-        self, scanned_doc_id: DocumentId, temp_doc_id: DocumentId, page: Page
+        self, scanned_doc_id: DocumentId, temp_doc_id: DocumentId, page: PageNum
     ) -> Literal[1, 2]:
         print("Choose which version to keep:")
         input("-- Press ENTER --")
@@ -51,7 +51,7 @@ class ClIntegrityIssuesFixer(AbstractIntegrityIssuesFixer):
 
         return 1 if action == "1" else 2
 
-    def _display_duplicates(self, scanned_doc_id: DocumentId, temp_doc_id: DocumentId, page: Page) -> None:
+    def _display_duplicates(self, scanned_doc_id: DocumentId, temp_doc_id: DocumentId, page: PageNum) -> None:
         # im1 = Image.open(pic_path1)
         # im2 = Image.open(pic_path2)
         im1 = self.data_storage.get_pic(scanned_doc_id, page)

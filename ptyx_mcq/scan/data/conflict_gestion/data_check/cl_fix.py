@@ -14,9 +14,8 @@ from ptyx_mcq.scan.data.main_manager import DataHandler
 from ptyx_mcq.tools.misc import copy_docstring
 from ptyx_mcq.tools.colors import Color, RGB
 from ptyx_mcq.scan.data.structures import (
-    DetectionStatus,
+    CbxState,
     RevisionStatus,
-    PicData,
 )
 from ptyx_mcq.scan.picture_analyze.image_viewer import ImageViewer
 from ptyx_mcq.tools.config_parser import (
@@ -26,7 +25,7 @@ from ptyx_mcq.tools.config_parser import (
     ApparentAnswerNumber,
     StudentName,
     StudentId,
-    Page,
+    PageNum,
 )
 
 
@@ -137,7 +136,7 @@ class ClAnswersReviewer(AbstractAnswersReviewer):
     EDIT_ANSWERS = "Add or remove answers (Example: +2 -1 -4 to add answer 2, and remove answers 1 et 4):"
 
     @copy_docstring(AbstractAnswersReviewer.edit_answers)
-    def edit_answers(self, doc_id: DocumentId, page: Page) -> tuple[Action, bool]:
+    def edit_answers(self, doc_id: DocumentId, page: PageNum) -> tuple[Action, bool]:
         config = self.data_storage.config
         pic_data = self.data[doc_id].pages[page]
         answered = pic_data.answered
@@ -198,29 +197,29 @@ class ClAnswersReviewer(AbstractAnswersReviewer):
         process.terminate()
         return Action.NEXT, True
 
-    def display_page_with_detected_answers(self, doc_id: DocumentId, page: Page) -> Popen:
+    def display_page_with_detected_answers(self, doc_id: DocumentId, page: PageNum) -> Popen:
         """Display the page with its checkboxes colored following their detection status."""
         array = self.data_storage.get_matrix(doc_id)
         pic_data = self.data[doc_id].pages[page]
         return self.display_picture_with_detected_answers(array, pic_data)
 
     @staticmethod
-    def display_picture_with_detected_answers(array: ndarray, pic_data: PicData) -> Popen:
+    def display_picture_with_detected_answers(array: ndarray, pic_data: "PicData") -> Popen:
         """Display the picture of the MCQ with its checkboxes colored following their detection status."""
         viewer = ImageViewer(array=array)
-        colors: dict[DetectionStatus | RevisionStatus, RGB] = {
-            DetectionStatus.CHECKED: Color.blue,
-            DetectionStatus.PROBABLY_CHECKED: Color.green,
-            DetectionStatus.PROBABLY_UNCHECKED: Color.magenta,
-            DetectionStatus.UNCHECKED: Color.pink,
+        colors: dict[CbxState | RevisionStatus, RGB] = {
+            CbxState.CHECKED: Color.blue,
+            CbxState.PROBABLY_CHECKED: Color.green,
+            CbxState.PROBABLY_UNCHECKED: Color.magenta,
+            CbxState.UNCHECKED: Color.pink,
             RevisionStatus.MARKED_AS_CHECKED: Color.cyan,
             RevisionStatus.MARKED_AS_UNCHECKED: Color.red,
         }
-        thicknesses: dict[DetectionStatus | RevisionStatus, int] = {
-            DetectionStatus.CHECKED: 2,
-            DetectionStatus.PROBABLY_CHECKED: 5,
-            DetectionStatus.PROBABLY_UNCHECKED: 5,
-            DetectionStatus.UNCHECKED: 2,
+        thicknesses: dict[CbxState | RevisionStatus, int] = {
+            CbxState.CHECKED: 2,
+            CbxState.PROBABLY_CHECKED: 5,
+            CbxState.PROBABLY_UNCHECKED: 5,
+            CbxState.UNCHECKED: 2,
             RevisionStatus.MARKED_AS_CHECKED: 5,
             RevisionStatus.MARKED_AS_UNCHECKED: 5,
         }

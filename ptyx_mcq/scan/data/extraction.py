@@ -3,7 +3,7 @@ from hashlib import blake2b
 from pathlib import Path
 from shutil import rmtree
 from multiprocessing import Pool
-from typing import TYPE_CHECKING, NewType
+from typing import TYPE_CHECKING
 
 import fitz
 import numpy as np
@@ -13,7 +13,6 @@ from fitz import Pixmap
 from ptyx.shell import print_warning
 
 from ptyx_mcq.parameters import IMAGE_FORMAT
-from ptyx_mcq.scan.data.structures import PicData
 from ptyx_mcq.scan.data.paths_manager import PathsHandler
 from ptyx_mcq.scan.data.structures import PdfHash, PicNum, PdfData
 from ptyx_mcq.scan.picture_analyze.calibration import calibrate, CalibrationData, adjust_contrast
@@ -70,14 +69,14 @@ class PdfCollection:
 
         # TODO: use ThreadPool instead?
         with Pool(number_of_processes) as pool:
-            for pdfhash, pdfpath in hash2pdf.items():
-                folder = self.paths.dirs.cache / pdfhash
+            for pdf_hash, pdf_path in hash2pdf.items():
+                folder = self.paths.dirs.cache / pdf_hash
                 # Only append a page if the corresponding .pic-data file is not found.
                 # (Resume an interrupted scan without extracting again previously extracted pages).
                 to_extract.extend(
                     [
-                        (pdfpath, folder, PicNum(page_num))
-                        for page_num in range(number_of_pages(pdfpath))
+                        (pdf_path, folder, PicNum(page_num))
+                        for page_num in range(number_of_pages(pdf_path))
                         if not (folder / f"{page_num}.pic-data").is_file()
                     ]
                 )
@@ -88,18 +87,18 @@ class PdfCollection:
                 )
                 for (_, folder, page_num), pic_data in zip(to_extract, result):
                     if pic_data is not None:
-                        pdf_data.setdefault(folder.name, {})[page_num] = pic_data
+                        pdf_data.setdefault(PdfHash(folder.name), {})[page_num] = pic_data
         return pdf_data
 
     def _sequential_collect(self, hash2pdf: dict[str, Path]) -> PdfData:
         pdf_data: PdfData = {}
-        for pdfhash, pdfpath in hash2pdf.items():
-            folder = self.paths.dirs.cache / pdfhash
-            for page_num in range(number_of_pages(pdfpath)):
+        for pdf_hash, pdf_path in hash2pdf.items():
+            folder = self.paths.dirs.cache / pdf_hash
+            for page_num in range(number_of_pages(pdf_path)):
                 # Only extract a page if the corresponding .pic-data file is not found.
                 # (Resume an interrupted scan without extracting again previously extracted pages).
-                print(f"Extracting page {page_num + 1} from '{pdfpath}'...")
-                pic_data = extract_pdf_page(pdfpath, folder, PicNum(page_num))
+                print(f"Extracting page {page_num + 1} from '{pdf_path}'...")
+                pic_data = extract_pdf_page(pdf_path, folder, PicNum(page_num))
                 if pic_data is not None:
                     pdf_data.setdefault(folder.name, {})[PicNum(page_num)] = pic_data
         return pdf_data
@@ -121,24 +120,6 @@ class PdfCollection:
             self._data = self._parallel_collect(hash2pdf, number_of_processes=number_of_processes)
         return self._data
 
-    # @staticmethod
-    # def load_pic_data(path: Path) -> PicData:
-    #     return extended_literal_eval(path.read_text(), {"PicData": PicData})
-
-    # def _get_corresponding_doc_ids(self, pdfhash: PdfHash) -> list[DocumentId]:
-    #     """Get all the documents id corresponding to the pdf with the given hash.
-    #
-    #     Note that:
-    #     - The same document may appear in several pdf (some pages in one pdf, other pages in another pdf).
-    #     - This method() relies on the generated `.pic-data` files, so the list may be incomplete
-    #       (the `.pic-data` may not have been generated yet, or be generated during a previous process which was
-    #       abruptly interrupted).
-    #     """
-    #     return [
-    #         self.load_pic_data(pic_data_file).doc_id
-    #         for pic_data_file in (self.paths.dirs["pic"] / pdfhash).glob("*.pic-data")
-    #     ]
-
     def _remove_obsolete_files(self, hash2pdf: dict[str, Path]) -> None:
         """For each removed pdf files, remove corresponding pictures and data."""
         for path in self.paths.dirs.cache.iterdir():
@@ -156,7 +137,9 @@ class PdfCollection:
                 rmtree(path)
 
 
-def extract_pdf_page(pdf_file: Path, dest: Path, page_num: PicNum) -> PicData | None:
+def extract_pdf_page(
+    pdf_file: Path, dest: Path, page_num: PicNum
+) -> tuple[CalibrationData, IdentificationData] | None:
     """Extract data corresponding to the given page of the pdf.
 
     Cached data will be used if available and not corrupted.
@@ -207,7 +190,7 @@ def extract_pdf_page(pdf_file: Path, dest: Path, page_num: PicNum) -> PicData | 
             print_warning(f"Unable to load file: {identification_file}")
         if not valid_pic or calibration_data is None or identification_data is None:
             return _extract_pdf_page(pdf_file, page_num, pic_file, calibration_file, identification_file)
-        return PicData(calibration_data=calibration_data, identification_data=identification_data)
+        return calibration_data, identification_data
     # Else, parse the scanned page image to retrieve info.
     else:
         return _extract_pdf_page(pdf_file, page_num, pic_file, calibration_file, identification_file)
@@ -215,14 +198,14 @@ def extract_pdf_page(pdf_file: Path, dest: Path, page_num: PicNum) -> PicData | 
 
 def _extract_pdf_page(
     pdf_file: Path, page_num: PicNum, pic_file: Path, calibration_file: Path, identification_file: Path
-) -> PicData | None:
+) -> tuple[CalibrationData, IdentificationData] | None:
     """
     Extract data corresponding to the given page of the pdf.
     """
     # Get the page content as a grayscale picture array.
     img_array = _get_page_content_as_array(pdf_file, page_num)
     # Adjust the contrast of the picture.
-    img_array = adjust_contrast(img_array, filename=f"<{pdf_file} - page {page_num + 1}>")
+    img_array = adjust_contrast(img_array, filename=f"<{pdf_file} - page_num {page_num + 1}>")
     # Calibrate the picture: find the four corners' black squares, and adjust rotation accordingly.
     try:
         img_array, calibration_data = calibrate(img_array)
@@ -235,10 +218,7 @@ def _extract_pdf_page(
     calibration_file.write_text(repr(calibration_data), "utf8")
     identification_data, _ = read_doc_id_and_page(img_array, calibration_data)
     identification_file.write_text(repr(identification_data), "utf8")
-    return PicData(
-        calibration_data=calibration_data,
-        identification_data=identification_data,
-    )
+    return calibration_data, identification_data
 
 
 def _get_page_content_as_array(pdf_file: Path, page_num: PicNum) -> ndarray:

@@ -10,7 +10,7 @@ from ptyx_mcq.scan.data.conflict_gestion import DataChecker
 from ptyx_mcq.scan.data.conflict_gestion.data_check.check import DataCheckResult
 
 from ptyx_mcq.scan.data.main_manager import DataHandler
-from ptyx_mcq.tools.config_parser import DocumentId, StudentName, StudentId, Page
+from ptyx_mcq.tools.config_parser import DocumentId, StudentName, StudentId, PageNum
 from ptyx_mcq.tools.math import levenshtein_distance
 
 
@@ -131,7 +131,7 @@ class AbstractNamesReviewer(ABC, metaclass=ABCMeta):
         or skip document), and a boolean which indicates if the document as been
         effectively reviewed.
         """
-        first_page = self.data[doc_id].pages.get(Page(1))
+        first_page = self.data[doc_id].pages.get(PageNum(1))
         if first_page is None:
             print_error(f"No first page found for document {doc_id}!")
             return Action.NEXT, False
@@ -221,7 +221,7 @@ class AbstractAnswersReviewer(ABC, metaclass=ABCMeta):
         self.data_storage = data_storage
         self.data = self.data_storage.data
 
-    def review_answer(self, doc_id: DocumentId, page: Page) -> tuple[Action, bool]:
+    def review_answer(self, doc_id: DocumentId, page: PageNum) -> tuple[Action, bool]:
         """Review the student answers.
 
         Return the action to do (go to next document, go back to previous one,
@@ -237,7 +237,7 @@ class AbstractAnswersReviewer(ABC, metaclass=ABCMeta):
             return action, reviewed
 
     @abstractmethod
-    def edit_answers(self, doc_id: DocumentId, page: Page) -> tuple[Action, bool]:
+    def edit_answers(self, doc_id: DocumentId, page: PageNum) -> tuple[Action, bool]:
         """Call interactive editor to change answers.
 
         MCQ parser internal state `self.data` will be modified accordingly.
@@ -287,7 +287,7 @@ class DefaultAllDataIssuesFixer:
             (doc_id, False) for name, docs in check_result.duplicate_names.items() for doc_id in docs
         )
         # The boolean indicates whether the document was reviewed.
-        answers_to_review: dict[tuple[DocumentId, Page], bool] = {
+        answers_to_review: dict[tuple[DocumentId, PageNum], bool] = {
             (doc, page): False for doc, page in check_result.ambiguous_answers
         }
 

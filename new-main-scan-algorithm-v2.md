@@ -48,8 +48,8 @@ on aura généré à terme les dossiers et fichier suivants :
             └── 0
 ```
 
-### 2.3 Sous-étapes
-#### 2.3.1 Extraction du contenu de la page scannée
+### 2.3 Phase d'extraction des données
+#### 2.3.1 Calibration des images
 Chaque image extraite est :
 - normalisée (convertie en niveaux de gris, avec un contraste augmenté).
 - pivotée, après avoir détecté les 4 carrés de référence marquant les coins de la page.
@@ -69,16 +69,16 @@ de surcharger la mémoire.
 Si une page ne semble pas correspondre à une page de QCM (page vierge par exemple), 
 on génère un fichier `<pdf-hash>/<pic-num>.skip` pour indiquer que la page a bien été traitée.
 
-#### 2.3.2 Récupération des données des images
-Pour chaque image, on génère un fichier `<pdf-hash>/identification/<num-page-scannée>`.
+#### 2.3.2 Identification des images
+Pour chaque image, on génère un fichier `<pdf-hash>/identification/<pic-num>`.
 Celui-ci contient toutes les infos brutes de l'image :
 - Le numéro du document
 - Le numéro de page dans le document
 
 (En mémoire, ces données sont stockées dans un objet de classe `IdentificationData`). 
 
-### 2.4 Consolidation des données.
-Création de fichiers `data/index/<num-document>` associant à chaque identifiant de document 
+#### 2.3.3 Indexation des images
+Création de fichiers `.index/<doc-id>` associant à chaque identifiant de document 
 et chaque page la ou les images correspondantes.
 Remarque : il peut parfois arriver qu'il y ait plusieurs images associées au même document :
 - soit qu'un document ait été scanné plusieurs fois (en partie ou en totalité), ce qui n'est pas bien grave.
@@ -97,33 +97,46 @@ Idéalement, il ne devrait y avoir qu'une seule page scannée associée à chaqu
 sinon (voir remarque plus haut) c'est qu'il y a un conflit potentiel 
 (il y aura effectivement conflit si le contenu diffère après analyse).
 
-### Récupération de la position des cases à cocher
+### 2.5 Analyse des données
+#### 2.5.1 Récupération de la position des cases à cocher
 On récupère la localisation (en pixels) dans l'image de toutes les cases à cocher :
   * la position du bloc d'identification (nom/identifiant de l'étudiant)
   * les cases correspondant aux réponses ((q, a) -> (ligne, colonne))
 
-### Analyse automatique des checkboxes
+#### 2.5.2 Analyse automatique des checkboxes
 À partir des données de l'image, on détecte si chaque case semble cochée ou non. 
-L'analyse se fait globalement sur toutes les pages associées à un document, et non page par page, ce qui augmente sa précision.
-On récupère également ainsi le nom de l'étudiant et son identifiant.
-On génère ainsi pour chaque page scannée un fichier `<pdf-hash>/review/<num-page-scannée>`.
+L'interprétation se fait globalement sur l'ensemble des pages associées à un 
+même document, et non page par page, ce qui augmente sa précision.
+On génère ainsi pour image un fichier `<pdf-hash>/checkboxes/<pic-num>`.
 
-Celui-ci contient :
-- le cas échéant (sur la 1re page), l'identifiant de l'étudiant
-- le cas échéant (sur la 1re page également), le nom de l'étudiant
-- le statut de chaque case (`UNCHECKED`, `CHECKED`, `PROBABLY_UNCHECKED`, `PROBABLY_CHECKED`)
+Celui-ci contient le statut de chaque case (`UNCHECKED`, `CHECKED`, `PROBABLY_UNCHECKED`, `PROBABLY_CHECKED`).
 
 Exemple de contenu de fichier :
 ```
-student_id: 5412241
-student_name: William Shakespeare
 1, 1: UNCHECKED
 1, 2: CHECKED
 ```
 
+#### 2.5.3 Identification de l'étudiant
+On récupère également le nom de l'étudiant via son identifiant.
+
+On génère ainsi pour toutes les images correspondant à la 1re page d'un document un fichier `<pdf-hash>/students/<pic-num>`.
+
+Celui-ci contient :
+  1. le nom de l'étudiant
+  2. l'identifiant de l'étudiant
+
+Exemple de contenu de fichier :
+```
+William Shakespeare
+5412241
+```
+
+### 2.6 Remarque
+
 L'intérêt de générer un fichier par page scannée (et non par document ou par page du document initial) est de gérer plus facilement les conflits (pages scannées en double par exemple).
 
-### Détection des conflits
+## 3. Détection des conflits
 Génération de la liste des conflits :
 - conflits d'intégrité (plusieurs images pour la même page)
 - conflits de nom/identifiant (nom/identifiant incorrect, identifiants apparaissant plusieurs fois)
