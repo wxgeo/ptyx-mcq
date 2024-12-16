@@ -60,12 +60,6 @@ class Student:
     name: StudentName
 
 
-# @dataclass
-# class ReviewData:
-#     student: Student | None
-#     checkboxes: dict[CbxRef, CbxState]
-
-
 @dataclass(kw_only=True)
 class Picture:
     path: Path
@@ -73,6 +67,18 @@ class Picture:
     identification_data: IdentificationData
     checkboxes: dict[CbxRef, CbxState] | None = None
     student: Student | None = None
+
+    def __eq__(self, other):
+        if not isinstance(other, Picture):
+            return False
+        if (
+            self.checkboxes is None
+            or self.student is None
+            or other.checkboxes is None
+            or other.student is None
+        ):
+            raise ValueError("Unparsed pictures should not be compared. Analyze them before.")
+        return self.as_hashable_tuple() == other.as_hashable_tuple()
 
     @property
     def doc_id(self) -> DocumentId:
@@ -128,6 +134,25 @@ class Picture:
     def as_matrix(self) -> ndarray:
         return array(self.as_image().convert("L")) / 255
 
+    def as_hashable_tuple(self) -> tuple:
+        return (
+            self.student,
+            self.identification_data.doc_id,
+            self.identification_data.page,
+            tuple(self.checkboxes.values()),
+        )
+
+    @property
+    def answered(self) -> dict[OriginalQuestionNumber, set[OriginalAnswerNumber]]:
+        """Answers checked by the student for each question."""
+        if self.checkboxes is None:
+            raise ValueError("Picture must be analyzed first.")
+        d = {}
+        for (q, a), state in self.checkboxes.items():
+            if state.seems_checked:
+                d.setdefault(q, set()).add(a)
+        return d
+
 
 @dataclass
 class Page:
@@ -145,6 +170,10 @@ class Page:
             return self.pictures[0]
         raise ValueError(f"Only one picture expected, but {len(self.pictures)} found.")
 
+    def remove_duplicates(self):
+        """Remove pictures which contain the same information."""
+        self.pictures = list({pic.as_hashable_tuple(): pic for pic in self.pictures}.values())
+
 
 @dataclass
 class Document:
@@ -157,3 +186,8 @@ class Document:
     def pictures(self) -> list[Picture]:
         """Return all the pictures associated with this document."""
         return [pic for page in self.pages.values() for pic in page.pictures]
+
+    @property
+    def answered(self) -> ChainMap[OriginalQuestionNumber, set[OriginalAnswerNumber]]:
+        """Answers checked by the student for each question."""
+        return ChainMap(*(page.pic.answered for page in self.pages.values()))

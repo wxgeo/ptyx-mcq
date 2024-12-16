@@ -24,7 +24,7 @@ class DirsPaths:
     # cfg: Path
     cache: Path
     index: Path
-    diff: Path
+    fix: Path
     log: Path
     pdf: Path
     checkboxes: Path
@@ -74,7 +74,7 @@ class PathsHandler:
             pdf=output_dir / "pdf",
             checkboxes=output_dir / "checkboxes",
             log=log,
-            diff=output_dir / ".diff",
+            fix=output_dir / ".fix",
         )
         self.files = FilesPaths(
             # verified=cfg / "verified.txt",

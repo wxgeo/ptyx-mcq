@@ -1,7 +1,9 @@
-UNCHECKED = DetectionStatus.UNCHECKED
-CHECKED = DetectionStatus.CHECKED
-PROBABLY_CHECKED = DetectionStatus.PROBABLY_CHECKED
-PROBABLY_UNCHECKED = DetectionStatus.PROBABLY_CHECKED
+from ptyx_mcq.scan.data.structures import CbxState
+
+UNCHECKED = CbxState.UNCHECKED
+CHECKED = CbxState.CHECKED
+PROBABLY_CHECKED = CbxState.PROBABLY_CHECKED
+PROBABLY_UNCHECKED = CbxState.PROBABLY_CHECKED
 
 ANSWERED = {
     1: {4: {3}, 20: {4, 5}, 25: {3}},

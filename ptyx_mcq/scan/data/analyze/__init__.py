@@ -92,6 +92,14 @@ class PictureAnalyzer:
         for pic, (student, cbx_states) in zip(doc.pictures, doc_info, strict=True):
             pic.checkboxes = cbx_states
             pic.student = student
+            # The students name to ID mapping may have been updated
+            # (using `mcq fix` for example).
+            # Let's try again to get names from ID.
+            if pic.student is not None and pic.student.name == "":
+                name = self.config.students_ids.get(pic.student.id, StudentName(""))
+                if name != "":
+                    pic.student.name = name
+                    self._save_pic_student(pic, pic.student)
 
     def get_doc_info(self, doc: Document) -> list[tuple[Student | None, CbxStates]]:
         """Analyze the state of each checkbox (checked or not) and the student id and name."""
@@ -120,7 +128,7 @@ class PictureAnalyzer:
     def save_info(self, doc: Document, doc_info: list[tuple[Student | None, CbxStates]]) -> None:
         students_info, cbx_info = zip(*doc_info)
         self.save_checkboxes_state(doc, cbx_info)
-        self.save_student(doc, students_info)
+        self.save_students(doc, students_info)
 
     # -------------------
     #     Students
@@ -158,11 +166,14 @@ class PictureAnalyzer:
         except (ValueError, AttributeError):
             raise InvalidFormat(f"Incorrect file content: {file_content!r}")
 
-    def save_student(self, doc: Document, students_info: list[Student | None]) -> None:
+    def _save_pic_student(self, pic: Picture, student: Student) -> None:
+        (folder := pic.dir / "students").mkdir(exist_ok=True)
+        (folder / str(pic.num)).write_text(self._encode_student(student), encoding="utf8")
+
+    def save_students(self, doc: Document, students_info: list[Student | None]) -> None:
         for pic, student in zip(doc.pictures, students_info):
             if student is not None:
-                (folder := pic.dir / "students").mkdir(exist_ok=True)
-                (folder / str(pic.num)).write_text(self._encode_student(student), encoding="utf8")
+                self._save_pic_student(pic, student)
 
     def _load_pic_student(self, pic: Picture) -> Student | None:
         if pic.page_num == 1:
@@ -234,12 +245,15 @@ class PictureAnalyzer:
                 pic_cbx_status[q_a] = status
         return pic_cbx_status
 
+    def _save_pic_checkboxes_state(self, pic: Picture, cbx_states: CbxStates) -> None:
+        (folder := pic.dir / "checkboxes").mkdir(exist_ok=True)
+        lines = (self._encode_state(q_a, state) for q_a, state in cbx_states.items())
+        (folder / str(pic.num)).write_text("\n".join(lines) + "\n", encoding="utf8")
+
     def save_checkboxes_state(self, doc: Document, cbx_info: list[CbxStates]) -> None:
         """Save to disk the checkboxes states for all the pictures associated with the given document id."""
         for pic, cbx_states in zip(doc.pictures, cbx_info, strict=True):
-            (folder := pic.dir / "checkboxes").mkdir(exist_ok=True)
-            lines = (self._encode_state(q_a, state) for q_a, state in cbx_states.items())
-            (folder / str(pic.num)).write_text("\n".join(lines) + "\n", encoding="utf8")
+            self._save_pic_checkboxes_state(pic, cbx_states)
 
     def load_checkboxes_state(self, doc: Document) -> list[dict[CbxRef, CbxState]] | None:
         """Load from disk the checkboxes states for all the pictures associated with the given document id."""

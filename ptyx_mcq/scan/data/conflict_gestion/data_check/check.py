@@ -24,28 +24,14 @@ class DataCheckResult:
 class DataChecker:
     """Check for missing data."""
 
-    def __init__(self, data_storage: "DataHandler"):
-        self.data_storage = data_storage
-        self.data = self.data_storage.data
+    def __init__(self, data_manager: "DataHandler"):
+        self.data_manager = data_manager
+
+    @property
+    def index(self):
+        return self.data_manager.index
 
     def run(self) -> DataCheckResult:
-        # First, complete missing information with previous scan data, if any.
-        for doc_id, (student_name, student_id) in self.data_storage.more_infos.items():
-            try:
-                self.data[doc_id].name = student_name
-                self.data[doc_id].student_id = student_id
-            except KeyError:
-                print_warning(f"Document {doc_id} not found... Maybe it was discarded previously?")
-
-        # The students name to ID mapping may have been updated
-        # (using `mcq fix` for example).
-        # Let's try again to get names from ID.
-        for doc_id, doc_data in self.data.items():
-            if doc_data.name == "":
-                doc_data.name = self.data_storage.config.students_ids.get(
-                    doc_data.student_id, StudentName("")
-                )
-
         print("Searching for unnamed documents...")
         unnamed_docs = self.get_unnamed_docs()
         print(f"{len(unnamed_docs)} unnamed document(s) found." if unnamed_docs else "OK")
@@ -93,7 +79,7 @@ class DataChecker:
             (doc_id, page)
             for doc_id, doc_data in self.data.items()
             for page, pic_data in doc_data.pages.items()
-            if pic_data.needs_review and Path(pic_data.pic_path) not in self.data_storage.verified
+            if pic_data.needs_review and Path(pic_data.pic_path) not in self.data_manager.verified
         ]
 
 
