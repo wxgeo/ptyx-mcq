@@ -11,7 +11,7 @@ AmbiguousPagesList = list[tuple[DocumentId, PageNum]]
 DuplicateNamesDict = dict[StudentName, list[DocumentId]]
 
 if TYPE_CHECKING:
-    from ptyx_mcq.scan.data.main_manager import DataHandler
+    from ptyx_mcq.scan.data.main_manager import ScanData
 
 
 @dataclass
@@ -24,7 +24,7 @@ class DataCheckResult:
 class DataChecker:
     """Check for missing data."""
 
-    def __init__(self, data_manager: "DataHandler"):
+    def __init__(self, data_manager: "ScanData"):
         self.data_manager = data_manager
 
     @property

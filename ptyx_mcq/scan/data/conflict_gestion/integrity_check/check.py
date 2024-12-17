@@ -2,7 +2,7 @@ from dataclasses import dataclass
 
 from ptyx.shell import print_warning, print_info, print_error
 
-from ptyx_mcq.scan.data.main_manager import DataHandler
+from ptyx_mcq.scan.data.main_manager import ScanData
 from ptyx_mcq.scan.data.structures import Document
 from ptyx_mcq.tools.config_parser import DocumentId, OriginalQuestionNumber, PageNum
 
@@ -43,7 +43,7 @@ class IntegrityCheckResult:
 class IntegrityChecker:
     """Test for data integrity: each scanned document must appear only once, and must be complete."""
 
-    def __init__(self, data_manager: DataHandler):
+    def __init__(self, data_manager: ScanData):
         self.data_manager = data_manager
 
     @property

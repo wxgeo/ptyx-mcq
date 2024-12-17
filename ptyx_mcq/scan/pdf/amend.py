@@ -14,7 +14,7 @@ from os.path import join
 
 from PIL import ImageDraw, ImageFont
 from PIL.Image import Image
-from ptyx_mcq.scan.data.main_manager import DataHandler
+from ptyx_mcq.scan.data.main_manager import ScanData
 from ptyx_mcq.scan.data.structures import Document
 
 from ptyx_mcq.scan.picture_analyze.types_declaration import Pixel
@@ -26,7 +26,7 @@ from ptyx_mcq.tools.config_parser import DocumentId, OriginalQuestionNumber, Que
 #     from ptyx_mcq.scan.scanner import MCQPictureParser
 
 
-def amend_all(data_storage: DataHandler) -> None:
+def amend_all(data_storage: ScanData) -> None:
     """Amend all generated documents, adding the scores and indicating the correct answers."""
     cfg = data_storage.config
     default_weight = cfg.weight["default"]
@@ -75,7 +75,7 @@ def amend_doc(
     doc: Document,
     max_score: float,
     max_score_per_question: dict[QuestionNumberOrDefault, float],
-    data_storage: DataHandler,
+    data_storage: ScanData,
 ) -> None:
     correct_answers = data_storage.correct_answers[doc_id]
     neutralized_answers = data_storage.neutralized_answers[doc_id]

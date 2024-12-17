@@ -20,7 +20,7 @@ from ptyx_mcq.parameters import CONFIG_FILE_EXTENSION
 from ptyx_mcq.scan.pdf.amend import amend_all
 
 from ptyx_mcq.scan.data.conflict_gestion import ConflictSolver
-from ptyx_mcq.scan.data.main_manager import DataHandler
+from ptyx_mcq.scan.data.main_manager import ScanData
 
 from ptyx_mcq.scan.picture_analyze.types_declaration import CalibrationError
 from ptyx_mcq.scan.score_management.scores_manager import ScoresManager
@@ -85,7 +85,7 @@ class MCQPictureParser:
         output_dir: Optional[Path] = None,
     ):
         # self.warnings = False
-        self.data_handler = DataHandler(Path(path), input_dir=input_dir, output_dir=output_dir)
+        self.data_handler = ScanData(Path(path), input_dir=input_dir, output_dir=output_dir)
         self.scores_manager = ScoresManager(self)
 
     @property

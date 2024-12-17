@@ -9,7 +9,7 @@ from ptyx.shell import print_warning, print_error, print_info
 from ptyx_mcq.scan.data.conflict_gestion import DataChecker
 from ptyx_mcq.scan.data.conflict_gestion.data_check.check import DataCheckResult
 
-from ptyx_mcq.scan.data.main_manager import DataHandler
+from ptyx_mcq.scan.data.main_manager import ScanData
 from ptyx_mcq.tools.config_parser import DocumentId, StudentName, StudentId, PageNum
 from ptyx_mcq.tools.math import levenshtein_distance
 
@@ -25,7 +25,7 @@ class AbstractDocHeaderDisplayer(AbstractContextManager, ABC):
 
     # noinspection PyUnusedLocal
     @abstractmethod
-    def __init__(self, data_storage: DataHandler, doc_id: DocumentId):
+    def __init__(self, data_storage: ScanData, doc_id: DocumentId):
         ...
 
     @abstractmethod
@@ -36,7 +36,7 @@ class AbstractDocHeaderDisplayer(AbstractContextManager, ABC):
 class AbstractNamesReviewer(ABC, metaclass=ABCMeta):
     """Abstract class."""
 
-    def __init__(self, data_storage: DataHandler):
+    def __init__(self, data_storage: ScanData):
         self.data_storage = data_storage
         self.data = data_storage.data
         self.students_ids = self.data_storage.config.students_ids
@@ -217,7 +217,7 @@ class AbstractNamesReviewer(ABC, metaclass=ABCMeta):
 class AbstractAnswersReviewer(ABC, metaclass=ABCMeta):
     """"""
 
-    def __init__(self, data_storage: DataHandler):
+    def __init__(self, data_storage: ScanData):
         self.data_storage = data_storage
         self.data = self.data_storage.data
 
@@ -258,7 +258,7 @@ class DefaultAllDataIssuesFixer:
 
     def __init__(
         self,
-        data_storage: DataHandler,
+        data_storage: ScanData,
     ):
         from ptyx_mcq.scan.data.conflict_gestion.config import Config
 

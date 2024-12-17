@@ -14,10 +14,10 @@ from pathlib import Path
 from numpy import ndarray, concatenate
 from ptyx.shell import ANSI_CYAN, ANSI_RESET, ANSI_GREEN, ANSI_YELLOW
 
-from ptyx_mcq.scan.data.structures import CbxState
+from ptyx_mcq.scan.data.structures import CbxState, Checkboxes, Document
 from ptyx_mcq.scan.picture_analyze.square_detection import test_square_color
 from ptyx_mcq.scan.picture_analyze.types_declaration import Line, Col
-from ptyx_mcq.tools.config_parser import DocumentId, CbxRef
+from ptyx_mcq.tools.config_parser import DocumentId, CbxRef, Configuration, real2apparent
 from ptyx_mcq.tools.pic import save_webp
 
 
@@ -45,11 +45,11 @@ def _get_average_blackness(blackness: list[dict[CbxRef, float]]) -> float:
 
 def analyze_checkboxes(
     all_checkboxes: list[dict[CbxRef, ndarray]],
-) -> list[dict[CbxRef, CbxState]]:
+) -> list[Checkboxes]:
     """
     Evaluate each checkbox, and estimate if it was checked.
     """
-    detection_status: list[dict[CbxRef, CbxState]] = [{} for _ in all_checkboxes]
+    detection_status = [Checkboxes() for _ in all_checkboxes]
     # Store blackness of checkboxes, to help detect false positives
     # and false negatives.
     blackness: list[dict[CbxRef, float]] = [{} for _ in all_checkboxes]
@@ -159,6 +159,106 @@ def eval_checkbox_color(checkbox: ndarray, margin: int = 0) -> float:
     return square.sum() / (width - margin) ** 2
 
 
+# -----------------------------------------
+#     Display checkboxes analyze results
+# =========================================
+
+
+def display_analyze_results(doc: Document) -> None:
+    """
+    Print the result of the checkbox analysis for document `doc_id` in terminal.
+
+    Mainly for debugging.
+    """
+    print(f"\n[Document {doc.doc_id}]\n")
+    config = doc.parent.config
+    for page_num, page in doc.pages.items():
+        print(f"\nPage {page}:")
+        pic = page.pic
+        for q in pic.questions:
+            q0 = real2apparent(q, None, config, doc.doc_id)
+            # `q0` is the apparent number of the question, as displayed on the document,
+            # while `q` is the internal number of the question (attributed before shuffling).
+            print(f"\n{ANSI_CYAN}• Question {q0}{ANSI_RESET} (Q{q})")
+            for a, is_correct in config.ordering[doc.doc_id]["answers"][q]:
+                match pic.checkboxes[(q, a)]:
+                    case CbxState.CHECKED:
+                        c = "■"
+                        ok = is_correct
+                    case CbxState.PROBABLY_CHECKED:
+                        c = "■?"
+                        ok = is_correct
+                    case CbxState.UNCHECKED:
+                        c = "□"
+                        ok = not is_correct
+                    case CbxState.PROBABLY_UNCHECKED:
+                        c = "□?"
+                        ok = not is_correct
+                    case other:
+                        raise ValueError(f"Unknown detection status: {other!r}.")
+                term_color = ANSI_GREEN if ok else ANSI_YELLOW
+                print(f"  {term_color}{c} {a}  {ANSI_RESET}", end="\t")
+        print()
+
+
+# ---------------------
+#   Checkboxes export
+# =====================
+
+# This is mainly useful to create regression tests.
+
+
+def _export_document_checkboxes(doc: Document, path: Path = None, compact=False) -> None:
+    """Save the checkboxes of the document `doc_id` as .webm images in a directory."""
+    if path is None:
+        path = doc.parent.paths.dirs.checkboxes
+    (doc_dir := path / str(doc.doc_id)).mkdir(exist_ok=True)
+    for page_num, page in doc.pages.items():
+        pic = page.pic
+        matrices: list[ndarray] = []
+        index_lines: list[str] = []
+        for (q, a), matrix in doc.parent.picture_analyzer.get_checkboxes(pic):
+            detection_status = pic.checkboxes[(q, a)]
+            # TODO: differentiate revision state and initial state!
+            revision_status = pic_data.revision_status.get((q, a))
+            info = (
+                f"{q}-{a}-{detection_status.value}-{'' if revision_status is None else revision_status.value}"
+            )
+
+            if compact:
+                matrices.append(matrix)
+                index_lines.append(info)
+            else:
+                webp = doc_dir / f"{info}.webp"
+                save_webp(matrix, webp)
+        if compact and matrices:
+            save_webp(concatenate(matrices), doc_dir / f"{page}.webp")
+            with open(doc_dir / f"{page}.index", "w") as f:
+                f.write("\n".join(sorted(index_lines)) + "\n")
+
+
+def export_checkboxes(self, export_all=False, path: Path = None, compact=False) -> None:
+    """Save checkboxes as .webm images in a directory.
+
+    By default, only export the checkboxes of the documents whose at least one page
+    has been manually verified. Set `export_all=True` to export all checkboxes.
+
+    This is used to build regressions tests.
+    """
+    to_export: set[DocumentId] = {
+        doc_id
+        for doc_id, doc_data in self.data.items()
+        if export_all
+        or any(
+            (q, a) in pic_data.revision_status
+            for page, pic_data in doc_data.pages.items()
+            for (q, a) in self.get_checkboxes(doc_id, page)
+        )
+    }
+    for doc_id in to_export:
+        self._export_document_checkboxes(doc_id, path=path, compact=compact)
+
+
 # =====================================
 # TODO: remove or update
 # =====================================
@@ -176,39 +276,6 @@ class OldCheckboxesDataAnalyzer:
     # -------------------------
     #    Checkboxes analyze
     # =========================
-
-    def _collect_untreated_checkboxes(self) -> list[DocumentId]:
-        """Return documents whose checkboxes have not been already analyzed during a previous scan."""
-        return [
-            doc_id
-            for doc_id, doc_data in self.data.items()
-            if not all(
-                len(pic_data.detection_status) == len(pic_data.positions)
-                for pic_data in doc_data.pages.values()
-            )
-        ]
-
-    def _analyze_document_checkboxes(self, doc_id: DocumentId) -> tuple[DocumentId, CheckboxAnalyzeResult]:
-        """Mark each answer's checkbox of the document `doc_id` as checked or blank."""
-        doc_data: DocumentData = self.data[doc_id]
-        checkboxes = {
-            key: val for page in doc_data.pages for key, val in self.get_checkboxes(doc_id, page).items()
-        }
-        return doc_id, analyze_checkboxes(checkboxes)
-
-    def _save_checkbox_analyze_result(
-        self, doc_id: DocumentId, detection_status: CheckboxAnalyzeResult
-    ) -> None:
-        """Store information concerning checked box."""
-        doc_data = self.data[doc_id]
-        for page, pic_data in doc_data.pages.items():
-            for q, a in pic_data.positions:
-                pic_data.answered.setdefault(q, set())
-                status = pic_data.detection_status[(q, a)] = detection_status[(q, a)]
-                if CbxState.seems_checked(status):
-                    pic_data.answered[q].add(a)
-            # Store results, to be able to interrupt and resume scan.
-            self.data_handler.store_doc_data(str(Path(pic_data.pic_path).parent), doc_id, page)
 
     def _parallel_checkboxes_analyze(self, number_of_processes: int = 2, display=False):
         to_analyze = self._collect_untreated_checkboxes()
@@ -239,89 +306,3 @@ class OldCheckboxesDataAnalyzer:
             self._serial_checkboxes_analyse(display)
         else:
             self._parallel_checkboxes_analyze(number_of_processes=number_of_processes)
-
-    # -----------------------------------------
-    #     Display checkboxes analyze results
-    # =========================================
-
-    # Mainly for debugging.
-
-    def display_analyze_results(self, doc_id: DocumentId) -> None:
-        """Print the result of the checkbox analysis for document `doc_id` in terminal."""
-        print(f"\n[Document {doc_id}]\n")
-        for page, pic_data in self.data[doc_id].pages.items():
-            print(f"\nPage {page}:")
-            for q, q0 in pic_data.questions_nums_conversion.items():
-                # `q0` is the apparent number of the question, as displayed on the document,
-                # while `q` is the internal number of the question (attributed before shuffling).
-                print(f"\n{ANSI_CYAN}• Question {q0}{ANSI_RESET} (Q{q})")
-                for a, is_correct in self.config.ordering[doc_id]["answers"][q]:
-                    match pic_data.detection_status[(q, a)]:
-                        case CbxState.CHECKED:
-                            c = "■"
-                            ok = is_correct
-                        case CbxState.PROBABLY_CHECKED:
-                            c = "■?"
-                            ok = is_correct
-                        case CbxState.UNCHECKED:
-                            c = "□"
-                            ok = not is_correct
-                        case CbxState.PROBABLY_UNCHECKED:
-                            c = "□?"
-                            ok = not is_correct
-                        case other:
-                            raise ValueError(f"Unknown detection status: {other!r}.")
-                    term_color = ANSI_GREEN if ok else ANSI_YELLOW
-                    print(f"  {term_color}{c} {a}  {ANSI_RESET}", end="\t")
-            print()
-
-    # ---------------------
-    #   Checkboxes export
-    # =====================
-
-    # This is mainly useful to create regression tests.
-
-    def _export_document_checkboxes(self, doc_id: DocumentId, path: Path = None, compact=False) -> None:
-        """Save the checkboxes of the document `doc_id` as .webm images in a directory."""
-        if path is None:
-            path = self.dirs.checkboxes
-        (doc_dir := path / str(doc_id)).mkdir(exist_ok=True)
-        for page, pic_data in self.data[doc_id].pages.items():
-            matrices: list[ndarray] = []
-            index_lines: list[str] = []
-            for (q, a), matrix in self.get_checkboxes(doc_id, page).items():
-                detection_status = pic_data.detection_status[(q, a)]
-                revision_status = pic_data.revision_status.get((q, a))
-                info = f"{q}-{a}-{detection_status.value}-{'' if revision_status is None else revision_status.value}"
-
-                if compact:
-                    matrices.append(matrix)
-                    index_lines.append(info)
-                else:
-                    webp = doc_dir / f"{info}.webp"
-                    save_webp(matrix, webp)
-            if compact and matrices:
-                save_webp(concatenate(matrices), doc_dir / f"{page}.webp")
-                with open(doc_dir / f"{page}.index", "w") as f:
-                    f.write("\n".join(sorted(index_lines)) + "\n")
-
-    def export_checkboxes(self, export_all=False, path: Path = None, compact=False) -> None:
-        """Save checkboxes as .webm images in a directory.
-
-        By default, only export the checkboxes of the documents whose at least one page
-        has been manually verified. Set `export_all=True` to export all checkboxes.
-
-        This is used to build regressions tests.
-        """
-        to_export: set[DocumentId] = {
-            doc_id
-            for doc_id, doc_data in self.data.items()
-            if export_all
-            or any(
-                (q, a) in pic_data.revision_status
-                for page, pic_data in doc_data.pages.items()
-                for (q, a) in self.get_checkboxes(doc_id, page)
-            )
-        }
-        for doc_id in to_export:
-            self._export_document_checkboxes(doc_id, path=path, compact=compact)

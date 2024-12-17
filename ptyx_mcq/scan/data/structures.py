@@ -2,12 +2,11 @@ from collections import ChainMap
 from dataclasses import dataclass
 from enum import Enum, auto
 from pathlib import Path
-from typing import NewType
+from typing import NewType, Self, Mapping, Iterator, TYPE_CHECKING
 
 from PIL import Image
 from numpy import ndarray, array
 from ptyx.shell import print_error
-
 
 from ptyx_mcq.scan.picture_analyze.calibration import CalibrationData
 from ptyx_mcq.scan.picture_analyze.identify_doc import IdentificationData
@@ -24,10 +23,16 @@ from ptyx_mcq.tools.config_parser import (
     CbxRef,
 )
 
+if TYPE_CHECKING:
+    from ptyx_mcq.scan.data.main_manager import ScanData
 
 PdfHash = NewType("PdfHash", str)
 PicNum = NewType("PicNum", int)
 PdfData = dict[PdfHash, dict[PicNum, tuple[CalibrationData, IdentificationData]]]
+
+
+class InvalidFormat(RuntimeError):
+    """Raised when a file has an invalid format and cannot be decoded."""
 
 
 class CbxState(Enum):
@@ -56,12 +61,75 @@ class RevisionStatus(Enum):
 
 @dataclass
 class Student:
+    """Data class regrouping information concerning one student."""
+
     id: StudentId
     name: StudentName
+
+    def _as_str(self) -> str:
+        return f"{self.name}\n{self.id}\n"
+
+    @classmethod
+    def _from_str(cls: Self, file_content: str) -> Self:
+        try:
+            student_name, student_id = file_content.strip().split("\n")
+            return cls(name=StudentName(student_name), id=StudentId(student_id))
+        except (ValueError, AttributeError):
+            raise InvalidFormat(f"Incorrect file content: {file_content!r}")
+
+    @classmethod
+    def load(cls: Self, path: Path) -> Self:
+        """Read the content of a student information file.
+
+        May raise:
+            - an OSError variant if the file is missing or unreadable.
+            - an InvalidFormat if the file format is incorrect.
+        """
+        return cls._from_str(path.read_text(encoding="utf8"))
+
+    def save(self, path: Path) -> None:
+        path.write_text(self._as_str(), encoding="utf8")
+
+
+class Checkboxes(dict, Mapping[CbxRef, CbxState]):
+    """Dict containing all the checkboxes states (CHECKED, UNCHECKED, ...)."""
+
+    def _as_str(self) -> str:
+        # `{state!r}` and not `{state}`, to get "CHECKED" and not "CbxState.CHECKED".
+        return "\n".join(f"{q}, {a}: {state!r}" for (q, a), state in self.items()) + "\n"
+
+    @classmethod
+    def _from_str(cls: Self, content: str) -> Self:
+        cbx_states: Self = Checkboxes()
+        for line in content.split("\n"):
+            if line := line.strip():
+                try:
+                    q_a, status = line.split(":")
+                    q, a = q_a.split(",")
+                    cbx_states[(OriginalQuestionNumber(int(q)), OriginalAnswerNumber(int(a)))] = getattr(
+                        CbxState, status.strip()
+                    )
+                except (ValueError, AttributeError):
+                    raise InvalidFormat(f"Incorrect line: {line!r}")
+        return cbx_states
+
+    @classmethod
+    def load(cls: Self, path: Path) -> Self:
+        """Read the content of a checkboxes states file.
+
+        May raise:
+            - an OSError variant if the file is missing or unreadable.
+            - an InvalidFormat if the file format is incorrect.
+        """
+        return cls._from_str(path.read_text(encoding="utf8"))
+
+    def save(self, path: Path) -> None:
+        path.write_text(self._as_str(), encoding="utf8")
 
 
 @dataclass(kw_only=True)
 class Picture:
+    parent: "Page"
     path: Path
     calibration_data: CalibrationData
     identification_data: IdentificationData
@@ -153,30 +221,47 @@ class Picture:
                 d.setdefault(q, set()).add(a)
         return d
 
+    @property
+    def questions(self) -> list[OriginalQuestionNumber]:
+        """All the (original) question numbers found in the picture."""
+        return sorted({q for (q, a) in self.checkboxes})
+
 
 @dataclass
 class Page:
+    parent: "Document"
     page_num: PageNum
     pictures: list[Picture]
 
     @property
     def has_conflicts(self):
-        # TODO: no conflict is the data are the same (checkboxes + names).
-        return len(self.pictures) >= 2
+        # No conflict is the data are the same (checkboxes + names).
+        return len(self._conflicting_versions) >= 2
+
+    @property
+    def _conflicting_versions(self) -> list[Picture]:
+        return list({pic.as_hashable_tuple(): pic for pic in self.pictures}.values())
 
     @property
     def pic(self):
-        if len(self.pictures) == 1:
-            return self.pictures[0]
-        raise ValueError(f"Only one picture expected, but {len(self.pictures)} found.")
+        assert self.pictures
+        if self.has_conflicts:
+            raise ValueError(
+                f"Only one picture expected, but {len(self.pictures)} conflicting versions found."
+            )
+        return self.pictures[0]
 
     def remove_duplicates(self):
-        """Remove pictures which contain the same information."""
-        self.pictures = list({pic.as_hashable_tuple(): pic for pic in self.pictures}.values())
+        """Remove pictures which contain the same information, keeping only conflicting versions."""
+        self.pictures = self._conflicting_versions
+
+    def __iter__(self) -> Iterator[Picture]:
+        return iter(self.pictures)
 
 
 @dataclass
 class Document:
+    parent: "ScanData"
     doc_id: DocumentId
     pages: dict[PageNum, Page]
     score: float | None = None
@@ -191,3 +276,6 @@ class Document:
     def answered(self) -> ChainMap[OriginalQuestionNumber, set[OriginalAnswerNumber]]:
         """Answers checked by the student for each question."""
         return ChainMap(*(page.pic.answered for page in self.pages.values()))
+
+    def __iter__(self) -> Iterator[Page]:
+        return iter(self.pages.values())

@@ -7,7 +7,7 @@ from ptyx_mcq.scan.data.conflict_gestion.integrity_check.check import (
     MissingQuestion,
     IntegrityCheckResult,
 )
-from ptyx_mcq.scan.data.main_manager import DataHandler
+from ptyx_mcq.scan.data.main_manager import ScanData
 from ptyx_mcq.tools.config_parser import DocumentId, PageNum
 
 
@@ -16,7 +16,7 @@ class AbstractIntegrityIssuesFixer(ABC):
 
     All interaction methods must be implemented."""
 
-    def __init__(self, data_storage: DataHandler):
+    def __init__(self, data_storage: ScanData):
         self.data_storage = data_storage
         self.data = self.data_storage.data
 

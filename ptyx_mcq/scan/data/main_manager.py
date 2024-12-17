@@ -2,6 +2,7 @@ import signal
 from io import BytesIO
 from pathlib import Path
 from types import FrameType
+from typing import Iterator
 
 from numpy import ndarray
 
@@ -32,7 +33,7 @@ from ptyx_mcq.tools.config_parser import (
 #             yield path.relative_to(path.parent.parent)
 
 
-class DataHandler:
+class ScanData:
     """Store and retrieve the data.
 
     Parameters:
@@ -65,6 +66,9 @@ class DataHandler:
         self.picture_analyzer = PictureAnalyzer(self)
         # Navigate between documents.
         self._index: dict[DocumentId, Document] | None = None
+
+    def __iter__(self) -> Iterator[Document]:
+        return iter(self.index.values())
 
     def initialize(self, reset=False) -> None:
         """Load all information from files."""
@@ -108,9 +112,12 @@ class DataHandler:
         for pdf_hash, content in self.input_pdf.data.items():
             for pic_num, (calibration_data, identification_data) in content.items():
                 self._index.setdefault(
-                    doc_id := identification_data.doc_id, Document(doc_id, {})
-                ).pages.setdefault(page_num := identification_data.page, Page(page_num, [])).pictures.append(
+                    doc_id := identification_data.doc_id, doc := Document(self, doc_id, {})
+                ).pages.setdefault(
+                    page_num := identification_data.page, page := Page(doc, page_num, [])
+                ).pictures.append(
                     Picture(
+                        parent=page,
                         path=self.dirs.cache / f"{pdf_hash}/{pic_num}.webp",
                         calibration_data=calibration_data,
                         identification_data=identification_data,
@@ -119,6 +126,11 @@ class DataHandler:
         return self._index
 
     def save_index(self) -> None:
+        """
+        Save index on disk in a human-readable format.
+
+        This used only to make debugging easier.
+        """
         for doc_id, doc in self.index.items():
             (self.dirs.index / str(doc_id)).write_text(
                 "\n".join(
@@ -134,58 +146,3 @@ class DataHandler:
         self.correct_answers = get_answers_with_status(cfg, correct=True)
         self.neutralized_answers = get_answers_with_status(cfg, correct=None)
         return cfg
-
-    # TODO: remove or update:
-    # ========
-    # OLD CODE
-    # ========
-
-    # def get_pics_list(self):
-    #     """Return sorted pics list."""
-    #     return sorted(f for f in self.dirs.cache.glob("*/*") if f.suffix.lower() == IMAGE_FORMAT)
-
-    # def relative_pic_path(self, pic_path: str | Path):
-    #     """Return picture path relatively to the `.scan/cache/` parent directory."""
-    #     return Path(pic_path).relative_to(self.dirs.cache)
-    #
-    # def absolute_pic_path(self, pic_path: str | Path) -> Path:
-    #     return self.dirs.cache / pic_path
-    #
-    # def absolute_pic_path_for_page(self, doc_id: DocumentId, page: PageNum) -> Path:
-    #     return self.absolute_pic_path(self.data[doc_id].pages[page].pic_path)
-    if False:
-
-        def store_doc_data(
-            self, pdf_hash: str, doc_id: DocumentId, p: int, matrix: ndarray | BytesIO | None = None
-        ) -> None:
-            """Store current scan data to be able to interrupt the scan and then resume it later.
-
-            Argument `matrix` may be either a raw numpy array, or a BytesIO instance already in webp format.
-            """
-            # Keyboard interrupts should be delayed until all the data are saved.
-            keyboard_interrupt = False
-
-            def memorize_interrupt(signum: int, frame: FrameType | None) -> None:
-                nonlocal keyboard_interrupt
-                keyboard_interrupt = True
-
-            previous_sigint_handler = signal.signal(signal.SIGINT, memorize_interrupt)
-            # File <pdfhash>.index will index all the documents ids corresponding to this pdf.
-            index_file = self.dirs.data / f"{pdf_hash}.index"
-            if not index_file.is_file() or str(doc_id) not in set(index_file.read_text("utf-8").split()):
-                with open(index_file, "a") as f:
-                    f.write(f"{doc_id}\n")
-            # We will store a compressed version of the matrix (as a webp image).
-            # (It would consume too much memory else).
-            if isinstance(matrix, BytesIO):
-                (self.dirs.data / f"{doc_id}-{p}.webp").write_bytes(matrix.getvalue())
-            elif isinstance(matrix, ndarray):
-                save_webp(matrix, self.dirs.data / f"{doc_id}-{p}.webp")
-            # WARNING !
-            # The `<doc_id>.scandata` file must be stored last, in case the process is interrupted.
-            # This prevents from having non-existing webp files declared in a .scandata file.
-            self.write_scandata_file(doc_id)
-
-            signal.signal(signal.SIGINT, previous_sigint_handler)
-            if keyboard_interrupt:
-                raise KeyboardInterrupt

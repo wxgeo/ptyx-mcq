@@ -16,7 +16,7 @@ from ptyx.shell import ANSI_CYAN, ANSI_RESET, ANSI_GREEN, ANSI_YELLOW
 
 from ptyx_mcq.scan.data.analyze.checkboxes import analyze_checkboxes, eval_checkbox_color
 from ptyx_mcq.scan.data.analyze.student_names import read_student_id_and_name
-from ptyx_mcq.scan.data.structures import CbxState, Student, Picture, Document
+from ptyx_mcq.scan.data.structures import CbxState, Student, Picture, Document, InvalidFormat, Checkboxes
 from ptyx_mcq.scan.picture_analyze.square_detection import adjust_checkbox
 from ptyx_mcq.scan.picture_analyze.types_declaration import Line, Col, Pixel
 from ptyx_mcq.tools.config_parser import (
@@ -30,14 +30,10 @@ from ptyx_mcq.tools.config_parser import (
 )
 
 if TYPE_CHECKING:
-    from ptyx_mcq.scan.data.main_manager import DataHandler
+    from ptyx_mcq.scan.data.main_manager import ScanData
 
-CbxStates = dict[CbxRef, CbxState]
+
 CbxPositions = dict[CbxRef, tuple[Line, Col]]
-
-
-class InvalidFormat(RuntimeError):
-    """Raised when a file has an invalid format and cannot be decoded."""
 
 
 class PictureAnalyzer:
@@ -49,8 +45,8 @@ class PictureAnalyzer:
     to prevent memory saturation.
     """
 
-    def __init__(self, data_handler: "DataHandler"):
-        self.data_handler: "DataHandler" = data_handler
+    def __init__(self, data_handler: "ScanData"):
+        self.data_handler: "ScanData" = data_handler
         # self._checkboxes_state: dict[DocumentId, dict[Picture, dict[CbxRef, CbxState]]] | None = None
         # self._students: dict[DocumentId, dict[Picture, Student]] | None = None
         # self._info: dict[DocumentId, dict[Picture, ReviewData]] | None = None
@@ -92,16 +88,16 @@ class PictureAnalyzer:
         for pic, (student, cbx_states) in zip(doc.pictures, doc_info, strict=True):
             pic.checkboxes = cbx_states
             pic.student = student
-            # The students name to ID mapping may have been updated
-            # (using `mcq fix` for example).
-            # Let's try again to get names from ID.
             if pic.student is not None and pic.student.name == "":
+                # The students name to ID mapping may have been updated
+                # (using `mcq fix` for example).
+                # Let's try again to get names from ID.
                 name = self.config.students_ids.get(pic.student.id, StudentName(""))
                 if name != "":
                     pic.student.name = name
-                    self._save_pic_student(pic, pic.student)
+                    pic.student.save(pic.dir / str(pic.num))
 
-    def get_doc_info(self, doc: Document) -> list[tuple[Student | None, CbxStates]]:
+    def get_doc_info(self, doc: Document) -> list[tuple[Student | None, Checkboxes]]:
         """Analyze the state of each checkbox (checked or not) and the student id and name."""
         # Get all the pictures corresponding to the given document id.
         pictures = doc.pictures
@@ -118,16 +114,16 @@ class PictureAnalyzer:
             for pic, cbx_states, matrix in zip(pictures, analyze_checkboxes(cbx), matrices)
         ]
 
-    def load_info(self, doc: Document) -> list[tuple[Student | None, CbxStates]] | None:
-        doc_students = self.load_student(doc)
-        doc_cbx_states = self.load_checkboxes_state(doc)
+    def load_info(self, doc: Document) -> list[tuple[Student | None, Checkboxes]] | None:
+        doc_students = self.load_students(doc)
+        doc_cbx_states = self.load_checkboxes_states(doc)
         if doc_students is None or doc_cbx_states is None:
             return None
         return list(zip(doc_students, doc_cbx_states, strict=True))
 
-    def save_info(self, doc: Document, doc_info: list[tuple[Student | None, CbxStates]]) -> None:
+    def save_info(self, doc: Document, doc_info: list[tuple[Student | None, Checkboxes]]) -> None:
         students_info, cbx_info = zip(*doc_info)
-        self.save_checkboxes_state(doc, cbx_info)
+        self.save_checkboxes_states(doc, cbx_info)
         self.save_students(doc, students_info)
 
     # -------------------
@@ -155,32 +151,17 @@ class PictureAnalyzer:
         )
 
     @staticmethod
-    def _encode_student(student: Student) -> str:
-        return f"{student.name}\n{student.id}\n"
-
-    @staticmethod
-    def _decode_student(file_content: str) -> Student:
-        try:
-            student_name, student_id = file_content.strip().split("\n")
-            return Student(name=StudentName(student_name), id=StudentId(student_id))
-        except (ValueError, AttributeError):
-            raise InvalidFormat(f"Incorrect file content: {file_content!r}")
-
-    def _save_pic_student(self, pic: Picture, student: Student) -> None:
-        (folder := pic.dir / "students").mkdir(exist_ok=True)
-        (folder / str(pic.num)).write_text(self._encode_student(student), encoding="utf8")
-
-    def save_students(self, doc: Document, students_info: list[Student | None]) -> None:
+    def save_students(doc: Document, students_info: list[Student | None]) -> None:
         for pic, student in zip(doc.pictures, students_info):
             if student is not None:
-                self._save_pic_student(pic, student)
+                (folder := pic.dir / "students").mkdir(exist_ok=True)
+                student.save(folder / str(pic.num))
 
-    def _load_pic_student(self, pic: Picture) -> Student | None:
-        if pic.page_num == 1:
-            return self._decode_student((pic.dir / f"students/{pic.num}").read_text(encoding="utf8"))
-        return None
+    @staticmethod
+    def _load_pic_student(pic: Picture) -> Student | None:
+        return Student.load(pic.dir / f"students/{pic.num}") if pic.page_num == 1 else None
 
-    def load_student(self, doc: Document) -> list[Student | None] | None:
+    def load_students(self, doc: Document) -> list[Student | None] | None:
         try:
             return [self._load_pic_student(pic) for pic in doc.pictures]
         except (OSError, InvalidFormat):
@@ -204,9 +185,16 @@ class PictureAnalyzer:
         boxes = self._boxes_latex_position(pic.doc_id, pic.page_num)
         return {q_a: pic.xy2ij(*xy) for q_a, xy in boxes.items()}
 
-    def get_checkboxes(self, pic: Picture, matrix: ndarray) -> dict[CbxRef, ndarray]:
-        """Retrieve all the arrays representing the checkbox content for the picture `pic`."""
-        cbx_content: dict[CbxRef, ndarray] = {}
+    def get_checkboxes(self, pic: Picture, matrix: ndarray = None) -> Checkboxes:
+        """
+        Retrieve all the arrays representing the checkbox content for the picture `pic`.
+
+        Since reading the matrix from the corresponding webp file is quite slow,
+        a cached matrix may be passed as argument; if missing, the matrix will be loaded from disk.
+        """
+        if matrix is None:
+            matrix = pic.as_matrix()
+        cbx_content = Checkboxes()
         positions = self.get_checkboxes_positions(pic)
         cell_size = pic.calibration_data.cell_size
         for (q, a), (i, j) in positions.items():
@@ -215,54 +203,19 @@ class PictureAnalyzer:
         return cbx_content
 
     @staticmethod
-    def _encode_state(q_a: CbxRef, status: CbxState) -> str:
-        q, a = q_a
-        # `{status!r}` and not `{status}`, to get "CHECKED" and not "CbxState.CHECKED".
-        return f"{q}, {a}: {status!r}"
-
-    @staticmethod
-    def _decode_state(line: str) -> tuple[CbxRef, CbxState]:
-        try:
-            q_a, status = line.split(":")
-            q, a = q_a.split(",")
-            return (OriginalQuestionNumber(int(q)), OriginalAnswerNumber(int(a))), getattr(
-                CbxState, status.strip()
-            )
-        except (ValueError, AttributeError):
-            raise InvalidFormat(f"Incorrect line: {line!r}")
-
-    def _read_cbx_state_file(self, path) -> dict[CbxRef, CbxState]:
-        """Read the content of a checkboxes state file.
-
-        May raise:
-            - an OSError variant if the file is missing or unreadable.
-            - an InvalidFormat if the file format is incorrect.
-        """
-        pic_cbx_status: dict[CbxRef, CbxState] = {}
-        for line in path.open("r", encoding="utf8"):
-            if line := line.strip():
-                q_a, status = self._decode_state(line)
-                pic_cbx_status[q_a] = status
-        return pic_cbx_status
-
-    def _save_pic_checkboxes_state(self, pic: Picture, cbx_states: CbxStates) -> None:
-        (folder := pic.dir / "checkboxes").mkdir(exist_ok=True)
-        lines = (self._encode_state(q_a, state) for q_a, state in cbx_states.items())
-        (folder / str(pic.num)).write_text("\n".join(lines) + "\n", encoding="utf8")
-
-    def save_checkboxes_state(self, doc: Document, cbx_info: list[CbxStates]) -> None:
+    def save_checkboxes_states(doc: Document, cbx_info: list[Checkboxes]) -> None:
         """Save to disk the checkboxes states for all the pictures associated with the given document id."""
         for pic, cbx_states in zip(doc.pictures, cbx_info, strict=True):
-            self._save_pic_checkboxes_state(pic, cbx_states)
+            (folder := pic.dir / "checkboxes").mkdir(exist_ok=True)
+            cbx_states.save(folder / str(pic.num))
 
-    def load_checkboxes_state(self, doc: Document) -> list[dict[CbxRef, CbxState]] | None:
+    def load_checkboxes_states(self, doc: Document) -> list[Checkboxes] | None:
         """Load from disk the checkboxes states for all the pictures associated with the given document id."""
-        doc_cbx_states: list[dict[CbxRef, CbxState]] = []
+        doc_cbx_states: list[Checkboxes] = []
         for pic in doc.pictures:
             try:
-                cbx_state_file = pic.dir / f"checkboxes/{pic.num}"
                 # Read the file and import its data.
-                result = self._read_cbx_state_file(cbx_state_file)
+                result: Checkboxes = Checkboxes.load(pic.dir / f"checkboxes/{pic.num}")
                 # Now, we should verify that the (<question_num>, <answer_num>) keys
                 # are the expected one. (Unexpected or missing keys are unlikely,
                 # yet maybe the disk is corrupted?)

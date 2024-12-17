@@ -79,7 +79,7 @@ def scan_picture(
 
 
 def export_checkboxes(path: Path | str = ".", debug=False):
-    from ptyx_mcq.scan.data.main_manager import DataHandler
+    from ptyx_mcq.scan.data.main_manager import ScanData
 
     path = Path(path).expanduser().resolve()
     now = datetime.datetime.now()
@@ -90,7 +90,7 @@ def export_checkboxes(path: Path | str = ".", debug=False):
         if debug:
             tmp_dir = Path("/tmp/mcq-dev-export_checkboxes")
             tmp_dir.mkdir(exist_ok=True)
-        handler = DataHandler(path)
+        handler = ScanData(path)
         print("\nLoad data...")
         handler.initialize()
         print("\nExporting pictures...")

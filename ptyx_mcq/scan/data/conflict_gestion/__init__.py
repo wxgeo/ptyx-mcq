@@ -1,10 +1,10 @@
 from ptyx_mcq.scan.data.conflict_gestion.data_check.check import DataChecker
 from ptyx_mcq.scan.data.conflict_gestion.integrity_check.check import IntegrityChecker
-from ptyx_mcq.scan.data.main_manager import DataHandler
+from ptyx_mcq.scan.data.main_manager import ScanData
 
 
 class ConflictSolver:
-    def __init__(self, data_storage: DataHandler):
+    def __init__(self, data_storage: ScanData):
         self.data_storage = data_storage
         self.data = data_storage.data
 

@@ -23,7 +23,7 @@ from ptyx_mcq.tools.extend_literal_eval import extended_literal_eval
 from ptyx_mcq.tools.pic import array_to_image, image_to_array
 
 if TYPE_CHECKING:
-    from ptyx_mcq.scan.data.main_manager import DataHandler
+    from ptyx_mcq.scan.data.main_manager import ScanData
 
 
 class PdfCollection:
@@ -34,7 +34,7 @@ class PdfCollection:
     the `.data` dictionary.
     """
 
-    def __init__(self, data_handler: "DataHandler"):
+    def __init__(self, data_handler: "ScanData"):
         self.data_handler = data_handler
         self._data: PdfData | None = None
 
