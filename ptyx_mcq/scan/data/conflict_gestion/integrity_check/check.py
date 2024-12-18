@@ -92,14 +92,10 @@ class IntegrityChecker:
                 raise MissingConfigurationData(
                     f"No configuration data found for document #{doc_id}.\n"
                     "Maybe you recompiled the ptyx file in the while ?\n"
-                    f"(Launching `mcq make -n {max(self.index)}` might fix it.)"
+                    f"(Executing `mcq make -n {max(self.index)}` might fix it.)"
                 )
-            questions_seen = set()
-            for page_num, page in doc.pages.items():
-                for pic in page.pictures:
-                    assert pic.checkboxes is not None
-                    questions_seen.update(q for q, a in pic.checkboxes)
-            if questions_diff := sorted(set(doc_ordering["questions"]) - set(questions_seen)):
+            expected = set(doc_ordering["questions"])
+            if questions_diff := sorted(expected - set(doc.questions)):
                 missing_questions[doc_id] = questions_diff
             # ", ".join(str(q) for q in unseen_questions)
             # All tests may not have the same number of pages, since

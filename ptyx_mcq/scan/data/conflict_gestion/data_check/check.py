@@ -1,3 +1,4 @@
+import operator
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -22,14 +23,19 @@ class DataCheckResult:
 
 
 class DataChecker:
-    """Check for missing data."""
+    """
+    Check for missing data.
 
-    def __init__(self, data_manager: "ScanData"):
-        self.data_manager = data_manager
+    This check must occur *after* the integrity check (search for duplicate pages),
+    so that each page is associated with a unique picture at this stage.
+    """
+
+    def __init__(self, scan_data: "ScanData"):
+        self.scan_data = scan_data
 
     @property
     def index(self):
-        return self.data_manager.index
+        return self.scan_data.index
 
     def run(self) -> DataCheckResult:
         print("Searching for unnamed documents...")
@@ -51,7 +57,10 @@ class DataChecker:
     def get_unnamed_docs(self) -> list[DocumentId]:
         """Get the (sorted) list of all unnamed documents ids."""
         # Sorting documents is cheap and make testing easier.
-        return sorted(doc_id for doc_id, doc_data in self.data.items() if doc_data.name == "")
+        return sorted(
+            (doc.doc_id for doc in self.scan_data if doc.student_name == ""),
+            key=operator.attrgetter("doc_id"),
+        )
 
     def find_duplicate_names(self) -> DuplicateNamesDict:
         """Detect if several documents have the same student name.
@@ -61,8 +70,8 @@ class DataChecker:
         seen_names: dict[StudentName, DocumentId] = {}
         duplicate_names: dict[StudentName, list[DocumentId]] = {}
         # Sorting documents is cheap and make testing easier.
-        for doc_id in sorted(self.data):
-            name = self.data[doc_id].name
+        for doc_id in sorted(self.scan_data.index):
+            name = self.scan_data.index[doc_id].student_name
             # Be careful to not count unnamed documents as duplicates!
             if name:
                 if name in seen_names:
@@ -76,10 +85,10 @@ class DataChecker:
     def find_ambiguous_answers(self) -> AmbiguousPagesList:
         # The answers are ambiguous and were not already manually verified in a previous scan.
         return [
-            (doc_id, page)
-            for doc_id, doc_data in self.data.items()
-            for page, pic_data in doc_data.pages.items()
-            if pic_data.needs_review and Path(pic_data.pic_path) not in self.data_manager.verified
+            (doc_id, page_num)
+            for doc_id, doc in self.scan_data.index.items()
+            for page_num, page in doc.pages.items()
+            if page.pic.checkboxes.needs_review
         ]
 
 

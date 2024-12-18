@@ -50,6 +50,10 @@ class CbxState(Enum):
     def seems_checked(self) -> bool:
         return self in (CbxState.CHECKED, CbxState.PROBABLY_CHECKED)
 
+    @property
+    def needs_review(self) -> bool:
+        return self in (CbxState.PROBABLY_CHECKED, CbxState.PROBABLY_UNCHECKED)
+
 
 class RevisionStatus(Enum):
     MARKED_AS_CHECKED = auto()
@@ -126,6 +130,10 @@ class Checkboxes(dict, Mapping[CbxRef, CbxState]):
     def save(self, path: Path) -> None:
         path.write_text(self._as_str(), encoding="utf8")
 
+    @property
+    def needs_review(self) -> bool:
+        return any(state.needs_review for state in self.values())
+
 
 @dataclass(kw_only=True)
 class Picture:
@@ -133,7 +141,7 @@ class Picture:
     path: Path
     calibration_data: CalibrationData
     identification_data: IdentificationData
-    checkboxes: dict[CbxRef, CbxState] | None = None
+    checkboxes: Checkboxes | None = None
     student: Student | None = None
 
     def __eq__(self, other):
@@ -279,3 +287,12 @@ class Document:
 
     def __iter__(self) -> Iterator[Page]:
         return iter(self.pages.values())
+
+    @property
+    def questions(self) -> list[OriginalQuestionNumber]:
+        """All the (original) question numbers found in the picture."""
+        return sorted({q for page in self for pic in page for (q, a) in pic.checkboxes})
+
+    @property
+    def student_name(self) -> StudentName:
+        return self.pages[PageNum(1)].pic.student.name

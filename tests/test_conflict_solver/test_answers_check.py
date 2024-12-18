@@ -76,7 +76,7 @@ def test_check_review(patched_conflict_solver, custom_input) -> None:
     answers: dict[OriginalAnswerNumber, ApparentAnswerNumber | None] = {}
     for i in original_answers_numbers:
         question, answers[i] = real2apparent(
-            original_question_num, i, patched_conflict_solver.data_manager.config, doc_id=doc_id
+            original_question_num, i, patched_conflict_solver.scan_data.config, doc_id=doc_id
         )
 
     # Test a scenario, simulating questions for the user in the terminal and the user's answers.
@@ -114,7 +114,7 @@ def test_check_review_navigation(patched_conflict_solver, custom_input) -> None:
     """Test to change check status."""
     # Shortcuts:
     doc_id = DocumentId(1)
-    config = patched_conflict_solver.data_manager.config
+    config = patched_conflict_solver.scan_data.config
     doc_data: DocumentData = patched_conflict_solver.data[doc_id]
     detection_status = {page: doc_data.pages[page].detection_status for page in doc_data.pages}
     answered = {page: doc_data.pages[page].answered for page in doc_data.pages}
