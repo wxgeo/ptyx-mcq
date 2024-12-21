@@ -18,6 +18,7 @@ from PIL import Image, ImageDraw
 from ptyx_mcq.scan.data.conflict_gestion.integrity_check.fix import (
     AbstractIntegrityIssuesFixer,
 )
+from ptyx_mcq.scan.data.structures import Picture
 from ptyx_mcq.tools.misc import copy_docstring
 from ptyx_mcq.tools.colors import Color
 
@@ -34,15 +35,13 @@ class ClIntegrityIssuesFixer(AbstractIntegrityIssuesFixer):
     """
 
     @copy_docstring(AbstractIntegrityIssuesFixer.select_version)
-    def select_version(
-        self, scanned_doc_id: DocumentId, temp_doc_id: DocumentId, page: PageNum
-    ) -> Literal[1, 2]:
+    def select_version(self, pic1: Picture, pic2: Picture) -> Literal[1, 2]:
         print("Choose which version to keep:")
         input("-- Press ENTER --")
         action = ""
 
         while action not in ("1", "2"):
-            self._display_duplicates(scanned_doc_id, temp_doc_id, page)
+            self._display_duplicates(pic1, pic2)
             print("What must we do ?")
             print("- Keep only 1st one (1)")
             print("- Keep only 2nd one (2)")
@@ -51,11 +50,11 @@ class ClIntegrityIssuesFixer(AbstractIntegrityIssuesFixer):
 
         return 1 if action == "1" else 2
 
-    def _display_duplicates(self, scanned_doc_id: DocumentId, temp_doc_id: DocumentId, page: PageNum) -> None:
+    def _display_duplicates(self, pic1: Picture, pic2: Picture) -> None:
         # im1 = Image.open(pic_path1)
         # im2 = Image.open(pic_path2)
-        im1 = self.data_storage.get_pic(scanned_doc_id, page)
-        im2 = self.data_storage.get_pic(temp_doc_id, page)
+        im1 = pic1.as_image()
+        im2 = pic2.as_image()
         dst = Image.new("RGB", (im1.width + im2.width, height := min(im1.height, im2.height)))
         dst.paste(im1, (0, 0))
         dst.paste(im2, (im1.width, 0))

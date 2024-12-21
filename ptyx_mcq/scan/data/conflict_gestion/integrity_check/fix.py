@@ -8,6 +8,7 @@ from ptyx_mcq.scan.data.conflict_gestion.integrity_check.check import (
     IntegrityCheckResult,
 )
 from ptyx_mcq.scan.data.main_manager import ScanData
+from ptyx_mcq.scan.data.structures import Picture
 from ptyx_mcq.tools.config_parser import DocumentId, PageNum
 
 
@@ -16,14 +17,15 @@ class AbstractIntegrityIssuesFixer(ABC):
 
     All interaction methods must be implemented."""
 
-    def __init__(self, data_storage: ScanData):
-        self.data_storage = data_storage
-        self.data = self.data_storage.data
+    def __init__(self, scan_data: ScanData):
+        self.scan_data = scan_data
+
+    @property
+    def index(self):
+        return self.scan_data.index
 
     @abstractmethod
-    def select_version(
-        self, scanned_doc_id: DocumentId, temp_doc_id: DocumentId, page: PageNum
-    ) -> Literal[1, 2]:
+    def select_version(self, pic1: Picture, pic2: Picture) -> Literal[1, 2]:
         """Ask user what to do is two versions of the same page exist, with conflicting data.
 
         It may mean the page has been scanned twice with different scan qualities, but it could
@@ -46,30 +48,13 @@ class AbstractIntegrityIssuesFixer(ABC):
         else:
             print_success("Data integrity successfully verified.")
 
-        while check_results.conflicts:
-            conflict = next(iter(check_results.conflicts))
-            scanned_id, page = conflict
-            for tmp_doc_id in check_results.conflicts.pop(conflict):
-                print_warning(
-                    f"Page {page} of test #{scanned_id} seen twice"
-                    f' (in "{self.data_storage.absolute_pic_path_for_page(scanned_id, page)}"'
-                    f' and "{self.data_storage.absolute_pic_path_for_page(tmp_doc_id, page)}")!'
-                )
-                if self.select_version(scanned_id, tmp_doc_id, page) == 1:
-                    # Remove the second version.
-                    self.data_storage.remove_tmp_doc_id(tmp_doc_id)
-                else:
-                    # Remove first version:
-                    # we must replace the data and the files corresponding to this page
-                    # by the new version (corresponding to id `tmp_doc_id`).
-                    # Warning: All other data of document `scanned_id` (i.e. the data for all the other pages)
-                    # must be kept unchanged!
-                    self.data[scanned_id].pages[page] = self.data.pop(tmp_doc_id).pages[page]
-                    data_dir = self.data_storage.dirs.data
-                    # Replace the WEBP image.
-                    (data_dir / f"{tmp_doc_id}-{page}.webp").replace(data_dir / f"{scanned_id}-{page}.webp")
-                    # Create an updated `scanned_id` .scandata file.
-                    # Warning: we can't simply replace it with the `tmp_doc_id` .scandata file, because it would only
-                    # contain the data corresponding to this page and not to all the document's pages.
-                    self.data_storage.write_scandata_file(scanned_id)
-        assert len(self.data_storage.get_all_temporary_ids()) == 0, self.data_storage.get_all_temporary_ids()
+        for doc_id, page_num_list in check_results.duplicates:
+            for page_num in page_num_list:
+                page = self.index[doc_id].pages[page_num]
+                while page.has_conflicts:
+                    pic1, pic2, *_ = page.pictures
+                    bad_pic = page.pictures.pop(self.select_version(pic1, pic2) - 1)
+                    # Write a file <pdf-hash>/<pic-num>.skip,
+                    # to indicate that the picture should be ignored in case of a future run.
+                    (folder := self.scan_data.paths.dirs.fix / bad_pic.pdf_hash).mkdir(exist_ok=True)
+                    (folder / f"{bad_pic.num}.skip").touch()
