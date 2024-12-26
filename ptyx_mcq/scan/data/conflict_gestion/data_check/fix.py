@@ -6,10 +6,9 @@ from pathlib import Path
 
 from ptyx.shell import print_warning, print_error, print_info
 
-from ptyx_mcq.scan.data.conflict_gestion import DataChecker
-from ptyx_mcq.scan.data.conflict_gestion.data_check.check import DataCheckResult
-
+from ptyx_mcq.scan.data.conflict_gestion.data_check.check import DataChecker, DataCheckResult
 from ptyx_mcq.scan.data.main_manager import ScanData
+from ptyx_mcq.scan.data.structures import Student
 from ptyx_mcq.tools.config_parser import DocumentId, StudentName, StudentId, PageNum
 from ptyx_mcq.tools.math import levenshtein_distance
 
@@ -25,8 +24,7 @@ class AbstractDocHeaderDisplayer(AbstractContextManager, ABC):
 
     # noinspection PyUnusedLocal
     @abstractmethod
-    def __init__(self, data_storage: ScanData, doc_id: DocumentId):
-        ...
+    def __init__(self, data_storage: ScanData, doc_id: DocumentId): ...
 
     @abstractmethod
     def display(self) -> None:
@@ -36,10 +34,9 @@ class AbstractDocHeaderDisplayer(AbstractContextManager, ABC):
 class AbstractNamesReviewer(ABC, metaclass=ABCMeta):
     """Abstract class."""
 
-    def __init__(self, data_storage: ScanData):
-        self.data_storage = data_storage
-        self.data = data_storage.data
-        self.students_ids = self.data_storage.config.students_ids
+    def __init__(self, scan_data: ScanData):
+        self.scan_data = scan_data
+        self.students_ids = self.scan_data.config.students_ids
 
     def enter_name_and_id(
         self, doc_id: DocumentId, default: StudentName
@@ -60,7 +57,7 @@ class AbstractNamesReviewer(ABC, metaclass=ABCMeta):
 
         from ptyx_mcq.scan.data.conflict_gestion.config import Config
 
-        with Config.DocHeaderDisplayer(self.data_storage, doc_id) as doc_header_displayer:
+        with Config.DocHeaderDisplayer(self.scan_data, doc_id) as doc_header_displayer:
             while action is None:
                 doc_header_displayer.display()
 
@@ -108,8 +105,8 @@ class AbstractNamesReviewer(ABC, metaclass=ABCMeta):
                     else:
                         print("Unknown name.")
                         suggestion = self._suggest_name(user_input)
-                elif self.data_storage.config.students_list:
-                    if user_input in self.data_storage.config.students_list:
+                elif self.scan_data.config.students_list:
+                    if user_input in self.scan_data.config.students_list:
                         action = Action.NEXT
                     else:
                         suggestion = self._suggest_name(user_input)
@@ -120,8 +117,6 @@ class AbstractNamesReviewer(ABC, metaclass=ABCMeta):
                     print(f"Name: {name}")
                     if not self._does_user_confirm():
                         action = None
-        # Keep track of manually entered information (will be useful if the scan has to be run again later!)
-        self.data_storage.store_additional_info(doc_id=doc_id, name=name, student_id=student_id)
         return name, student_id, action, True
 
     def review_name(self, doc_id: DocumentId) -> tuple[Action, bool]:
@@ -131,20 +126,18 @@ class AbstractNamesReviewer(ABC, metaclass=ABCMeta):
         or skip document), and a boolean which indicates if the document as been
         effectively reviewed.
         """
-        first_page = self.data[doc_id].pages.get(PageNum(1))
-        if first_page is None:
+        doc = self.scan_data.index[doc_id]
+        if doc.first_page is None:
             print_error(f"No first page found for document {doc_id}!")
             return Action.NEXT, False
 
         # Ask user for name.
         student_name, student_id, action, reviewed = self.enter_name_and_id(
-            doc_id, default=self.data[doc_id].name
+            doc_id, default=self.scan_data.index[doc_id].student_name
         )
 
         # Store name and student id.
-        self.data[doc_id].name = student_name
-        self.data[doc_id].student_id = student_id
-        self.data_storage.more_infos[doc_id] = (student_name, student_id)
+        self.scan_data.index[doc_id].first_page.pic.student = Student(name=student_name, id=student_id)
         return action, reviewed
 
     def _suggest_id(self, incorrect_student_id: str) -> StudentId:
@@ -165,8 +158,8 @@ class AbstractNamesReviewer(ABC, metaclass=ABCMeta):
         incorrect_name = incorrect_name.lower()
         if self.students_ids:
             names = list(self.students_ids.values())
-        elif self.data_storage.config.students_list:
-            names = list(self.data_storage.config.students_list)
+        elif self.scan_data.config.students_list:
+            names = list(self.scan_data.config.students_list)
         else:
             return StudentName("")
 
@@ -217,9 +210,8 @@ class AbstractNamesReviewer(ABC, metaclass=ABCMeta):
 class AbstractAnswersReviewer(ABC, metaclass=ABCMeta):
     """"""
 
-    def __init__(self, data_storage: ScanData):
-        self.data_storage = data_storage
-        self.data = self.data_storage.data
+    def __init__(self, scan_data: ScanData):
+        self.scan_data = scan_data
 
     def review_answer(self, doc_id: DocumentId, page: PageNum) -> tuple[Action, bool]:
         """Review the student answers.
@@ -227,13 +219,14 @@ class AbstractAnswersReviewer(ABC, metaclass=ABCMeta):
         Return the action to do (go to next document, go back to previous one,
         or skip document), and a boolean which indicates if the document as been
         effectively reviewed."""
-        if self.data[doc_id].name == Action.DISCARD.value:
+        doc = self.scan_data.index[doc_id]
+        if doc.student_name == Action.DISCARD.value:
             # Skip this document.
             return Action.NEXT, False
         else:
-            pic_data = self.data[doc_id].pages[page]
+            pic_data = self.dcdata[doc_id].pages[page]
             action, reviewed = self.edit_answers(doc_id, page)
-            self.data_storage.store_verified_pic(Path(pic_data.pic_path))
+            self.scan_data.store_verified_pic(Path(pic_data.pic_path))
             return action, reviewed
 
     @abstractmethod

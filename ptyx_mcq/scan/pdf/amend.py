@@ -26,9 +26,9 @@ from ptyx_mcq.tools.config_parser import DocumentId, OriginalQuestionNumber, Que
 #     from ptyx_mcq.scan.scanner import MCQPictureParser
 
 
-def amend_all(data_storage: ScanData) -> None:
+def amend_all(scan_data: ScanData) -> None:
     """Amend all generated documents, adding the scores and indicating the correct answers."""
-    cfg = data_storage.config
+    cfg = scan_data.config
     default_weight = cfg.weight["default"]
     assert isinstance(default_weight, (int, float))
     default_correct = cfg.correct["default"]
@@ -44,9 +44,9 @@ def amend_all(data_storage: ScanData) -> None:
     # Note that the global maximal score can not be easily deduced from the dict `max_score_per_question`,
     # since this dict only include customized questions scores, and since many versions of the same question
     # may appear in the dict, but only one of those versions was included in each generated document.
-    max_score = data_storage.config.max_score
+    max_score = scan_data.config.max_score
     assert isinstance(max_score, (float, int)), repr(max_score)
-    number_of_documents = len(data_storage.data)
+    number_of_documents = len(scan_data.index)
     counter = 0
 
     def print_progression(_):
@@ -56,12 +56,8 @@ def amend_all(data_storage: ScanData) -> None:
 
     print(f"Generating the amended pdf files: 0/{number_of_documents}", end="\r")
     pool = Pool()
-    for i, (doc_id, doc_data) in enumerate(data_storage.data.items(), start=1):
-        pool.apply_async(
-            amend_doc,
-            (doc_data, doc_id, max_score, max_score_per_question, data_storage),
-            callback=print_progression,
-        )
+    for doc in scan_data:
+        pool.apply_async(amend_doc, (doc,), callback=print_progression)
     pool.close()
     # noinspection PyTestUnpassedFixture
     pool.join()
@@ -71,30 +67,33 @@ def amend_all(data_storage: ScanData) -> None:
     )
 
 
-def amend_doc(
-    doc: Document,
-    max_score: float,
-    max_score_per_question: dict[QuestionNumberOrDefault, float],
-    data_storage: ScanData,
-) -> None:
-    correct_answers = data_storage.correct_answers[doc_id]
-    neutralized_answers = data_storage.neutralized_answers[doc_id]
-    pics = {}
-    for page, page_data in doc_data.pages.items():
+# TODO: maybe restrict the data passed to amend_doc?
+#  For now, each document contain references to all scan_data,
+#  so there is *a lot* of data to pickle when using multiprocessing.
+def amend_doc(doc: Document) -> None:
+    config = doc.parent.config
+    max_score = config.max_score
+    doc_id = doc.doc_id
+    correct_answers = config.correct_answers[doc_id]
+    neutralized_answers = config.neutralized_answers[doc_id]
+    # max_score_per_question: dict[QuestionNumberOrDefault, float],
+    # data_storage: ScanData,
+    images = {}
+    for page in doc:
         top_left_positions: dict[OriginalQuestionNumber, Pixel] = {}
         # Convert to RGB picture.
-        pic = data_storage.get_pic(doc_id, page).convert("RGB")
-        if not page_data.positions:
+        img = page.pic.as_image().convert("RGB")
+        if not (positions := page.pic.get_checkboxes_positions()):
             # The last page of the MCQ may be empty.
             # `float('+inf')` is used to ensure
             # it will be the last page when sorting.
-            pics[float("+inf")] = pic
+            images[float("+inf")] = img
             continue
         # Drawing context
-        draw = ImageDraw.Draw(pic)
-        size = page_data.cell_size
-        for (q, a), pos in page_data.positions.items():
-            checked = a in page_data.answered[q]
+        draw = ImageDraw.Draw(img)
+        size = page.pic.calibration_data.cell_size
+        for (q, a), pos in positions:
+            checked = a in page.pic.answered[q]
             if a in neutralized_answers[q]:
                 correct = None
             else:
@@ -118,10 +117,10 @@ def amend_doc(
         # However, be careful to use displayed questions numbers,
         # since `q` is the question number *before shuffling*.
         q_num = page_data.questions_nums_conversion[q]
-        pics[q_num] = pic
+        images[q_num] = img
         # Sort pages now.
     pages: list[Image]
-    _, pages = zip(*sorted(pics.items()))  # type: ignore
+    _, pages = zip(*sorted(images.items()))  # type: ignore
     draw = ImageDraw.Draw(pages[0])
     _write_score(draw, (2 * size, 4 * size), doc_data.score, max_score, 2 * size)
     pages[0].save(

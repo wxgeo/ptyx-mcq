@@ -55,20 +55,20 @@ class ScanData:
         self.neutralized_answers: dict[DocumentId, OriginalQuestionAnswersDict] = {}
         # self.paths.make_dirs()
         self.config: Configuration = self.get_configuration(self.paths.configfile)
-        # When two versions of the same document are detected, a temporary document id
-        # is given to the duplicates, to preserve id unicity until conflicts resolution phase.
-        # The true id of the duplicate documents is stored in dict `self.duplicates_alias`:
-        # `self.duplicates_alias`: list all alias id used for a scanned document's page.
-        # self.duplicates_alias: dict[[DocumentId, PageNum], list[DocumentId]] = {}
-        # Counter used to generate unique temporary id.
-        # This is a negative integer, since all temporary ids will be negative integers.
-        self._tmp_ids_counter = -1
         self.picture_analyzer = PictureAnalyzer(self)
         # Navigate between documents.
         self._index: dict[DocumentId, Document] | None = None
 
     def __iter__(self) -> Iterator[Document]:
         return iter(self.index.values())
+
+    @property
+    def pages(self) -> Iterator[Page]:
+        return iter(page for doc in self for page in doc)
+
+    @property
+    def pictures(self) -> Iterator[Picture]:
+        return iter(pic for doc in self for page in doc for pic in page)
 
     def initialize(self, reset=False) -> None:
         """Load all information from files."""
@@ -114,10 +114,10 @@ class ScanData:
                 self._index.setdefault(
                     doc_id := identification_data.doc_id, doc := Document(self, doc_id, {})
                 ).pages.setdefault(
-                    page_num := identification_data.page, page := Page(doc, page_num, [])
+                    page_num := identification_data.page_num, page := Page(doc, page_num, [])
                 ).pictures.append(
                     Picture(
-                        parent=page,
+                        page=page,
                         path=self.dirs.cache / f"{pdf_hash}/{pic_num}.webp",
                         calibration_data=calibration_data,
                         identification_data=identification_data,
@@ -131,14 +131,8 @@ class ScanData:
 
         This used only to make debugging easier.
         """
-        for doc_id, doc in self.index.items():
-            (self.dirs.index / str(doc_id)).write_text(
-                "\n".join(
-                    f"{page_num}: " + ", ".join(pic.encoded_path for pic in page.pictures)
-                    for page_num, page in doc.pages.items()
-                ),
-                encoding="utf8",
-            )
+        for doc in self:
+            doc.save_index()
 
     def get_configuration(self, path: Path) -> Configuration:
         """Read configuration file, load configuration and calculate maximal score too."""

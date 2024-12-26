@@ -35,8 +35,8 @@ from ptyx_mcq.tools.config_parser import (
 
 
 class ClDocHeaderDisplayer(AbstractDocHeaderDisplayer):
-    def __init__(self, data_storage: ScanData, doc_id: DocumentId):
-        array = data_storage.get_matrix(doc_id)
+    def __init__(self, scan_data: ScanData, doc_id: DocumentId):
+        array = scan_data.index[doc_id].pages[PageNum(1)].pic.as_matrix()
         width = array.shape[1]
         self.viewer = ImageViewer(array=array[0 : int(3 / 4 * width), :])
         self.process: CompletedProcess | Popen | None = None
@@ -137,7 +137,7 @@ class ClAnswersReviewer(AbstractAnswersReviewer):
 
     @copy_docstring(AbstractAnswersReviewer.edit_answers)
     def edit_answers(self, doc_id: DocumentId, page: PageNum) -> tuple[Action, bool]:
-        config = self.data_storage.config
+        config = self.scan_data.config
         pic_data = self.data[doc_id].pages[page]
         answered = pic_data.answered
         revision_status = pic_data.revision_status
@@ -199,7 +199,7 @@ class ClAnswersReviewer(AbstractAnswersReviewer):
 
     def display_page_with_detected_answers(self, doc_id: DocumentId, page: PageNum) -> Popen:
         """Display the page with its checkboxes colored following their detection status."""
-        array = self.data_storage.get_matrix(doc_id)
+        array = self.scan_data.get_matrix(doc_id)
         pic_data = self.data[doc_id].pages[page]
         return self.display_picture_with_detected_answers(array, pic_data)
 

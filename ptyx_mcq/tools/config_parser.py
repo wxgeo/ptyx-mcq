@@ -36,6 +36,10 @@ QuestionNumberOrDefault = Literal["default"] | OriginalQuestionNumber
 
 StudentIdFormat = tuple[int, int, list[tuple[str, ...]]]
 
+OriginalQuestionAnswersDict = dict[OriginalQuestionNumber, set[OriginalAnswerNumber]]
+ApparentQuestionAnswersDict = dict[ApparentQuestionNumber, set[ApparentAnswerNumber]]
+QuestionToAnswerDict = OriginalQuestionAnswersDict | ApparentQuestionAnswersDict
+
 
 class InvalidConfigurationKey(KeyError):
     """Error raised when an unknown key appears in a configuration file."""
@@ -137,6 +141,18 @@ class Configuration:
             if self.mode.get(q, default_mode) != "skip":
                 max_score += self.correct.get(q, default_correct)
         return max_score
+
+    @property
+    def correct_answers(self) -> dict[DocumentId, OriginalQuestionAnswersDict]:
+        return get_answers_with_status(self, correct=True)
+
+    @property
+    def neutralized_answers(self) -> dict[DocumentId, OriginalQuestionAnswersDict]:
+        return get_answers_with_status(self, correct=None)
+
+    @property
+    def incorrect_answers(self) -> dict[DocumentId, OriginalQuestionAnswersDict]:
+        return get_answers_with_status(self, correct=False)
 
     def dump(self, path: Path | str) -> None:
         """Dump `cfg` dict to `path` as json."""
@@ -337,11 +353,6 @@ def is_answer_correct(
         # q_num and a_num are question and answer number *after* shuffling questions.
         original_q_num = config.ordering[doc_id]["questions"][q_num - 1]
         return config.ordering[doc_id]["answers"][original_q_num][a_num - 1][1]
-
-
-OriginalQuestionAnswersDict = dict[OriginalQuestionNumber, set[OriginalAnswerNumber]]
-ApparentQuestionAnswersDict = dict[ApparentQuestionNumber, set[ApparentAnswerNumber]]
-QuestionToAnswerDict = OriginalQuestionAnswersDict | ApparentQuestionAnswersDict
 
 
 @typing.overload

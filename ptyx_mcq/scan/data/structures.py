@@ -10,7 +10,7 @@ from ptyx.shell import print_error
 
 from ptyx_mcq.scan.picture_analyze.calibration import CalibrationData
 from ptyx_mcq.scan.picture_analyze.identify_doc import IdentificationData
-from ptyx_mcq.scan.picture_analyze.types_declaration import Pixel
+from ptyx_mcq.scan.picture_analyze.types_declaration import Pixel, Line, Col
 from ptyx_mcq.tools.config_parser import (
     DocumentId,
     StudentId,
@@ -21,6 +21,7 @@ from ptyx_mcq.tools.config_parser import (
     OriginalAnswerNumber,
     PageNum,
     CbxRef,
+    Configuration,
 )
 
 if TYPE_CHECKING:
@@ -29,6 +30,7 @@ if TYPE_CHECKING:
 PdfHash = NewType("PdfHash", str)
 PicNum = NewType("PicNum", int)
 PdfData = dict[PdfHash, dict[PicNum, tuple[CalibrationData, IdentificationData]]]
+CbxPositions = dict[CbxRef, tuple[Line, Col]]
 
 
 class InvalidFormat(RuntimeError):
@@ -63,7 +65,7 @@ class RevisionStatus(Enum):
         return self.name
 
 
-@dataclass
+@dataclass(frozen=True)
 class Student:
     """Data class regrouping information concerning one student."""
 
@@ -74,7 +76,7 @@ class Student:
         return f"{self.name}\n{self.id}\n"
 
     @classmethod
-    def _from_str(cls: Self, file_content: str) -> Self:
+    def _from_str(cls: "Student", file_content: str) -> "Student":
         try:
             student_name, student_id = file_content.strip().split("\n")
             return cls(name=StudentName(student_name), id=StudentId(student_id))
@@ -137,12 +139,20 @@ class Checkboxes(dict, Mapping[CbxRef, CbxState]):
 
 @dataclass(kw_only=True)
 class Picture:
-    parent: "Page"
+    page: "Page"
     path: Path
     calibration_data: CalibrationData
     identification_data: IdentificationData
-    checkboxes: Checkboxes | None = None
-    student: Student | None = None
+    _checkboxes: Checkboxes | None = None
+    _student: Student | None = None
+    ignore: bool = False
+
+    def __post_init__(self) -> None:
+        try:
+            self._load_student()
+            self._load_checkboxes()
+        except (OSError, InvalidFormat):
+            pass
 
     def __eq__(self, other):
         if not isinstance(other, Picture):
@@ -157,6 +167,14 @@ class Picture:
         return self.as_hashable_tuple() == other.as_hashable_tuple()
 
     @property
+    def scan_data(self) -> ScanData:
+        return self.page.doc.parent
+
+    @property
+    def config(self) -> Configuration:
+        return self.scan_data.config
+
+    @property
     def doc_id(self) -> DocumentId:
         """The id of the original document."""
         return self.identification_data.doc_id
@@ -164,29 +182,29 @@ class Picture:
     @property
     def page_num(self) -> PageNum:
         """The page number in the original document."""
-        return self.identification_data.page
+        return self.identification_data.page_num
 
-    def xy2ij(self, x: float, y: float) -> Pixel:
-        """Convert (x, y) position (mm) to pixel coordinates (i, j).
+    def as_hashable_tuple(self) -> tuple:
+        return (
+            self.student,
+            self.identification_data.doc_id,
+            self.identification_data.page_num,
+            tuple(self.checkboxes.values()),
+        )
 
-        (x, y) is the position from the bottom left of the page in mm,
-        as given by LaTeX.
-        (i, j) is the position in pixel coordinates, where i is the line and j the
-        column, starting from the top left of the image.
-        """
-        # Top left square is printed at 1 cm from the left and the top of the sheet.
-        # 29.7 cm - 1 cm = 28.7 cm (A4 sheet format = 21 cm x 29.7 cm)
-        top, left = self.calibration_data.top_left_corner_position
-        v_resolution = self.calibration_data.v_pixels_per_mm
-        h_resolution = self.calibration_data.h_pixels_per_mm
-        return Pixel((round((287 - y) * v_resolution + top), round((x - 10) * h_resolution + left)))
+    # ------------------
+    #       Path
+    # ==================
+
+    def locate_file(self, local_path: Path | str) -> Path | None:
+        return self.scan_data.paths.locate_file(f"{self.pdf_hash}/{local_path}")
 
     @property
     def dir(self):
         return self.path.parent
 
     @property
-    def encoded_path(self) -> str:
+    def short_path(self) -> str:
         return str(self.path.with_suffix("").relative_to(self.path.parent.parent))
 
     @property
@@ -197,26 +215,84 @@ class Picture:
     def num(self) -> PicNum:
         return PicNum(int(self.path.stem))
 
-    def as_image(self) -> Image.Image:
-        if not self.path.is_file():
-            print_error(f"File not found: `{self.path}`")
-            raise FileNotFoundError(f'"{self.path}"')
+    # -------------------
+    #      Students
+    # ===================
+
+    @property
+    def student(self) -> Student | None:
+        """
+        The student information found in this picture, if any, else `None`.
+
+        Note that only the first page of a document will contain student information, so for all other pages,
+        `None` will be returned instead.
+
+        When setting the value, the new value will be automatically saved on drive,
+        to be retrieved on an eventual later run.
+
+        The first time the value is set, it will be saved in the `cache` directory.
+        If it is modified later, the value will be saved in the `fix` directory then.
+        """
+        return self.student
+
+    @student.setter
+    def student(self, student: Student):
+        is_fix = self._student is not None
+        self._student = student
+        self._save_student(is_fix=is_fix)
+
+    def _load_student(self) -> None:
+        if self.page_num == 1:
+            path = self.locate_file(f"students/{self.num}")
+            if path is not None:
+                self._student = Student.load(path)
+
+    def _save_student(self, is_fix=False) -> None:
+        if self.student is not None:
+            root = self.scan_data.paths.dirs.fix if is_fix else self.scan_data.paths.dirs.cache
+            (folder := root / "students").mkdir(exist_ok=True)
+            self.student.save(folder / str(self.num))
+
+    # --------------------------
+    #         Checkboxes
+    # ==========================
+
+    @property
+    def checkboxes(self) -> Checkboxes:
+        return self._checkboxes
+
+    @checkboxes.setter
+    def checkboxes(self, checkboxes: Checkboxes):
+        is_fix = self._checkboxes is not None
+        self._checkboxes = checkboxes
+        self._save_checkboxes(is_fix=is_fix)
+
+    def _load_checkboxes(self) -> None:
+        path = self.locate_file(f"checkboxes/{self.num}")
+        if path is not None:
+            checkboxes = Checkboxes.load(path)
+            if set(self.scan_data.config.boxes[self.doc_id][self.page_num]) == set(checkboxes):
+                self._checkboxes = checkboxes
+
+    def _save_checkboxes(self, is_fix=False) -> None:
+        if self.checkboxes is not None:
+            root = self.scan_data.paths.dirs.fix if is_fix else self.scan_data.paths.dirs.cache
+            (folder := root / "checkboxes").mkdir(exist_ok=True)
+            self.checkboxes.save(folder / str(self.num))
+
+    def _boxes_latex_position(self, doc_id: DocumentId, page: PageNum) -> dict[CbxRef, tuple[float, float]]:
         try:
-            return Image.open(str(self.path))
-        except Exception:
-            print_error(f"Error when opening {self.path}.")
+            # The page may contain no question, so return an empty dict by default.
+            return self.config.boxes[doc_id].get(page, {})
+        except KeyError:
+            print(f"ERROR: doc id: {doc_id}, doc page: {page}")
             raise
 
-    def as_matrix(self) -> ndarray:
-        return array(self.as_image().convert("L")) / 255
-
-    def as_hashable_tuple(self) -> tuple:
-        return (
-            self.student,
-            self.identification_data.doc_id,
-            self.identification_data.page,
-            tuple(self.checkboxes.values()),
-        )
+    def get_checkboxes_positions(self) -> CbxPositions:
+        """Retrieve the checkboxes positions in the pixel's matrix of the picture `pic`."""
+        # The page may contain no question, so return an empty dict by default.
+        boxes = self._boxes_latex_position(self.doc_id, self.page_num)
+        return {q_a: self.xy2ij(*xy) for q_a, xy in boxes.items()}
 
     @property
     def answered(self) -> dict[OriginalQuestionNumber, set[OriginalAnswerNumber]]:
@@ -234,12 +310,49 @@ class Picture:
         """All the (original) question numbers found in the picture."""
         return sorted({q for (q, a) in self.checkboxes})
 
+    # ------------------
+    #       Array
+    # ==================
+
+    def xy2ij(self, x: float, y: float) -> Pixel:
+        """Convert (x, y) position (mm) to pixel coordinates (i, j).
+
+        (x, y) is the position from the bottom left of the page in mm,
+        as given by LaTeX.
+        (i, j) is the position in pixel coordinates, where i is the line and j the
+        column, starting from the top left of the image.
+        """
+        # Top left square is printed at 1 cm from the left and the top of the sheet.
+        # 29.7 cm - 1 cm = 28.7 cm (A4 sheet format = 21 cm x 29.7 cm)
+        top, left = self.calibration_data.top_left_corner_position
+        v_resolution = self.calibration_data.v_pixels_per_mm
+        h_resolution = self.calibration_data.h_pixels_per_mm
+        return Pixel((round((287 - y) * v_resolution + top), round((x - 10) * h_resolution + left)))
+
+    def as_image(self) -> Image.Image:
+        if not self.path.is_file():
+            print_error(f"File not found: `{self.path}`")
+            raise FileNotFoundError(f'"{self.path}"')
+        try:
+            return Image.open(str(self.path))
+        except Exception:
+            print_error(f"Error when opening {self.path}.")
+            raise
+
+    def as_matrix(self) -> ndarray:
+        return array(self.as_image().convert("L")) / 255
+
 
 @dataclass
 class Page:
-    parent: "Document"
+    doc: "Document"
     page_num: PageNum
     pictures: list[Picture]
+
+    # @property
+    # def has_conflicts(self):
+    #     # No conflict is the data are the same (checkboxes + names).
+    #     return sum(1 for pic in self.pictures if not pic.ignore) >= 2
 
     @property
     def has_conflicts(self):
@@ -276,6 +389,10 @@ class Document:
     score_per_question: dict[OriginalQuestionNumber, float] | None = None
 
     @property
+    def first_page(self) -> Page | None:
+        return self.pages.get(PageNum(1))
+
+    @property
     def pictures(self) -> list[Picture]:
         """Return all the pictures associated with this document."""
         return [pic for page in self.pages.values() for pic in page.pictures]
@@ -296,3 +413,12 @@ class Document:
     @property
     def student_name(self) -> StudentName:
         return self.pages[PageNum(1)].pic.student.name
+
+    def _as_str(self):
+        return "\n".join(
+            f"{page.page_num}: " + ", ".join(pic.short_path for pic in page.pictures) for page in self
+        )
+
+    def save_index(self):
+        """Save an index of all the document pages and the corresponding pictures."""
+        (self.parent.dirs.index / str(self.doc_id)).write_text(self._as_str(), encoding="utf8")

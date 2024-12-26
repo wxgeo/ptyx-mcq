@@ -93,3 +93,14 @@ class PathsHandler:
         # noinspection PyUnresolvedReferences
         for dirname in self.dirs.__dataclass_fields__:
             getattr(self.dirs, dirname).mkdir(parents=True, exist_ok=True)
+
+    def locate_file(self, local_path: str | Path) -> Path | None:
+        """Search for a corresponding file in the fix directory, then in the cache directory.
+
+        If not file is found, return `None`.
+        """
+        if (path := self.dirs.fix / local_path).exists():
+            return path
+        elif (path := self.dirs.cache / local_path).exists():
+            return path
+        return None
