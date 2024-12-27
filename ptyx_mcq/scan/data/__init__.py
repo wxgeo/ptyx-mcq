@@ -90,13 +90,13 @@ class ScanData:
     @property
     def index(self) -> dict[DocumentId, Document]:
         if self._index is None:
-            self._index = self._generate_index()
+            self._generate_index()
             # Keep a track of the index, to make debugging easier.
             self.save_index()
             print("Index generated.")
         return self._index
 
-    def _generate_index(self) -> dict[DocumentId, Document]:
+    def _generate_index(self) -> None:
         """Generate the tree of all the documents.
 
         The arborescence is the following:
@@ -121,7 +121,10 @@ class ScanData:
                         questions=self._generate_questions_tree(doc_id, page_num, calibration_data),
                     )
                 )
-        return self._index
+        # Sort by document id and page number.
+        self._index = {doc_id: self._index[doc_id] for doc_id in sorted(self._index)}
+        for doc in self._index.values():
+            doc.pages = {page_num: doc.pages[page_num] for page_num in sorted(doc.pages)}
 
     def _generate_questions_tree(
         self, doc_id: DocumentId, page_num: PageNum, calibration_data: CalibrationData

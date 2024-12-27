@@ -28,7 +28,7 @@ def patched_conflict_solver(monkeypatch, tmp_path, no_display):
     shutil.copytree(DATA_DIR / "no-conflict", tmp_path / "no-conflict")
     data_storage = ScanData(config_path=tmp_path / "no-conflict")
     conflict_solver = ConflictSolver(data_storage)
-    conflict_solver.data_storage.initialize()
+    conflict_solver.scan_data.initialize()
 
     # noinspection PyUnusedLocal
     def get_matrix(self, doc_id: int, page: int) -> ndarray:

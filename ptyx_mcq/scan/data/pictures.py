@@ -94,8 +94,8 @@ class Picture:
     #       Path
     # ==================
 
-    def locate_file(self, local_path: Path | str) -> Path | None:
-        return self.scan_data.paths.locate_file(f"{self.pdf_hash}/{local_path}")
+    # def locate_file(self, local_path: Path | str) -> Path | None:
+    #     return self.scan_data.paths.locate_file(f"{self.pdf_hash}/{local_path}")
 
     @property
     def cache_dir(self) -> Path:
@@ -184,6 +184,10 @@ class Picture:
             self.calibration_data.f_cell_size,
         )
 
+    @property
+    def student_reviewed(self) -> bool:
+        return self._amended_student is not None
+
     # --------------------------
     #         Checkboxes
     # ==========================
@@ -230,10 +234,6 @@ class Picture:
         return cbx_content
 
     @property
-    def checkboxes_need_review(self) -> bool:
-        return any(question.needs_review for question in self)
-
-    @property
     def checkboxes_analyzed(self) -> bool:
         return all(question.analyzed for question in self)
 
@@ -241,6 +241,14 @@ class Picture:
         for (q, a), state in states.items():
             self.questions[q].answers[a].state = state
         self._save_checkboxes_state()
+
+    @property
+    def checkboxes_need_review(self) -> bool:
+        return any(question.needs_review for question in self)
+
+    @property
+    def checkbox_reviewed(self) -> bool:
+        return any(question.reviewed for question in self)
 
     # ------------------
     #       Array

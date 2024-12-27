@@ -79,6 +79,10 @@ class Answer:
     def analyzed(self) -> bool:
         return self._initial_state is not None
 
+    @property
+    def reviewed(self) -> bool:
+        return self._amended_state is not None
+
 
 @dataclass
 class Question:
@@ -116,3 +120,7 @@ class Question:
     @property
     def analyzed(self) -> bool:
         return all(answer.analyzed for answer in self)
+
+    @property
+    def reviewed(self) -> bool:
+        return any(answer.reviewed for answer in self)
