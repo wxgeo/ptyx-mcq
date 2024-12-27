@@ -25,7 +25,7 @@ from ptyx_mcq.tools.config_parser import (
 )
 
 if TYPE_CHECKING:
-    from ptyx_mcq.scan.data.main_manager import ScanData
+    from ptyx_mcq.scan.data import ScanData
 
 PdfHash = NewType("PdfHash", str)
 PicNum = NewType("PicNum", int)
@@ -97,44 +97,95 @@ class Student:
         path.write_text(self._as_str(), encoding="utf8")
 
 
-class Checkboxes(dict, Mapping[CbxRef, CbxState]):
-    """Dict containing all the checkboxes states (CHECKED, UNCHECKED, ...)."""
+# class Checkboxes(dict, Mapping[CbxRef, CbxState]):
+#     """Dict containing all the checkboxes states (CHECKED, UNCHECKED, ...)."""
+#
+#     def _as_str(self) -> str:
+#         # `{state!r}` and not `{state}`, to get "CHECKED" and not "CbxState.CHECKED".
+#         return "\n".join(f"{q}, {a}: {state!r}" for (q, a), state in self.items()) + "\n"
+#
+#     @classmethod
+#     def _from_str(cls: Self, content: str) -> Self:
+#         cbx_states: Self = Checkboxes()
+#         for line in content.split("\n"):
+#             if line := line.strip():
+#                 try:
+#                     q_a, status = line.split(":")
+#                     q, a = q_a.split(",")
+#                     cbx_states[(OriginalQuestionNumber(int(q)), OriginalAnswerNumber(int(a)))] = getattr(
+#                         CbxState, status.strip()
+#                     )
+#                 except (ValueError, AttributeError):
+#                     raise InvalidFormat(f"Incorrect line: {line!r}")
+#         return cbx_states
+#
+#     @classmethod
+#     def load(cls: Self, path: Path) -> Self:
+#         """Read the content of a checkboxes states file.
+#
+#         May raise:
+#             - an OSError variant if the file is missing or unreadable.
+#             - an InvalidFormat if the file format is incorrect.
+#         """
+#         return cls._from_str(path.read_text(encoding="utf8"))
+#
+#     def save(self, path: Path) -> None:
+#         path.write_text(self._as_str(), encoding="utf8")
+#
+#     @property
+#     def needs_review(self) -> bool:
+#         return any(state.needs_review for state in self.values())
 
-    def _as_str(self) -> str:
-        # `{state!r}` and not `{state}`, to get "CHECKED" and not "CbxState.CHECKED".
-        return "\n".join(f"{q}, {a}: {state!r}" for (q, a), state in self.items()) + "\n"
 
-    @classmethod
-    def _from_str(cls: Self, content: str) -> Self:
-        cbx_states: Self = Checkboxes()
-        for line in content.split("\n"):
-            if line := line.strip():
-                try:
-                    q_a, status = line.split(":")
-                    q, a = q_a.split(",")
-                    cbx_states[(OriginalQuestionNumber(int(q)), OriginalAnswerNumber(int(a)))] = getattr(
-                        CbxState, status.strip()
-                    )
-                except (ValueError, AttributeError):
-                    raise InvalidFormat(f"Incorrect line: {line!r}")
-        return cbx_states
+@dataclass
+class Answer:
+    answer_num: OriginalAnswerNumber
+    # Should the checkbox have been checked?
+    is_correct: bool | None
+    # Position of the top-left pixel of the checkbox
+    position: Pixel
+    # State of the checkbox as detected by the program
+    _initial_state: CbxState
+    # State of the checkbox after user review, if any, else `None`.
+    _amended_state: CbxState | None = None
 
-    @classmethod
-    def load(cls: Self, path: Path) -> Self:
-        """Read the content of a checkboxes states file.
+    @property
+    def state(self) -> CbxState:
+        return self._initial_state if self._amended_state is None else self._amended_state
 
-        May raise:
-            - an OSError variant if the file is missing or unreadable.
-            - an InvalidFormat if the file format is incorrect.
-        """
-        return cls._from_str(path.read_text(encoding="utf8"))
+    def as_str(self, is_fix=False) -> str:
+        state = self._amended_state if is_fix else self._initial_state
+        return "" if state is None else f"{self.answer_num}: {state!r}"
 
-    def save(self, path: Path) -> None:
-        path.write_text(self._as_str(), encoding="utf8")
+    def as_hashable_tuple(self):
+        return self.as_str(), self.as_str(is_fix=True)
 
     @property
     def needs_review(self) -> bool:
-        return any(state.needs_review for state in self.values())
+        return self._initial_state.needs_review
+
+
+@dataclass
+class Question:
+    question_num: OriginalQuestionNumber
+    answers: dict[OriginalQuestionNumber, Answer]
+
+    def __iter__(self):
+        return iter(answer for answer in self.answers.values())
+
+    def as_str(self, is_fix=False) -> str:
+        return (
+            f"[{self.question_num}]\n"
+            + "\n".join(a for answer in self if (a := answer.as_str(is_fix)))
+            + "\n"
+        )
+
+    def as_hashable_tuple(self):
+        return tuple(answer.as_hashable_tuple() for answer in self)
+
+    @property
+    def needs_review(self) -> bool:
+        return any(answer.needs_review for answer in self)
 
 
 @dataclass(kw_only=True)
@@ -143,9 +194,11 @@ class Picture:
     path: Path
     calibration_data: CalibrationData
     identification_data: IdentificationData
-    _checkboxes: Checkboxes | None = None
-    _student: Student | None = None
-    ignore: bool = False
+    questions: dict[OriginalQuestionNumber, Question]
+    # _checkboxes: Checkboxes | None = None
+    _initial_student: Student | None = None
+    _amended_student: Student | None = None
+    use: bool = True
 
     def __post_init__(self) -> None:
         try:
@@ -154,15 +207,13 @@ class Picture:
         except (OSError, InvalidFormat):
             pass
 
+    def __iter__(self) -> Iterator[Question]:
+        return iter(q for q in self.questions.values())
+
     def __eq__(self, other):
         if not isinstance(other, Picture):
             return False
-        if (
-            self.checkboxes is None
-            or self.student is None
-            or other.checkboxes is None
-            or other.student is None
-        ):
+        if self.questions is None or self.student is None or other.questions is None or other.student is None:
             raise ValueError("Unparsed pictures should not be compared. Analyze them before.")
         return self.as_hashable_tuple() == other.as_hashable_tuple()
 
@@ -189,7 +240,7 @@ class Picture:
             self.student,
             self.identification_data.doc_id,
             self.identification_data.page_num,
-            tuple(self.checkboxes.values()),
+            tuple(q.as_hashable_tuple() for q in self),
         )
 
     # ------------------
@@ -233,13 +284,16 @@ class Picture:
         The first time the value is set, it will be saved in the `cache` directory.
         If it is modified later, the value will be saved in the `fix` directory then.
         """
-        return self.student
+        return self._initial_student if self._amended_student is None else self._amended_student
 
     @student.setter
     def student(self, student: Student):
-        is_fix = self._student is not None
-        self._student = student
-        self._save_student(is_fix=is_fix)
+        if self._initial_student is None:
+            self._initial_student = student
+            self._save_student()
+        else:
+            self._amended_student = student
+            self._save_student(is_fix=True)
 
     def _load_student(self) -> None:
         if self.page_num == 1:
@@ -257,15 +311,15 @@ class Picture:
     #         Checkboxes
     # ==========================
 
-    @property
-    def checkboxes(self) -> Checkboxes:
-        return self._checkboxes
+    # @property
+    # def checkboxes(self) -> Checkboxes:
+    #     return self._checkboxes
 
-    @checkboxes.setter
-    def checkboxes(self, checkboxes: Checkboxes):
-        is_fix = self._checkboxes is not None
-        self._checkboxes = checkboxes
-        self._save_checkboxes(is_fix=is_fix)
+    # @checkboxes.setter
+    # def checkboxes(self, checkboxes: Checkboxes):
+    #     is_fix = self._checkboxes is not None
+    #     self._checkboxes = checkboxes
+    #     self._save_checkboxes(is_fix=is_fix)
 
     def _load_checkboxes(self) -> None:
         path = self.locate_file(f"checkboxes/{self.num}")
@@ -297,18 +351,46 @@ class Picture:
     @property
     def answered(self) -> dict[OriginalQuestionNumber, set[OriginalAnswerNumber]]:
         """Answers checked by the student for each question."""
-        if self.checkboxes is None:
-            raise ValueError("Picture must be analyzed first.")
-        d = {}
-        for (q, a), state in self.checkboxes.items():
-            if state.seems_checked:
-                d.setdefault(q, set()).add(a)
-        return d
+        # if self.questions is None:
+        #     raise ValueError("Picture must be analyzed first.")
+        return {q.question_num: {a for a in q if a.state.seems_checked} for q in self}
 
-    @property
-    def questions(self) -> list[OriginalQuestionNumber]:
-        """All the (original) question numbers found in the picture."""
-        return sorted({q for (q, a) in self.checkboxes})
+    # @property
+    # def questions(self) -> list[OriginalQuestionNumber]:
+    #     """All the (original) question numbers found in the picture."""
+    #     return sorted({q for (q, a) in self.checkboxes})
+
+    def _as_str(self) -> str:
+        # `{state!r}` and not `{state}`, to get "CHECKED" and not "CbxState.CHECKED".
+        return "\n".join(f"[{q}], {a}: {state!r}" for (q, a), state in self.items()) + "\n"
+
+    @classmethod
+    def _from_str(cls: Self, content: str) -> Self:
+        cbx_states: Self = Checkboxes()
+        for line in content.split("\n"):
+            if line := line.strip():
+                try:
+                    q_a, status = line.split(":")
+                    q, a = q_a.split(",")
+                    cbx_states[(OriginalQuestionNumber(int(q)), OriginalAnswerNumber(int(a)))] = getattr(
+                        CbxState, status.strip()
+                    )
+                except (ValueError, AttributeError):
+                    raise InvalidFormat(f"Incorrect line: {line!r}")
+        return cbx_states
+
+    @classmethod
+    def load(cls: Self, path: Path) -> Self:
+        """Read the content of a checkboxes states file.
+
+        May raise:
+            - an OSError variant if the file is missing or unreadable.
+            - an InvalidFormat if the file format is incorrect.
+        """
+        return cls._from_str(path.read_text(encoding="utf8"))
+
+    def save(self, path: Path) -> None:
+        path.write_text(self._as_str(), encoding="utf8")
 
     # ------------------
     #       Array
@@ -349,22 +431,21 @@ class Page:
     page_num: PageNum
     pictures: list[Picture]
 
-    # @property
-    # def has_conflicts(self):
-    #     # No conflict is the data are the same (checkboxes + names).
-    #     return sum(1 for pic in self.pictures if not pic.ignore) >= 2
-
     @property
-    def has_conflicts(self):
+    def has_conflicts(self) -> bool:
         # No conflict is the data are the same (checkboxes + names).
-        return len(self._conflicting_versions) >= 2
+        return len(self.used_pictures) >= 2
 
     @property
-    def _conflicting_versions(self) -> list[Picture]:
-        return list({pic.as_hashable_tuple(): pic for pic in self.pictures}.values())
+    def used_pictures(self) -> list[Picture]:
+        return [pic for pic in self.pictures if pic.use]
+
+    # @property
+    # def _conflicting_versions(self) -> list[Picture]:
+    #     return list({pic.as_hashable_tuple(): pic for pic in self.pictures}.values())
 
     @property
-    def pic(self):
+    def pic(self) -> Picture:
         assert self.pictures
         if self.has_conflicts:
             raise ValueError(
@@ -372,9 +453,16 @@ class Page:
             )
         return self.pictures[0]
 
-    def remove_duplicates(self):
+    def disable_duplicates(self) -> None:
         """Remove pictures which contain the same information, keeping only conflicting versions."""
-        self.pictures = self._conflicting_versions
+        seen = set()
+        for pic in self.pictures:
+            if pic.use:
+                t = pic.as_hashable_tuple()
+                if t in seen:
+                    pic.use = False
+                else:
+                    seen.add(t)
 
     def __iter__(self) -> Iterator[Picture]:
         return iter(self.pictures)
