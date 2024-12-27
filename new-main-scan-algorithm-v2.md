@@ -31,7 +31,7 @@ Le dossier `<hash-pdf>` contiendra :
 Exemple, pour un fichier pdf de hash `00d68ea2ab8af0932bee516ee60a79cdeb5fb1d0` et possédant 2 pages,
 on aura généré à terme les dossiers et fichier suivants :
 ```
-    pic
+    .cache
     └── 00d68ea2ab8af0932bee516ee60a79cdeb5fb1d0
         ├── 0.webp
         ├── 1.webp

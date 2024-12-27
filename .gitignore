@@ -3,6 +3,7 @@
 .idea/
 .cache
 .tox/
+venv/
 *.pyc
 *.synctex.gz
 *~

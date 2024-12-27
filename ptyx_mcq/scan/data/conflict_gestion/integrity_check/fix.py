@@ -7,8 +7,7 @@ from ptyx_mcq.scan.data.conflict_gestion.integrity_check.check import (
     MissingQuestion,
     IntegrityCheckResult,
 )
-from ptyx_mcq.scan.data.main_manager import ScanData
-from ptyx_mcq.scan.data.structures import Picture
+from ptyx_mcq.scan.data import ScanData, Picture
 from ptyx_mcq.tools.config_parser import DocumentId, PageNum
 
 

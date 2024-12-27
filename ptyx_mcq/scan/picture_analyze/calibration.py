@@ -83,6 +83,21 @@ class CalibrationData:
     def cell_size(self) -> int:
         return round(self.f_cell_size)
 
+    def xy2ij(self, x: float, y: float) -> Pixel:
+        """Convert (x, y) position (mm) to pixel coordinates (i, j).
+
+        (x, y) is the position from the bottom left of the page in mm,
+        as given by LaTeX.
+        (i, j) is the position in pixel coordinates, where i is the line and j the
+        column, starting from the top left of the image.
+        """
+        # Top left square is printed at 1 cm from the left and the top of the sheet.
+        # 29.7 cm - 1 cm = 28.7 cm (A4 sheet format = 21 cm x 29.7 cm)
+        top, left = self.top_left_corner_position
+        v_resolution = self.v_pixels_per_mm
+        h_resolution = self.h_pixels_per_mm
+        return Pixel((round((287 - y) * v_resolution + top), round((x - 10) * h_resolution + left)))
+
 
 @dataclass(frozen=True)
 class Corner:

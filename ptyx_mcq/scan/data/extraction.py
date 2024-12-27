@@ -3,7 +3,7 @@ from hashlib import blake2b
 from pathlib import Path
 from shutil import rmtree
 from multiprocessing import Pool
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, NewType
 
 import fitz
 import numpy as np
@@ -14,7 +14,8 @@ from ptyx.shell import print_warning
 
 from ptyx_mcq.parameters import IMAGE_FORMAT
 from ptyx_mcq.scan.data.paths_manager import PathsHandler
-from ptyx_mcq.scan.data.structures import PdfHash, PicNum, PdfData
+
+# from ptyx_mcq.scan.data.documents import PdfHash, PicNum, PdfData
 from ptyx_mcq.scan.picture_analyze.calibration import calibrate, CalibrationData, adjust_contrast
 from ptyx_mcq.scan.picture_analyze.identify_doc import read_doc_id_and_page, IdentificationData
 from ptyx_mcq.scan.picture_analyze.types_declaration import CalibrationError
@@ -23,7 +24,11 @@ from ptyx_mcq.tools.extend_literal_eval import extended_literal_eval
 from ptyx_mcq.tools.pic import array_to_image, image_to_array
 
 if TYPE_CHECKING:
-    from ptyx_mcq.scan.data.main_manager import ScanData
+    from ptyx_mcq.scan.data import ScanData
+
+PdfHash = NewType("PdfHash", str)
+PicNum = NewType("PicNum", int)
+PdfData = dict[PdfHash, dict[PicNum, tuple[CalibrationData, IdentificationData]]]
 
 
 class PdfCollection:

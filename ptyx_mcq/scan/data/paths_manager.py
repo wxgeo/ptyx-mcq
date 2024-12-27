@@ -3,7 +3,7 @@ from pathlib import Path
 from shutil import rmtree
 from time import strftime
 
-from ptyx_mcq.parameters import CONFIG_FILE_EXTENSION
+from ptyx_mcq.parameters import CONFIG_FILE_EXTENSION, CACHE_DIR, FIX_DIR, INDEX_DIR
 from ptyx_mcq.tools.io_tools import get_file_or_sysexit
 
 
@@ -68,13 +68,13 @@ class PathsHandler:
         self.dirs = DirsPaths(
             root=root,
             # cfg=cfg,
-            index=output_dir / ".index",
+            index=output_dir / INDEX_DIR,
             data=output_dir / "data",
-            cache=output_dir / ".cache",
+            cache=output_dir / CACHE_DIR,
             pdf=output_dir / "pdf",
             checkboxes=output_dir / "checkboxes",
             log=log,
-            fix=output_dir / ".fix",
+            fix=output_dir / FIX_DIR,
         )
         self.files = FilesPaths(
             # verified=cfg / "verified.txt",

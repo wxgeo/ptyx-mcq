@@ -1,12 +1,12 @@
 from numpy import ndarray
 from ptyx.shell import print_warning
 
-from ptyx_mcq.scan.data.structures import Student, Picture
+from ptyx_mcq.scan.data.students import Student
 from ptyx_mcq.scan.picture_analyze.identify_doc import DebugInfo
 from ptyx_mcq.scan.picture_analyze.square_detection import eval_square_color, test_square_color
 from ptyx_mcq.scan.picture_analyze.types_declaration import Pixel, Rectangle, Line, Col
 from ptyx_mcq.tools.colors import Color
-from ptyx_mcq.tools.config_parser import DocumentId, StudentId, StudentName, StudentIdFormat
+from ptyx_mcq.tools.config_parser import StudentId, StudentName, StudentIdFormat
 
 
 def read_student_id_and_name(

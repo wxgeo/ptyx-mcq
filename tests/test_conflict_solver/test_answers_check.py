@@ -1,7 +1,8 @@
 from ptyx_mcq.scan.data.conflict_gestion.data_check.cl_fix import (
     ClAnswersReviewer as AnswersReviewer,
 )
-from ptyx_mcq.scan.data.structures import DocumentData, RevisionStatus
+from ptyx_mcq.scan.data.documents import DocumentData
+from ptyx_mcq.scan.data.questions import RevisionStatus
 from ptyx_mcq.tools.config_parser import (
     DocumentId,
     OriginalQuestionNumber,

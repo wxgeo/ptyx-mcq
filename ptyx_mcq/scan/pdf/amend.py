@@ -14,8 +14,8 @@ from os.path import join
 
 from PIL import ImageDraw, ImageFont
 from PIL.Image import Image
-from ptyx_mcq.scan.data.main_manager import ScanData
-from ptyx_mcq.scan.data.structures import Document
+from ptyx_mcq.scan.data import ScanData
+from ptyx_mcq.scan.data.documents import Document
 
 from ptyx_mcq.scan.picture_analyze.types_declaration import Pixel
 from ptyx_mcq.tools.colors import Color, RGB
@@ -71,7 +71,7 @@ def amend_all(scan_data: ScanData) -> None:
 #  For now, each document contain references to all scan_data,
 #  so there is *a lot* of data to pickle when using multiprocessing.
 def amend_doc(doc: Document) -> None:
-    config = doc.parent.config
+    config = doc.scan_data.config
     max_score = config.max_score
     doc_id = doc.doc_id
     correct_answers = config.correct_answers[doc_id]

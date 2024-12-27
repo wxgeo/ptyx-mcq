@@ -6,23 +6,29 @@ This means:
 - evaluating checkboxes state
 - retrieving student name and identifier
 """
+
 import concurrent.futures
 import multiprocessing
 from functools import partial
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from numpy import ndarray, concatenate
 from ptyx.shell import ANSI_CYAN, ANSI_RESET, ANSI_GREEN, ANSI_YELLOW
 
-from ptyx_mcq.scan.data.structures import CbxState, Checkboxes, Document
+
+from ptyx_mcq.scan.data.questions import CbxState
 from ptyx_mcq.scan.picture_analyze.square_detection import test_square_color
 from ptyx_mcq.scan.picture_analyze.types_declaration import Line, Col
 from ptyx_mcq.tools.config_parser import DocumentId, CbxRef, Configuration, real2apparent
 from ptyx_mcq.tools.pic import save_webp
 
 
+if TYPE_CHECKING:
+    from ptyx_mcq.scan.data.documents import Document
+
 CheckboxAnalyzeResult = dict[CbxRef, CbxState]
-CheckboxesPositions = dict[CbxRef, tuple[Line, Col]]
+# CheckboxesPositions = dict[CbxRef, tuple[Line, Col]]
 
 
 class InvalidFormat(RuntimeError):
@@ -45,11 +51,11 @@ def _get_average_blackness(blackness: list[dict[CbxRef, float]]) -> float:
 
 def analyze_checkboxes(
     all_checkboxes: list[dict[CbxRef, ndarray]],
-) -> list[Checkboxes]:
+) -> list[CheckboxAnalyzeResult]:
     """
     Evaluate each checkbox, and estimate if it was checked.
     """
-    detection_status = [Checkboxes() for _ in all_checkboxes]
+    detection_status: list[CheckboxAnalyzeResult] = [{} for _ in all_checkboxes]
     # Store blackness of checkboxes, to help detect false positives
     # and false negatives.
     blackness: list[dict[CbxRef, float]] = [{} for _ in all_checkboxes]
@@ -164,24 +170,25 @@ def eval_checkbox_color(checkbox: ndarray, margin: int = 0) -> float:
 # =========================================
 
 
-def display_analyze_results(doc: Document) -> None:
+def display_analyze_results(doc: "Document") -> None:
     """
     Print the result of the checkbox analysis for document `doc_id` in terminal.
 
     Mainly for debugging.
     """
     print(f"\n[Document {doc.doc_id}]\n")
-    config = doc.parent.config
+    config = doc.scan_data.config
     for page_num, page in doc.pages.items():
         print(f"\nPage {page}:")
         pic = page.pic
-        for q in pic.questions:
+        for q, question in pic.questions.items():
             q0 = real2apparent(q, None, config, doc.doc_id)
             # `q0` is the apparent number of the question, as displayed on the document,
             # while `q` is the internal number of the question (attributed before shuffling).
             print(f"\n{ANSI_CYAN}• Question {q0}{ANSI_RESET} (Q{q})")
-            for a, is_correct in config.ordering[doc.doc_id]["answers"][q]:
-                match pic.checkboxes[(q, a)]:
+            for a, answer in question.answers.items():
+                is_correct = answer.is_correct
+                match answer.state:
                     case CbxState.CHECKED:
                         c = "■"
                         ok = is_correct
@@ -208,16 +215,16 @@ def display_analyze_results(doc: Document) -> None:
 # This is mainly useful to create regression tests.
 
 
-def _export_document_checkboxes(doc: Document, path: Path = None, compact=False) -> None:
+def _export_document_checkboxes(doc: "Document", path: Path = None, compact=False) -> None:
     """Save the checkboxes of the document `doc_id` as .webm images in a directory."""
     if path is None:
-        path = doc.parent.paths.dirs.checkboxes
+        path = doc.scan_data.paths.dirs.checkboxes
     (doc_dir := path / str(doc.doc_id)).mkdir(exist_ok=True)
     for page_num, page in doc.pages.items():
         pic = page.pic
         matrices: list[ndarray] = []
         index_lines: list[str] = []
-        for (q, a), matrix in doc.parent.picture_analyzer.get_checkboxes(pic):
+        for (q, a), matrix in doc.scan_data.picture_analyzer.get_checkboxes(pic):
             detection_status = pic.checkboxes[(q, a)]
             # TODO: differentiate revision state and initial state!
             revision_status = pic_data.revision_status.get((q, a))

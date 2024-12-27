@@ -12,7 +12,7 @@ AmbiguousPagesList = list[tuple[DocumentId, PageNum]]
 DuplicateNamesDict = dict[StudentName, list[DocumentId]]
 
 if TYPE_CHECKING:
-    from ptyx_mcq.scan.data.main_manager import ScanData
+    from ptyx_mcq.scan.data import ScanData
 
 
 @dataclass
@@ -88,7 +88,7 @@ class DataChecker:
             (doc_id, page_num)
             for doc_id, doc in self.scan_data.index.items()
             for page_num, page in doc.pages.items()
-            if page.pic.checkboxes.needs_review
+            if page.pic.checkboxes_need_review
         ]
 
 

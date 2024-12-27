@@ -1,4 +1,4 @@
-from ptyx_mcq.scan.data.structures import CbxState
+from ptyx_mcq.scan.data.questions import CbxState
 
 UNCHECKED = CbxState.UNCHECKED
 CHECKED = CbxState.CHECKED

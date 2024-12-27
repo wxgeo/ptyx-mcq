@@ -7,8 +7,8 @@ from pathlib import Path
 from ptyx.shell import print_warning, print_error, print_info
 
 from ptyx_mcq.scan.data.conflict_gestion.data_check.check import DataChecker, DataCheckResult
-from ptyx_mcq.scan.data.main_manager import ScanData
-from ptyx_mcq.scan.data.structures import Student
+from ptyx_mcq.scan.data import ScanData
+from ptyx_mcq.scan.data.students import Student
 from ptyx_mcq.tools.config_parser import DocumentId, StudentName, StudentId, PageNum
 from ptyx_mcq.tools.math import levenshtein_distance
 

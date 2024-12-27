@@ -20,7 +20,7 @@ from ptyx_mcq.parameters import CONFIG_FILE_EXTENSION
 from ptyx_mcq.scan.pdf.amend import amend_all
 
 from ptyx_mcq.scan.data.conflict_gestion import ConflictSolver
-from ptyx_mcq.scan.data.main_manager import ScanData
+from ptyx_mcq.scan.data import ScanData
 
 from ptyx_mcq.scan.picture_analyze.types_declaration import CalibrationError
 from ptyx_mcq.scan.score_management.scores_manager import ScoresManager
@@ -218,7 +218,7 @@ class MCQPictureParser:
         # Extract all pdf files' data.
         self.data_handler.input_pdf.collect_data(number_of_processes=1)
         # Review pictures.
-        self.data_handler.picture_analyzer.run()
+        self.data_handler.analyze_pictures()
         # Extract information from scanned documents.
         # gc.collect()
         print_success("Scan successful.")

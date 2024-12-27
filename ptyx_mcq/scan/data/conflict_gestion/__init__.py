@@ -1,6 +1,6 @@
 from ptyx_mcq.scan.data.conflict_gestion.data_check.check import DataChecker
 from ptyx_mcq.scan.data.conflict_gestion.integrity_check.check import IntegrityChecker
-from ptyx_mcq.scan.data.main_manager import ScanData
+from ptyx_mcq.scan.data import ScanData
 
 
 class ConflictSolver:

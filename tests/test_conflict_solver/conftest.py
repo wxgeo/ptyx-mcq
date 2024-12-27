@@ -6,7 +6,7 @@ from numpy import ndarray, array
 
 from ptyx_mcq.scan.data.conflict_gestion import ConflictSolver
 
-from ptyx_mcq.scan.data.main_manager import ScanData
+from ptyx_mcq.scan.data import ScanData
 from tests.test_conflict_solver import DATA_DIR
 
 

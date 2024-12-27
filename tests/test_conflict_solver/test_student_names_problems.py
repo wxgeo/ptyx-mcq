@@ -2,7 +2,7 @@ from ptyx_mcq.scan.data.conflict_gestion.data_check.cl_fix import (
     ClNamesReviewer as NamesReviewer,
 )
 from ptyx_mcq.scan.data.conflict_gestion.data_check.fix import Action
-from ptyx_mcq.scan.data.structures import DocumentData
+from ptyx_mcq.scan.data.documents import DocumentData
 from ptyx_mcq.tools.config_parser import DocumentId, StudentName
 
 # NamesReviewer.CORRECT_Y_N = "Is it correct? (Y/n)"

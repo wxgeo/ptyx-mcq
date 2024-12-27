@@ -8,6 +8,10 @@ DEFAULT_TEMPLATE_DIR = "assets/templates"
 DEFAULT_TEMPLATE_NAME = "original"
 DEFAULT_TEMPLATE_FULLPATH = PACKAGE_ROOT / DEFAULT_TEMPLATE_DIR / DEFAULT_TEMPLATE_NAME
 
+CACHE_DIR = ".cache"
+FIX_DIR = ".fix"
+INDEX_DIR = ".index"
+
 CONFIG_FILE_EXTENSION = ".ptyx.mcq.config.json"
 
 # Various dimensions, given in cm.

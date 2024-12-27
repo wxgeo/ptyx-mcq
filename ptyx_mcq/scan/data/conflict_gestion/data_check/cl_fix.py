@@ -10,13 +10,10 @@ from ptyx_mcq.scan.data.conflict_gestion.data_check.fix import (
     AbstractAnswersReviewer,
     AbstractDocHeaderDisplayer,
 )
-from ptyx_mcq.scan.data.main_manager import ScanData
+from ptyx_mcq.scan.data import ScanData
 from ptyx_mcq.tools.misc import copy_docstring
 from ptyx_mcq.tools.colors import Color, RGB
-from ptyx_mcq.scan.data.structures import (
-    CbxState,
-    RevisionStatus,
-)
+from ptyx_mcq.scan.data.questions import CbxState, RevisionStatus
 from ptyx_mcq.scan.picture_analyze.image_viewer import ImageViewer
 from ptyx_mcq.tools.config_parser import (
     DocumentId,
