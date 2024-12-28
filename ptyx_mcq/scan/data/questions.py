@@ -76,6 +76,10 @@ class Answer:
         return self._initial_state.needs_review
 
     @property
+    def checked(self) -> bool | None:
+        return None if self.state is None else self.state.seems_checked
+
+    @property
     def analyzed(self) -> bool:
         return self._initial_state is not None
 

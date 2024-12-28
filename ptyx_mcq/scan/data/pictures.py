@@ -65,12 +65,8 @@ class Picture:
         return self.as_hashable_tuple() == other.as_hashable_tuple()
 
     @property
-    def scan_data(self) -> "ScanData":
-        return self.page.doc.scan_data
-
-    @property
     def config(self) -> Configuration:
-        return self.scan_data.config
+        return self.page.doc.scan_data.config
 
     @property
     def doc_id(self) -> DocumentId:

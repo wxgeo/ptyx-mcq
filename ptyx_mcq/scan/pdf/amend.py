@@ -14,10 +14,12 @@ from os.path import join
 
 from PIL import ImageDraw, ImageFont
 from PIL.Image import Image
+from ptyx_mcq.scan.data.questions import Answer
+
 from ptyx_mcq.scan.data import ScanData
 from ptyx_mcq.scan.data.documents import Document
 
-from ptyx_mcq.scan.picture_analyze.types_declaration import Pixel
+from ptyx_mcq.scan.picture_analyze.types_declaration import Pixel, Line, Col
 from ptyx_mcq.tools.colors import Color, RGB
 from ptyx_mcq.tools.config_parser import DocumentId, OriginalQuestionNumber, QuestionNumberOrDefault
 
@@ -80,10 +82,11 @@ def amend_doc(doc: Document) -> None:
     # data_storage: ScanData,
     images = {}
     for page in doc:
+        pic = page.pic
         top_left_positions: dict[OriginalQuestionNumber, Pixel] = {}
         # Convert to RGB picture.
-        img = page.pic.as_image().convert("RGB")
-        if not (positions := page.pic.get_checkboxes_positions()):
+        img = pic.as_image().convert("RGB")
+        if not pic.questions:
             # The last page of the MCQ may be empty.
             # `float('+inf')` is used to ensure
             # it will be the last page when sorting.
@@ -91,26 +94,22 @@ def amend_doc(doc: Document) -> None:
             continue
         # Drawing context
         draw = ImageDraw.Draw(img)
-        size = page.pic.calibration_data.cell_size
-        for (q, a), pos in positions:
-            checked = a in page.pic.answered[q]
-            if a in neutralized_answers[q]:
-                correct = None
-            else:
-                correct = a in correct_answers[q]
-            _correct_checkboxes(draw, pos, checked, correct, size)
-            if q in top_left_positions:
-                i0, j0 = top_left_positions[q]
-                i, j = pos
-                top_left_positions[q] = (min(i, i0), min(j, j0))
-            else:
-                top_left_positions[q] = pos
+        size = pic.calibration_data.cell_size
+        for q, question in pic.questions.items():
+            for a, answer in question.answers.items():
+                _correct_checkboxes(draw, answer, size)
+                if q in top_left_positions:
+                    i0, j0 = top_left_positions[q]
+                    i, j = answer.position
+                    top_left_positions[q] = (min(i, i0), min(j, j0))
+                else:
+                    top_left_positions[q] = answer.position
         for q in top_left_positions:
             earn = doc_data.score_per_question[q]
             maximum = max_score_per_question.get(q, max_score_per_question["default"])
             assert isinstance(maximum, (float, int)), repr(maximum)
             i, j = top_left_positions[q]
-            _write_score(draw, (i, j - 2 * size), earn, maximum, size)
+            _write_score(draw, (i, Col(j - 2 * size)), earn, maximum, size)
         # We will now sort pages.
         # For that, we use questions numbers: the page which displays
         # the smaller questions numbers is the first one, and so on.
@@ -122,7 +121,7 @@ def amend_doc(doc: Document) -> None:
     pages: list[Image]
     _, pages = zip(*sorted(images.items()))  # type: ignore
     draw = ImageDraw.Draw(pages[0])
-    _write_score(draw, (2 * size, 4 * size), doc_data.score, max_score, 2 * size)
+    _write_score(draw, (Line(2 * size), Col(4 * size)), doc_data.score, max_score, 2 * size)
     pages[0].save(
         join(data_storage.dirs.pdf, f"{doc_data.name}-{doc_id}.pdf"),
         save_all=True,
@@ -130,10 +129,10 @@ def amend_doc(doc: Document) -> None:
     )
 
 
-def _correct_checkboxes(
-    draw: ImageDraw.ImageDraw, pos: Pixel, checked: bool, correct: bool | None, size: int
-) -> None:
-    i, j = pos
+def _correct_checkboxes(draw: ImageDraw.ImageDraw, answer: Answer, size: int) -> None:
+    i, j = pos = answer.position
+    checked = answer.checked
+    correct = answer.is_correct
     margin = size // 3
     # Draw a blue square around each checkbox.
     # The square's border should be solid if the box has been detected as checked, and dashed otherwise.

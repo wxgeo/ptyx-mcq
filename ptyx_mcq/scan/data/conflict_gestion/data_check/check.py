@@ -1,6 +1,5 @@
 import operator
 from dataclasses import dataclass
-from pathlib import Path
 from typing import TYPE_CHECKING
 
 from ptyx.shell import print_warning
@@ -33,9 +32,9 @@ class DataChecker:
     def __init__(self, scan_data: "ScanData"):
         self.scan_data = scan_data
 
-    @property
-    def index(self):
-        return self.scan_data.index
+    # @property
+    # def index(self):
+    #     return self.scan_data.index
 
     def run(self) -> DataCheckResult:
         print("Searching for unnamed documents...")
@@ -50,9 +49,12 @@ class DataChecker:
         ambiguous_answers = self.find_ambiguous_answers()
         print(f"{len(ambiguous_answers)} page(s) to verify." if ambiguous_answers else "OK")
 
-        return DataCheckResult(
+        check_result = DataCheckResult(
             unnamed_docs=unnamed_docs, duplicate_names=duplicate_names, ambiguous_answers=ambiguous_answers
         )
+
+        report_data_issues(check_result)
+        return check_result
 
     def get_unnamed_docs(self) -> list[DocumentId]:
         """Get the (sorted) list of all unnamed documents ids."""
@@ -90,9 +92,6 @@ class DataChecker:
             for page_num, page in doc.pages.items()
             if page.pic.checkboxes_need_review
         ]
-
-
-# FIXME: the following function is not used anymore, remove it?
 
 
 def report_data_issues(check_result: DataCheckResult) -> None:
