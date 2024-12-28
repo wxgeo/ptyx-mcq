@@ -6,6 +6,7 @@ from pathlib import Path
 
 from ptyx.shell import print_warning, print_error, print_info
 
+from ptyx_mcq.scan.data.analyze.checkboxes import CheckboxAnalyzeResult
 from ptyx_mcq.scan.data.conflict_gestion.data_check.check import DataChecker, DataCheckResult
 from ptyx_mcq.scan.data import ScanData
 from ptyx_mcq.scan.data.students import Student
@@ -40,14 +41,12 @@ class AbstractNamesReviewer(ABC, metaclass=ABCMeta):
 
     def enter_name_and_id(
         self, doc_id: DocumentId, default: StudentName
-    ) -> tuple[StudentName, StudentId, Action, bool]:
+    ) -> tuple[StudentName, StudentId, Action]:
         """Ask user to read student name and id for current document.
 
         Return the given student name (empty if no name was provided),
-        the student id (same remark), the action to do
-        (go to next document, go back to previous one, or skip document),
-        and a boolean which indicates if the document as been
-        effectively reviewed.
+        the student id (same remark) and the action to do
+        (go to next document, go back to previous one, or skip document).
         """
         name = StudentName("")
         student_id = StudentId("")
@@ -74,13 +73,13 @@ class AbstractNamesReviewer(ABC, metaclass=ABCMeta):
                 if user_input == Action.DISCARD:
                     # Discard this document. It will be removed later.
                     print_info(f"Discarding document {doc_id}.")
-                    return StudentName(user_input), StudentId("-1"), Action.NEXT, True
+                    return StudentName(user_input), StudentId("-1"), Action.NEXT
                 elif user_input == Action.BACK:
                     print("Navigating back to previous document.")
-                    return StudentName(default), StudentId(student_id), Action.BACK, False
+                    return StudentName(default), StudentId(student_id), Action.BACK
                 elif user_input == Action.NEXT:
                     print("Navigating to next document.")
-                    return StudentName(default), StudentId(student_id), Action.NEXT, True
+                    return StudentName(default), StudentId(student_id), Action.NEXT
                 elif self.students_ids:
                     if user_input in self.students_ids:
                         # This is in fact not a name, but a known student id,
@@ -117,28 +116,27 @@ class AbstractNamesReviewer(ABC, metaclass=ABCMeta):
                     print(f"Name: {name}")
                     if not self._does_user_confirm():
                         action = None
-        return name, student_id, action, True
+        return name, student_id, action
 
-    def review_name(self, doc_id: DocumentId) -> tuple[Action, bool]:
+    def review_name(self, doc_id: DocumentId) -> Action:
         """Review the document name.
 
         Return the action to do (go to next document, go back to previous one,
-        or skip document), and a boolean which indicates if the document as been
-        effectively reviewed.
+        or skip document).
         """
         doc = self.scan_data.index[doc_id]
         if doc.first_page is None:
             print_error(f"No first page found for document {doc_id}!")
-            return Action.NEXT, False
+            return Action.NEXT
 
         # Ask user for name.
-        student_name, student_id, action, reviewed = self.enter_name_and_id(
+        student_name, student_id, action = self.enter_name_and_id(
             doc_id, default=self.scan_data.index[doc_id].student_name
         )
 
         # Store name and student id.
         self.scan_data.index[doc_id].first_page.pic.student = Student(name=student_name, id=student_id)
-        return action, reviewed
+        return action
 
     def _suggest_id(self, incorrect_student_id: str) -> StudentId:
         """Print a suggestion of student name, based on provided id.
@@ -213,7 +211,7 @@ class AbstractAnswersReviewer(ABC, metaclass=ABCMeta):
     def __init__(self, scan_data: ScanData):
         self.scan_data = scan_data
 
-    def review_answer(self, doc_id: DocumentId, page: PageNum) -> tuple[Action, bool]:
+    def review_answer(self, doc_id: DocumentId, page_num: PageNum) -> Action:
         """Review the student answers.
 
         Return the action to do (go to next document, go back to previous one,
@@ -222,15 +220,15 @@ class AbstractAnswersReviewer(ABC, metaclass=ABCMeta):
         doc = self.scan_data.index[doc_id]
         if doc.student_name == Action.DISCARD.value:
             # Skip this document.
-            return Action.NEXT, False
+            return Action.NEXT
         else:
-            pic_data = self.dcdata[doc_id].pages[page]
-            action, reviewed = self.edit_answers(doc_id, page)
-            self.scan_data.store_verified_pic(Path(pic_data.pic_path))
-            return action, reviewed
+            action, changes = self.edit_answers(doc_id, page_num)
+            # Apply changes.
+            doc.pages[page_num].pic.update_checkboxes_states(changes)
+            return action
 
     @abstractmethod
-    def edit_answers(self, doc_id: DocumentId, page: PageNum) -> tuple[Action, bool]:
+    def edit_answers(self, doc_id: DocumentId, page_num: PageNum) -> tuple[Action, CheckboxAnalyzeResult]:
         """Call interactive editor to change answers.
 
         MCQ parser internal state `self.data` will be modified accordingly.
@@ -251,40 +249,25 @@ class DefaultAllDataIssuesFixer:
 
     def __init__(
         self,
-        data_storage: ScanData,
+        scan_data: ScanData,
     ):
         from ptyx_mcq.scan.data.conflict_gestion.config import Config
 
-        self.data_storage = data_storage
-        self.data = self.data_storage.data
-        self.data_checker = DataChecker(data_storage)
-        self.name_reviewer = Config.NamesReviewer(data_storage)
-        self.answers_reviewer = Config.AnswersReviewer(data_storage)
-
-    def get_names_to_review(self) -> dict[DocumentId, bool]:
-        check_results = self.data_checker.run()
-        return {doc_id: False for doc_id in check_results.unnamed_docs} | {
-            doc_id: False for name, docs in check_results.duplicate_names.items() for doc_id in docs
-        }
+        self.scan_data = scan_data
+        self.data_checker = DataChecker(scan_data)
+        self.name_reviewer = Config.NamesReviewer(scan_data)
+        self.answers_reviewer = Config.AnswersReviewer(scan_data)
 
     def run(self, check_result: DataCheckResult) -> None:
         """Resolve conflicts manually: unknown student ID, ambiguous answer..."""
         # Each operation is independent of the other ones,
         # and user should be able to navigate between them.
 
-        # The boolean indicates whether the document was reviewed.
-        # TODO: No need to use a dict, since `reviewed` boolean is never used for `names_to_review`.
-        #       A list should be enough.
-        names_to_review: dict[DocumentId, bool] = {doc_id: False for doc_id in check_result.unnamed_docs}
-        names_to_review.update(
-            (doc_id, False) for name, docs in check_result.duplicate_names.items() for doc_id in docs
-        )
-        # The boolean indicates whether the document was reviewed.
-        answers_to_review: dict[tuple[DocumentId, PageNum], bool] = {
-            (doc, page): False for doc, page in check_result.ambiguous_answers
-        }
-
-        while len(names_to_review) + len(answers_to_review) > 0:
+        while (
+            len(names_to_review := check_result.names_to_review)
+            + len(answers_to_review := check_result.ambiguous_answers)
+            > 0
+        ):
             position = 0
             print_warning("Conflicts detected.")
             if names_to_review:
@@ -296,33 +279,35 @@ class DefaultAllDataIssuesFixer:
             while position < len(names_to_review) + len(answers_to_review):
                 if position < len(names_to_review):
                     doc_id = list(names_to_review)[position]
-                    action, reviewed = self.name_reviewer.review_name(doc_id)
-                    names_to_review[doc_id] |= reviewed
-                    # Verify that the new name has not induced a new conflict.
-                    for _doc_id in self.data:
-                        if _doc_id != doc_id and self.data[_doc_id].name == self.data[doc_id].name:
-                            names_to_review[doc_id] = False
+                    action = self.name_reviewer.review_name(doc_id)
+                    # # Verify that the new name has not induced a new conflict.
+                    # for other_doc_id in self.scan_data.index:
+                    #     if (
+                    #         other_doc_id != doc_id
+                    #         and self.scan_data.index[other_doc_id].student_name
+                    #         == self.scan_data.index[doc_id].student_name
+                    #     ):
+                    #         if doc_id not in names_to_review:
+                    #             names_to_review.append(doc_id)
                 else:
                     doc_id, page = list(answers_to_review)[position - len(names_to_review)]
-                    action, reviewed = self.answers_reviewer.review_answer(doc_id, page)
-                    answers_to_review[(doc_id, page)] |= reviewed
+                    action = self.answers_reviewer.review_answer(doc_id, page)
                 if action == Action.NEXT:
                     position += 1
                 elif action == Action.BACK:
                     position = max(0, position - 1)
 
-            # Apply changes definitively.
-            for doc_id in names_to_review:
-                if self.data[doc_id].name == Action.DISCARD.value:
-                    doc_data = self.data.pop(doc_id)
-                    # For each page of the document, add corresponding picture path
-                    # to skipped paths list.
-                    # If `mcq scan` is run again, those pictures will be skipped.
-                    for pic_data in doc_data.pages.values():
-                        self.data_storage.store_skipped_pic(Path(pic_data.pic_path))
-                    # Remove also all corresponding data files.
-                    self.data_storage.remove_doc_files(doc_id)
+            # # Apply changes definitively.
+            # for doc_id in names_to_review:
+            #     if self.scan_data.index[doc_id].student_name == Action.DISCARD.value:
+            #         doc_data = self.scan_data.pop(doc_id)
+            #         # For each page of the document, add corresponding picture path
+            #         # to skipped paths list.
+            #         # If `mcq scan` is run again, those pictures will be skipped.
+            #         for pic_data in doc_data.pages.values():
+            #             self.scan_data.store_skipped_pic(Path(pic_data.pic_path))
+            #         # Remove also all corresponding data files.
+            #         self.scan_data.remove_doc_files(doc_id)
 
             # The new entered names might have induced new conflicts.
-            names_to_review = self.get_names_to_review()
-            answers_to_review = {key: reviewed for key, reviewed in answers_to_review.items() if not reviewed}
+            check_result = self.data_checker.run()

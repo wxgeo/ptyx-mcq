@@ -4,13 +4,14 @@ from numpy import ndarray
 
 from ptyx.shell import print_warning
 
+from ptyx_mcq.scan.data.analyze.checkboxes import CheckboxAnalyzeResult
 from ptyx_mcq.scan.data.conflict_gestion.data_check.fix import (
     Action,
     AbstractNamesReviewer,
     AbstractAnswersReviewer,
     AbstractDocHeaderDisplayer,
 )
-from ptyx_mcq.scan.data import ScanData
+from ptyx_mcq.scan.data import ScanData, Picture
 from ptyx_mcq.tools.misc import copy_docstring
 from ptyx_mcq.tools.colors import Color, RGB
 from ptyx_mcq.scan.data.questions import CbxState, RevisionStatus
@@ -132,52 +133,68 @@ class ClAnswersReviewer(AbstractAnswersReviewer):
     SELECT_QUESTION = "Write a question number, or 0 to escape:"
     EDIT_ANSWERS = "Add or remove answers (Example: +2 -1 -4 to add answer 2, and remove answers 1 et 4):"
 
+    colors: dict[CbxState | RevisionStatus, RGB] = {
+        CbxState.CHECKED: Color.blue,
+        CbxState.PROBABLY_CHECKED: Color.green,
+        CbxState.PROBABLY_UNCHECKED: Color.magenta,
+        CbxState.UNCHECKED: Color.pink,
+        RevisionStatus.MARKED_AS_CHECKED: Color.cyan,
+        RevisionStatus.MARKED_AS_UNCHECKED: Color.red,
+    }
+    thicknesses: dict[CbxState | RevisionStatus, int] = {
+        CbxState.CHECKED: 2,
+        CbxState.PROBABLY_CHECKED: 5,
+        CbxState.PROBABLY_UNCHECKED: 5,
+        CbxState.UNCHECKED: 2,
+        RevisionStatus.MARKED_AS_CHECKED: 5,
+        RevisionStatus.MARKED_AS_UNCHECKED: 5,
+    }
+
     @copy_docstring(AbstractAnswersReviewer.edit_answers)
-    def edit_answers(self, doc_id: DocumentId, page: PageNum) -> tuple[Action, bool]:
+    def edit_answers(self, doc_id: DocumentId, page_num: PageNum) -> tuple[Action, CheckboxAnalyzeResult]:
         config = self.scan_data.config
-        pic_data = self.data[doc_id].pages[page]
-        answered = pic_data.answered
-        revision_status = pic_data.revision_status
-        print_warning(f"Ambiguous answers for student {self.data[doc_id].name} (doc {doc_id}, page: {page}).")
+        doc = self.scan_data.index[doc_id]
+        pic = doc.pages[page_num].pic
+        # answered = pic_data.answered
+        # revision_status = pic_data.revision_status
+        print_warning(f"Ambiguous answers for student {doc.student_name} (doc {doc_id}, page: {page_num}).")
         print(
             f"Tip: write {Action.BACK} to go back to previous document,"
             f" or {Action.NEXT} to jump directly to next document."
         )
         match input(self.ENTER_COMMAND):
             case Action.BACK:
-                return Action.BACK, False
+                return Action.BACK, {}
             case Action.NEXT:
-                return Action.NEXT, False
+                return Action.NEXT, {}
 
         while True:
-            process = self.display_page_with_detected_answers(doc_id, page)
+            changes: CheckboxAnalyzeResult = {}
+            process = self.display_picture_with_detected_answers(pic)
             if input(self.IS_CORRECT).lower() in ("y", "yes"):
                 break
             while (q_str := input(self.SELECT_QUESTION)) != "0":
                 try:
                     q0 = ApparentQuestionNumber(int(q_str))
                     q, _ = apparent2real(q0, None, config, doc_id)
-                    if q not in answered:
-                        # print(f"{answered=} {page=} {doc_id=}\n")
-                        raise IndexError(rf"Invalid question number: {q0}")
-
-                    checked = answered[q]
+                    question = pic.questions[q]
+                    # checked = answered[q]
                     a_str = input(self.EDIT_ANSWERS)
                     for val in a_str.split():
                         op, a0 = val[0], ApparentAnswerNumber(int(val[1:]))
                         q, a = apparent2real(q0, a0, config, doc_id)
+                        answer = question.answers[a]
+                        checked = changes.get((q, a), answer.state).seems_checked
                         if op == "+":
-                            if a in checked:
-                                print(f"Warning: {a0} already in answers.")
+                            if checked:
+                                print(f"Warning: {a0} is already marked as checked.")
                             else:
-                                checked.add(a)
-                                revision_status[(q, a)] = RevisionStatus.MARKED_AS_CHECKED
+                                changes[(q, a)] = CbxState.CHECKED
                         elif op == "-":
-                            if a in checked:
-                                checked.remove(a)
-                                revision_status[(q, a)] = RevisionStatus.MARKED_AS_UNCHECKED
+                            if checked:
+                                changes[(q, a)] = CbxState.UNCHECKED
                             else:
-                                print(f"Warning: {a0} not in answers.")
+                                print(f"Warning: {a0} was not marked as checked.")
                         else:
                             print(f"Invalid operation: {val!r}")
                 except ValueError:
@@ -190,39 +207,26 @@ class ClAnswersReviewer(AbstractAnswersReviewer):
                     print("Invalid number.")
                 finally:
                     process.terminate()
-                    process = self.display_page_with_detected_answers(doc_id, page)
+                    process = self.display_picture_with_detected_answers(pic)
         process.terminate()
-        return Action.NEXT, True
+        return Action.NEXT, changes
 
-    def display_page_with_detected_answers(self, doc_id: DocumentId, page: PageNum) -> Popen:
-        """Display the page with its checkboxes colored following their detection status."""
-        array = self.scan_data.get_matrix(doc_id)
-        pic_data = self.data[doc_id].pages[page]
-        return self.display_picture_with_detected_answers(array, pic_data)
+    # def display_page_with_detected_answers(self, doc_id: DocumentId, page_num: PageNum) -> Popen:
+    #     """Display the page with its checkboxes colored following their detection status."""
+    #     pic = self.scan_data.index[doc_id].pages[page_num].pic
+    #     return self.display_picture_with_detected_answers(pic)
 
-    @staticmethod
-    def display_picture_with_detected_answers(array: ndarray, pic_data: "PicData") -> Popen:
+    @classmethod
+    def display_picture_with_detected_answers(cls, pic: Picture) -> Popen:
         """Display the picture of the MCQ with its checkboxes colored following their detection status."""
-        viewer = ImageViewer(array=array)
-        colors: dict[CbxState | RevisionStatus, RGB] = {
-            CbxState.CHECKED: Color.blue,
-            CbxState.PROBABLY_CHECKED: Color.green,
-            CbxState.PROBABLY_UNCHECKED: Color.magenta,
-            CbxState.UNCHECKED: Color.pink,
-            RevisionStatus.MARKED_AS_CHECKED: Color.cyan,
-            RevisionStatus.MARKED_AS_UNCHECKED: Color.red,
-        }
-        thicknesses: dict[CbxState | RevisionStatus, int] = {
-            CbxState.CHECKED: 2,
-            CbxState.PROBABLY_CHECKED: 5,
-            CbxState.PROBABLY_UNCHECKED: 5,
-            CbxState.UNCHECKED: 2,
-            RevisionStatus.MARKED_AS_CHECKED: 5,
-            RevisionStatus.MARKED_AS_UNCHECKED: 5,
-        }
-        for (q, a), (i, j) in pic_data.positions.items():
-            status = pic_data.revision_status.get((q, a), pic_data.detection_status[(q, a)])
-            viewer.add_rectangle(
-                (i, j), pic_data.cell_size, color=colors[status], thickness=thicknesses[status]
-            )
+        viewer = ImageViewer(array=pic.as_matrix())
+
+        for question in pic:
+            for answer in question:
+                viewer.add_rectangle(
+                    answer.position,
+                    pic.calibration_data.cell_size,
+                    color=cls.colors[answer.state],
+                    thickness=cls.thicknesses[answer.state],
+                )
         return viewer.display(wait=False)

@@ -12,7 +12,7 @@ from ptyx_mcq.scan.data.analyze.student_names import read_student_id_and_name
 from ptyx_mcq.parameters import FIX_DIR
 from ptyx_mcq.scan.data.extraction import PdfHash, PicNum
 from ptyx_mcq.scan.data.students import Student
-from ptyx_mcq.scan.data.questions import CbxPositions, InvalidFormat, CbxState, Question
+from ptyx_mcq.scan.data.questions import Question
 from ptyx_mcq.scan.picture_analyze.calibration import CalibrationData
 from ptyx_mcq.scan.picture_analyze.identify_doc import IdentificationData
 from ptyx_mcq.scan.picture_analyze.square_detection import adjust_checkbox
@@ -27,7 +27,7 @@ from ptyx_mcq.tools.config_parser import (
 )
 
 if TYPE_CHECKING:
-    from ptyx_mcq.scan.data import Page, ScanData
+    from ptyx_mcq.scan.data import Page
 
 
 @dataclass(kw_only=True)
@@ -230,7 +230,7 @@ class Picture:
     @property
     def answered(self) -> dict[OriginalQuestionNumber, set[OriginalAnswerNumber]]:
         """Answers checked by the student for each question."""
-        return {q.question_num: {a for a in q if a.state.seems_checked} for q in self}
+        return {q.question_num: {a for a in q if a.checked} for q in self}
 
     def get_checkboxes(self, matrix: ndarray = None) -> dict[CbxRef, ndarray]:
         """
@@ -265,7 +265,9 @@ class Picture:
 
     @property
     def checkbox_reviewed(self) -> bool:
-        return any(question.reviewed for question in self)
+        """Return True if all questions needing review were reviewed, and at least one question was reviewed."""
+        questions_reviewed = [question.reviewed for question in self if question.needs_review]
+        return all(questions_reviewed) and len(questions_reviewed) >= 1
 
     # ------------------
     #       Array

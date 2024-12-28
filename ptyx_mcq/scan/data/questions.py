@@ -127,4 +127,6 @@ class Question:
 
     @property
     def reviewed(self) -> bool:
-        return any(answer.reviewed for answer in self)
+        """Return True if all answer needing review were reviewed, and at least one answer was reviewed."""
+        answers_reviewed = [answer.reviewed for answer in self if answer.needs_review]
+        return all(answers_reviewed) and len(answers_reviewed) >= 1

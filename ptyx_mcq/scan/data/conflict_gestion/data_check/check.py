@@ -20,6 +20,10 @@ class DataCheckResult:
     duplicate_names: DuplicateNamesDict
     ambiguous_answers: AmbiguousPagesList
 
+    @property
+    def names_to_review(self) -> list[DocumentId]:
+        return self.unnamed_docs + [doc_id for docs in self.duplicate_names.values() for doc_id in docs]
+
 
 class DataChecker:
     """
@@ -53,7 +57,7 @@ class DataChecker:
             unnamed_docs=unnamed_docs, duplicate_names=duplicate_names, ambiguous_answers=ambiguous_answers
         )
 
-        report_data_issues(check_result)
+        self.report_data_issues(check_result)
         return check_result
 
     def get_unnamed_docs(self) -> list[DocumentId]:
@@ -93,9 +97,9 @@ class DataChecker:
             if page.pic.checkboxes_need_review
         ]
 
-
-def report_data_issues(check_result: DataCheckResult) -> None:
-    for doc_id in check_result.unnamed_docs:
-        print_warning(f"• No student name for document {doc_id}.")
-    for name, doc_ids in check_result.duplicate_names.items():
-        print_warning(f"• Same student name {name!r} on documents {','.join(map(str, doc_ids))}.")
+    @staticmethod
+    def report_data_issues(check_result: DataCheckResult) -> None:
+        for doc_id in check_result.unnamed_docs:
+            print_warning(f"• No student name for document {doc_id}.")
+        for name, doc_ids in check_result.duplicate_names.items():
+            print_warning(f"• Same student name {name!r} on documents {','.join(map(str, doc_ids))}.")
