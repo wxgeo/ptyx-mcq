@@ -15,15 +15,13 @@ from typing import Literal
 
 from PIL import Image, ImageDraw
 
+from ptyx_mcq.scan.data import Picture
 from ptyx_mcq.scan.data.conflict_gestion.integrity_check.fix import (
     AbstractIntegrityIssuesFixer,
 )
-from ptyx_mcq.scan.data import Picture
-from ptyx_mcq.tools.misc import copy_docstring
-from ptyx_mcq.tools.colors import Color
-
 from ptyx_mcq.scan.picture_analyze.image_viewer import ImageViewer
-from ptyx_mcq.tools.config_parser import DocumentId, PageNum
+from ptyx_mcq.tools.colors import Color
+from ptyx_mcq.tools.misc import copy_docstring
 
 
 class ClIntegrityIssuesFixer(AbstractIntegrityIssuesFixer):

@@ -1,14 +1,13 @@
 from abc import ABC, abstractmethod
 from typing import Literal
 
-from ptyx.shell import print_success, print_warning
+from ptyx.shell import print_success
 
+from ptyx_mcq.scan.data import ScanData, Picture
 from ptyx_mcq.scan.data.conflict_gestion.integrity_check.check import (
-    MissingQuestion,
+    MissingPage,
     IntegrityCheckResult,
 )
-from ptyx_mcq.scan.data import ScanData, Picture
-from ptyx_mcq.tools.config_parser import DocumentId, PageNum
 
 
 class AbstractIntegrityIssuesFixer(ABC):
@@ -38,12 +37,12 @@ class AbstractIntegrityIssuesFixer(ABC):
         ...
 
     def run(self, check_results: IntegrityCheckResult) -> None:
-        if check_results.missing_questions:
+        if check_results.missing_pages:
             # Don't raise an error for pages not found (only a warning in log)
             # since if all questions were found, they were probably only empty pages.
             # However, an error must be raised for missing questions.
             #            if input("Should we skip missing questions? (y/n)").lower() != "y":
-            raise MissingQuestion("Questions not seen! (Look at message above).")
+            raise MissingPage("Page not seen! (Look at message above).")
         else:
             print_success("Data integrity successfully verified.")
 
@@ -52,8 +51,4 @@ class AbstractIntegrityIssuesFixer(ABC):
                 page = self.index[doc_id].pages[page_num]
                 while page.has_conflicts:
                     pic1, pic2, *_ = page.pictures
-                    bad_pic = page.pictures.pop(self.select_version(pic1, pic2) - 1)
-                    # Write a file <pdf-hash>/<pic-num>.skip,
-                    # to indicate that the picture should be ignored in case of a future run.
-                    (folder := self.scan_data.paths.dirs.fix / bad_pic.pdf_hash).mkdir(exist_ok=True)
-                    (folder / f"{bad_pic.num}.skip").touch()
+                    page.pictures[self.select_version(pic1, pic2) - 1].use = False

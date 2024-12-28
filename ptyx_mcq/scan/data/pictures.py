@@ -47,7 +47,7 @@ class Picture:
     # _checkboxes: Checkboxes | None = None
     _initial_student: Student | None = None
     _amended_student: Student | None = None
-    use: bool = True
+    _use: bool | None = None
 
     def __post_init__(self) -> None:
         self._load_student()
@@ -85,6 +85,27 @@ class Picture:
             self.identification_data.page_num,
             tuple(q.as_hashable_tuple() for q in self),
         )
+
+    @property
+    def _skip_file(self) -> Path:
+        (folder := self.fix_dir / self.pdf_hash).mkdir(exist_ok=True)
+        return folder / f"{self.num}.skip"
+
+    @property
+    def use(self) -> bool:
+        if self._use is None:
+            self._use = self._skip_file.is_file()
+        return self._use
+
+    @use.setter
+    def use(self, value: bool) -> None:
+        self._use = value
+        if value:
+            self._skip_file.unlink(missing_ok=True)
+        else:
+            # Write a file <pdf-hash>/<pic-num>.skip,
+            # to indicate that the picture should be ignored in case of a future run.
+            self._skip_file.touch()
 
     # ------------------
     #       Path

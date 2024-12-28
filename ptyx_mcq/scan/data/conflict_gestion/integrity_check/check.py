@@ -11,8 +11,8 @@ MissingPages = dict[DocumentId, list[PageNum]]
 MissingQuestions = dict[DocumentId, list[OriginalQuestionNumber]]
 
 
-class MissingQuestion(RuntimeError):
-    """Error raised when some questions where not seen when scanning all data."""
+class MissingPage(RuntimeError):
+    """Error raised when a page was not seen when scanning all data."""
 
 
 class MissingConfigurationData(RuntimeError):
