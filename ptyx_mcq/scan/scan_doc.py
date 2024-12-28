@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import Union, Optional
 
 # from numpy import ndarray
-from ptyx.shell import print_warning, ANSI_RESET, ANSI_GREEN, print_success
+from ptyx.shell import ANSI_RESET, ANSI_GREEN, print_success
 from ptyx.sys_info import CPU_PHYSICAL_CORES
 from ptyx_mcq.scan.data.conflict_gestion.data_check.cl_fix import ClAnswersReviewer
 
@@ -22,7 +22,6 @@ from ptyx_mcq.scan.pdf.amend import amend_all
 from ptyx_mcq.scan.data.conflict_gestion import ConflictSolver
 from ptyx_mcq.scan.data import ScanData
 
-from ptyx_mcq.scan.picture_analyze.types_declaration import CalibrationError
 from ptyx_mcq.scan.score_management.scores_manager import ScoresManager
 
 
@@ -85,16 +84,12 @@ class MCQPictureParser:
         output_dir: Optional[Path] = None,
     ):
         # self.warnings = False
-        self.data_handler = ScanData(Path(path), input_dir=input_dir, output_dir=output_dir)
+        self.scan_data = ScanData(Path(path), input_dir=input_dir, output_dir=output_dir)
         self.scores_manager = ScoresManager(self)
 
     @property
     def config(self):
-        return self.data_handler.config
-
-    @property
-    def data(self):
-        return self.data_handler.data
+        return self.scan_data.config
 
     def _generate_report(self) -> None:
         """Generate CSV files with some information concerning each student.
@@ -106,29 +101,29 @@ class MCQPictureParser:
         #       - some stats (number of pdf, pages...)
         #       - all conflicts solved, notably duplicate pages found
         # Generate CSV file with ID and pictures names for all students.
-        info_path = self.data_handler.files.infos
+        info_path = self.scan_data.files.infos
         # Sort data to make testing easier.
         info = sorted(
             (
-                doc_data.name,
-                doc_data.student_id,
+                doc.student_name,
+                doc.student_id,
                 doc_id,
-                doc_data.score,
-                sorted(doc_data.pages[p].pic_path for p in doc_data.pages),
+                doc.score,
+                sorted(pic.short_path for page in doc for pic in page.pictures),
             )
-            for doc_id, doc_data in self.data.items()
+            for doc_id, doc in self.scan_data.index.items()
         )
 
         with open(info_path, "w", newline="") as csvfile:
             writerow = csv.writer(csvfile).writerow
             writerow(("Name", "Student ID", "Test ID", "Score", "Pictures"))
-            for name, student_id, doc_id, score, paths in sorted(info):
+            for name, student_id, doc_id, score, paths in info:
                 paths_as_str = ", ".join(str(pth) for pth in paths)
                 writerow([name, student_id, f"#{doc_id}", score, paths_as_str])
         print(f'Infos stored in "{info_path}"\n')
 
     def _generate_amended_pdf(self) -> None:
-        amend_all(self.data_handler)
+        amend_all(self.scan_data)
 
     def scan_single_picture(self, picture: Union[str, Path]) -> None:
         """This is used for debugging (it allows to test one page specifically)."""
@@ -147,7 +142,7 @@ class MCQPictureParser:
             raise TypeError("Allowed picture extensions: " + ", ".join(PIC_EXTS))
         pic_path = Path(picture).expanduser().resolve()
         if not pic_path.is_file():
-            pic_path = self.data_handler.absolute_pic_path(picture)
+            pic_path = self.scan_data.absolute_pic_path(picture)
         pic_data, array = scan_picture(pic_path, self.config, debug=True)
         ClAnswersReviewer.display_picture_with_detected_answers(array, pic_data)
         print(pic_data)
@@ -203,7 +198,7 @@ class MCQPictureParser:
         # Test if the PDF files of the input directory have changed and
         # extract the images from the PDF files if needed.
         print("Search for previous data...")
-        self.data_handler.initialize(reset=reset)
+        self.scan_data.initialize(reset=reset)
 
         # ---------------------------------------
         # Extract informations from the pictures.
@@ -216,9 +211,9 @@ class MCQPictureParser:
 
         # TODO: number_of_processes=number_of_processes
         # Extract all pdf files' data.
-        self.data_handler.input_pdf.collect_data(number_of_processes=1)
+        self.scan_data.input_pdf.collect_data(number_of_processes=1)
         # Review pictures.
-        self.data_handler.analyze_pictures()
+        self.scan_data.analyze_pictures()
         # Extract information from scanned documents.
         # gc.collect()
         print_success("Scan successful.")
@@ -232,11 +227,11 @@ class MCQPictureParser:
     def solve_conflicts(self):
         """Resolve conflicts manually: unknown student ID, ambiguous answer..."""
         print("\nAnalyzing collected data:")
-        ConflictSolver(self.data_handler).run()
+        ConflictSolver(self.scan_data).run()
         # TODO: make checkboxes export optional (this is
         #  only useful for debug)
         print("\nExporting checkboxes...", end=" ")
-        self.data_handler.picture_analyzer.export_checkboxes()
+        self.scan_data.picture_analyzer.export_checkboxes()
         print("done.")
 
     def calculate_scores(self):
@@ -248,11 +243,11 @@ class MCQPictureParser:
         """Generate all the documents at the end of the process (csv, xlsx and pdf files)."""
         self.scores_manager.generate_csv_file()
         self.scores_manager.generate_xlsx_file()
-        cfg_path = str(self.data_handler.paths.configfile)
+        cfg_path = str(self.scan_data.paths.configfile)
         assert cfg_path.endswith(CONFIG_FILE_EXTENSION)
         xlsx_symlink = Path(cfg_path[: -len(CONFIG_FILE_EXTENSION)] + ".scores.xlsx")
         xlsx_symlink.unlink(missing_ok=True)
-        xlsx_symlink.symlink_to(self.data_handler.files.xlsx_scores)
+        xlsx_symlink.symlink_to(self.scan_data.files.xlsx_scores)
         self._generate_report()
         self._generate_amended_pdf()
 
@@ -275,7 +270,7 @@ class MCQPictureParser:
         """
         print("Read input data...")
         # Create directories.
-        self.data_handler.paths.make_dirs()
+        self.scan_data.paths.make_dirs()
 
         self.analyze_pages(
             start=start, end=end, number_of_processes=number_of_processes, reset=reset, debug=debug

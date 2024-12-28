@@ -19,8 +19,7 @@ from ptyx.shell import ANSI_CYAN, ANSI_RESET, ANSI_GREEN, ANSI_YELLOW
 
 from ptyx_mcq.scan.data.questions import CbxState
 from ptyx_mcq.scan.picture_analyze.square_detection import test_square_color
-from ptyx_mcq.scan.picture_analyze.types_declaration import Line, Col
-from ptyx_mcq.tools.config_parser import DocumentId, CbxRef, Configuration, real2apparent
+from ptyx_mcq.tools.config_parser import DocumentId, CbxRef, real2apparent
 from ptyx_mcq.tools.pic import save_webp
 
 

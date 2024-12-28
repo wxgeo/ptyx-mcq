@@ -4,7 +4,7 @@ from numpy import ndarray
 
 from ptyx_mcq.scan.picture_analyze.calibration import CalibrationData
 from ptyx_mcq.scan.picture_analyze.square_detection import test_square_color
-from ptyx_mcq.scan.picture_analyze.types_declaration import Pixel, Shape, Rectangle, Col
+from ptyx_mcq.scan.picture_analyze.types_declaration import Shape, Rectangle, Col
 from ptyx_mcq.tools.colors import Color
 
 from ptyx_mcq.tools.config_parser import DocumentId, PageNum

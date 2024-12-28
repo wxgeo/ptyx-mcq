@@ -21,7 +21,7 @@ from ptyx_mcq.scan.data.documents import Document
 
 from ptyx_mcq.scan.picture_analyze.types_declaration import Pixel, Line, Col
 from ptyx_mcq.tools.colors import Color, RGB
-from ptyx_mcq.tools.config_parser import DocumentId, OriginalQuestionNumber, QuestionNumberOrDefault
+from ptyx_mcq.tools.config_parser import OriginalQuestionNumber, QuestionNumberOrDefault, real2apparent
 
 
 # if TYPE_CHECKING:
@@ -59,7 +59,7 @@ def amend_all(scan_data: ScanData) -> None:
     print(f"Generating the amended pdf files: 0/{number_of_documents}", end="\r")
     pool = Pool()
     for doc in scan_data:
-        pool.apply_async(amend_doc, (doc,), callback=print_progression)
+        pool.apply_async(amend_doc, (doc, max_score_per_question), callback=print_progression)
     pool.close()
     # noinspection PyTestUnpassedFixture
     pool.join()
@@ -72,12 +72,10 @@ def amend_all(scan_data: ScanData) -> None:
 # TODO: maybe restrict the data passed to amend_doc?
 #  For now, each document contain references to all scan_data,
 #  so there is *a lot* of data to pickle when using multiprocessing.
-def amend_doc(doc: Document) -> None:
+def amend_doc(doc: Document, max_score_per_question: dict[QuestionNumberOrDefault, float]) -> None:
     config = doc.scan_data.config
     max_score = config.max_score
     doc_id = doc.doc_id
-    correct_answers = config.correct_answers[doc_id]
-    neutralized_answers = config.neutralized_answers[doc_id]
     # max_score_per_question: dict[QuestionNumberOrDefault, float],
     # data_storage: ScanData,
     images = {}
@@ -105,7 +103,7 @@ def amend_doc(doc: Document) -> None:
                 else:
                     top_left_positions[q] = answer.position
         for q in top_left_positions:
-            earn = doc_data.score_per_question[q]
+            earn = pic.questions[q].score
             maximum = max_score_per_question.get(q, max_score_per_question["default"])
             assert isinstance(maximum, (float, int)), repr(maximum)
             i, j = top_left_positions[q]
@@ -115,15 +113,15 @@ def amend_doc(doc: Document) -> None:
         # the smaller questions numbers is the first one, and so on.
         # However, be careful to use displayed questions numbers,
         # since `q` is the question number *before shuffling*.
-        q_num = page_data.questions_nums_conversion[q]
+        q_num = real2apparent(q, None, config, doc_id)
         images[q_num] = img
         # Sort pages now.
     pages: list[Image]
     _, pages = zip(*sorted(images.items()))  # type: ignore
     draw = ImageDraw.Draw(pages[0])
-    _write_score(draw, (Line(2 * size), Col(4 * size)), doc_data.score, max_score, 2 * size)
+    _write_score(draw, (Line(2 * size), Col(4 * size)), doc.score, max_score, 2 * size)
     pages[0].save(
-        join(data_storage.dirs.pdf, f"{doc_data.name}-{doc_id}.pdf"),
+        join(doc.scan_data.dirs.pdf, f"{doc.student_name}-{doc_id}.pdf"),
         save_all=True,
         append_images=pages[1:],
     )

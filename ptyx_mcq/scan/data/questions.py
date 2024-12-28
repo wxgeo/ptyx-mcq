@@ -72,8 +72,8 @@ class Answer:
         return self.as_str(), self.as_str(is_fix=True)
 
     @property
-    def needs_review(self) -> bool:
-        return self._initial_state.needs_review
+    def neutralized(self) -> bool:
+        return self.is_correct is None
 
     @property
     def checked(self) -> bool | None:
@@ -84,6 +84,10 @@ class Answer:
         return self._initial_state is not None
 
     @property
+    def needs_review(self) -> bool:
+        return self._initial_state.needs_review
+
+    @property
     def reviewed(self) -> bool:
         return self._amended_state is not None
 
@@ -92,6 +96,7 @@ class Answer:
 class Question:
     question_num: OriginalQuestionNumber
     answers: dict[OriginalAnswerNumber, Answer]
+    score: float | None = None
 
     def __iter__(self):
         return iter(answer for answer in self.answers.values())
@@ -116,6 +121,14 @@ class Question:
 
     def as_hashable_tuple(self):
         return tuple(answer.as_hashable_tuple() for answer in self)
+
+    @property
+    def checked_answers(self) -> list[Answer]:
+        return [answer for answer in self if answer.checked]
+
+    @property
+    def correct_answers(self) -> list[Answer]:
+        return [answer for answer in self if answer.is_correct]
 
     @property
     def needs_review(self) -> bool:

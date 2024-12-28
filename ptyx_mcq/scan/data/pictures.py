@@ -222,7 +222,7 @@ class Picture:
             pass
 
     def _save_checkboxes_state(self, is_fix=False) -> None:
-        (folder := (self.fix_dir if is_fix else self.cache_dir) / f"checkboxes").mkdir(exist_ok=True)
+        (folder := (self.fix_dir if is_fix else self.cache_dir) / "checkboxes").mkdir(exist_ok=True)
         (folder / str(self.num)).write_text(
             "\n".join(question.as_str(is_fix=is_fix) for question in self), encoding="utf8"
         )

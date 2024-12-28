@@ -1,6 +1,5 @@
 from subprocess import Popen, CompletedProcess
 
-from numpy import ndarray
 
 from ptyx.shell import print_warning
 

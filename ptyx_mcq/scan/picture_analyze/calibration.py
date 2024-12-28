@@ -5,7 +5,7 @@ from typing import Literal, Iterator
 
 import numpy as np
 from PIL import Image
-from numpy import ndarray, flipud, fliplr, zeros, amin, dot, array, amax
+from numpy import ndarray, flipud, fliplr, zeros, amin, dot, amax
 from ptyx.shell import print_warning
 
 from ptyx_mcq.parameters import (

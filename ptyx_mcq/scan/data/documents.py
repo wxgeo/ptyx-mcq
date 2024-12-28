@@ -1,14 +1,12 @@
 from collections import ChainMap
 from dataclasses import dataclass
-from typing import NewType, Iterator, TYPE_CHECKING
+from typing import Iterator, TYPE_CHECKING
 
 from numpy import ndarray
 
 from ptyx_mcq.scan.data.analyze.checkboxes import analyze_checkboxes
 from ptyx_mcq.scan.data.students import Student
 
-from ptyx_mcq.scan.picture_analyze.calibration import CalibrationData
-from ptyx_mcq.scan.picture_analyze.identify_doc import IdentificationData
 from ptyx_mcq.scan.data.pictures import Picture
 from ptyx_mcq.tools.config_parser import (
     DocumentId,
@@ -16,10 +14,11 @@ from ptyx_mcq.tools.config_parser import (
     OriginalQuestionNumber,
     OriginalAnswerNumber,
     PageNum,
+    StudentId,
 )
 
 if TYPE_CHECKING:
-    from ptyx_mcq.scan.data import ScanData, Picture
+    from ptyx_mcq.scan.data import ScanData, Picture, Question
 
 
 @dataclass
@@ -70,8 +69,11 @@ class Document:
     scan_data: "ScanData"
     doc_id: DocumentId
     pages: dict[PageNum, Page]
-    score: float | None = None
     score_per_question: dict[OriginalQuestionNumber, float] | None = None
+
+    @property
+    def score(self) -> float:
+        return sum(question.score for question in self.questions)
 
     @property
     def first_page(self) -> Page | None:
@@ -87,22 +89,26 @@ class Document:
         """Return all the pictures associated with this document."""
         return [pic for page in self.pages.values() for pic in page.used_pictures]
 
-    @property
-    def answered(self) -> ChainMap[OriginalQuestionNumber, set[OriginalAnswerNumber]]:
-        """Answers checked by the student for each question."""
-        return ChainMap(*(page.pic.answered for page in self.pages.values()))
+    # @property
+    # def answered(self) -> ChainMap[OriginalQuestionNumber, set[OriginalAnswerNumber]]:
+    #     """Answers checked by the student for each question."""
+    #     return ChainMap(*(page.pic.answered for page in self.pages.values()))
 
     def __iter__(self) -> Iterator[Page]:
         return iter(self.pages.values())
 
     @property
-    def questions(self) -> list[OriginalQuestionNumber]:
+    def questions(self) -> dict[OriginalQuestionNumber, Question]:
         """All the (original) question numbers found in the picture."""
-        return sorted({q for page in self for pic in page for q in pic.questions})
+        return {q: question for page in self for pic in page for q, question in pic.questions.items()}
 
     @property
     def student_name(self) -> StudentName:
         return self.pages[PageNum(1)].pic.student.name
+
+    @property
+    def student_id(self) -> StudentId:
+        return self.pages[PageNum(1)].pic.student.id
 
     @property
     def missing_checkboxes_states(self) -> bool:

@@ -42,17 +42,13 @@ class ScoresManager:
         default_floor = cfg.floor["default"]
         default_ceil = cfg.ceil["default"]
 
-        data_manager = self.mcq_parser.data_handler
-        for doc_id in self.mcq_parser.data:
-            correct_ans = data_manager.correct_answers[doc_id]
-            neutralized_ans = data_manager.neutralized_answers[doc_id]
-            doc_data = self.mcq_parser.data[doc_id]
-            print(f"Test {doc_id} - {doc_data.name}")
-            for q in sorted(doc_data.answered):
-                answered = set(doc_data.answered[q])
-                correct_ones = correct_ans[q]
-                neutralized_ones = neutralized_ans[q]
-                all_answers = {ans_num for ans_num, is_ok in cfg.ordering[doc_id]["answers"][q]}
+        for doc_id, doc in self.mcq_parser.scan_data.index.items():
+            print(f"Test {doc_id} - {doc.student_name}")
+            for q, question in doc.questions.items():
+                answered = {answer.answer_num for answer in question if answer.checked}
+                correct_ones = {answer.answer_num for answer in question if answer.is_correct}
+                neutralized_ones = {answer.answer_num for answer in question if answer.is_neutralized}
+                all_answers = {answer.answer_num for answer in question}
 
                 # Neutralized answers must be removed from each set of answers.
                 # (Typically, neutralized answers are answers which were detected faulty during or after the
@@ -101,11 +97,11 @@ class ScoresManager:
                 earn *= float(cfg.weight.get(q, default_weight))
                 # Don't use weight for per question score, since it would make success rates
                 # harder to compare.
-                doc_data.score_per_question[q] = earn
-                doc_data.score += earn
+                question.score = earn
+
         default = self.mcq_parser.config.default_score
         self.scores = {name: default for name in self.mcq_parser.config.students_ids.values()}
-        self.results = {doc_data.name: doc_data.score for doc_data in self.mcq_parser.data.values()}
+        self.results = {doc.student_name: doc.score for doc in self.mcq_parser.scan_data}
         self.scores.update(self.results)
 
     @staticmethod
@@ -153,7 +149,7 @@ class ScoresManager:
             )
 
     def generate_csv_file(self) -> None:
-        scores_path = self.mcq_parser.data_handler.files.csv_scores
+        scores_path = self.mcq_parser.scan_data.files.csv_scores
         with open(scores_path, "w", newline="") as csvfile:
             self._write_scores(writerow=csv.writer(csvfile).writerow)
         print_info(f'Results stored in "{scores_path}"')
@@ -179,6 +175,7 @@ class ScoresManager:
             showRowStripes=True,
             showColumnStripes=True,
         )
+        # noinspection PyTypeChecker
         tab.tableStyleInfo = style
         sheet.column_dimensions["A"].width = 1.23 * max(len(name) for name in self.scores)
-        wb.save(self.mcq_parser.data_handler.files.xlsx_scores)
+        wb.save(self.mcq_parser.scan_data.files.xlsx_scores)

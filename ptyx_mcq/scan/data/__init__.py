@@ -34,15 +34,6 @@ class ScanData:
     def __init__(self, config_path: Path, input_dir: Path = None, output_dir: Path = None):
         self.paths = PathsHandler(config_path=config_path, input_dir=input_dir, output_dir=output_dir)
         self.input_pdf = PdfCollection(self)
-
-        # Additional information entered manually.
-        self.more_infos: dict[DocumentId, tuple[StudentName, StudentId]] = {}
-        # Manually verified pages.
-        self.verified: set[Path] = set()
-        self.skipped: set[Path] = set()
-        self.correct_answers: dict[DocumentId, OriginalQuestionAnswersDict] = {}
-        self.neutralized_answers: dict[DocumentId, OriginalQuestionAnswersDict] = {}
-        # self.paths.make_dirs()
         self.config: Configuration = self.get_configuration(self.paths.configfile)
         # Navigate between documents.
         self._index: dict[DocumentId, Document] | None = None

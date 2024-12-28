@@ -2,7 +2,6 @@ import string
 from abc import ABC, abstractmethod, ABCMeta
 from contextlib import AbstractContextManager
 from enum import StrEnum
-from pathlib import Path
 
 from ptyx.shell import print_warning, print_error, print_info
 
