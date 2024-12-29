@@ -47,7 +47,7 @@ class ScoresManager:
             for q, question in doc.questions.items():
                 answered = {answer.answer_num for answer in question if answer.checked}
                 correct_ones = {answer.answer_num for answer in question if answer.is_correct}
-                neutralized_ones = {answer.answer_num for answer in question if answer.is_neutralized}
+                neutralized_ones = {answer.answer_num for answer in question if answer.neutralized}
                 all_answers = {answer.answer_num for answer in question}
 
                 # Neutralized answers must be removed from each set of answers.

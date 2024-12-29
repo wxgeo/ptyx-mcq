@@ -88,7 +88,7 @@ class Picture:
 
     @property
     def _skip_file(self) -> Path:
-        (folder := self.fix_dir / self.pdf_hash).mkdir(exist_ok=True)
+        folder = self.fix_dir / self.pdf_hash
         return folder / f"{self.num}.skip"
 
     @property

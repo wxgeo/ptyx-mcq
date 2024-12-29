@@ -230,9 +230,9 @@ class MCQPictureParser:
         ConflictSolver(self.scan_data).run()
         # TODO: make checkboxes export optional (this is
         #  only useful for debug)
-        print("\nExporting checkboxes...", end=" ")
-        self.scan_data.picture_analyzer.export_checkboxes()
-        print("done.")
+        # print("\nExporting checkboxes...", end=" ")
+        # self.scan_data.picture_analyzer.export_checkboxes()
+        # print("done.")
 
     def calculate_scores(self):
         """Calculate the score, taking care of the chosen mode."""
@@ -275,9 +275,6 @@ class MCQPictureParser:
         self.analyze_pages(
             start=start, end=end, number_of_processes=number_of_processes, reset=reset, debug=debug
         )
-
-        exit(0)
-        # ---------- WORK IN PROGRESS ---------
 
         # Resolve detected problems.
         self.solve_conflicts()

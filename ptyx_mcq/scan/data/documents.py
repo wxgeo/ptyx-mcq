@@ -1,24 +1,22 @@
-from collections import ChainMap
 from dataclasses import dataclass
 from typing import Iterator, TYPE_CHECKING
 
 from numpy import ndarray
+from ptyx_mcq.scan.data.questions import Question
 
 from ptyx_mcq.scan.data.analyze.checkboxes import analyze_checkboxes
-from ptyx_mcq.scan.data.students import Student
-
 from ptyx_mcq.scan.data.pictures import Picture
+from ptyx_mcq.scan.data.students import Student
 from ptyx_mcq.tools.config_parser import (
     DocumentId,
     StudentName,
     OriginalQuestionNumber,
-    OriginalAnswerNumber,
     PageNum,
     StudentId,
 )
 
 if TYPE_CHECKING:
-    from ptyx_mcq.scan.data import ScanData, Picture, Question
+    from ptyx_mcq.scan.data import ScanData, Picture
 
 
 @dataclass
@@ -73,7 +71,7 @@ class Document:
 
     @property
     def score(self) -> float:
-        return sum(question.score for question in self.questions)
+        return sum(question.score for question in self.questions.values())
 
     @property
     def first_page(self) -> Page | None:
