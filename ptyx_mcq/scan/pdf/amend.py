@@ -121,7 +121,7 @@ def amend_doc(doc: Document, max_score_per_question: dict[QuestionNumberOrDefaul
     draw = ImageDraw.Draw(pages[0])
     _write_score(draw, (Line(2 * size), Col(4 * size)), doc.score, max_score, 2 * size)
     pages[0].save(
-        join(doc.scan_data.dirs.pdf, f"{doc.student_name}-{doc_id}.pdf"),
+        join(doc.scan_data.dirs.pdf, f"{doc.student.name}-{doc_id}.pdf"),
         save_all=True,
         append_images=pages[1:],
     )

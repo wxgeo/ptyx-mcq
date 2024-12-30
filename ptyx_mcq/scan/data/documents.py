@@ -70,8 +70,13 @@ class Document:
     score_per_question: dict[OriginalQuestionNumber, float] | None = None
 
     @property
-    def score(self) -> float:
-        return sum(question.score for question in self.questions.values())
+    def score(self) -> float | None:
+        score = 0.0
+        for question in self.questions.values():
+            if (q_score := question.score) is None:
+                return None
+            score += q_score
+        return score
 
     @property
     def first_page(self) -> Page | None:
@@ -101,12 +106,16 @@ class Document:
         return {q: question for page in self for pic in page for q, question in pic.questions.items()}
 
     @property
+    def student(self) -> Student | None:
+        return self.pages[PageNum(1)].pic.student
+
+    @property
     def student_name(self) -> StudentName:
-        return self.pages[PageNum(1)].pic.student.name
+        return StudentName("") if self.student is None else self.student.name
 
     @property
     def student_id(self) -> StudentId:
-        return self.pages[PageNum(1)].pic.student.id
+        return StudentId("") if self.student is None else self.student.id
 
     @property
     def missing_checkboxes_states(self) -> bool:

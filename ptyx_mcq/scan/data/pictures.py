@@ -178,9 +178,10 @@ class Picture:
             self.student.save(folder / str(self.num))
 
     @property
-    def _student_identification_table_position(self) -> Pixel:
+    def _student_identification_table_position(self) -> Pixel | None:
         """Get the position of the table where students check boxes to indicate their identifier."""
-        return self.calibration_data.xy2ij(*self.config.id_table_pos)
+        pos = self.config.id_table_pos
+        return None if pos is None else self.calibration_data.xy2ij(*pos)
 
     def retrieve_student(self, matrix: ndarray) -> Student | None:
         """
@@ -193,11 +194,15 @@ class Picture:
         if self.page_num != 1:
             return None
         cfg = self.config
+        position = self._student_identification_table_position
+        id_format = cfg.id_format
+        if position is None or id_format is None:
+            return None
         return read_student_id_and_name(
             matrix,
             cfg.students_ids,
-            self._student_identification_table_position,
-            cfg.id_format,
+            position,
+            id_format,
             self.calibration_data.f_cell_size,
         )
 
@@ -264,7 +269,7 @@ class Picture:
         return any(question.needs_review for question in self)
 
     @property
-    def checkbox_reviewed(self) -> bool:
+    def checkboxes_reviewed(self) -> bool:
         """Return True if all questions needing review were reviewed, and at least one question was reviewed."""
         questions_reviewed = [question.reviewed for question in self if question.needs_review]
         return all(questions_reviewed) and len(questions_reviewed) >= 1

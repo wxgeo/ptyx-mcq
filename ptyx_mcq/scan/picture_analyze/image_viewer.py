@@ -138,10 +138,10 @@ class ImageViewer:
             i2 = self.image.height - 1
         if j2 is None:
             j2 = self.image.width - 1
-        i1 = int(i1)
-        i2 = int(i2)
-        j1 = int(j1)
-        j2 = int(j2)
+        i1 = Line(int(i1))
+        i2 = Line(int(i2))
+        j1 = Col(int(j1))
+        j2 = Col(int(j2))
         if i2 < i1:
             i1, i2 = i2, i1
         if j2 < j1:

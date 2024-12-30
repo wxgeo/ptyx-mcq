@@ -46,7 +46,7 @@ class AbstractIntegrityIssuesFixer(ABC):
         else:
             print_success("Data integrity successfully verified.")
 
-        for doc_id, page_num_list in check_results.duplicates:
+        for doc_id, page_num_list in check_results.duplicates.items():
             for page_num in page_num_list:
                 page = self.index[doc_id].pages[page_num]
                 while page.has_conflicts:

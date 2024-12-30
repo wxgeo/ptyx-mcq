@@ -85,6 +85,7 @@ class ScanData:
             # Keep a track of the index, to make debugging easier.
             self.save_index()
             print("Index generated.")
+        assert self._index is not None
         return self._index
 
     def _generate_index(self) -> None:

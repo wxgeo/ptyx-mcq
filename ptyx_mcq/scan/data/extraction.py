@@ -9,7 +9,6 @@ import fitz
 import numpy as np
 from PIL import Image, UnidentifiedImageError
 from numpy import ndarray
-from fitz import Pixmap
 from ptyx.shell import print_warning
 
 from ptyx_mcq.parameters import IMAGE_FORMAT
@@ -227,8 +226,8 @@ def _extract_pdf_page(
 
 
 def _get_page_content_as_array(pdf_file: Path, page_num: PicNum) -> ndarray:
-    doc = fitz.Document(pdf_file)
-    page = doc[page_num]
+    doc: fitz.Document = fitz.Document(pdf_file)
+    page: fitz.Page = doc[page_num]
     if _contain_only_a_single_image(page):
         xref: int = page.get_images()[0][0]
         img_info = doc.extract_image(xref)
@@ -236,8 +235,8 @@ def _get_page_content_as_array(pdf_file: Path, page_num: PicNum) -> ndarray:
     else:
         # In all other cases, we'll have to rasterize the whole page and save it as a JPG picture
         # (unfortunately, this is much slower than a simple extraction).
-        pix: Pixmap = page.get_pixmap(dpi=200, colorspace=fitz.Colorspace(fitz.CS_GRAY))
-        return np.frombuffer(pix.samples_mv, dtype=np.uint8).reshape((pix.height, pix.width))  # type: ignore
+        pix: fitz.Pixmap = page.get_pixmap(dpi=200, colorspace=fitz.Colorspace(fitz.CS_GRAY))
+        return np.frombuffer(pix.samples_mv, dtype=np.uint8).reshape((pix.height, pix.width))
 
 
 def _contain_only_a_single_image(page: fitz.Page) -> bool:

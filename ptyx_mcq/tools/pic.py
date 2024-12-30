@@ -5,7 +5,7 @@ from PIL import Image
 from numpy import int8, ndarray, array
 
 
-def array_to_image(matrix: ndarray) -> Image:
+def array_to_image(matrix: ndarray) -> Image.Image:
     """Convert a grayscale array to the corresponding PIL Image instance."""
     return Image.fromarray((255 * matrix).astype(int8))
 

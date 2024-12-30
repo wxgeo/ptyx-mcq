@@ -101,7 +101,7 @@ class ClNamesReviewer(AbstractNamesReviewer):
     @copy_docstring(AbstractNamesReviewer.enter_name_and_id)
     def enter_name_and_id(
         self, doc_id: DocumentId, default: StudentName
-    ) -> tuple[StudentName, StudentId, Action, bool]:
+    ) -> tuple[StudentName, StudentId, Action]:
         print(f"[Document {doc_id}]")
         print(f"Please verify student name or ID (current name: {default!r}).")
         print("Please read the name on the picture which will be displayed now.")
@@ -183,7 +183,9 @@ class ClAnswersReviewer(AbstractAnswersReviewer):
                         op, a0 = val[0], ApparentAnswerNumber(int(val[1:]))
                         q, a = apparent2real(q0, a0, config, doc_id)
                         answer = question.answers[a]
-                        checked = changes.get((q, a), answer.state).seems_checked
+                        state = changes.get((q, a), answer.state)
+                        assert state is not None
+                        checked = state.seems_checked
                         if op == "+":
                             if checked:
                                 print(f"Warning: {a0} is already marked as checked.")

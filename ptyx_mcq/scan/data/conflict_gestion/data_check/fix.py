@@ -134,7 +134,9 @@ class AbstractNamesReviewer(ABC, metaclass=ABCMeta):
         )
 
         # Store name and student id.
-        self.scan_data.index[doc_id].first_page.pic.student = Student(name=student_name, id=student_id)
+        first_page = self.scan_data.index[doc_id].first_page
+        assert first_page is not None
+        first_page.pic.student = Student(name=student_name, id=student_id)
         return action
 
     def _suggest_id(self, incorrect_student_id: str) -> StudentId:

@@ -43,7 +43,7 @@ class ScoresManager:
         default_ceil = cfg.ceil["default"]
 
         for doc_id, doc in self.mcq_parser.scan_data.index.items():
-            print(f"Test {doc_id} - {doc.student_name}")
+            print(f"Test {doc_id} - {doc.student.name}")
             for q, question in doc.questions.items():
                 answered = {answer.answer_num for answer in question if answer.checked}
                 correct_ones = {answer.answer_num for answer in question if answer.is_correct}
@@ -101,7 +101,7 @@ class ScoresManager:
 
         default = self.mcq_parser.config.default_score
         self.scores = {name: default for name in self.mcq_parser.config.students_ids.values()}
-        self.results = {doc.student_name: doc.score for doc in self.mcq_parser.scan_data}
+        self.results = {doc.student.name: doc.score for doc in self.mcq_parser.scan_data}
         self.scores.update(self.results)
 
     @staticmethod

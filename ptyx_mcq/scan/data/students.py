@@ -17,7 +17,7 @@ class Student:
         return f"{self.name}\n{self.id}\n"
 
     @classmethod
-    def _from_str(cls: "Student", file_content: str) -> "Student":
+    def _from_str(cls: type[Self], file_content: str) -> Self:
         try:
             student_name, student_id = file_content.strip().split("\n")
             return cls(name=StudentName(student_name), id=StudentId(student_id))
@@ -25,7 +25,7 @@ class Student:
             raise InvalidFormat(f"Incorrect file content: {file_content!r}")
 
     @classmethod
-    def load(cls: Self, path: Path) -> Self | None:
+    def load(cls: type[Self], path: Path) -> Self | None:
         """Read the content of a student information file, and return a Student instance.
 
         Return `None` if the file is missing or incorrect.

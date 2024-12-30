@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from enum import Enum, auto
+from typing import TypedDict
 
 from ptyx_mcq.scan.picture_analyze.types_declaration import Line, Col, Pixel
 from ptyx_mcq.tools.config_parser import CbxRef, OriginalAnswerNumber, OriginalQuestionNumber
@@ -39,6 +40,12 @@ class RevisionStatus(Enum):
         return self.name
 
 
+class AnswerStateDict(TypedDict):
+    correct: bool | None
+    initial_state: CbxState | None
+    amended_state: CbxState | None
+
+
 @dataclass
 class Answer:
     answer_num: OriginalAnswerNumber
@@ -52,7 +59,7 @@ class Answer:
     _amended_state: CbxState | None = None
 
     @property
-    def state(self) -> CbxState:
+    def state(self) -> CbxState | None:
         """The state of the checkbox (checked or not)."""
         return self._initial_state if self._amended_state is None else self._amended_state
 
@@ -84,12 +91,19 @@ class Answer:
         return self._initial_state is not None
 
     @property
-    def needs_review(self) -> bool:
-        return self._initial_state.needs_review
+    def needs_review(self) -> bool | None:
+        return None if self._initial_state is None else self._initial_state.needs_review
 
     @property
     def reviewed(self) -> bool:
         return self._amended_state is not None
+
+    def as_dict(self) -> AnswerStateDict:
+        return {
+            "correct": self.is_correct,
+            "initial_state": self._initial_state,
+            "amended_state": self._amended_state,
+        }
 
 
 @dataclass
