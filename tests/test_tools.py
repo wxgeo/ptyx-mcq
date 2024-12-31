@@ -6,7 +6,7 @@ import numpy as np
 from ptyx_mcq.tools.extend_literal_eval import extended_literal_eval
 from ptyx_mcq.tools.io_tools import is_ptyx_file, get_file_with_extension
 from ptyx_mcq.tools.pic import load_webp, save_webp, convert_to_webp
-from .toolbox import TEST_DIR
+from .toolbox import ASSETS_DIR
 
 
 def calculate_rmse(image1, image2):
@@ -43,7 +43,7 @@ def test_extend_literal_eval():
 
 def test_is_ptyx_file(tmp_path):
     # pTyX files must be accepted
-    ptyx_file = TEST_DIR / "data/ptyx-files/minimal-working-example/minimal-working-example.ptyx"
+    ptyx_file = ASSETS_DIR / "ptyx-files/minimal-working-example/minimal-working-example.ptyx"
     assert ptyx_file.is_file()
     assert is_ptyx_file(ptyx_file)
     # LateX files must be rejected
@@ -62,7 +62,7 @@ def test_is_ptyx_file(tmp_path):
 
 
 def test_get_file_with_extension():
-    path = TEST_DIR / "data/test-conflict-solver/no-conflict/no-conflict.ptyx.mcq.config.json"
+    path = ASSETS_DIR / "test-conflict-solver/no-conflict/no-conflict.ptyx.mcq.config.json"
     assert get_file_with_extension(path.parent, extension=".ptyx.mcq.config.json") == path
     assert get_file_with_extension(path, extension=".ptyx.mcq.config.json") == path
     with pytest.raises(FileNotFoundError):
@@ -79,10 +79,10 @@ def test_webp(tmp_path):
     """
     tolerance = 0.01
     tmp_file = tmp_path / "tmp.webp"
-    array = load_webp(TEST_DIR / "data/scan-results-samples/mcq.webp")
-    array2 = load_webp(TEST_DIR / "data/scan-results-samples/mcq2.webp")
+    array = load_webp(ASSETS_DIR / "scan-results-samples/mcq.webp")
+    array2 = load_webp(ASSETS_DIR / "scan-results-samples/mcq2.webp")
     save_webp(array, tmp_file)
     assert calculate_rmse(load_webp(tmp_file), array) < tolerance
-    convert_to_webp(TEST_DIR / "data/scan-results-samples/mcq.png", tmp_file)
+    convert_to_webp(ASSETS_DIR / "scan-results-samples/mcq.png", tmp_file)
     assert calculate_rmse(load_webp(tmp_file), array) < tolerance
     assert calculate_rmse(array, array2) > tolerance

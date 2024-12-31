@@ -3,6 +3,7 @@ from pathlib import Path
 from ptyx.latex_generator import Compiler
 
 TEST_DIR = Path(__file__).parent.resolve()
+ASSETS_DIR = TEST_DIR / "assets"
 
 
 def rstripped_lines(s: str) -> list[str]:

@@ -15,7 +15,7 @@ from ptyx_mcq.make.include_directives_parsing import (
     resolve_includes_from_file,
     UnsafeUpdate,
 )
-from tests.toolbox import TEST_DIR
+from tests.toolbox import ASSETS_DIR
 
 
 def _dir(directory: str, is_disabled=False, comment=""):
@@ -26,7 +26,7 @@ def _file(file: str, is_disabled=False, comment=""):
     return AddPath(path=Path(file), is_disabled=is_disabled, comment=comment)
 
 
-DATA_DIR = TEST_DIR / "data/ptyx-files"
+DATA_DIR = ASSETS_DIR / "ptyx-files"
 
 
 def test_include_parser():
@@ -65,7 +65,7 @@ def test_update_include():
             _file("some/invalid/path.ex", comment="missing", is_disabled=True),
         ],
     }
-    assert updater.local_includes == [
+    assert set(updater.local_includes) == {
         _file("exercises/ex1.ex", is_disabled=True),
         _file("exercises/ex2.ex"),
         _file("example_with_verbatim/ex/2.ex", comment="new"),
@@ -79,7 +79,7 @@ def test_update_include():
         _file("short questions/question2.ex", comment="new"),
         _file("short questions/question3.ex", comment="new"),
         _file("short questions/question4.ex", comment="new"),
-    ]
+    }
     assert not updater.is_updating_safe
 
 

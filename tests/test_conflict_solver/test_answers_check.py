@@ -1,8 +1,8 @@
 from ptyx_mcq.scan.data.conflict_gestion.data_check.cl_fix import (
     ClAnswersReviewer as AnswersReviewer,
 )
-from ptyx_mcq.scan.data.documents import DocumentData
-from ptyx_mcq.scan.data.questions import RevisionStatus
+from ptyx_mcq.scan.data.documents import Document
+from ptyx_mcq.scan.data.questions import CbxState
 from ptyx_mcq.tools.config_parser import (
     DocumentId,
     OriginalQuestionNumber,
@@ -26,11 +26,10 @@ def test_check_review(patched_conflict_solver, custom_input) -> None:
     """Test to change check status."""
     # Shortcuts:
     doc_id = DocumentId(1)
-    page = PageNum(1)
-    doc_data: DocumentData = patched_conflict_solver.data[doc_id]
-    detection_status = doc_data.pages[page].detection_status
-    answered = doc_data.pages[page].answered
-    revision_status = doc_data.pages[page].revision_status
+    doc: Document = patched_conflict_solver.scan_data.index[doc_id]
+    answered = doc.answered
+    detection_status = doc.detection_status
+    revision_status = doc.revision_status
 
     # Original values after automatic evaluation.
     assert detection_status == {
@@ -67,16 +66,16 @@ def test_check_review(patched_conflict_solver, custom_input) -> None:
     assert answered == {4: {3, 6}, 20: {4, 5}, 25: {3}}
     modified_detection_status = (PROBABLY_CHECKED, PROBABLY_CHECKED, PROBABLY_UNCHECKED, CHECKED)
     for original_answer_num, detected_as in zip(original_answers_numbers, modified_detection_status):
-        detection_status[(original_question_num, original_answer_num)] = detected_as
+        doc.detection_status[(original_question_num, original_answer_num)] = detected_as
 
     # Since the questions and answers were shuffled when generating the document,
     # we have to retrieve the apparent question number (i.e. the one which appears on the document).
     # The same holds for the answers.
-    question: ApparentQuestionNumber
+    q_num: ApparentQuestionNumber
     # noinspection PyTypeChecker
     answers: dict[OriginalAnswerNumber, ApparentAnswerNumber | None] = {}
     for i in original_answers_numbers:
-        question, answers[i] = real2apparent(
+        q_num, answers[i] = real2apparent(
             original_question_num, i, patched_conflict_solver.scan_data.config, doc_id=doc_id
         )
 
@@ -87,7 +86,7 @@ def test_check_review(patched_conflict_solver, custom_input) -> None:
         [
             (AnswersReviewer.ENTER_COMMAND, ""),
             (AnswersReviewer.IS_CORRECT, "n"),
-            (AnswersReviewer.SELECT_QUESTION, str(question)),
+            (AnswersReviewer.SELECT_QUESTION, str(q_num)),
             (AnswersReviewer.EDIT_ANSWERS, f"+{answers[a1]} +{answers[a2]} -{answers[a3]}"),
             (AnswersReviewer.SELECT_QUESTION, "0"),
             (AnswersReviewer.IS_CORRECT, "y"),
@@ -99,9 +98,9 @@ def test_check_review(patched_conflict_solver, custom_input) -> None:
     assert answered[OriginalQuestionNumber(4)] == {1, 2, 6}
 
     expected_revision_status = (
-        RevisionStatus.MARKED_AS_CHECKED,
-        RevisionStatus.MARKED_AS_CHECKED,
-        RevisionStatus.MARKED_AS_UNCHECKED,
+        CbxState.CHECKED,
+        CbxState.CHECKED,
+        CbxState.UNCHECKED,
     )
 
     for original_answer_num, status in zip(original_answers_numbers, expected_revision_status):

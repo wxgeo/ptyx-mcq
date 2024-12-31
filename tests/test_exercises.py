@@ -1,10 +1,10 @@
 from ptyx_mcq.make.exercises_parsing import generate_exercise_latex_code_for_preview
 
-from .toolbox import TEST_DIR, rstripped_lines
+from .toolbox import ASSETS_DIR, rstripped_lines
 
 
 def get_content(name: str) -> str:
-    return (TEST_DIR / "data/single-exercises" / name).read_text(encoding="utf8")
+    return (ASSETS_DIR / "single-exercises" / name).read_text(encoding="utf8")
 
 
 def test_conditional_answer():

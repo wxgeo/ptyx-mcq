@@ -7,7 +7,7 @@ from ptyx_mcq.scan import scan
 from ptyx_mcq.scan.data.conflict_gestion.data_check.cl_fix import (
     ClNamesReviewer as NamesReviewer,
 )
-from tests.test_conflict_solver import DATA_DIR
+from tests.test_conflict_solver import ASSETS_DIR
 
 
 def test_blank_page_inserted(tmp_path):
@@ -15,7 +15,7 @@ def test_blank_page_inserted(tmp_path):
 
     This page should be ignored, but a warning should be raised.
     """
-    origin = DATA_DIR / "blank-page-test"
+    origin = ASSETS_DIR / "blank-page-test"
     copy = tmp_path / "blank-page-test"
     shutil.copytree(origin, copy)
     scan(copy)
@@ -25,8 +25,8 @@ def test_blank_page_inserted(tmp_path):
     def same_file(path: Path, path2: Path) -> bool:
         return path.read_text(encoding="utf8") == path2.read_text(encoding="utf8")
 
-    assert same_file(copy / ".scan/scores.csv", origin / "reference_scores.csv")
-    assert same_file(copy / ".scan/infos.csv", origin / "reference_infos.csv")
+    assert same_file(copy / "out/scores.csv", origin / "reference_scores.csv")
+    assert same_file(copy / "out/infos.csv", origin / "reference_infos.csv")
 
 
 def test_empty_document(no_display, tmp_path, custom_input):
@@ -42,7 +42,7 @@ def test_empty_document(no_display, tmp_path, custom_input):
             (NamesReviewer.ASK_FOR_NAME, "/"),
         ],
     )
-    origin = DATA_DIR / "unfilled-doc-test"
+    origin = ASSETS_DIR / "unfilled-doc-test"
     copy = tmp_path / "unfilled-doc-test"
     shutil.copytree(origin, copy)
     mcq_parser = scan(copy)
@@ -62,7 +62,7 @@ def test_empty_document(no_display, tmp_path, custom_input):
 
 def test_identical_duplicate_documents(no_display, tmp_path, custom_input):
     custom_input.set_scenario([])
-    origin = DATA_DIR / "duplicate-files"
+    origin = ASSETS_DIR / "duplicate-files"
     copy = tmp_path / "duplicate-files"
     shutil.copytree(origin, copy)
     (copy / "scan/flat-scan-conflict.pdf").unlink()
@@ -82,7 +82,7 @@ def test_different_duplicate_documents_keep_first(no_display, tmp_path, custom_i
             ("Answer: ", "1"),
         ]
     )
-    origin = DATA_DIR / "duplicate-files"
+    origin = ASSETS_DIR / "duplicate-files"
     copy = tmp_path / "duplicate-files"
     shutil.copytree(origin, copy)
     mcq_parser = scan(copy)
@@ -105,7 +105,7 @@ def test_different_duplicate_documents_keep_second(no_display, tmp_path, custom_
             ("Answer: ", "2"),
         ]
     )
-    origin = DATA_DIR / "duplicate-files"
+    origin = ASSETS_DIR / "duplicate-files"
     copy = tmp_path / "duplicate-files"
     shutil.copytree(origin, copy)
     mcq_parser = scan(copy)

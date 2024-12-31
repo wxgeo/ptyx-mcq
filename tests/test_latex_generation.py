@@ -16,12 +16,12 @@ from ptyx_mcq.make import make
 from ptyx_mcq.make.extend_latex_generator import SameAnswerError
 from ptyx_mcq.tools.config_parser import Configuration, DocumentId, OriginalQuestionNumber
 
-from .toolbox import load_ptyx_file, TEST_DIR
+from .toolbox import load_ptyx_file, ASSETS_DIR
 
 
 def copy_test(folder: str, tmp_path) -> Path:
     """Copy folder from "{TEST_DIR}/data/ptyx-files" to tmp_path."""
-    shutil.copytree(TEST_DIR / "data/ptyx-files" / folder, copy_ := tmp_path / folder)
+    shutil.copytree(ASSETS_DIR / "ptyx-files" / folder, copy_ := tmp_path / folder)
     return copy_
 
 
@@ -39,7 +39,7 @@ def test_at_directives(tmp_path):
     assert c.parse(path=folder / "at-directives.ptyx", PTYX_NUM=1) == latex
 
 
-def test_MCQ_basics(tmp_path):
+def test_mcq_basics(tmp_path):
     folder = copy_test("other", tmp_path)
     c = load_ptyx_file(folder / "partial-test.ptyx")
     assert "VERSION" in c.syntax_tree_generator.tags
@@ -68,7 +68,7 @@ def test_MCQ_basics(tmp_path):
     assert "Jean de la Fontaine" in latex
 
 
-def test_MCQ_shuffling(tmp_path):
+def test_mcq_shuffling(tmp_path):
     folder = copy_test("other", tmp_path)
     c = load_ptyx_file(folder / "shuffle.ptyx")
     c.generate_syntax_tree()
