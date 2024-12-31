@@ -87,11 +87,6 @@ class Picture:
         )
 
     @property
-    def _skip_file(self) -> Path:
-        folder = self.fix_dir / self.pdf_hash
-        return folder / f"{self.num}.skip"
-
-    @property
     def use(self) -> bool:
         if self._use is None:
             self._use = self._skip_file.is_file()
@@ -136,6 +131,15 @@ class Picture:
     @property
     def num(self) -> PicNum:
         return PicNum(int(self.path.stem))
+
+    @property
+    def _skip_file(self) -> Path:
+        folder = self.fix_dir / self.pdf_hash
+        return folder / f"{self.num}.skip"
+
+    @property
+    def _fix_checkboxes_file(self) -> Path:
+        return self.fix_dir / "checkboxes" / self.pdf_hash / f"{self.num}"
 
     # -------------------
     #      Students
@@ -266,7 +270,7 @@ class Picture:
 
     @property
     def checkboxes_need_review(self) -> bool:
-        return any(question.needs_review for question in self)
+        return any(question.needs_review for question in self) and not self._fix_checkboxes_file.is_file()
 
     @property
     def checkboxes_reviewed(self) -> bool:

@@ -13,6 +13,7 @@ from ptyx_mcq.tools.config_parser import (
     OriginalQuestionNumber,
     PageNum,
     StudentId,
+    OriginalAnswerNumber,
 )
 
 if TYPE_CHECKING:
@@ -172,3 +173,24 @@ class Document:
                     name = config.students_ids.get(pic.student.id, StudentName(""))
                     if name != "":
                         pic.student = Student(name=name, id=pic.student.id)
+
+    @property
+    def detection_status(self):
+        return {
+            (q, a): answer.initial_state
+            for q, question in self.questions.items()
+            for a, answer in question.answers.items()
+        }
+
+    @property
+    def revision_status(self):
+        return {
+            (q, a): answer.amended_state
+            for q, question in self.questions.items()
+            for a, answer in question.answers.items()
+        }
+
+    @property
+    def answered(self) -> dict[OriginalQuestionNumber, set[OriginalAnswerNumber]]:
+        """Answers checked by the student for each question."""
+        return {question: answers for page in self for question, answers in page.pic.answered}

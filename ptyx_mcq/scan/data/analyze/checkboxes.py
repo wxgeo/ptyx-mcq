@@ -16,19 +16,18 @@ from typing import TYPE_CHECKING
 from numpy import ndarray, concatenate
 from ptyx.shell import ANSI_CYAN, ANSI_RESET, ANSI_GREEN, ANSI_YELLOW
 
-from ptyx_mcq.scan.data import ScanData
 from ptyx_mcq.scan.data.questions import CbxState
 from ptyx_mcq.scan.picture_analyze.square_detection import test_square_color
 from ptyx_mcq.scan.picture_analyze.types_declaration import Line, Col
-from ptyx_mcq.tools.config_parser import DocumentId, CbxRef, real2apparent
+from ptyx_mcq.tools.config_parser import CbxRef, real2apparent
 from ptyx_mcq.tools.pic import save_webp
 
 
 if TYPE_CHECKING:
     from ptyx_mcq.scan.data.documents import Document
+    from ptyx_mcq.scan.data import ScanData
 
 CheckboxAnalyzeResult = dict[CbxRef, CbxState]
-# CheckboxesPositions = dict[CbxRef, tuple[Line, Col]]
 
 
 class InvalidFormat(RuntimeError):
@@ -228,9 +227,8 @@ def _export_document_checkboxes(doc: "Document", path: Path = None, compact=Fals
         index_lines: list[str] = []
         for q, question in pic.questions.items():
             for a, answer in question.answers.items():
-                ans_data = answer.as_dict()
-                initial_state = "" if (state := ans_data["initial_state"]) is None else state.name
-                amended_state = "" if (state := ans_data["amended_state"]) is None else state.name
+                initial_state = "" if (state := answer.initial_state) is None else state.name
+                amended_state = "" if (state := answer.amended_state) is None else state.name
                 info = f"{q}-{a}={initial_state}-{amended_state}"
                 if compact:
                     index_lines.append(info)

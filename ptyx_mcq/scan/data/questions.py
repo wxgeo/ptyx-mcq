@@ -32,12 +32,12 @@ class CbxState(Enum):
         return self in (CbxState.PROBABLY_CHECKED, CbxState.PROBABLY_UNCHECKED)
 
 
-class RevisionStatus(Enum):
-    MARKED_AS_CHECKED = auto()
-    MARKED_AS_UNCHECKED = auto()
-
-    def __repr__(self):
-        return self.name
+# class RevisionStatus(Enum):
+#     MARKED_AS_CHECKED = auto()
+#     MARKED_AS_UNCHECKED = auto()
+#
+#     def __repr__(self):
+#         return self.name
 
 
 class AnswerStateDict(TypedDict):
@@ -57,6 +57,16 @@ class Answer:
     _initial_state: CbxState | None = None
     # State of the checkbox after user review, if any, else `None`.
     _amended_state: CbxState | None = None
+
+    @property
+    def initial_state(self) -> CbxState | None:
+        """State of the checkbox as detected before any eventual manual review."""
+        return self._initial_state
+
+    @property
+    def amended_state(self) -> CbxState | None:
+        """Correction of the state of the checkbox during manual review, if any."""
+        return self._amended_state
 
     @property
     def state(self) -> CbxState | None:
@@ -97,13 +107,6 @@ class Answer:
     @property
     def reviewed(self) -> bool:
         return self._amended_state is not None
-
-    def as_dict(self) -> AnswerStateDict:
-        return {
-            "correct": self.is_correct,
-            "initial_state": self._initial_state,
-            "amended_state": self._amended_state,
-        }
 
 
 @dataclass
