@@ -159,7 +159,9 @@ class Document:
             # to improve the checkboxes' states review, since a given student will probably
             # check all its document boxes in a consistent way.
             for pic, cbx_states in zip(pictures, analyze_checkboxes(cbx)):
-                pic.update_checkboxes_states(cbx_states)
+                for (q, a), state in cbx_states.items():
+                    pic.questions[q].answers[a].state = state
+                pic.save_checkboxes_state()
 
         # Step 2: retrieve student name and ID if needed.
         for pic in pictures:

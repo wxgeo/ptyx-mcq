@@ -3,7 +3,6 @@ from subprocess import Popen, CompletedProcess
 
 from ptyx.shell import print_warning
 
-from ptyx_mcq.scan.data.analyze.checkboxes import CheckboxAnalyzeResult
 from ptyx_mcq.scan.data.conflict_gestion.data_check.fix import (
     Action,
     AbstractNamesReviewer,
@@ -13,7 +12,7 @@ from ptyx_mcq.scan.data.conflict_gestion.data_check.fix import (
 from ptyx_mcq.scan.data import ScanData, Picture
 from ptyx_mcq.tools.misc import copy_docstring
 from ptyx_mcq.tools.colors import Color, RGB
-from ptyx_mcq.scan.data.questions import CbxState, RevisionStatus
+from ptyx_mcq.scan.data.questions import CbxState
 from ptyx_mcq.scan.picture_analyze.image_viewer import ImageViewer
 from ptyx_mcq.tools.config_parser import (
     DocumentId,
@@ -132,25 +131,29 @@ class ClAnswersReviewer(AbstractAnswersReviewer):
     SELECT_QUESTION = "Write a question number, or 0 to escape:"
     EDIT_ANSWERS = "Add or remove answers (Example: +2 -1 -4 to add answer 2, and remove answers 1 et 4):"
 
-    colors: dict[CbxState | RevisionStatus, RGB] = {
+    default_colors: dict[CbxState, RGB] = {
         CbxState.CHECKED: Color.blue,
         CbxState.PROBABLY_CHECKED: Color.green,
         CbxState.PROBABLY_UNCHECKED: Color.magenta,
         CbxState.UNCHECKED: Color.pink,
-        RevisionStatus.MARKED_AS_CHECKED: Color.cyan,
-        RevisionStatus.MARKED_AS_UNCHECKED: Color.red,
     }
-    thicknesses: dict[CbxState | RevisionStatus, int] = {
+    reviewed_colors: dict[CbxState, RGB] = {
+        CbxState.CHECKED: Color.cyan,
+        CbxState.UNCHECKED: Color.red,
+    }
+    default_thicknesses: dict[CbxState, int] = {
         CbxState.CHECKED: 2,
         CbxState.PROBABLY_CHECKED: 5,
         CbxState.PROBABLY_UNCHECKED: 5,
         CbxState.UNCHECKED: 2,
-        RevisionStatus.MARKED_AS_CHECKED: 5,
-        RevisionStatus.MARKED_AS_UNCHECKED: 5,
+    }
+    reviewed_thicknesses: dict[CbxState, int] = {
+        CbxState.CHECKED: 5,
+        CbxState.UNCHECKED: 5,
     }
 
     @copy_docstring(AbstractAnswersReviewer.edit_answers)
-    def edit_answers(self, doc_id: DocumentId, page_num: PageNum) -> tuple[Action, CheckboxAnalyzeResult]:
+    def edit_answers(self, doc_id: DocumentId, page_num: PageNum) -> Action:
         config = self.scan_data.config
         doc = self.scan_data.index[doc_id]
         pic = doc.pages[page_num].pic
@@ -163,12 +166,12 @@ class ClAnswersReviewer(AbstractAnswersReviewer):
         )
         match input(self.ENTER_COMMAND):
             case Action.BACK:
-                return Action.BACK, {}
+                return Action.BACK
             case Action.NEXT:
-                return Action.NEXT, {}
+                return Action.NEXT
 
         while True:
-            changes: CheckboxAnalyzeResult = {}
+            # changes: CheckboxAnalyzeResult = {}
             process = self.display_picture_with_detected_answers(pic)
             if input(self.IS_CORRECT).lower() in ("y", "yes"):
                 break
@@ -183,17 +186,17 @@ class ClAnswersReviewer(AbstractAnswersReviewer):
                         op, a0 = val[0], ApparentAnswerNumber(int(val[1:]))
                         q, a = apparent2real(q0, a0, config, doc_id)
                         answer = question.answers[a]
-                        state = changes.get((q, a), answer.state)
-                        assert state is not None
-                        checked = state.seems_checked
+                        # state = changes.get((q, a), answer.state)
+                        assert answer.state is not None
+                        checked = answer.state.seems_checked
                         if op == "+":
                             if checked:
                                 print(f"Warning: {a0} is already marked as checked.")
                             else:
-                                changes[(q, a)] = CbxState.CHECKED
+                                answer.state = CbxState.CHECKED
                         elif op == "-":
                             if checked:
-                                changes[(q, a)] = CbxState.UNCHECKED
+                                answer.state = CbxState.UNCHECKED
                             else:
                                 print(f"Warning: {a0} was not marked as checked.")
                         else:
@@ -210,7 +213,7 @@ class ClAnswersReviewer(AbstractAnswersReviewer):
                     process.terminate()
                     process = self.display_picture_with_detected_answers(pic)
         process.terminate()
-        return Action.NEXT, changes
+        return Action.NEXT
 
     # def display_page_with_detected_answers(self, doc_id: DocumentId, page_num: PageNum) -> Popen:
     #     """Display the page with its checkboxes colored following their detection status."""
@@ -227,7 +230,9 @@ class ClAnswersReviewer(AbstractAnswersReviewer):
                 viewer.add_rectangle(
                     answer.position,
                     pic.calibration_data.cell_size,
-                    color=cls.colors[answer.state],
-                    thickness=cls.thicknesses[answer.state],
+                    color=((cls.reviewed_colors if answer.reviewed else cls.default_colors)[answer.state]),
+                    thickness=(cls.reviewed_thicknesses if answer.reviewed else cls.default_thicknesses)[
+                        answer.state
+                    ],
                 )
         return viewer.display(wait=False)

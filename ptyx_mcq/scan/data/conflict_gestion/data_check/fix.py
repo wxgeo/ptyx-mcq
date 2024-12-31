@@ -223,13 +223,13 @@ class AbstractAnswersReviewer(ABC, metaclass=ABCMeta):
             # Skip this document.
             return Action.NEXT
         else:
-            action, changes = self.edit_answers(doc_id, page_num)
-            # Apply changes.
-            doc.pages[page_num].pic.update_checkboxes_states(changes)
+            action = self.edit_answers(doc_id, page_num)
+            # Save changes on drive (to be able to resume scan process).
+            doc.pages[page_num].pic.save_checkboxes_state(is_fix=True)
             return action
 
     @abstractmethod
-    def edit_answers(self, doc_id: DocumentId, page_num: PageNum) -> tuple[Action, CheckboxAnalyzeResult]:
+    def edit_answers(self, doc_id: DocumentId, page_num: PageNum) -> Action:
         """Call interactive editor to change answers.
 
         MCQ parser internal state `self.data` will be modified accordingly.

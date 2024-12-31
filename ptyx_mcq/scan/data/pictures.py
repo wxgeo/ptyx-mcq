@@ -178,7 +178,7 @@ class Picture:
     def _save_student(self, is_fix=False) -> None:
         if self.student is not None:
             root = self.fix_dir if is_fix else self.cache_dir
-            (folder := root / "students").mkdir(exist_ok=True)
+            (folder := root / "students").mkdir(exist_ok=True, parents=True)
             self.student.save(folder / str(self.num))
 
     @property
@@ -230,8 +230,10 @@ class Picture:
         except (ValueError, OSError):
             pass
 
-    def _save_checkboxes_state(self, is_fix=False) -> None:
-        (folder := (self.fix_dir if is_fix else self.cache_dir) / "checkboxes").mkdir(exist_ok=True)
+    def save_checkboxes_state(self, is_fix=False) -> None:
+        (folder := (self.fix_dir if is_fix else self.cache_dir) / "checkboxes").mkdir(
+            exist_ok=True, parents=True
+        )
         (folder / str(self.num)).write_text(
             "\n".join(question.as_str(is_fix=is_fix) for question in self), encoding="utf8"
         )
@@ -263,10 +265,10 @@ class Picture:
     def checkboxes_analyzed(self) -> bool:
         return all(question.analyzed for question in self)
 
-    def update_checkboxes_states(self, states: CheckboxAnalyzeResult) -> None:
-        for (q, a), state in states.items():
-            self.questions[q].answers[a].state = state
-        self._save_checkboxes_state()
+    # def update_checkboxes_states(self, states: CheckboxAnalyzeResult) -> None:
+    #     for (q, a), state in states.items():
+    #         self.questions[q].answers[a].state = state
+    #     self.save_checkboxes_state()
 
     @property
     def checkboxes_need_review(self) -> bool:

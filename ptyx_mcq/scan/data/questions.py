@@ -31,6 +31,9 @@ class CbxState(Enum):
     def needs_review(self) -> bool:
         return self in (CbxState.PROBABLY_CHECKED, CbxState.PROBABLY_UNCHECKED)
 
+    # @property
+    # def manually_revied(self):
+
 
 # class RevisionStatus(Enum):
 #     MARKED_AS_CHECKED = auto()
@@ -40,10 +43,10 @@ class CbxState(Enum):
 #         return self.name
 
 
-class AnswerStateDict(TypedDict):
-    correct: bool | None
-    initial_state: CbxState | None
-    amended_state: CbxState | None
+# class AnswerStateDict(TypedDict):
+#     correct: bool | None
+#     initial_state: CbxState | None
+#     amended_state: CbxState | None
 
 
 @dataclass
@@ -98,6 +101,7 @@ class Answer:
 
     @property
     def analyzed(self) -> bool:
+        """Has the state been already automatically detected?"""
         return self._initial_state is not None
 
     @property
@@ -106,6 +110,7 @@ class Answer:
 
     @property
     def reviewed(self) -> bool:
+        """Has the state been manually reviewed?"""
         return self._amended_state is not None
 
 
