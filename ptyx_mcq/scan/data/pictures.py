@@ -139,7 +139,7 @@ class Picture:
 
     @property
     def _fix_checkboxes_file(self) -> Path:
-        return self.fix_dir / "checkboxes" / self.pdf_hash / f"{self.num}"
+        return self.fix_dir / f"checkboxes/{self.num}"
 
     # -------------------
     #      Students
