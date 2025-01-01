@@ -96,7 +96,7 @@ class CalibrationData:
         top, left = self.top_left_corner_position
         v_resolution = self.v_pixels_per_mm
         h_resolution = self.h_pixels_per_mm
-        return Pixel((round((287 - y) * v_resolution + top), round((x - 10) * h_resolution + left)))
+        return Line(round((287 - y) * v_resolution + top)), Col(round((x - 10) * h_resolution + left))
 
 
 @dataclass(frozen=True)
@@ -385,7 +385,8 @@ def find_corner_square(
     if whiteness_measure > max_whiteness:
         print(f"WARNING: Corner square {corner} not found " f"(not dark enough: {whiteness_measure}!)")
         raise MissingSquare(
-            f"Corner square {corner} not found.", details=[Rectangle((i0, j0), size, color=Color.blue)]
+            f"Corner square {corner} not found.",
+            details=[Rectangle((Line(i0), Col(j0)), size, color=Color.blue)],
         )
 
     if corner.v == VPosition.BOTTOM:
@@ -393,7 +394,7 @@ def find_corner_square(
     if corner.h == HPosition.RIGHT:
         j0 = width - 1 - j0 - size
 
-    return i0, j0
+    return Line(i0), Col(j0)
 
 
 def orthogonal(corner: ValidCornerKey, positions: CornersPositions) -> bool:
@@ -536,7 +537,8 @@ def _detect_four_squares(
         for corner in positions:
             pos = positions[corner]
             assert pos is not None
-            darkness[corner] = eval_square_color(m, *pos, square_size)  # type: ignore
+            # noinspection PyTypeChecker
+            darkness[corner] = eval_square_color(m, *pos, square_size)
 
         lighter_corner = min(darkness, key=darkness.get)  # type: ignore
         if darkness[lighter_corner] < 0.4:
@@ -563,8 +565,8 @@ def _detect_four_squares(
             i0, j0 = pos0
             i1, j1 = pos1
             i2, j2 = pos2
-            i = i2 + (i1 - i0)
-            j = j2 + (j1 - j0)
+            i = Line(i2 + (i1 - i0))
+            j = Col(j2 + (j1 - j0))
 
             # Calculate the last corner (ABCD parallelogram <=> Vec{AB} = \Vec{DC})
             positions[corner] = (i, j)
@@ -581,7 +583,7 @@ def _detect_four_squares(
     return positions, ij1, ij2
 
 
-def find_document_id_band(m: ndarray, i: int, j1: int, j2: int, square_size: int) -> Rectangle:
+def find_document_id_band(m: ndarray, i: Line, j1: Col, j2: Col, square_size: int) -> Rectangle:
     """Return the top left corner (coordinates in pixels) of the document ID band first square."""
     margin = square_size
     i1, i2 = Line(i - margin), Line(i + square_size + margin)
@@ -598,8 +600,8 @@ def find_document_id_band(m: ndarray, i: int, j1: int, j2: int, square_size: int
                 Area((i1, j1), (i2, j2)),
             ],
         )
-    i3 += i1
-    j3 += j1
+    i3 += i1  # type: ignore
+    j3 += j1  # type: ignore
     return Rectangle((i3, j3), square_size)
 
 

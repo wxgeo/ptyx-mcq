@@ -20,7 +20,7 @@ def test_no_conflict(monkeypatch, patched_conflict_solver):
     """No interaction should occur if there is no conflict."""
     monkeypatch.setattr("builtins.input", fail_on_input)
     patched_conflict_solver.run()
-    data = patched_conflict_solver.data
+    data = patched_conflict_solver.scan_data.index
     assert sorted(data) == [1, 2, 3, 4], data
 
 

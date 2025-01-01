@@ -104,6 +104,7 @@ def amend_doc(doc: Document, max_score_per_question: dict[QuestionNumberOrDefaul
                     top_left_positions[q] = answer.position
         for q in top_left_positions:
             earn = pic.questions[q].score
+            assert earn is not None
             maximum = max_score_per_question.get(q, max_score_per_question["default"])
             assert isinstance(maximum, (float, int)), repr(maximum)
             i, j = top_left_positions[q]
@@ -113,15 +114,18 @@ def amend_doc(doc: Document, max_score_per_question: dict[QuestionNumberOrDefaul
         # the smaller questions numbers is the first one, and so on.
         # However, be careful to use displayed questions numbers,
         # since `q` is the question number *before shuffling*.
-        q_num = real2apparent(q, None, config, doc_id)
+        # noinspection PyUnboundLocalVariable
+        q_num, _ = real2apparent(q, None, config, doc_id)
         images[q_num] = img
         # Sort pages now.
     pages: list[Image]
     _, pages = zip(*sorted(images.items()))  # type: ignore
     draw = ImageDraw.Draw(pages[0])
+    assert doc.score is not None
+    # noinspection PyUnboundLocalVariable
     _write_score(draw, (Line(2 * size), Col(4 * size)), doc.score, max_score, 2 * size)
     pages[0].save(
-        join(doc.scan_data.dirs.pdf, f"{doc.student.name}-{doc_id}.pdf"),
+        join(doc.scan_data.dirs.pdf, f"{doc.student_name}-{doc_id}.pdf"),
         save_all=True,
         append_images=pages[1:],
     )

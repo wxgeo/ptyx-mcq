@@ -194,7 +194,7 @@ def find_black_rectangle(
             # ~ print(to_avoid)
             if debug:
                 input("-- pause --")
-            yield int(i), int(j)  # convert from np.int64 to int.
+            yield Line(int(i)), Col(int(j))  # convert from np.int64 to int.
 
 
 def find_black_square(
@@ -268,13 +268,13 @@ def adjust_checkbox(
     # Try to adjust top edge of the checkbox
     i0, j0 = i, j
     if m[i : i + size, j : j + 1].sum() < level1 * size:
-        for i in range(i0 - delta, i0 + delta + 1):
+        for i in range(i0 - delta, i0 + delta + 1):  # type: ignore
             if m[i : i + size, j : j + 1].sum() > level2 * size:
                 break
         else:
             i = i0
     if m[i : i + 1, j : j + size].sum() < level1 * size:
-        for j in range(j0 - delta, j0 + delta + 1):
+        for j in range(j0 - delta, j0 + delta + 1):  # type: ignore
             if m[i : i + 1, j : j + size].sum() > level2 * size:
                 break
         else:

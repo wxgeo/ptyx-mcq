@@ -1,11 +1,13 @@
 import io
 from hashlib import blake2b
+from itertools import count
+from multiprocessing.pool import AsyncResult
 from pathlib import Path
 from shutil import rmtree
 from multiprocessing import Pool
 from typing import TYPE_CHECKING, NewType
 
-import fitz
+import pymupdf
 import numpy as np
 from PIL import Image, UnidentifiedImageError
 from numpy import ndarray
@@ -38,8 +40,8 @@ class PdfCollection:
     the `.data` dictionary.
     """
 
-    def __init__(self, data_handler: "ScanData"):
-        self.data_handler = data_handler
+    def __init__(self, scan_data: "ScanData"):
+        self.scan_data = scan_data
         self._data: PdfData | None = None
 
     @property
@@ -51,7 +53,7 @@ class PdfCollection:
 
     @property
     def paths(self) -> PathsHandler:
-        return self.data_handler.paths
+        return self.scan_data.paths
 
     def _generate_current_pdf_hashes(self) -> dict[PdfHash, Path]:
         """Return the hashes of all the pdf files found in `scan/` directory.
@@ -65,36 +67,39 @@ class PdfCollection:
         return hashes
 
     def _parallel_collect(
-        self, hash2pdf: dict[PdfHash, Path], number_of_processes: int | None = PdfData
+        self, hash2pdf: dict[PdfHash, Path], number_of_processes: int | None = None
     ) -> PdfData:
-        # For each new pdf files, extract all pictures
-        to_extract: list[tuple[Path, Path, PicNum]] = []
-        pdf_data: PdfData = {}
+
+        total_number_of_pages = sum(number_of_pages(pdf_path) for pdf_path in hash2pdf.values())
+        counter = 0
+
+        def print_progression(_):
+            nonlocal counter
+            counter += 1
+            print(f"Extracting the pdf pages: {counter}/{total_number_of_pages}...", end="\r")
 
         # TODO: use ThreadPool instead?
         with Pool(number_of_processes) as pool:
+            futures: dict[PdfHash, dict[PicNum, AsyncResult]] = {}
             for pdf_hash, pdf_path in hash2pdf.items():
                 folder = self.paths.dirs.cache / pdf_hash
-                # Only append a page if the corresponding .pic-data file is not found.
-                # (Resume an interrupted scan without extracting again previously extracted pages).
-                to_extract.extend(
-                    [
-                        (pdf_path, folder, PicNum(page_num))
-                        for page_num in range(number_of_pages(pdf_path))
-                        if not (folder / f"{page_num}.pic-data").is_file()
-                    ]
-                )
-            if to_extract:
-                print("Extracting pictures from pdf...")
-                result: list[tuple[CalibrationData, IdentificationData]] = pool.starmap(
-                    extract_pdf_page, to_extract
-                )
-                for (_, folder, page_num), pic_data in zip(to_extract, result):
-                    if pic_data is not None:
-                        pdf_data.setdefault(PdfHash(folder.name), {})[page_num] = pic_data
+                for page_num in range(number_of_pages(pdf_path)):
+                    future_result = pool.apply_async(
+                        extract_pdf_page, (pdf_path, folder, PicNum(page_num)), callback=print_progression
+                    )
+                    futures.setdefault(PdfHash(folder.name), {})[PicNum(page_num)] = future_result
+        pdf_data: PdfData = {}
+        for pdf_hash in futures:
+            for pic_num, future_result in futures[pdf_hash].items():
+                result = future_result.get()
+                if result is not None:
+                    pdf_data.setdefault(pdf_hash, {})[pic_num] = result
+        print(
+            "Extracting the pdf pages: OK" + len(f"{total_number_of_pages}/{total_number_of_pages}...") * " "
+        )
         return pdf_data
 
-    def _sequential_collect(self, hash2pdf: dict[str, Path]) -> PdfData:
+    def _sequential_collect(self, hash2pdf: dict[PdfHash, Path]) -> PdfData:
         pdf_data: PdfData = {}
         for pdf_hash, pdf_path in hash2pdf.items():
             folder = self.paths.dirs.cache / pdf_hash
@@ -104,7 +109,7 @@ class PdfCollection:
                 print(f"Extracting page {page_num + 1} from '{pdf_path}'...")
                 pic_data = extract_pdf_page(pdf_path, folder, PicNum(page_num))
                 if pic_data is not None:
-                    pdf_data.setdefault(folder.name, {})[PicNum(page_num)] = pic_data
+                    pdf_data.setdefault(PdfHash(folder.name), {})[PicNum(page_num)] = pic_data
         return pdf_data
 
     def collect_data(self, number_of_processes=1) -> PdfData:
@@ -124,7 +129,7 @@ class PdfCollection:
             self._data = self._parallel_collect(hash2pdf, number_of_processes=number_of_processes)
         return self._data
 
-    def _remove_obsolete_files(self, hash2pdf: dict[str, Path]) -> None:
+    def _remove_obsolete_files(self, hash2pdf: dict[PdfHash, Path]) -> None:
         """For each removed pdf files, remove corresponding pictures and data."""
         for path in self.paths.dirs.cache.iterdir():
             # No file should be found, only directories!
@@ -226,8 +231,8 @@ def _extract_pdf_page(
 
 
 def _get_page_content_as_array(pdf_file: Path, page_num: PicNum) -> ndarray:
-    doc: fitz.Document = fitz.Document(pdf_file)
-    page: fitz.Page = doc[page_num]
+    doc: pymupdf.Document = pymupdf.Document(pdf_file)
+    page: pymupdf.Page = doc[page_num]
     if _contain_only_a_single_image(page):
         xref: int = page.get_images()[0][0]
         img_info = doc.extract_image(xref)
@@ -235,11 +240,11 @@ def _get_page_content_as_array(pdf_file: Path, page_num: PicNum) -> ndarray:
     else:
         # In all other cases, we'll have to rasterize the whole page and save it as a JPG picture
         # (unfortunately, this is much slower than a simple extraction).
-        pix: fitz.Pixmap = page.get_pixmap(dpi=200, colorspace=fitz.Colorspace(fitz.CS_GRAY))
+        pix: pymupdf.Pixmap = page.get_pixmap(dpi=200, colorspace=pymupdf.Colorspace(pymupdf.CS_GRAY))
         return np.frombuffer(pix.samples_mv, dtype=np.uint8).reshape((pix.height, pix.width))
 
 
-def _contain_only_a_single_image(page: fitz.Page) -> bool:
+def _contain_only_a_single_image(page: pymupdf.Page) -> bool:
     """Test if the page contains only a single picture."""
     return (
         len(page.get_images()) == 1

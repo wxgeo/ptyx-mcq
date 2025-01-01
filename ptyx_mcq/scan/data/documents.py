@@ -195,4 +195,4 @@ class Document:
     @property
     def answered(self) -> dict[OriginalQuestionNumber, set[OriginalAnswerNumber]]:
         """Answers checked by the student for each question."""
-        return {question: answers for page in self for question, answers in page.pic.answered}
+        return {question: answers for page in self for question, answers in page.pic.answered.items()}

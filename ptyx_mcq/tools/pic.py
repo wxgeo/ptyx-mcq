@@ -10,7 +10,7 @@ def array_to_image(matrix: ndarray) -> Image.Image:
     return Image.fromarray((255 * matrix).astype(int8))
 
 
-def image_to_array(image: Image) -> ndarray:
+def image_to_array(image: Image.Image) -> ndarray:
     """Convert a PIL Image to a grayscale numpy array."""
     # "L" -> Convert to grayscale picture.
     return array(image.convert("L")) / 255

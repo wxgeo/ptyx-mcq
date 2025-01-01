@@ -16,7 +16,7 @@ from ptyx.shell import ANSI_RESET, ANSI_GREEN, print_success
 from ptyx.sys_info import CPU_PHYSICAL_CORES
 from ptyx_mcq.scan.data.conflict_gestion.data_check.cl_fix import ClAnswersReviewer
 
-from ptyx_mcq.parameters import CONFIG_FILE_EXTENSION
+from ptyx_mcq.parameters import CONFIG_FILE_EXTENSION, IMAGE_FORMAT
 from ptyx_mcq.scan.pdf.amend import amend_all
 
 from ptyx_mcq.scan.data.conflict_gestion import ConflictSolver
@@ -125,60 +125,53 @@ class MCQPictureParser:
     def _generate_amended_pdf(self) -> None:
         amend_all(self.scan_data)
 
-    def scan_single_picture(self, picture: Union[str, Path]) -> None:
+    def scan_single_picture(self, short_path: str | Path) -> None:
         """This is used for debugging (it allows to test one page specifically)."""
         # TODO: Still useful?
         #       Test it or remove it.
-        # f1-pic-003.jpg (page 25)
-        # f12-pic-005.jpg
-        # f12-pic-003.jpg
-        # f12-pic-004.jpg
-        # f12-pic-013.jpg
-        # f7-pic-013.jpg
-        # f9-pic-004.jpg
-        # f9-pic-005.jpg
-        # f13-pic-002.jpg
-        if not any(str(picture).endswith(ext) for ext in PIC_EXTS):
-            raise TypeError("Allowed picture extensions: " + ", ".join(PIC_EXTS))
-        pic_path = Path(picture).expanduser().resolve()
-        if not pic_path.is_file():
-            pic_path = self.scan_data.absolute_pic_path(picture)
-        pic_data, array = scan_picture(pic_path, self.config, debug=True)
-        ClAnswersReviewer.display_picture_with_detected_answers(array, pic_data)
-        print(pic_data)
+        short_path = str(short_path)
+        if short_path.endswith(ext := f".{IMAGE_FORMAT}"):
+            short_path = short_path[: -len(ext)]
 
-    def _serial_scanning(self, to_analyze: list[Path], debug=False):
-        """Scan all documents sequentially using only one process.
+        for pic in self.scan_data.pictures:
+            if pic.short_path == short_path:
+                break
+        else:
+            raise FileNotFoundError(f"Unable to find picture {short_path!r}.")
+        ClAnswersReviewer.display_picture_with_detected_answers(pic)
 
-        This is usually slower, but easier to debug.
-        """
-        # No multiprocessing
-        for i, pic_path in enumerate(to_analyze, start=1):
-            scan_result: tuple[Path, PicData, BytesIO] | Path = self._scan_current_page(
-                pic_path, silent=False, debug=debug
-            )
-            self._handle_scan_result(scan_result)
-            # print(f"Page {i}/{len(to_analyze)} processed.", end="\r")
-
-    def _parallel_scanning(self, to_analyze: list[Path], number_of_processes: int, debug=False):
-        """Scan all documents using several processes running in parallel.
-
-        This is default behaviour on most platform, since it takes advantage of multi-cores computers,
-        though it is harder to debug.
-        """
-        with concurrent.futures.ProcessPoolExecutor(
-            max_workers=number_of_processes, mp_context=multiprocessing.get_context("spawn")
-        ) as executor:
-            # Use an iterator, to limit memory consumption.
-            todo = (
-                executor.submit(self._scan_current_page, pic_path, True, debug) for pic_path in to_analyze
-            )
-
-            # t = time.time()
-            for i, future in enumerate(concurrent.futures.as_completed(todo), start=1):
-                scan_result: tuple[Path, PicData, BytesIO] | Path = future.result()
-                self._handle_scan_result(scan_result)
-                print(f"Page {i}/{len(to_analyze)} processed.", end="\r")
+    # def _serial_scanning(self, to_analyze: list[Path], debug=False):
+    #     """Scan all documents sequentially using only one process.
+    #
+    #     This is usually slower, but easier to debug.
+    #     """
+    #     # No multiprocessing
+    #     for i, pic_path in enumerate(to_analyze, start=1):
+    #         scan_result: tuple[Path, PicData, BytesIO] | Path = self._scan_current_page(
+    #             pic_path, silent=False, debug=debug
+    #         )
+    #         self._handle_scan_result(scan_result)
+    #         # print(f"Page {i}/{len(to_analyze)} processed.", end="\r")
+    #
+    # def _parallel_scanning(self, to_analyze: list[Path], number_of_processes: int, debug=False):
+    #     """Scan all documents using several processes running in parallel.
+    #
+    #     This is default behaviour on most platform, since it takes advantage of multi-cores computers,
+    #     though it is harder to debug.
+    #     """
+    #     with concurrent.futures.ProcessPoolExecutor(
+    #         max_workers=number_of_processes, mp_context=multiprocessing.get_context("spawn")
+    #     ) as executor:
+    #         # Use an iterator, to limit memory consumption.
+    #         todo = (
+    #             executor.submit(self._scan_current_page, pic_path, True, debug) for pic_path in to_analyze
+    #         )
+    #
+    #         # t = time.time()
+    #         for i, future in enumerate(concurrent.futures.as_completed(todo), start=1):
+    #             scan_result: tuple[Path, PicData, BytesIO] | Path = future.result()
+    #             self._handle_scan_result(scan_result)
+    #             print(f"Page {i}/{len(to_analyze)} processed.", end="\r")
 
     def analyze_pages(
         self,
