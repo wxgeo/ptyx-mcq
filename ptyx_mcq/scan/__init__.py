@@ -11,7 +11,6 @@ def scan(
     path: Path,
     reset: bool = False,
     cores: int = 0,
-    verify: Literal["auto", "always", "never"] = "auto",
     test_picture: Path = None,
     debug: bool = False,
 ) -> "MCQPictureParser":
@@ -21,17 +20,9 @@ def scan(
     """
 
     try:
-        if verify == "always":
-            manual_verification: Optional[bool] = True
-        elif verify == "never":
-            manual_verification = False
-        else:
-            manual_verification = None
         mcq_parser = MCQPictureParser(path)
         if test_picture is None:
-            mcq_parser.run(
-                manual_verification=manual_verification, number_of_processes=cores, debug=debug, reset=reset
-            )
+            mcq_parser.run(number_of_processes=cores, debug=debug, reset=reset)
             print_success("Students' marks successfully generated. :)")
         else:
             mcq_parser.scan_single_picture(test_picture)

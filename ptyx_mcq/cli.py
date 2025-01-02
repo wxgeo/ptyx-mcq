@@ -244,19 +244,6 @@ def create_mcq_arg_parser() -> ArgumentParser:
         " the number of cores will be set automatically)."
         " Setting cores to 1 will disable multiprocessing and make scanning more verbose.",
     )
-    # TODO: reimplement --verify (with tests) or remove it.
-    scan_parser.add_argument(
-        "--verify",
-        "--manual-verification",
-        choices=("always", "never", "auto"),
-        default="auto",
-        help="[UNMAINTAINED] If set to `always`, then for each page scanned, display a picture of "
-        "the interpretation by the detection algorithm, "
-        "for manual verification.\n"
-        "If set to `never`, always assume algorithm is right.\n"
-        "Default is `auto`, i.e. only ask for manual verification "
-        "in case of ambiguity.",
-    )
     scan_parser.add_argument(
         "--debug",
         action="store_true",

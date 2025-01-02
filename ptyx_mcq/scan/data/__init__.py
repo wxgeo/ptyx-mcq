@@ -2,7 +2,7 @@ from pathlib import Path
 from typing import Iterator
 
 
-from ptyx_mcq.scan.data.extraction import PdfCollection
+from ptyx_mcq.scan.data.extract import PdfCollectionExtractor
 from ptyx_mcq.scan.data.paths_manager import PathsHandler, DirsPaths, FilesPaths
 from ptyx_mcq.scan.data.documents import Document, Page
 from ptyx_mcq.scan.data.pictures import Picture
@@ -33,7 +33,7 @@ class ScanData:
 
     def __init__(self, config_path: Path, input_dir: Path = None, output_dir: Path = None):
         self.paths = PathsHandler(config_path=config_path, input_dir=input_dir, output_dir=output_dir)
-        self.input_pdf = PdfCollection(self)
+        self.input_pdf = PdfCollectionExtractor(self)
         self.config: Configuration = self.get_configuration(self.paths.configfile)
         # Navigate between documents.
         self._index: dict[DocumentId, Document] | None = None

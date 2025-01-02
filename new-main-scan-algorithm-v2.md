@@ -54,7 +54,7 @@ Chaque image extraite est :
 - normalisée (convertie en niveaux de gris, avec un contraste augmenté).
 - pivotée, après avoir détecté les 4 carrés de référence marquant les coins de la page.
 
-Un fichier `<pdf-hash>/calibration/<num-page-scannée>` est généré, contenant :
+Un fichier `.cache/<pdf-hash>/calibration/<num-page-scannée>` est généré, contenant :
 - la résolution horizontale (px/mm)
 - la résolution verticale (px/mm)
 - la position des 4 coins (px)
@@ -62,15 +62,15 @@ Un fichier `<pdf-hash>/calibration/<num-page-scannée>` est généré, contenant
 
 (En mémoire, ces données sont stockées dans un objet de classe `CalibrationData`). 
 
-L'image rectifiée elle-même est alors stockée dans un fichier `<pdf-hash>/<pic-num>.webp`, pour éviter
+L'image rectifiée elle-même est alors stockée dans un fichier `.cache/<pdf-hash>/<pic-num>.webp`, pour éviter
 de surcharger la mémoire. 
 (Quant à l'image originale, c'est-à-dire avant rectification, elle n'est pas conservée). 
 
 Si une page ne semble pas correspondre à une page de QCM (page vierge par exemple), 
-on génère un fichier `<pdf-hash>/<pic-num>.skip` pour indiquer que la page a bien été traitée.
+on génère un fichier `.cache/<pdf-hash>/<pic-num>.skip` pour indiquer que la page a bien été traitée.
 
 #### 2.3.2 Identification des images
-Pour chaque image, on génère un fichier `<pdf-hash>/identification/<pic-num>`.
+Pour chaque image, on génère un fichier `.cache/<pdf-hash>/identification/<pic-num>`.
 Celui-ci contient toutes les infos brutes de l'image :
 - Le numéro du document
 - Le numéro de page dans le document
@@ -86,8 +86,8 @@ Remarque : il peut parfois arriver qu'il y ait plusieurs images associées au m�
 
 Exemple de contenu de fichier : 
 ```
-1:<pdf-hash>/1,<other-pdf-hash>/34,<pdf-hash>/12
-2:<pdf-hash>/14
+1: <pdf-hash>/1, <other-pdf-hash>/34, <pdf-hash>/12
+2: <pdf-hash>/14
 ```
 La 1re ligne du fichier liste les pages scannées correspondant à la 1re page du document,
 la 2e ligne du fichier liste les pages scannées correspondant à la 2e page du document,
@@ -96,6 +96,8 @@ etc.
 Idéalement, il ne devrait y avoir qu'une seule page scannée associée à chaque page du document,
 sinon (voir remarque plus haut) c'est qu'il y a un conflit potentiel 
 (il y aura effectivement conflit si le contenu diffère après analyse).
+
+Ces fichiers ne sont pas utilisés ensuite, mais facilitent le débogage.
 
 ### 2.5 Analyse des données
 #### 2.5.1 Récupération de la position des cases à cocher
@@ -113,8 +115,14 @@ Celui-ci contient le statut de chaque case (`UNCHECKED`, `CHECKED`, `PROBABLY_UN
 
 Exemple de contenu de fichier :
 ```
-1, 1: UNCHECKED
-1, 2: CHECKED
+[1]
+1: UNCHECKED
+2: CHECKED
+3: PROBABLY_UNCHECKED
+
+[2]
+1: CHECKED
+2: CHECKED
 ```
 
 #### 2.5.3 Identification de l'étudiant
@@ -134,7 +142,8 @@ William Shakespeare
 
 ### 2.6 Remarque
 
-L'intérêt de générer un fichier par page scannée (et non par document ou par page du document initial) est de gérer plus facilement les conflits (pages scannées en double par exemple).
+L'intérêt de générer un fichier par page scannée (et non par document ou par page du document initial) est de gérer 
+plus facilement les conflits (pages scannées en double par exemple).
 
 ## 3. Détection des conflits
 Génération de la liste des conflits :
@@ -142,25 +151,32 @@ Génération de la liste des conflits :
 - conflits de nom/identifiant (nom/identifiant incorrect, identifiants apparaissant plusieurs fois)
 - cases au statut ambigu (`PROBABLY_UNCHECKED`, `PROBABLY_CHECKED`)
 
+Les données de résolution de conflits sont sauvegardées dans le dossier `.fix`.
+
 ### Résolution automatique des conflits d'intégrité si possible
-Si deux images contiennent les mêmes données (fichiers `<pdf-hash>/review/<num-page-scannée>` identiques), 
-on n'en garde qu'une seule.
+Si deux images contiennent les mêmes données (fichiers `<pdf-hash>/checkboxes/<num-page-scannée>` identiques,
+et même étudiant s'il s'agit des 1res pages), on n'en garde qu'une seule.
 
 ### Résolution manuelle des conflits
-Dossier `fix`.
-- conflits d'intégrité :
-  Résolution sauvegardée dans un fichier `index` contenant des lignes au format :
-  `<num-document>-<page>:<pdf-hash>/<num-image>`
+- conflits d'intégrité (pages en double) :
+  Pour chaque image non utilisée, on crée un fichier `.skip`.
+  `.fix/<pdf-hash>/<num-page-scannée>.skip`
 - conflits de nom/identifiant.
-  Résolutions sauvegardée dans un fichier `<num-document>.fix-doc` contenant 2 lignes :
+  Résolution sauvegardée dans un fichier `.fix/<pdf-hash>/student/<num-page-scannée>` contenant 2 lignes :
   ```
-  <identifiant>
   <nom>
+  <identifiant>
   ```
 - cases au statut ambigu.
-  Résolutions sauvegardée dans un fichier `<num-document>-<page>.fix-page` contenant la liste des corrections :
+  Résolutions sauvegarde dans un fichier `.fix/<pdf-hash>/checkboxes/<num-page-scannée>` 
+  contenant la liste des corrections :
   ```
-  (q, a): UNCHECKED, ...
+  [5]
+  2: UNCHECKED
+  6: CHECKED
+  
+  [9]
+  3: CHECKED
   ```
 
 ### Calcul des scores

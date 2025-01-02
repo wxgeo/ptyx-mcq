@@ -6,11 +6,10 @@ from PIL import Image
 from numpy import ndarray, array
 from ptyx.shell import print_error
 
-from ptyx_mcq.scan.data.analyze.checkboxes import CheckboxAnalyzeResult
 from ptyx_mcq.scan.data.analyze.student_names import read_student_id_and_name
 
 from ptyx_mcq.parameters import FIX_DIR
-from ptyx_mcq.scan.data.extraction import PdfHash, PicNum
+from ptyx_mcq.scan.data.extract import PdfHash, PicNum
 from ptyx_mcq.scan.data.students import Student
 from ptyx_mcq.scan.data.questions import Question
 from ptyx_mcq.scan.picture_analyze.calibration import CalibrationData

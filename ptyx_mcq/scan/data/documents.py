@@ -135,7 +135,7 @@ class Document:
 
         The generated file is only used for debugging.
         """
-        (self.scan_data.dirs.index / str(self.doc_id)).write_text(self._as_str(), encoding="utf8")
+        (self.scan_data.dirs.index / str(self.doc_id)).write_text(self._as_str() + "\n", encoding="utf8")
 
     def update_info(self) -> None:
         """Retrieve the state of each checkbox (checked or not) and the student id and name.

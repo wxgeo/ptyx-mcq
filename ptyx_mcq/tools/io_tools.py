@@ -1,6 +1,9 @@
+import sys
 import traceback
 from pathlib import Path
+from typing import Type
 
+from mypy.ipc import TracebackType
 from ptyx.shell import print_error
 
 
@@ -100,3 +103,43 @@ def print_framed_msg(msg: str) -> None:
     print(decoration)
     print(msg)
     print(decoration)
+
+
+class Silent:
+    """A context manager enabling to discard or redirect any stdout output for a while.
+
+    with Silent():
+        ...
+    """
+
+    def __init__(self, *, silent=True, log_file: Path | None = None, reset_log=False):
+        self.silent = silent
+        self.log_file = log_file
+        if reset_log and log_file is not None and log_file.is_file():
+            open(self.log_file, "w").close()
+
+    def __enter__(self):
+        if self.silent:
+            self.stdout = sys.stdout
+            sys.stdout = self
+        self.file = None if self.log_file is None else open(self.log_file, "a", encoding="utf8")
+
+    # noinspection PyShadowingNames
+    def __exit__(
+        self,
+        exception_type: Type[BaseException] | None,
+        value: BaseException | None,
+        traceback: TracebackType,
+    ) -> None:
+        if self.silent:
+            sys.stdout = self.stdout
+        if self.file is not None:
+            self.file.close()
+
+    def write(self, s: str) -> None:
+        if self.file is not None:
+            self.file.write(s)
+
+    def flush(self) -> None:
+        if self.file is not None:
+            self.file.flush()

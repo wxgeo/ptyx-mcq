@@ -1,6 +1,5 @@
 import io
 from hashlib import blake2b
-from itertools import count
 from multiprocessing.pool import AsyncResult
 from pathlib import Path
 from shutil import rmtree
@@ -16,12 +15,12 @@ from ptyx.shell import print_warning
 from ptyx_mcq.parameters import IMAGE_FORMAT
 from ptyx_mcq.scan.data.paths_manager import PathsHandler
 
-# from ptyx_mcq.scan.data.documents import PdfHash, PicNum, PdfData
 from ptyx_mcq.scan.picture_analyze.calibration import calibrate, CalibrationData, adjust_contrast
 from ptyx_mcq.scan.picture_analyze.identify_doc import read_doc_id_and_page, IdentificationData
 from ptyx_mcq.scan.picture_analyze.types_declaration import CalibrationError
 from ptyx_mcq.scan.pdf.utilities import number_of_pages
 from ptyx_mcq.tools.extend_literal_eval import extended_literal_eval
+from ptyx_mcq.tools.io_tools import Silent
 from ptyx_mcq.tools.pic import array_to_image, image_to_array
 
 if TYPE_CHECKING:
@@ -32,7 +31,7 @@ PicNum = NewType("PicNum", int)
 PdfData = dict[PdfHash, dict[PicNum, tuple[CalibrationData, IdentificationData]]]
 
 
-class PdfCollection:
+class PdfCollectionExtractor:
     """
     Manage all input pdf, and extract its content.
 
@@ -85,15 +84,18 @@ class PdfCollection:
                 folder = self.paths.dirs.cache / pdf_hash
                 for page_num in range(number_of_pages(pdf_path)):
                     future_result = pool.apply_async(
-                        extract_pdf_page, (pdf_path, folder, PicNum(page_num)), callback=print_progression
+                        self.extract_page,
+                        (pdf_path, folder, PicNum(page_num)),
+                        callback=print_progression,
                     )
                     futures.setdefault(PdfHash(folder.name), {})[PicNum(page_num)] = future_result
-        pdf_data: PdfData = {}
-        for pdf_hash in futures:
-            for pic_num, future_result in futures[pdf_hash].items():
-                result = future_result.get()
-                if result is not None:
-                    pdf_data.setdefault(pdf_hash, {})[pic_num] = result
+            pdf_data: PdfData = {}
+            for pdf_hash in futures:
+                for pic_num, future_result in futures[pdf_hash].items():
+
+                    result = future_result.get()
+                    if result is not None:
+                        pdf_data.setdefault(pdf_hash, {})[pic_num] = result
         print(
             "Extracting the pdf pages: OK" + len(f"{total_number_of_pages}/{total_number_of_pages}...") * " "
         )
@@ -141,9 +143,15 @@ class PdfCollection:
                 )
             # Remove any directory whose name don't match any existing pdf file, and all corresponding data.
             if path.name not in hash2pdf:
-                # for doc_id in self._get_corresponding_doc_ids(path.name):
-                #     self.data_handler.remove_doc_files(DocumentId(int(doc_id)))
                 rmtree(path)
+
+    @staticmethod
+    def extract_page(
+        pdf_file: Path, dest: Path, page_num: PicNum
+    ) -> tuple[CalibrationData, IdentificationData] | None:
+        """Extract data corresponding to the given page of the pdf."""
+        with Silent():
+            return extract_pdf_page(pdf_file, dest, page_num)
 
 
 def extract_pdf_page(
@@ -223,7 +231,7 @@ def _extract_pdf_page(
         return None
     # Save the rectified picture on disk.
     array_to_image(img_array).save(pic_file, format=IMAGE_FORMAT)
-    # Generate a `.pic-calibration` file, with calibration information.
+    # Generate a `calibration/<pic-num>` file, with calibration information.
     calibration_file.write_text(repr(calibration_data), "utf8")
     identification_data, _ = read_doc_id_and_page(img_array, calibration_data)
     identification_file.write_text(repr(identification_data), "utf8")
@@ -238,7 +246,7 @@ def _get_page_content_as_array(pdf_file: Path, page_num: PicNum) -> ndarray:
         img_info = doc.extract_image(xref)
         return image_to_array(Image.open(io.BytesIO(img_info["image"])))
     else:
-        # In all other cases, we'll have to rasterize the whole page and save it as a JPG picture
+        # In all other cases, we'll have to rasterize the whole page
         # (unfortunately, this is much slower than a simple extraction).
         pix: pymupdf.Pixmap = page.get_pixmap(dpi=200, colorspace=pymupdf.Colorspace(pymupdf.CS_GRAY))
         return np.frombuffer(pix.samples_mv, dtype=np.uint8).reshape((pix.height, pix.width))

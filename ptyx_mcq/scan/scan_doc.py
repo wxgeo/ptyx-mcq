@@ -48,32 +48,6 @@ from ptyx_mcq.scan.score_management.scores_manager import ScoresManager
 #    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 
-class Silent:
-    """A context manager enabling to discard any stdout output for a while.
-
-    with Silent():
-        ...
-    """
-
-    def __init__(self, silent=True):
-        self.silent = silent
-
-    def __enter__(self):
-        if self.silent:
-            self.stdout = sys.stdout
-            sys.stdout = self
-
-    def __exit__(self, exception_type, value, traceback):
-        if self.silent:
-            sys.stdout = self.stdout
-
-    def write(self, x):
-        pass
-
-    def flush(self):
-        pass
-
-
 class MCQPictureParser:
     """Main class for parsing pdf files containing all the scanned MCQ."""
 
@@ -83,7 +57,6 @@ class MCQPictureParser:
         input_dir: Optional[Path] = None,
         output_dir: Optional[Path] = None,
     ):
-        # self.warnings = False
         self.scan_data = ScanData(Path(path), input_dir=input_dir, output_dir=output_dir)
         self.scores_manager = ScoresManager(self)
 
@@ -175,8 +148,6 @@ class MCQPictureParser:
 
     def analyze_pages(
         self,
-        start: int = 1,
-        end: Union[int, float] = inf,
         number_of_processes: int = 1,
         reset: bool = False,
         debug: bool = False,
@@ -204,7 +175,7 @@ class MCQPictureParser:
 
         # TODO: number_of_processes=number_of_processes
         # Extract all pdf files' data.
-        self.scan_data.input_pdf.collect_data(number_of_processes=1)
+        self.scan_data.input_pdf.collect_data(number_of_processes=number_of_processes)
         # Review pictures.
         self.scan_data.analyze_pictures()
         # Extract information from scanned documents.
@@ -246,9 +217,6 @@ class MCQPictureParser:
 
     def run(
         self,
-        start: int = 1,
-        end: Union[int, float] = inf,
-        manual_verification: Optional[bool] = None,
         number_of_processes: int = 0,
         debug: bool = False,
         reset: bool = False,
@@ -265,9 +233,7 @@ class MCQPictureParser:
         # Create directories.
         self.scan_data.paths.make_dirs()
 
-        self.analyze_pages(
-            start=start, end=end, number_of_processes=number_of_processes, reset=reset, debug=debug
-        )
+        self.analyze_pages(number_of_processes=number_of_processes, reset=reset, debug=debug)
 
         # Resolve detected problems.
         self.solve_conflicts()
