@@ -1,7 +1,7 @@
 import sys
 import traceback
 from pathlib import Path
-from typing import Type
+from typing import Type, Callable
 
 from mypy.ipc import TracebackType
 from ptyx.shell import print_error
@@ -143,3 +143,28 @@ class Silent:
     def flush(self) -> None:
         if self.file is not None:
             self.file.flush()
+
+
+def _progression_coroutin(message: str, last_val: int):
+    print()
+    for i in range(1, last_val):
+        print(f"{message}: {i}/{last_val}...", end="\r")
+        yield
+    print(f"{message}: completed.   ")
+    while True:
+        yield
+
+
+def generate_progression_callback(message: str, last_val: int) -> Callable[[], None]:
+    """
+    Generate a function that can be used to display a progression in a terminal.
+
+    Each time the function will be called, +1 will be added and the progression updated,
+    until last value `last_val` is reached, then the progression will be displayed as completed.
+    """
+    generator = _progression_coroutin(message, last_val)
+
+    def progression(*args, **kw) -> None:
+        generator.__next__()
+
+    return progression

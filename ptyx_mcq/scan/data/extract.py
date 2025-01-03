@@ -20,7 +20,7 @@ from ptyx_mcq.scan.picture_analyze.identify_doc import read_doc_id_and_page, Ide
 from ptyx_mcq.scan.picture_analyze.types_declaration import CalibrationError
 from ptyx_mcq.scan.pdf.utilities import number_of_pages
 from ptyx_mcq.tools.extend_literal_eval import extended_literal_eval
-from ptyx_mcq.tools.io_tools import Silent
+from ptyx_mcq.tools.io_tools import Silent, generate_progression_callback
 from ptyx_mcq.tools.pic import array_to_image, image_to_array
 
 if TYPE_CHECKING:
@@ -67,23 +67,13 @@ class PdfCollectionExtractor:
                 hashes[PdfHash(blake2b(pdf_file.read(), digest_size=20).hexdigest())] = path
         return hashes
 
-    # def _generate_progression_callback(
-    #     self,
-    # ):
-    #     return self._generate_progression_callback(
-    #         "Extracting the pdf",
-    #     )
+    def _generate_progression_callback(self):
+        return generate_progression_callback(
+            "Extracting the pdf", sum(number_of_pages(pdf_path) for pdf_path in self.hash2pdf.values())
+        )
 
     def _parallel_collect(self, number_of_processes: int | None = None) -> PdfData:
-
-        total_number_of_pages = sum(number_of_pages(pdf_path) for pdf_path in self.hash2pdf.values())
-        counter = 0
-
-        def print_progression(_):
-            nonlocal counter
-            counter += 1
-            print(f"Extracting the pdf pages: {counter}/{total_number_of_pages}...", end="\r")
-
+        progression = self._generate_progression_callback()
         # TODO: use ThreadPool instead?
         with Pool(number_of_processes) as pool:
             futures: dict[PdfHash, dict[PicNum, AsyncResult]] = {}
@@ -93,7 +83,7 @@ class PdfCollectionExtractor:
                     future_result = pool.apply_async(
                         self.extract_page,
                         (pdf_path, folder, PicNum(page_num), self._log_file),
-                        callback=print_progression,
+                        callback=progression,
                     )
                     futures.setdefault(PdfHash(folder.name), {})[PicNum(page_num)] = future_result
             pdf_data: PdfData = {}
@@ -103,20 +93,19 @@ class PdfCollectionExtractor:
                     result = future_result.get()
                     if result is not None:
                         pdf_data.setdefault(pdf_hash, {})[pic_num] = result
-        print(
-            "Extracting the pdf pages: OK" + len(f"{total_number_of_pages}/{total_number_of_pages}...") * " "
-        )
         return pdf_data
 
     def _sequential_collect(self) -> PdfData:
         pdf_data: PdfData = {}
+        progression = self._generate_progression_callback()
         for pdf_hash, pdf_path in self.hash2pdf.items():
             folder = self.paths.dirs.cache / pdf_hash
             for page_num in range(number_of_pages(pdf_path)):
                 # Only extract a page if the corresponding .pic-data file is not found.
                 # (Resume an interrupted scan without extracting again previously extracted pages).
-                print(f"Extracting page {page_num + 1} from '{pdf_path}'...")
-                pic_data = extract_pdf_page(pdf_path, folder, PicNum(page_num))
+                # print(f"Extracting page {page_num + 1} from '{pdf_path}'...")
+                progression()
+                pic_data = self.extract_page(pdf_path, folder, PicNum(page_num), log_file=self._log_file)
                 if pic_data is not None:
                     pdf_data.setdefault(PdfHash(folder.name), {})[PicNum(page_num)] = pic_data
         return pdf_data
