@@ -148,9 +148,11 @@ class Silent:
 def _progression_coroutin(message: str, last_val: int):
     print()
     for i in range(1, last_val):
-        print(f"{message}: {i}/{last_val}", end="\r")
+        print(f"{message}: {i}/{last_val}...", end="\r")
         yield
-    print(f"{message}: completed.")
+    print(f"{message}: completed.   ")
+    while True:
+        yield
 
 
 def generate_progression_callback(message: str, last_val: int) -> Callable[[], None]:

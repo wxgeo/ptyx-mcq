@@ -73,7 +73,7 @@ class PdfCollectionExtractor:
         )
 
     def _parallel_collect(self, number_of_processes: int | None = None) -> PdfData:
-
+        progression = self._generate_progression_callback()
         # TODO: use ThreadPool instead?
         with Pool(number_of_processes) as pool:
             futures: dict[PdfHash, dict[PicNum, AsyncResult]] = {}
@@ -83,7 +83,7 @@ class PdfCollectionExtractor:
                     future_result = pool.apply_async(
                         self.extract_page,
                         (pdf_path, folder, PicNum(page_num), self._log_file),
-                        callback=self._generate_progression_callback(),
+                        callback=progression,
                     )
                     futures.setdefault(PdfHash(folder.name), {})[PicNum(page_num)] = future_result
             pdf_data: PdfData = {}
@@ -97,13 +97,15 @@ class PdfCollectionExtractor:
 
     def _sequential_collect(self) -> PdfData:
         pdf_data: PdfData = {}
+        progression = self._generate_progression_callback()
         for pdf_hash, pdf_path in self.hash2pdf.items():
             folder = self.paths.dirs.cache / pdf_hash
             for page_num in range(number_of_pages(pdf_path)):
                 # Only extract a page if the corresponding .pic-data file is not found.
                 # (Resume an interrupted scan without extracting again previously extracted pages).
-                print(f"Extracting page {page_num + 1} from '{pdf_path}'...")
-                pic_data = extract_pdf_page(pdf_path, folder, PicNum(page_num))
+                # print(f"Extracting page {page_num + 1} from '{pdf_path}'...")
+                progression()
+                pic_data = self.extract_page(pdf_path, folder, PicNum(page_num), log_file=self._log_file)
                 if pic_data is not None:
                     pdf_data.setdefault(PdfHash(folder.name), {})[PicNum(page_num)] = pic_data
         return pdf_data
