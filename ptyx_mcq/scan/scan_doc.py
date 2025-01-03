@@ -174,10 +174,8 @@ class MCQPictureParser:
             number_of_processes = 1 if cores is None else min(cores - 1, CPU_PHYSICAL_CORES)
 
         # TODO: number_of_processes=number_of_processes
-        # Extract all pdf files' data.
-        self.scan_data.input_pdf.collect_data(number_of_processes=number_of_processes)
         # Review pictures.
-        self.scan_data.analyze_pictures()
+        self.scan_data.analyze_pictures(number_of_processes)
         # Extract information from scanned documents.
         # gc.collect()
         print_success("Scan successful.")

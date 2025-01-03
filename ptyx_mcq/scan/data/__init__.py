@@ -1,3 +1,5 @@
+import multiprocessing
+from multiprocessing.pool import AsyncResult
 from pathlib import Path
 from typing import Iterator
 
@@ -7,7 +9,9 @@ from ptyx_mcq.scan.data.paths_manager import PathsHandler, DirsPaths, FilesPaths
 from ptyx_mcq.scan.data.documents import Document, Page
 from ptyx_mcq.scan.data.pictures import Picture
 from ptyx_mcq.scan.data.questions import Question, Answer
+from ptyx_mcq.scan.data.students import Student
 from ptyx_mcq.scan.picture_analyze.calibration import CalibrationData
+from ptyx_mcq.scan.data.analyze.checkboxes import CheckboxAnalyzeResult
 from ptyx_mcq.tools.config_parser import (
     DocumentId,
     StudentName,
@@ -20,6 +24,7 @@ from ptyx_mcq.tools.config_parser import (
     OriginalAnswerNumber,
     is_answer_correct,
 )
+from ptyx_mcq.tools.io_tools import generate_progression_callback, Silent
 
 
 class ScanData:
@@ -33,10 +38,14 @@ class ScanData:
 
     def __init__(self, config_path: Path, input_dir: Path = None, output_dir: Path = None):
         self.paths = PathsHandler(config_path=config_path, input_dir=input_dir, output_dir=output_dir)
-        self.input_pdf = PdfCollectionExtractor(self)
-        self.config: Configuration = self.get_configuration(self.paths.configfile)
+        self.input_pdf_extractor = PdfCollectionExtractor(self)
+        # Read the configuration file and load the mcq configuration.
+        self.config = Configuration.load(self.paths.configfile)
         # Navigate between documents.
         self._index: dict[DocumentId, Document] | None = None
+        self._log_file = self.dirs.log / "pictures-analyze.txt"
+        if self._log_file.is_file():
+            open(self._log_file, "w").close()
 
     def __iter__(self) -> Iterator[Document]:
         return iter(self.index.values())
@@ -73,10 +82,42 @@ class ScanData:
         with open(self.paths.logfile_path, "a", encoding="utf8") as logfile:
             logfile.write(msg)
 
-    def analyze_pictures(self) -> None:
-        for doc_id, doc in self.index.items():
-            doc.update_info()
+    def analyze_pictures(self, number_of_processes: int | None = None) -> None:
+        # Extract all pdf files' data.
+        self.input_pdf_extractor.collect_data(number_of_processes=number_of_processes)
+        if number_of_processes == 1:
+            self._sequential_analyze()
+        else:
+            self._parallel_analyze(number_of_processes)
         print("Pictures data have been successfully retrieved.")
+
+    def _generate_progression_callback(self):
+        return generate_progression_callback("Analyzing all documents data", len(self.index))
+
+    def _parallel_analyze(self, number_of_processes: int | None = None) -> None:
+        progression = self._generate_progression_callback()
+        pool: multiprocessing.Pool
+        results: dict[DocumentId, AsyncResult] = {}
+        with multiprocessing.Pool(number_of_processes) as pool:
+            for doc_id, doc in self.index.items():
+                results[doc_id] = pool.apply_async(
+                    self.analyze_doc, (doc, self._log_file), callback=progression
+                )
+            for doc_id, result in results.items():
+                self.index[doc_id].update_info(*result.get())
+
+    def _sequential_analyze(self) -> None:
+        progression = self._generate_progression_callback()
+        for doc_id, doc in self.index.items():
+            doc.update_info(*self.analyze_doc(doc, self._log_file))
+            progression()
+
+    @staticmethod
+    def analyze_doc(
+        doc: Document, log_file: Path
+    ) -> tuple[Student | None, list[CheckboxAnalyzeResult] | None]:
+        with Silent(log_file=log_file):
+            return doc.analyze()
 
     @property
     def index(self) -> dict[DocumentId, Document]:
@@ -98,7 +139,7 @@ class ScanData:
         may have been scanned twice or more, resulting in several versions of the same page.
         """
         self._index = {}
-        for pdf_hash, content in self.input_pdf.data.items():
+        for pdf_hash, content in self.input_pdf_extractor.data.items():
             for pic_num, (calibration_data, identification_data) in content.items():
                 self._index.setdefault(
                     doc_id := identification_data.doc_id, doc := Document(self, doc_id, {})
@@ -148,10 +189,3 @@ class ScanData:
         """
         for doc in self:
             doc.save_index()
-
-    def get_configuration(self, path: Path) -> Configuration:
-        """Read configuration file, load configuration and calculate maximal score too."""
-        cfg: Configuration = Configuration.load(path)
-        self.correct_answers = get_answers_with_status(cfg, correct=True)
-        self.neutralized_answers = get_answers_with_status(cfg, correct=None)
-        return cfg

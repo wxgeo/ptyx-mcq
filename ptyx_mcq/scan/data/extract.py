@@ -43,6 +43,8 @@ class PdfCollectionExtractor:
         self.scan_data = scan_data
         self._data: PdfData | None = None
         self._log_file = self.scan_data.dirs.log / "extraction-calibration-identification.txt"
+        if self._log_file.is_file():
+            open(self._log_file, "w").close()
         self.hash2pdf = self._generate_current_pdf_hashes()
 
     @property
@@ -69,7 +71,7 @@ class PdfCollectionExtractor:
 
     def _generate_progression_callback(self):
         return generate_progression_callback(
-            "Extracting the pdf", sum(number_of_pages(pdf_path) for pdf_path in self.hash2pdf.values())
+            "Extracting pdf data", sum(number_of_pages(pdf_path) for pdf_path in self.hash2pdf.values())
         )
 
     def _parallel_collect(self, number_of_processes: int | None = None) -> PdfData:

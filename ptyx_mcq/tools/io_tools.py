@@ -150,7 +150,7 @@ def _progression_coroutin(message: str, last_val: int):
     for i in range(1, last_val):
         print(f"{message}: {i}/{last_val}...", end="\r")
         yield
-    print(f"{message}: completed.   ")
+    print(f"{message}: DONE." + 2 * len(str(last_val)) * " ")
     while True:
         yield
 

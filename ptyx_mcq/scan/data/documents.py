@@ -4,7 +4,7 @@ from typing import Iterator, TYPE_CHECKING
 from numpy import ndarray
 from ptyx_mcq.scan.data.questions import Question
 
-from ptyx_mcq.scan.data.analyze.checkboxes import analyze_checkboxes
+from ptyx_mcq.scan.data.analyze.checkboxes import analyze_checkboxes, CheckboxAnalyzeResult
 from ptyx_mcq.scan.data.pictures import Picture
 from ptyx_mcq.scan.data.students import Student
 from ptyx_mcq.tools.config_parser import (
@@ -137,16 +137,17 @@ class Document:
         """
         (self.scan_data.dirs.index / str(self.doc_id)).write_text(self._as_str() + "\n", encoding="utf8")
 
-    def update_info(self) -> None:
+    def analyze(self) -> tuple[Student | None, list[CheckboxAnalyzeResult] | None]:
         """Retrieve the state of each checkbox (checked or not) and the student id and name.
 
         Attempt to load it from disk.
         If not found, generate the info by evaluating the blackness of each checkbox.
         """
-        # Step 1: evaluate checkboxes state if needed.
         matrices: dict[str, ndarray] = {}
         pictures = self.pictures
-        config = self.scan_data.config
+
+        # Step 1: evaluate checkboxes state if needed.
+        cbx_states: list[CheckboxAnalyzeResult] | None = None
         if not all(pic.checkboxes_analyzed for pic in pictures):
             # No corresponding data on the disk, generate the data, and write it on the disk.
             print(f"Analyzing checkboxes in document: {self.doc_id}")
@@ -158,23 +159,41 @@ class Document:
             # All the checkboxes of the same document must be inspected together
             # to improve the checkboxes' states review, since a given student will probably
             # check all its document boxes in a consistent way.
-            for pic, cbx_states in zip(pictures, analyze_checkboxes(cbx)):
+            cbx_states = analyze_checkboxes(cbx)
+
+        # Step 2: retrieve student name and ID if needed.
+        student: Student | None = None
+        for pic in pictures:
+            if pic.page_num == 1:
+                if pic.student is None:
+                    student = pic.retrieve_student(matrices.get(pic.short_path, pic.as_matrix()))
+        return student, cbx_states
+
+    def update_info(self, student: Student | None, cbx_states: list[CheckboxAnalyzeResult] | None) -> None:
+        """Update the state of each checkbox (checked or not) and the student id and name.
+
+        Save those changes on disk, to be able to interrupt and resume the scan if needed."""
+
+        config = self.scan_data.config
+        pictures = self.pictures
+        if cbx_states is not None:
+            for pic, cbx_states in zip(pictures, cbx_states):
                 for (q, a), state in cbx_states.items():
                     pic.questions[q].answers[a].state = state
                 pic.save_checkboxes_state()
 
-        # Step 2: retrieve student name and ID if needed.
-        for pic in pictures:
-            if pic.page_num == 1:
-                if pic.student is None:
-                    pic.student = pic.retrieve_student(matrices.get(pic.short_path, pic.as_matrix()))
-                elif pic.student.name == "":
-                    # The ID have been read in a previous pass, but didn't match any known student at the time.
-                    # In the while, the students name to ID mapping may have been updated (using `mcq fix` for example).
-                    # So, let's try again to find the name corresponding to this ID.
-                    name = config.students_ids.get(pic.student.id, StudentName(""))
-                    if name != "":
-                        pic.student = Student(name=name, id=pic.student.id)
+        if student is not None:
+            for pic in pictures:
+                if pic.page_num == 1:
+                    if pic.student is None:
+                        pic.student = student
+                    elif pic.student.name == "":
+                        # The ID have been read in a previous pass, but didn't match any known student at the time.
+                        # In the while, the students name to ID mapping may have been updated (using `mcq fix` for example).
+                        # So, let's try again to find the name corresponding to this ID.
+                        name = config.students_ids.get(pic.student.id, StudentName(""))
+                        if name != "":
+                            pic.student = Student(name=name, id=pic.student.id)
 
     @property
     def detection_status(self):
