@@ -20,7 +20,7 @@ from ptyx_mcq.scan.picture_analyze.identify_doc import read_doc_id_and_page, Ide
 from ptyx_mcq.scan.picture_analyze.types_declaration import CalibrationError
 from ptyx_mcq.scan.pdf.utilities import number_of_pages
 from ptyx_mcq.tools.extend_literal_eval import extended_literal_eval
-from ptyx_mcq.tools.io_tools import Silent
+from ptyx_mcq.tools.io_tools import Silent, generate_progression_callback
 from ptyx_mcq.tools.pic import array_to_image, image_to_array
 
 if TYPE_CHECKING:
@@ -42,6 +42,8 @@ class PdfCollectionExtractor:
     def __init__(self, scan_data: "ScanData"):
         self.scan_data = scan_data
         self._data: PdfData | None = None
+        self._log_file = self.scan_data.dirs.log / "extraction-calibration-identification.txt"
+        self.hash2pdf = self._generate_current_pdf_hashes()
 
     @property
     def data(self) -> PdfData:
@@ -65,28 +67,23 @@ class PdfCollectionExtractor:
                 hashes[PdfHash(blake2b(pdf_file.read(), digest_size=20).hexdigest())] = path
         return hashes
 
-    def _parallel_collect(
-        self, hash2pdf: dict[PdfHash, Path], number_of_processes: int | None = None
-    ) -> PdfData:
+    def _generate_progression_callback(self):
+        return generate_progression_callback(
+            "Extracting the pdf", sum(number_of_pages(pdf_path) for pdf_path in self.hash2pdf.values())
+        )
 
-        total_number_of_pages = sum(number_of_pages(pdf_path) for pdf_path in hash2pdf.values())
-        counter = 0
-
-        def print_progression(_):
-            nonlocal counter
-            counter += 1
-            print(f"Extracting the pdf pages: {counter}/{total_number_of_pages}...", end="\r")
+    def _parallel_collect(self, number_of_processes: int | None = None) -> PdfData:
 
         # TODO: use ThreadPool instead?
         with Pool(number_of_processes) as pool:
             futures: dict[PdfHash, dict[PicNum, AsyncResult]] = {}
-            for pdf_hash, pdf_path in hash2pdf.items():
+            for pdf_hash, pdf_path in self.hash2pdf.items():
                 folder = self.paths.dirs.cache / pdf_hash
                 for page_num in range(number_of_pages(pdf_path)):
                     future_result = pool.apply_async(
                         self.extract_page,
-                        (pdf_path, folder, PicNum(page_num)),
-                        callback=print_progression,
+                        (pdf_path, folder, PicNum(page_num), self._log_file),
+                        callback=self._generate_progression_callback(),
                     )
                     futures.setdefault(PdfHash(folder.name), {})[PicNum(page_num)] = future_result
             pdf_data: PdfData = {}
@@ -96,14 +93,11 @@ class PdfCollectionExtractor:
                     result = future_result.get()
                     if result is not None:
                         pdf_data.setdefault(pdf_hash, {})[pic_num] = result
-        print(
-            "Extracting the pdf pages: OK" + len(f"{total_number_of_pages}/{total_number_of_pages}...") * " "
-        )
         return pdf_data
 
-    def _sequential_collect(self, hash2pdf: dict[PdfHash, Path]) -> PdfData:
+    def _sequential_collect(self) -> PdfData:
         pdf_data: PdfData = {}
-        for pdf_hash, pdf_path in hash2pdf.items():
+        for pdf_hash, pdf_path in self.hash2pdf.items():
             folder = self.paths.dirs.cache / pdf_hash
             for page_num in range(number_of_pages(pdf_path)):
                 # Only extract a page if the corresponding .pic-data file is not found.
@@ -120,18 +114,17 @@ class PdfCollectionExtractor:
         Data are stored on disk, to avoid saturating memory, and to allow resuming
         after interruption.
         """
-        hash2pdf: dict[PdfHash, Path] = self._generate_current_pdf_hashes()
         # 1. Remove old data from disk if there is no corresponding pdf.
-        self._remove_obsolete_files(hash2pdf)
+        self._remove_obsolete_files()
         # 2. Extract all data from existing pdf files
         # (if not already done in a previous run).
         if number_of_processes == 1:
-            self._data = self._sequential_collect(hash2pdf)
+            self._data = self._sequential_collect()
         else:
-            self._data = self._parallel_collect(hash2pdf, number_of_processes=number_of_processes)
+            self._data = self._parallel_collect(number_of_processes=number_of_processes)
         return self._data
 
-    def _remove_obsolete_files(self, hash2pdf: dict[PdfHash, Path]) -> None:
+    def _remove_obsolete_files(self) -> None:
         """For each removed pdf files, remove corresponding pictures and data."""
         for path in self.paths.dirs.cache.iterdir():
             # No file should be found, only directories!
@@ -142,15 +135,16 @@ class PdfCollectionExtractor:
                     f'rm -r "{path.parent}"'
                 )
             # Remove any directory whose name don't match any existing pdf file, and all corresponding data.
-            if path.name not in hash2pdf:
+            if path.name not in self.hash2pdf:
                 rmtree(path)
 
+    # Make static to share less data between processes.
     @staticmethod
     def extract_page(
-        pdf_file: Path, dest: Path, page_num: PicNum
+        pdf_file: Path, dest: Path, page_num: PicNum, log_file: Path | None = None
     ) -> tuple[CalibrationData, IdentificationData] | None:
         """Extract data corresponding to the given page of the pdf."""
-        with Silent():
+        with Silent(log_file=log_file):
             return extract_pdf_page(pdf_file, dest, page_num)
 
 
