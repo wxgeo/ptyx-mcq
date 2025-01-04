@@ -113,44 +113,10 @@ class MCQPictureParser:
             raise FileNotFoundError(f"Unable to find picture {short_path!r}.")
         ClAnswersReviewer.display_picture_with_detected_answers(pic)
 
-    # def _serial_scanning(self, to_analyze: list[Path], debug=False):
-    #     """Scan all documents sequentially using only one process.
-    #
-    #     This is usually slower, but easier to debug.
-    #     """
-    #     # No multiprocessing
-    #     for i, pic_path in enumerate(to_analyze, start=1):
-    #         scan_result: tuple[Path, PicData, BytesIO] | Path = self._scan_current_page(
-    #             pic_path, silent=False, debug=debug
-    #         )
-    #         self._handle_scan_result(scan_result)
-    #         # print(f"Page {i}/{len(to_analyze)} processed.", end="\r")
-    #
-    # def _parallel_scanning(self, to_analyze: list[Path], number_of_processes: int, debug=False):
-    #     """Scan all documents using several processes running in parallel.
-    #
-    #     This is default behaviour on most platform, since it takes advantage of multi-cores computers,
-    #     though it is harder to debug.
-    #     """
-    #     with concurrent.futures.ProcessPoolExecutor(
-    #         max_workers=number_of_processes, mp_context=multiprocessing.get_context("spawn")
-    #     ) as executor:
-    #         # Use an iterator, to limit memory consumption.
-    #         todo = (
-    #             executor.submit(self._scan_current_page, pic_path, True, debug) for pic_path in to_analyze
-    #         )
-    #
-    #         # t = time.time()
-    #         for i, future in enumerate(concurrent.futures.as_completed(todo), start=1):
-    #             scan_result: tuple[Path, PicData, BytesIO] | Path = future.result()
-    #             self._handle_scan_result(scan_result)
-    #             print(f"Page {i}/{len(to_analyze)} processed.", end="\r")
-
     def analyze_pages(
         self,
         number_of_processes: int = 1,
         reset: bool = False,
-        debug: bool = False,
     ) -> None:
         """First stage of the scan process: extract the pictures and read data from them.
 
@@ -159,10 +125,6 @@ class MCQPictureParser:
 
         Update `self.data_handler` with collected information.
         """
-        # Test if the PDF files of the input directory have changed and
-        # extract the images from the PDF files if needed.
-        print("Search for previous data...")
-        self.scan_data.initialize(reset=reset)
 
         # ---------------------------------------
         # Extract informations from the pictures.
@@ -174,10 +136,9 @@ class MCQPictureParser:
             number_of_processes = 1 if cores is None else min(cores - 1, CPU_PHYSICAL_CORES)
 
         # TODO: number_of_processes=number_of_processes
-        # Review pictures.
-        self.scan_data.analyze_pictures(number_of_processes)
-        # Extract information from scanned documents.
-        # gc.collect()
+        # Test if the PDF files of the input directory have changed and
+        # extract the images from the PDF files if needed, then review pictures.
+        self.scan_data.run(number_of_processes, reset=reset)
         print_success("Scan successful.")
 
         # ---------------------------
@@ -231,7 +192,7 @@ class MCQPictureParser:
         # Create directories.
         self.scan_data.paths.make_dirs()
 
-        self.analyze_pages(number_of_processes=number_of_processes, reset=reset, debug=debug)
+        self.analyze_pages(number_of_processes=number_of_processes, reset=reset)
 
         # Resolve detected problems.
         self.solve_conflicts()

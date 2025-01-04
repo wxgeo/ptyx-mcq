@@ -1,4 +1,5 @@
 import multiprocessing
+from collections.abc import Callable
 from multiprocessing.pool import AsyncResult
 from pathlib import Path
 from typing import Iterator
@@ -82,21 +83,34 @@ class ScanData:
         with open(self.paths.logfile_path, "a", encoding="utf8") as logfile:
             logfile.write(msg)
 
-    def analyze_pictures(self, number_of_processes: int | None = None) -> None:
-        # Extract all pdf files' data.
-        self.input_pdf_extractor.collect_data(number_of_processes=number_of_processes)
+    def extract_pictures(
+        self, number_of_processes: int | None, progression: Callable[..., None] = None
+    ) -> None:
+        """Extract all pdf files' data and generate the documents tree."""
+        self.input_pdf_extractor.collect_data(
+            number_of_processes=number_of_processes, progression=progression
+        )
+
+    def analyze_pictures(
+        self, number_of_processes: int | None, progression: Callable[..., None] = None
+    ) -> None:
+        """Analyze all documents pictures, retrieving checkboxes states and students names and ids."""
+        if progression is None:
+            progression = generate_progression_callback("Analyzing all documents data", len(self.index))
         if number_of_processes == 1:
-            self._sequential_analyze()
+            self._sequential_analyze(progression=progression)
         else:
-            self._parallel_analyze(number_of_processes)
+            self._parallel_analyze(number_of_processes=number_of_processes, progression=progression)
         print("Pictures data have been successfully retrieved.")
 
-    def _generate_progression_callback(self):
-        return generate_progression_callback("Analyzing all documents data", len(self.index))
+    def run(self, number_of_processes: int | None = None, reset=False) -> None:
+        """Main method: extract pictures and analyze them, generating the documents tree."""
+        self.initialize(reset=reset)
+        self.extract_pictures(number_of_processes=number_of_processes)
+        self.analyze_pictures(number_of_processes=number_of_processes)
 
-    def _parallel_analyze(self, number_of_processes: int | None = None) -> None:
-        progression = self._generate_progression_callback()
-        pool: multiprocessing.Pool
+    def _parallel_analyze(self, number_of_processes: int | None, progression: Callable[..., None]) -> None:
+        pool: multiprocessing.pool.Pool
         results: dict[DocumentId, AsyncResult] = {}
         with multiprocessing.Pool(number_of_processes) as pool:
             for doc_id, doc in self.index.items():
@@ -106,8 +120,7 @@ class ScanData:
             for doc_id, result in results.items():
                 self.index[doc_id].update_info(*result.get())
 
-    def _sequential_analyze(self) -> None:
-        progression = self._generate_progression_callback()
+    def _sequential_analyze(self, progression: Callable[..., None]) -> None:
         for doc_id, doc in self.index.items():
             doc.update_info(*self.analyze_doc(doc, self._log_file))
             progression()

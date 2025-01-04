@@ -177,8 +177,8 @@ class Document:
         config = self.scan_data.config
         pictures = self.pictures
         if cbx_states is not None:
-            for pic, cbx_states in zip(pictures, cbx_states):
-                for (q, a), state in cbx_states.items():
+            for pic, pic_cbx_states in zip(pictures, cbx_states):
+                for (q, a), state in pic_cbx_states.items():
                     pic.questions[q].answers[a].state = state
                 pic.save_checkboxes_state()
 

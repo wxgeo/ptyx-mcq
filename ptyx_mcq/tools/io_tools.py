@@ -114,9 +114,9 @@ class Silent:
 
     def __init__(self, *, silent=True, log_file: Path | None = None, reset_log=False):
         self.silent = silent
-        self.log_file = log_file
         if reset_log and log_file is not None and log_file.is_file():
-            open(self.log_file, "w").close()
+            open(log_file, "w").close()
+        self.log_file = log_file
 
     def __enter__(self):
         if self.silent:

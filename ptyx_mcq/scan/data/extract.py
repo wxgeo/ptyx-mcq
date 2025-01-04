@@ -4,7 +4,7 @@ from multiprocessing.pool import AsyncResult
 from pathlib import Path
 from shutil import rmtree
 from multiprocessing import Pool
-from typing import TYPE_CHECKING, NewType
+from typing import TYPE_CHECKING, NewType, Callable
 
 import pymupdf
 import numpy as np
@@ -69,13 +69,7 @@ class PdfCollectionExtractor:
                 hashes[PdfHash(blake2b(pdf_file.read(), digest_size=20).hexdigest())] = path
         return hashes
 
-    def _generate_progression_callback(self):
-        return generate_progression_callback(
-            "Extracting pdf data", sum(number_of_pages(pdf_path) for pdf_path in self.hash2pdf.values())
-        )
-
-    def _parallel_collect(self, number_of_processes: int | None = None) -> PdfData:
-        progression = self._generate_progression_callback()
+    def _parallel_collect(self, number_of_processes: int | None, progression: Callable[..., None]) -> PdfData:
         # TODO: use ThreadPool instead?
         with Pool(number_of_processes) as pool:
             futures: dict[PdfHash, dict[PicNum, AsyncResult]] = {}
@@ -97,9 +91,8 @@ class PdfCollectionExtractor:
                         pdf_data.setdefault(pdf_hash, {})[pic_num] = result
         return pdf_data
 
-    def _sequential_collect(self) -> PdfData:
+    def _sequential_collect(self, progression: Callable[..., None]) -> PdfData:
         pdf_data: PdfData = {}
-        progression = self._generate_progression_callback()
         for pdf_hash, pdf_path in self.hash2pdf.items():
             folder = self.paths.dirs.cache / pdf_hash
             for page_num in range(number_of_pages(pdf_path)):
@@ -112,20 +105,26 @@ class PdfCollectionExtractor:
                     pdf_data.setdefault(PdfHash(folder.name), {})[PicNum(page_num)] = pic_data
         return pdf_data
 
-    def collect_data(self, number_of_processes=1) -> PdfData:
+    def collect_data(self, number_of_processes=1, progression: Callable[..., None] = None) -> PdfData:
         """Test if input data has changed, and update information if needed.
 
         Data are stored on disk, to avoid saturating memory, and to allow resuming
         after interruption.
         """
+        if progression is None:
+            progression = generate_progression_callback(
+                "Extracting pdf data", sum(number_of_pages(pdf_path) for pdf_path in self.hash2pdf.values())
+            )
         # 1. Remove old data from disk if there is no corresponding pdf.
         self._remove_obsolete_files()
         # 2. Extract all data from existing pdf files
         # (if not already done in a previous run).
         if number_of_processes == 1:
-            self._data = self._sequential_collect()
+            self._data = self._sequential_collect(progression=progression)
         else:
-            self._data = self._parallel_collect(number_of_processes=number_of_processes)
+            self._data = self._parallel_collect(
+                number_of_processes=number_of_processes, progression=progression
+            )
         return self._data
 
     def _remove_obsolete_files(self) -> None:

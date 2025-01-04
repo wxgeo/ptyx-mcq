@@ -9,6 +9,7 @@ from collections.abc import Generator
 from itertools import chain
 from multiprocessing import Pool
 from os.path import join
+from typing import Callable
 
 # from typing import TYPE_CHECKING
 
@@ -28,8 +29,10 @@ from ptyx_mcq.tools.config_parser import OriginalQuestionNumber, QuestionNumberO
 #     from ptyx_mcq.scan.scanner import MCQPictureParser
 
 
-def amend_all(scan_data: ScanData) -> None:
+def amend_all(scan_data: ScanData, progression: Callable[..., None] = None) -> None:
     """Amend all generated documents, adding the scores and indicating the correct answers."""
+    if progression is None:
+        progression = generate_progression_callback("Generating the amended pdf files", len(scan_data.index))
     cfg = scan_data.config
     default_weight = cfg.weight["default"]
     assert isinstance(default_weight, (int, float))
@@ -48,12 +51,10 @@ def amend_all(scan_data: ScanData) -> None:
     # may appear in the dict, but only one of those versions was included in each generated document.
     max_score = scan_data.config.max_score
     assert isinstance(max_score, (float, int)), repr(max_score)
-    number_of_documents = len(scan_data.index)
 
-    progression = generate_progression_callback("Generating the amended pdf files", number_of_documents)
     with Pool() as pool:
         for doc in scan_data:
-            pool.apply_async(amend_doc, (doc, max_score_per_question), callback=progression)
+            pool.apply_async(amend_doc, (doc, max_score_per_question), callback=progression)  # type: ignore
 
 
 # TODO: maybe restrict the data passed to amend_doc?

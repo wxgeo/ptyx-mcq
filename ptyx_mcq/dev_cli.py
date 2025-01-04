@@ -19,6 +19,8 @@ from argcomplete import FilesCompleter
 
 from ptyx.shell import print_success
 
+from ptyx_mcq.scan.data.analyze.checkboxes import export_checkboxes as export_checkboxes_
+
 
 # noinspection PyTypeHints
 def main(args: list[str] | None = None) -> None:
@@ -90,11 +92,11 @@ def export_checkboxes(path: Path | str = ".", debug=False):
         if debug:
             tmp_dir = Path("/tmp/mcq-dev-export_checkboxes")
             tmp_dir.mkdir(exist_ok=True)
-        handler = ScanData(path)
+        scan_data = ScanData(path)
         print("\nLoad data...")
-        handler.initialize()
+        scan_data.run()
         print("\nExporting pictures...")
-        handler.picture_analyzer.export_checkboxes(export_all=True, path=Path(tmp_dir), compact=True)
+        export_checkboxes_(scan_data, export_all=True, path=Path(tmp_dir), compact=True)
         print("\nCreating archive...")
         with tarfile.open(path / tar_name, "w") as tar:
             tar.add(tmp_dir, arcname=date)
