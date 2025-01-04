@@ -11,7 +11,8 @@ from pathlib import Path
 
 import pytest
 from PIL import Image, ImageDraw
-import fitz  # type: ignore
+import pymupdf
+
 
 from ptyx.shell import print_info
 
@@ -22,8 +23,6 @@ from ptyx_mcq.tools.math import round
 from ptyx_mcq.tools.config_parser import (
     Configuration,
     is_answer_correct,
-    OriginalQuestionNumber,
-    OriginalAnswerNumber,
     StudentId,
     StudentName,
 )
@@ -48,7 +47,7 @@ def convert_from_path(pdf_path: Path, dpi: int) -> list[Image.Image]:
         Image.frombytes(
             mode="RGB", size=((pix := page.get_pixmap(dpi=dpi)).width, pix.height), data=pix.samples
         )
-        for page in fitz.Document(pdf_path).pages()
+        for page in pymupdf.Document(pdf_path).pages()
     ]
 
 
@@ -106,10 +105,7 @@ def simulate_answer(pics: list, config: Configuration):
             # Drawing context
             draw = ImageDraw.Draw(pic)
             write_student_id(draw, students_ids[i], config)
-            for q_a, pos in page_data.items():
-                q_str, a_str = q_a[1:].split("-")
-                q = OriginalQuestionNumber(int(q_str))
-                a = OriginalAnswerNumber(int(a_str))
+            for (q, a), pos in page_data.items():
                 if is_answer_correct(q, a, config, doc_id):
                     _fill_checkbox(draw, pos, CELL_SIZE_IN_PX)
     return pics[: 2 * len(students_ids)]
@@ -293,7 +289,7 @@ def test_cli(tmp_path: Path) -> None:
 
 
 def _pdf_as_pixels_list(pdf_file: Path) -> list[bytes]:
-    return [page.get_pixmap(alpha=False, dpi=96).samples for page in fitz.open(pdf_file)]
+    return [page.get_pixmap(alpha=False, dpi=96).samples for page in pymupdf.open(pdf_file)]
 
 
 def _pdf_look_the_same(pdf_file1: Path, pdf_file2: Path) -> bool:

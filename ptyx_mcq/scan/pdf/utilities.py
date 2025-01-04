@@ -7,9 +7,9 @@ Created on Fri Oct 23 22:54:07 2020
 """
 from pathlib import Path
 
-import fitz  # type: ignore
+import pymupdf
 
 
 def number_of_pages(pdf_path: Path) -> int:
     """Return the number of pages of the pdf."""
-    return len(fitz.Document(pdf_path))
+    return len(pymupdf.Document(pdf_path))
