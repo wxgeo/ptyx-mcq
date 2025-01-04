@@ -18,7 +18,7 @@ from ptyx_mcq.scan.data.questions import Answer
 
 from ptyx_mcq.scan.data import ScanData
 from ptyx_mcq.scan.data.documents import Document
-
+from ptyx_mcq.tools.io_tools import generate_progression_callback
 from ptyx_mcq.scan.picture_analyze.types_declaration import Pixel, Line, Col
 from ptyx_mcq.tools.colors import Color, RGB
 from ptyx_mcq.tools.config_parser import OriginalQuestionNumber, QuestionNumberOrDefault, real2apparent
@@ -49,24 +49,11 @@ def amend_all(scan_data: ScanData) -> None:
     max_score = scan_data.config.max_score
     assert isinstance(max_score, (float, int)), repr(max_score)
     number_of_documents = len(scan_data.index)
-    counter = 0
 
-    def print_progression(_):
-        nonlocal counter
-        counter += 1
-        print(f"Generating the amended pdf files: {counter}/{number_of_documents}...", end="\r")
-
-    print(f"Generating the amended pdf files: 0/{number_of_documents}", end="\r")
-    pool = Pool()
-    for doc in scan_data:
-        pool.apply_async(amend_doc, (doc, max_score_per_question), callback=print_progression)
-    pool.close()
-    # noinspection PyTestUnpassedFixture
-    pool.join()
-
-    print(
-        "Generating the amended pdf files: OK" + len(f"{number_of_documents}/{number_of_documents}...") * " "
-    )
+    progression = generate_progression_callback("Generating the amended pdf files", number_of_documents)
+    with Pool() as pool:
+        for doc in scan_data:
+            pool.apply_async(amend_doc, (doc, max_score_per_question), callback=progression)
 
 
 # TODO: maybe restrict the data passed to amend_doc?
