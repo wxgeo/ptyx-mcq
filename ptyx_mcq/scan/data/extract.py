@@ -6,7 +6,7 @@ from shutil import rmtree
 from multiprocessing import Pool
 from typing import TYPE_CHECKING, NewType, Callable
 
-import pymupdf
+import pymupdf  # type: ignore
 import numpy as np
 from PIL import Image, UnidentifiedImageError
 from numpy import ndarray
@@ -46,6 +46,7 @@ class PdfCollectionExtractor:
         if self._log_file.is_file():
             open(self._log_file, "w").close()
         self.hash2pdf = self._generate_current_pdf_hashes()
+        self._save_hashes()
 
     @property
     def data(self) -> PdfData:
@@ -68,6 +69,11 @@ class PdfCollectionExtractor:
             with open(path, "rb") as pdf_file:
                 hashes[PdfHash(blake2b(pdf_file.read(), digest_size=20).hexdigest())] = path
         return hashes
+
+    def _save_hashes(self) -> None:
+        """Save the pdf hashes on drive (useful for debugging)."""
+        content = "\n".join(f"{pdf_hash}: {pdf_path}" for pdf_hash, pdf_path in self.hash2pdf.items())
+        (self.scan_data.dirs.index / "hash").write_text(content + "\n")
 
     def _parallel_collect(self, number_of_processes: int | None, progression: Callable[..., None]) -> PdfData:
         # TODO: use ThreadPool instead?
