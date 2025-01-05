@@ -15,11 +15,7 @@ from ptyx_mcq.scan.picture_analyze.calibration import CalibrationData
 from ptyx_mcq.scan.data.analyze.checkboxes import CheckboxAnalyzeResult
 from ptyx_mcq.tools.config_parser import (
     DocumentId,
-    StudentName,
-    StudentId,
-    OriginalQuestionAnswersDict,
     Configuration,
-    get_answers_with_status,
     PageNum,
     OriginalQuestionNumber,
     OriginalAnswerNumber,

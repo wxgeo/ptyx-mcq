@@ -1,5 +1,4 @@
 from pathlib import Path
-from typing import Literal, Optional
 
 from ptyx.shell import print_success, print_warning, print_info
 

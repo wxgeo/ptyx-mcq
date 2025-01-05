@@ -7,7 +7,7 @@ Created on Fri Oct 23 22:54:07 2020
 """
 from pathlib import Path
 
-import pymupdf
+import pymupdf  # type: ignore
 
 
 def number_of_pages(pdf_path: Path) -> int:

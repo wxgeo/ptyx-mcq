@@ -7,8 +7,6 @@ This means:
 - retrieving student name and identifier
 """
 
-import concurrent.futures
-import multiprocessing
 from functools import partial
 from pathlib import Path
 from typing import TYPE_CHECKING

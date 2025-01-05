@@ -1,6 +1,5 @@
 from dataclasses import dataclass
 from enum import Enum, auto
-from typing import TypedDict
 
 from ptyx_mcq.scan.picture_analyze.types_declaration import Line, Col, Pixel
 from ptyx_mcq.tools.config_parser import CbxRef, OriginalAnswerNumber, OriginalQuestionNumber
