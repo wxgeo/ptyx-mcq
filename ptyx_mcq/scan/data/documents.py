@@ -110,6 +110,12 @@ class Document:
     def student(self) -> Student | None:
         return self.pages[PageNum(1)].pic.student
 
+    @student.setter
+    def student(self, value: Student) -> None:
+        for pic in self.pictures:
+            if pic.page_num == 1:
+                pic.student = value
+
     @property
     def student_name(self) -> StudentName:
         return StudentName("") if self.student is None else self.student.name
@@ -173,27 +179,13 @@ class Document:
         """Update the state of each checkbox (checked or not) and the student id and name.
 
         Save those changes on disk, to be able to interrupt and resume the scan if needed."""
-
-        config = self.scan_data.config
-        pictures = self.pictures
         if cbx_states is not None:
-            for pic, pic_cbx_states in zip(pictures, cbx_states):
+            for pic, pic_cbx_states in zip(self.pictures, cbx_states):
                 for (q, a), state in pic_cbx_states.items():
                     pic.questions[q].answers[a].state = state
                 pic.save_checkboxes_state()
-
         if student is not None:
-            for pic in pictures:
-                if pic.page_num == 1:
-                    if pic.student is None:
-                        pic.student = student
-                    elif pic.student.name == "":
-                        # The ID have been read in a previous pass, but didn't match any known student at the time.
-                        # In the while, the students name to ID mapping may have been updated (using `mcq fix` for example).
-                        # So, let's try again to find the name corresponding to this ID.
-                        name = config.students_ids.get(pic.student.id, StudentName(""))
-                        if name != "":
-                            pic.student = Student(name=name, id=pic.student.id)
+            self.student = student
 
     @property
     def detection_status(self):

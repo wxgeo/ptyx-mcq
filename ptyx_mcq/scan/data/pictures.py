@@ -162,6 +162,12 @@ class Picture:
 
     @student.setter
     def student(self, student: Student):
+        if student.name == "":
+            # The ID have been read in a previous pass, but didn't match any known student at the time.
+            # In the while, the students name to ID mapping may have been updated (using `mcq fix` for example).
+            # So, let's try again to find the name corresponding to this ID.
+            student = Student(name=self.config.students_ids.get(student.id, student.name), id=student.id)
+
         if self._initial_student is None:
             self._initial_student = student
             self._save_student()
