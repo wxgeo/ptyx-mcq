@@ -5,7 +5,6 @@ from enum import StrEnum
 
 from ptyx.shell import print_warning, print_error, print_info
 
-from ptyx_mcq.scan.data.analyze.checkboxes import CheckboxAnalyzeResult
 from ptyx_mcq.scan.data.conflict_gestion.data_check.check import DataChecker, DataCheckResult
 from ptyx_mcq.scan.data import ScanData
 from ptyx_mcq.scan.data.students import Student

@@ -63,10 +63,7 @@ class DataChecker:
     def get_unnamed_docs(self) -> list[DocumentId]:
         """Get the (sorted) list of all unnamed documents ids."""
         # Sorting documents is cheap and make testing easier.
-        return sorted(
-            (doc.doc_id for doc in self.scan_data if doc.student_name == ""),
-            key=operator.attrgetter("doc_id"),
-        )
+        return sorted(doc.doc_id for doc in self.scan_data if doc.student_name == "")
 
     def find_duplicate_names(self) -> DuplicateNamesDict:
         """Detect if several documents have the same student name.
