@@ -1,9 +1,10 @@
+from ptyx_mcq.make.header import students_checkboxes
+from ptyx_mcq.scan.data import Document, Student
 from ptyx_mcq.scan.data.conflict_gestion.data_check.cl_fix import (
     ClNamesReviewer as NamesReviewer,
 )
 from ptyx_mcq.scan.data.conflict_gestion.data_check.fix import Action
-from ptyx_mcq.scan.data.documents import Document
-from ptyx_mcq.tools.config_parser import DocumentId, StudentName
+from ptyx_mcq.tools.config_parser import DocumentId, StudentName, StudentId
 
 # NamesReviewer.CORRECT_Y_N = "Is it correct? (Y/n)"
 # NamesReviewer.ASK_FOR_NAME = "Student name or ID (or / to skip this document):"
@@ -20,16 +21,17 @@ def test_no_conflict(monkeypatch, patched_conflict_solver):
     """No interaction should occur if there is no conflict."""
     monkeypatch.setattr("builtins.input", fail_on_input)
     patched_conflict_solver.run()
-    data = patched_conflict_solver.scan_data.index
-    assert sorted(data) == [1, 2, 3, 4], data
+    docs = list(patched_conflict_solver.scan_data.index)
+    assert docs == [3, 4, 17, 70], docs
 
 
 def test_missing_name(patched_conflict_solver, custom_input) -> None:
     """Test interactions if a name is missing."""
-    doc_data: DocumentData = patched_conflict_solver.data[DocumentId(1)]
-    student_name = doc_data.name
-    assert student_name == "Robert Le Hardi"
-    doc_data.name = StudentName("")
+    doc_id = DocumentId(17)
+    doc: Document = patched_conflict_solver.scan_data.index[doc_id]
+    student_name = doc.student_name
+    assert student_name == "John Smith"
+    doc.student = Student(name=StudentName(""), id=StudentId(""))
 
     # Test a scenario, simulating questions for the user in the terminal and the user's answers.
     # The variable `scenario` is the list of the successive expected questions and their corresponding answers.
@@ -44,11 +46,11 @@ def test_missing_name(patched_conflict_solver, custom_input) -> None:
             (NamesReviewer.ASK_FOR_NAME, "Any name"),
             # Ask for confirmation; answer "n", so ask again
             # Valid student name
-            (NamesReviewer.ASK_FOR_NAME, "Robert Le Hardi"),
+            (NamesReviewer.ASK_FOR_NAME, "Martin McGill"),
             # Ask for confirmation; answer "n", so ask again.
             (NamesReviewer.CORRECT_Y_N, "n"),
             # Valid student id
-            (NamesReviewer.ASK_FOR_NAME, "22205649"),
+            (NamesReviewer.ASK_FOR_NAME, "22402456"),
             # Ask for confirmation; answer "Y", so quit (success)
             (NamesReviewer.CORRECT_Y_N, "Y"),
         ],
@@ -56,19 +58,19 @@ def test_missing_name(patched_conflict_solver, custom_input) -> None:
 
     patched_conflict_solver.run()
 
-    assert patched_conflict_solver.data[DocumentId(1)].name == student_name
+    assert patched_conflict_solver.scan_data.index[doc_id].student_name == student_name
 
     # There should be no remaining question.
     assert custom_input.is_empty(), custom_input.remaining()
 
-    assert doc_data is patched_conflict_solver.data[DocumentId(1)]
+    assert doc is patched_conflict_solver.scan_data.index[doc_id]
 
     # Test that student name is memorized now.
-    doc_data.name = StudentName("")
+    # doc.student.name = StudentName("")
     custom_input.set_scenario([])
 
     patched_conflict_solver.run()
-    assert patched_conflict_solver.data[DocumentId(1)].name == student_name
+    assert patched_conflict_solver.scan_data.index[doc_id].student_name == student_name
 
     # There should be no remaining question.
     assert custom_input.is_empty(), f"List of remaining questions/answers: {custom_input.remaining()}"
@@ -76,10 +78,11 @@ def test_missing_name(patched_conflict_solver, custom_input) -> None:
 
 def test_missing_name2(patched_conflict_solver, custom_input) -> None:
     """Test interactions if a name is missing."""
-    doc_data: DocumentData = patched_conflict_solver.data[DocumentId(1)]
-    student_name = doc_data.name
-    assert student_name == "Robert Le Hardi"
-    doc_data.name = StudentName("")
+    doc_id = DocumentId(17)
+    doc: Document = patched_conflict_solver.scan_data.index[doc_id]
+    student_name = doc.student_name
+    assert student_name == "John Smith"
+    doc.student = Student(name=StudentName(""), id=StudentId(""))
 
     # Test a scenario, simulating questions for the user in the terminal and the user's answers.
     # The variable `scenario` is the list of the successive expected questions and their corresponding answers.
@@ -92,7 +95,7 @@ def test_missing_name2(patched_conflict_solver, custom_input) -> None:
     )
 
     patched_conflict_solver.run()
-    assert patched_conflict_solver.data[DocumentId(1)].name == student_name
+    assert patched_conflict_solver.scan_data.index[doc_id].student_name == student_name
 
     # There should be no remaining question.
     assert custom_input.is_empty(), f"List of remaining questions/answers: {custom_input.remaining()}"
@@ -103,37 +106,38 @@ def test_several_missing_names(patched_conflict_solver, custom_input) -> None:
 
     In particular, several missing names should not be detected as duplicates!
     """
-    data = patched_conflict_solver.data
+    index = patched_conflict_solver.scan_data.index
 
     backup_names: dict[int, StudentName] = {}
 
-    for n in (1, 2, 3):
+    for n in (3, 4, 17, 70):
         doc_id = DocumentId(n)
-        assert data[doc_id].name != StudentName("")
-        backup_names[n] = data[doc_id].name
-        data[doc_id].name = StudentName("")
-
-    assert data[DocumentId(4)].name == StudentName("Jules de chez Smith")
+        assert index[doc_id].student_name != StudentName("")
+        backup_names[n] = index[doc_id].student_name
+        index[doc_id].student = Student(name=StudentName(""), id=StudentId(""))
 
     # Test a scenario, simulating questions for the user in the terminal and the user's answers.
     # The variable `scenario` is the list of the successive expected questions and their corresponding answers.
     custom_input.set_scenario(
         [
             (NamesReviewer.PRESS_ENTER, ""),
-            (NamesReviewer.ASK_FOR_NAME, backup_names[1]),
-            (NamesReviewer.CORRECT_Y_N, "Y"),
-            (NamesReviewer.PRESS_ENTER, ""),
-            (NamesReviewer.ASK_FOR_NAME, backup_names[2]),
-            (NamesReviewer.CORRECT_Y_N, "Y"),
-            (NamesReviewer.PRESS_ENTER, ""),
             (NamesReviewer.ASK_FOR_NAME, backup_names[3]),
+            (NamesReviewer.CORRECT_Y_N, "Y"),
+            (NamesReviewer.PRESS_ENTER, ""),
+            (NamesReviewer.ASK_FOR_NAME, backup_names[4]),
+            (NamesReviewer.CORRECT_Y_N, "Y"),
+            (NamesReviewer.PRESS_ENTER, ""),
+            (NamesReviewer.ASK_FOR_NAME, backup_names[17]),
+            (NamesReviewer.CORRECT_Y_N, "Y"),
+            (NamesReviewer.PRESS_ENTER, ""),
+            (NamesReviewer.ASK_FOR_NAME, backup_names[70]),
             (NamesReviewer.CORRECT_Y_N, "Y"),
         ],
     )
 
     patched_conflict_solver.run()
-    for n in (1, 2, 3):
-        assert patched_conflict_solver.data[DocumentId(n)].name == backup_names[n]
+    for n in (3, 4, 17, 70):
+        assert patched_conflict_solver.scan_data.index[DocumentId(n)].student_name == backup_names[n]
 
     # There should be no remaining question.
     assert custom_input.is_empty(), f"List of remaining questions/answers: {custom_input.remaining()}"
@@ -144,15 +148,15 @@ def test_missing_names_navigation(patched_conflict_solver, custom_input) -> None
 
     In particular, several missing names should not be detected as duplicates!
     """
-    data = patched_conflict_solver.data
+    index = patched_conflict_solver.scan_data.index
 
     backup_names: dict[int, StudentName] = {}
 
-    for n in (1, 2, 3, 4):
+    for n in (3, 4, 17, 70):
         doc_id = DocumentId(n)
-        assert data[doc_id].name != StudentName("")
-        backup_names[n] = data[doc_id].name
-        data[doc_id].name = StudentName("")
+        assert index[doc_id].student_name != StudentName("")
+        backup_names[n] = index[doc_id].student_name
+        index[doc_id].student = Student(name=StudentName(""), id=StudentId(""))
 
     # Test a scenario, simulating questions for the user in the terminal and the user's answers.
     # The variable `scenario` is the list of the successive expected questions and their corresponding answers.
@@ -161,7 +165,7 @@ def test_missing_names_navigation(patched_conflict_solver, custom_input) -> None
             "DOC1 - WRONG NAME",
             (NamesReviewer.PRESS_ENTER, ""),
             # set (wrong) 1st document name, automatically go to 2nd
-            (NamesReviewer.ASK_FOR_NAME, backup_names[3]),
+            (NamesReviewer.ASK_FOR_NAME, backup_names[17]),
             (NamesReviewer.CORRECT_Y_N, "Y"),
             # ----------------
             "DOC2 - BACK TO 1",
@@ -172,19 +176,19 @@ def test_missing_names_navigation(patched_conflict_solver, custom_input) -> None
             "DOC1 - RIGHT NAME",
             (NamesReviewer.PRESS_ENTER, ""),
             # set 1st document name, automatically go to 2nd
-            (NamesReviewer.ASK_FOR_NAME, backup_names[1]),
+            (NamesReviewer.ASK_FOR_NAME, backup_names[3]),
             (NamesReviewer.CORRECT_Y_N, "Y"),
             # ----------------
             "DOC2 - WRONG NAME",
             (NamesReviewer.PRESS_ENTER, ""),
             # set (wrong) 2nd document name, automatically go to 3rd
-            (NamesReviewer.ASK_FOR_NAME, backup_names[4]),
+            (NamesReviewer.ASK_FOR_NAME, backup_names[70]),
             (NamesReviewer.CORRECT_Y_N, "Y"),
             # ----------------
             "DOC3 - RIGHT NAME",
             (NamesReviewer.PRESS_ENTER, ""),
             # set 3rd document name, automatically go to 4th
-            (NamesReviewer.ASK_FOR_NAME, backup_names[3]),
+            (NamesReviewer.ASK_FOR_NAME, backup_names[17]),
             (NamesReviewer.CORRECT_Y_N, "Y"),
             # ----------------
             "DOC4 - BACK TO 3",
@@ -200,7 +204,7 @@ def test_missing_names_navigation(patched_conflict_solver, custom_input) -> None
             "DOC2 - RIGHT NAME",
             (NamesReviewer.PRESS_ENTER, ""),
             # set 2nd document name, automatically go to 3rd
-            (NamesReviewer.ASK_FOR_NAME, backup_names[2]),
+            (NamesReviewer.ASK_FOR_NAME, backup_names[4]),
             (NamesReviewer.CORRECT_Y_N, "Y"),
             # ----------------
             "DOC3 - GO TO 4",
@@ -211,14 +215,14 @@ def test_missing_names_navigation(patched_conflict_solver, custom_input) -> None
             "DOC4 - RIGHT NAME",
             (NamesReviewer.PRESS_ENTER, ""),
             # set 4th document name
-            (NamesReviewer.ASK_FOR_NAME, backup_names[4]),
+            (NamesReviewer.ASK_FOR_NAME, backup_names[70]),
             (NamesReviewer.CORRECT_Y_N, "Y"),
         ],
     )
 
     patched_conflict_solver.run()
-    for n in (1, 2, 3):
-        assert patched_conflict_solver.data[DocumentId(n)].name == backup_names[n]
+    for n in (3, 4, 17):
+        assert patched_conflict_solver.scan_data.index[DocumentId(n)].student_name == backup_names[n]
 
     # There should be no remaining question.
     assert custom_input.is_empty(), f"List of remaining questions/answers: {custom_input.remaining()}"
@@ -226,17 +230,17 @@ def test_missing_names_navigation(patched_conflict_solver, custom_input) -> None
 
 def test_missing_names_autocomplete(patched_conflict_solver, custom_input) -> None:
     """Test name suggestion."""
-    data = patched_conflict_solver.data
+    index = patched_conflict_solver.scan_data.index
     id_names = [
-        ("22205649", "Robert Le Hardi"),
-        ("22302844", "Jules Le Preux"),
-        ("22212706", "Edouard Le Couard"),
-        ("22306921", "Jules de chez Smith"),
+        ("22405328", "Robert Le Hardy"),  # doc 3
+        ("22401629", "Jean Santer"),  # doc 4
+        ("22402456", "John Smith"),  # doc 17
+        ("22403856", "Martin McGill"),  # doc 70
     ]
 
     for n in range(len(id_names)):
-        assert data[DocumentId(n + 1)].name == StudentName(id_names[n][1])
-        data[DocumentId(n + 1)].name = StudentName("")
+        assert index[DocumentId(n + 1)].name == StudentName(id_names[n][1])
+        index[DocumentId(n + 1)].student = Student(name=StudentName(""), id=StudentId(""))
         # assert data[DocumentId(n + 1)].student_id == StudentId(id_names[n][0])
 
     # Test a scenario, simulating questions for the user in the terminal and the user's answers.
@@ -248,15 +252,15 @@ def test_missing_names_autocomplete(patched_conflict_solver, custom_input) -> No
             (NamesReviewer.ASK_FOR_NAME, "ok"),
             (NamesReviewer.CORRECT_Y_N, "Y"),
             (NamesReviewer.PRESS_ENTER, ""),
-            (NamesReviewer.ASK_FOR_NAME, "223028"),
+            (NamesReviewer.ASK_FOR_NAME, "224016"),
             (NamesReviewer.ASK_FOR_NAME, "OK"),
             (NamesReviewer.CORRECT_Y_N, "Y"),
             (NamesReviewer.PRESS_ENTER, ""),
-            (NamesReviewer.ASK_FOR_NAME, "Couard"),
+            (NamesReviewer.ASK_FOR_NAME, "Smi"),
             (NamesReviewer.ASK_FOR_NAME, "OK"),
             (NamesReviewer.CORRECT_Y_N, "Y"),
             (NamesReviewer.PRESS_ENTER, ""),
-            (NamesReviewer.ASK_FOR_NAME, "12306921"),
+            (NamesReviewer.ASK_FOR_NAME, "22403856"),
             (NamesReviewer.ASK_FOR_NAME, "Ok"),
             (NamesReviewer.CORRECT_Y_N, "Y"),
         ],
@@ -265,7 +269,7 @@ def test_missing_names_autocomplete(patched_conflict_solver, custom_input) -> No
     patched_conflict_solver.run()
 
     for n in range(len(id_names)):
-        assert data[DocumentId(n + 1)].name == StudentName(id_names[n][1])
+        assert index[DocumentId(n + 1)].student_name == StudentName(id_names[n][1])
 
     # There should be no remaining question.
     assert custom_input.is_empty(), f"List of remaining questions/answers: {custom_input.remaining()}"
@@ -273,10 +277,10 @@ def test_missing_names_autocomplete(patched_conflict_solver, custom_input) -> No
 
 def test_missing_name_skip_doc(patched_conflict_solver, custom_input) -> None:
     """Skip a document."""
-    doc_data: DocumentData = patched_conflict_solver.data[DocumentId(1)]
-    student_name = doc_data.name
+    doc: Document = patched_conflict_solver.scan_data.index[DocumentId(1)]
+    student_name = doc.student_name
     assert student_name == "Robert Le Hardi"
-    doc_data.name = StudentName("")
+    doc.student = Student(name=StudentName(""), id=StudentId(""))
 
     # Test a scenario, simulating questions for the user in the terminal and the user's answers.
     # The variable `scenario` is the list of the successives expected questions and their corresponding answers.
