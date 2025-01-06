@@ -46,7 +46,6 @@ class PdfCollectionExtractor:
         if self._log_file.is_file():
             open(self._log_file, "w").close()
         self.hash2pdf = self._generate_current_pdf_hashes()
-        self._save_hashes()
 
     @property
     def data(self) -> PdfData:
@@ -70,7 +69,7 @@ class PdfCollectionExtractor:
                 hashes[PdfHash(blake2b(pdf_file.read(), digest_size=20).hexdigest())] = path
         return hashes
 
-    def _save_hashes(self) -> None:
+    def save_hashes(self) -> None:
         """Save the pdf hashes on drive (useful for debugging)."""
         content = "\n".join(f"{pdf_hash}: {pdf_path}" for pdf_hash, pdf_path in self.hash2pdf.items())
         (self.scan_data.dirs.index / "hash").write_text(content + "\n")
@@ -91,7 +90,6 @@ class PdfCollectionExtractor:
             pdf_data: PdfData = {}
             for pdf_hash in futures:
                 for pic_num, future_result in futures[pdf_hash].items():
-
                     result = future_result.get()
                     if result is not None:
                         pdf_data.setdefault(pdf_hash, {})[pic_num] = result

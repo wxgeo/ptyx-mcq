@@ -88,7 +88,7 @@ class Picture:
     @property
     def use(self) -> bool:
         if self._use is None:
-            self._use = self._skip_file.is_file()
+            self._use = not self._skip_file.is_file()
         return self._use
 
     @use.setter
@@ -246,7 +246,7 @@ class Picture:
     @property
     def answered(self) -> dict[OriginalQuestionNumber, set[OriginalAnswerNumber]]:
         """Answers checked by the student for each question."""
-        return {q.question_num: {a for a in q if a.checked} for q in self}
+        return {q.question_num: {a.answer_num for a in q if a.checked} for q in self}
 
     def get_checkboxes(self, matrix: ndarray = None) -> dict[CbxRef, ndarray]:
         """

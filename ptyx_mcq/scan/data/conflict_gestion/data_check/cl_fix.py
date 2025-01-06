@@ -191,14 +191,16 @@ class ClAnswersReviewer(AbstractAnswersReviewer):
                         checked = answer.state.seems_checked
                         if op == "+":
                             if checked:
-                                print(f"Warning: {a0} is already marked as checked.")
+                                print(f"Warning: answer {a0} is already marked as checked.")
                             else:
                                 answer.state = CbxState.CHECKED
+                                print(f"Answer {a0} checked.")
                         elif op == "-":
                             if checked:
                                 answer.state = CbxState.UNCHECKED
+                                print(f"Answer {a0} unchecked.")
                             else:
-                                print(f"Warning: {a0} was not marked as checked.")
+                                print(f"Warning: answer {a0} was not marked as checked.")
                         else:
                             print(f"Invalid operation: {val!r}")
                 except ValueError:
@@ -213,7 +215,7 @@ class ClAnswersReviewer(AbstractAnswersReviewer):
                     process.terminate()
                     process = self.display_picture_with_detected_answers(pic)
         process.terminate()
-        return Action.NEXT
+        return Action.APPLY
 
     # def display_page_with_detected_answers(self, doc_id: DocumentId, page_num: PageNum) -> Popen:
     #     """Display the page with its checkboxes colored following their detection status."""

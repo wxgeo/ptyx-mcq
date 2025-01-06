@@ -85,12 +85,17 @@ class Document:
 
     @property
     def pictures(self) -> list[Picture]:
-        """Return all the pictures associated with this document."""
+        """Return all the pictures associated with this document, even discarded ones."""
         return [pic for page in self.pages.values() for pic in page.pictures]
 
     @property
     def used_pictures(self) -> list[Picture]:
-        """Return all the pictures associated with this document."""
+        """
+        Return the pictures associated with this document, except for discarded ones.
+
+        Discarded pictures have their attribute `.use` set to False.
+        (Pictures may be discarded during the conflict resolution process.)
+        """
         return [pic for page in self.pages.values() for pic in page.used_pictures]
 
     # @property
@@ -129,6 +134,10 @@ class Document:
         return any(
             answer.state is None for pic in self.used_pictures for question in pic for answer in question
         )
+
+    @property
+    def checkboxes_need_review(self) -> bool:
+        return any(picture.checkboxes_need_review for picture in self.used_pictures)
 
     def _as_str(self):
         return "\n".join(

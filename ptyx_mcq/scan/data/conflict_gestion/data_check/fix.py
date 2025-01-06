@@ -16,6 +16,7 @@ class Action(StrEnum):
     NEXT = ">"
     BACK = "<"
     DISCARD = "/"
+    APPLY = "OK"
 
 
 class AbstractDocHeaderDisplayer(AbstractContextManager, ABC):
@@ -23,7 +24,8 @@ class AbstractDocHeaderDisplayer(AbstractContextManager, ABC):
 
     # noinspection PyUnusedLocal
     @abstractmethod
-    def __init__(self, data_storage: ScanData, doc_id: DocumentId): ...
+    def __init__(self, data_storage: ScanData, doc_id: DocumentId):
+        ...
 
     @abstractmethod
     def display(self) -> None:
@@ -71,7 +73,7 @@ class AbstractNamesReviewer(ABC, metaclass=ABCMeta):
                 if user_input == Action.DISCARD:
                     # Discard this document. It will be removed later.
                     print_info(f"Discarding document {doc_id}.")
-                    return StudentName(user_input), StudentId("-1"), Action.NEXT
+                    return StudentName(user_input), StudentId("-1"), Action.DISCARD
                 elif user_input == Action.BACK:
                     print("Navigating back to previous document.")
                     return StudentName(default), StudentId(student_id), Action.BACK
@@ -83,7 +85,7 @@ class AbstractNamesReviewer(ABC, metaclass=ABCMeta):
                         # This is in fact not a name, but a known student id,
                         # so convert it to a name.
                         name, student_id = self.students_ids[StudentId(user_input)], StudentId(user_input)
-                        action = Action.NEXT
+                        action = Action.APPLY
                     elif user_input in self.students_ids.values():
                         for _student_id, _name in self.students_ids.items():
                             if _name == user_input:
@@ -92,7 +94,7 @@ class AbstractNamesReviewer(ABC, metaclass=ABCMeta):
                         name = StudentName(_name)
                         # noinspection PyUnboundLocalVariable
                         student_id = StudentId(_student_id)
-                        action = Action.NEXT
+                        action = Action.APPLY
                     elif any((digit in user_input) for digit in string.digits):
                         # If `name` contains a digit, this is not a student name,
                         # but probably a misspelled student id!
@@ -104,7 +106,7 @@ class AbstractNamesReviewer(ABC, metaclass=ABCMeta):
                         suggestion = self._suggest_name(user_input)
                 elif self.scan_data.config.students_list:
                     if user_input in self.scan_data.config.students_list:
-                        action = Action.NEXT
+                        action = Action.APPLY
                     else:
                         suggestion = self._suggest_name(user_input)
                 elif user_input:
@@ -136,6 +138,7 @@ class AbstractNamesReviewer(ABC, metaclass=ABCMeta):
         first_page = self.scan_data.index[doc_id].first_page
         assert first_page is not None
         first_page.pic.student = Student(name=student_name, id=student_id)
+        # print([doc.student_name for doc in first_page.doc.scan_data])
         return action
 
     def _suggest_id(self, incorrect_student_id: str) -> StudentId:
@@ -224,7 +227,8 @@ class AbstractAnswersReviewer(ABC, metaclass=ABCMeta):
         else:
             action = self.edit_answers(doc_id, page_num)
             # Save changes on drive (to be able to resume scan process).
-            doc.pages[page_num].pic.save_checkboxes_state(is_fix=True)
+            if action == Action.APPLY:
+                doc.pages[page_num].pic.save_checkboxes_state(is_fix=True)
             return action
 
     @abstractmethod
@@ -292,7 +296,7 @@ class DefaultAllDataIssuesFixer:
                 else:
                     doc_id, page = list(answers_to_review)[position - len(names_to_review)]
                     action = self.answers_reviewer.review_answer(doc_id, page)
-                if action == Action.NEXT:
+                if action in (Action.NEXT, Action.APPLY):
                     position += 1
                 elif action == Action.BACK:
                     position = max(0, position - 1)

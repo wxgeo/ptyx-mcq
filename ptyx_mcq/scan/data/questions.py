@@ -99,6 +99,10 @@ class Answer:
         return None if self.state is None else self.state.seems_checked
 
     @property
+    def unchecked(self) -> bool | None:
+        return None if self.state is None else not self.state.seems_checked
+
+    @property
     def analyzed(self) -> bool:
         """Has the state been already automatically detected?"""
         return self._initial_state is not None

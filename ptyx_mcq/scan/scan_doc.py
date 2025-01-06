@@ -83,11 +83,12 @@ class MCQPictureParser:
         )
 
         with open(info_path, "w", newline="") as csvfile:
+            # noinspection PyTypeChecker
             writerow = csv.writer(csvfile).writerow
-            writerow(("Name", "Student ID", "Test ID", "Score", "Pictures"))
+            writerow(("Name", "Student ID", "Doc ID", "Score", "Pictures"))
             for name, student_id, doc_id, score, paths in info:
                 paths_as_str = ", ".join(str(pth) for pth in paths)
-                writerow([name, student_id, f"#{doc_id}", score, paths_as_str])
+                writerow([name, student_id, doc_id, score, paths_as_str])
         print(f'Infos stored in "{info_path}"\n')
 
     def _generate_amended_pdf(self) -> None:

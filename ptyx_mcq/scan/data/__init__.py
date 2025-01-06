@@ -58,6 +58,7 @@ class ScanData:
     def initialize(self, reset=False) -> None:
         """Load all information from files."""
         self.paths.make_dirs(reset)
+        self.input_pdf_extractor.save_hashes()
 
     @property
     def dirs(self) -> DirsPaths:
