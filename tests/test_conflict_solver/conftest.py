@@ -4,10 +4,8 @@ import subprocess
 import pytest
 from numpy import ndarray, array
 
-from ptyx_mcq.scan.data.conflict_gestion import ConflictSolver
-
 from ptyx_mcq.scan.data import ScanData
-from ptyx_mcq.tools.config_parser import DocumentId
+from ptyx_mcq.scan.data.conflict_gestion import ConflictSolver
 from tests.test_conflict_solver import ASSETS_DIR
 
 

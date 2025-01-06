@@ -43,7 +43,7 @@ class CustomInput:
         while self.index < len(self.scenario) and isinstance(comment := self.scenario[self.index], str):
             assert isinstance(comment, str)  # stupid Pycharm!
             # This is only comments.
-            print(f"\033[3;34m/{comment}/\033[0m")
+            print(f"\033[3;34m# {comment}\033[0m")
             self.index += 1
         print("\033[2;96mQ:", text, "\033[0m")
         try:

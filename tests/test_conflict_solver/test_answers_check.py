@@ -2,7 +2,7 @@ from ptyx_mcq.scan.data.conflict_gestion.data_check.cl_fix import (
     ClAnswersReviewer as AnswersReviewer,
 )
 from ptyx_mcq.scan.data.documents import Document
-from ptyx_mcq.scan.data.questions import CbxState
+from ptyx_mcq.scan.data.questions import CbxState, Answer
 from ptyx_mcq.tools.config_parser import (
     DocumentId,
     OriginalQuestionNumber,
@@ -11,73 +11,105 @@ from ptyx_mcq.tools.config_parser import (
     ApparentQuestionNumber,
     real2apparent,
     PageNum,
-)
-from tests.test_conflict_solver.answers_check_data import (
-    ANSWERS_CHECK_DATA,
-    UNCHECKED,
-    CHECKED,
-    PROBABLY_CHECKED,
-    PROBABLY_UNCHECKED,
-    ANSWERED,
+    Configuration,
+    apparent2real,
 )
 
+# from tests.test_conflict_solver.answers_check_data import (
+#     ANSWERS_CHECK_DATA,
+#     UNCHECKED,
+#     CHECKED,
+#     PROBABLY_CHECKED,
+#     PROBABLY_UNCHECKED,
+#     ANSWERED,
+# )
+from tests.toolbox import ASSETS_DIR
 
+
+def manual_reviewed_cbx_states():
+    folder = ASSETS_DIR / "test-conflict-solver/no-conflict-v2"
+    config = Configuration.load(folder / "ie2.ptyx.mcq.config.json")
+    states: dict[DocumentId, dict[tuple[OriginalQuestionNumber, OriginalAnswerNumber], CbxState]] = {}
+    with open(folder / "manual_cbx_review.txt") as f:
+        for line in f:
+            if line.startswith("["):
+                doc_id = DocumentId(int(line.strip()[1:-1]))
+                states[doc_id] = {}
+                print("#", doc_id)
+            elif not line.startswith("#") and line.strip():
+                q_num, answers_states = line.split(":")
+                q0 = ApparentQuestionNumber(int(q_num))
+                for a_num, digit in enumerate(answers_states.strip(), start=1):
+                    state = CbxState.CHECKED if digit == "1" else CbxState.UNCHECKED
+                    a0 = ApparentAnswerNumber(int(a_num))
+                    print((q0, a0), state)
+                    q, a = apparent2real(q0, a0, config, doc_id)
+                    states[doc_id][(q, a)] = state
+    return states
+
+
+CBX_STATES = manual_reviewed_cbx_states()
+
+
+# noinspection PyUnboundLocalVariable
 def test_check_review(patched_conflict_solver, custom_input) -> None:
     """Test to change check status."""
-    # Shortcuts:
-    doc_id = DocumentId(1)
-    doc: Document = patched_conflict_solver.scan_data.index[doc_id]
-    answered = doc.answered
-    detection_status = doc.detection_status
-    revision_status = doc.revision_status
 
-    # Original values after automatic evaluation.
-    assert detection_status == {
-        (4, 1): UNCHECKED,
-        (4, 2): UNCHECKED,
-        (4, 3): CHECKED,
-        (4, 4): UNCHECKED,
-        (4, 5): UNCHECKED,
-        (4, 6): UNCHECKED,
-        (20, 1): UNCHECKED,
-        (20, 2): UNCHECKED,
-        (20, 3): UNCHECKED,
-        (20, 4): CHECKED,
-        (20, 5): CHECKED,
-        (20, 6): UNCHECKED,
-        (20, 7): UNCHECKED,
-        (25, 1): UNCHECKED,
-        (25, 2): UNCHECKED,
-        (25, 3): CHECKED,
-        (25, 4): UNCHECKED,
-        (25, 5): UNCHECKED,
-        (25, 6): UNCHECKED,
-        (25, 7): UNCHECKED,
-        (25, 8): UNCHECKED,
-        (25, 9): UNCHECKED,
+    config = patched_conflict_solver.scan_data.config
+
+    for doc in patched_conflict_solver.scan_data:
+        # Test the values after the automatic evaluation of the checkboxes states.
+        assert doc.detection_status == CBX_STATES[doc.doc_id]
+
+    Q = OriginalQuestionNumber
+    A = OriginalAnswerNumber
+    answers = doc.questions[Q(1)].answers
+
+    def ans(n: int) -> Answer:
+        return answers[A(n)]
+
+    assert not ans(1).checked
+    assert not ans(1).needs_review
+    assert ans(1).analyzed
+    assert not ans(1).reviewed
+
+    assert not ans(2).checked
+    assert not ans(2).needs_review
+    assert ans(2).analyzed
+    assert not ans(2).reviewed
+
+    assert not doc.checkboxes_need_review
+
+    # Modify some checkboxes states in the last document, to pretend something went wrong.
+    modified = {
+        A(1): CbxState.PROBABLY_CHECKED,
+        A(2): CbxState.PROBABLY_UNCHECKED,
+        A(3): CbxState.PROBABLY_UNCHECKED,
+        A(4): CbxState.PROBABLY_CHECKED,
     }
+    for a, state in modified.items():
+        answers[a]._initial_state = state
 
-    # Modify some detection values, to pretend something went wrong.
-    # Let's modify answers 1, 2, 3 and 6 for question 4.
-    original_question_num = OriginalQuestionNumber(4)
-    a1, a2, a3, a6 = original_answers_numbers = tuple(OriginalAnswerNumber(i) for i in (1, 2, 3, 6))
-    assert answered == {4: {3}, 20: {4, 5}, 25: {3}}
-    answered[original_question_num].add(OriginalAnswerNumber(6))
-    assert answered == {4: {3, 6}, 20: {4, 5}, 25: {3}}
-    modified_detection_status = (PROBABLY_CHECKED, PROBABLY_CHECKED, PROBABLY_UNCHECKED, CHECKED)
-    for original_answer_num, detected_as in zip(original_answers_numbers, modified_detection_status):
-        doc.detection_status[(original_question_num, original_answer_num)] = detected_as
+    assert doc.checkboxes_need_review
+
+    assert ans(1).checked
+    assert ans(1).needs_review
+    assert ans(1).analyzed
+    assert not ans(1).reviewed
+
+    assert not ans(2).checked
+    assert ans(2).needs_review
+    assert ans(2).analyzed
+    assert not ans(2).reviewed
 
     # Since the questions and answers were shuffled when generating the document,
     # we have to retrieve the apparent question number (i.e. the one which appears on the document).
     # The same holds for the answers.
-    q_num: ApparentQuestionNumber
-    # noinspection PyTypeChecker
-    answers: dict[OriginalAnswerNumber, ApparentAnswerNumber | None] = {}
-    for i in original_answers_numbers:
-        q_num, answers[i] = real2apparent(
-            original_question_num, i, patched_conflict_solver.scan_data.config, doc_id=doc_id
-        )
+    conv = {}
+    for a in modified:
+        q_num, a_num = real2apparent(Q(1), a, config, doc.doc_id)
+        assert a_num is not None
+        conv[a] = a_num
 
     # Test a scenario, simulating questions for the user in the terminal and the user's answers.
     # The variable `scenario` is the list of the successive expected questions and their corresponding answers.
@@ -87,7 +119,7 @@ def test_check_review(patched_conflict_solver, custom_input) -> None:
             (AnswersReviewer.ENTER_COMMAND, ""),
             (AnswersReviewer.IS_CORRECT, "n"),
             (AnswersReviewer.SELECT_QUESTION, str(q_num)),
-            (AnswersReviewer.EDIT_ANSWERS, f"+{answers[a1]} +{answers[a2]} -{answers[a3]}"),
+            (AnswersReviewer.EDIT_ANSWERS, f"-{conv[A(1)]} +{conv[A(2)]} -{conv[A(4)]}"),
             (AnswersReviewer.SELECT_QUESTION, "0"),
             (AnswersReviewer.IS_CORRECT, "y"),
         ],
@@ -95,16 +127,17 @@ def test_check_review(patched_conflict_solver, custom_input) -> None:
 
     patched_conflict_solver.run()
 
-    assert answered[OriginalQuestionNumber(4)] == {1, 2, 6}
+    assert ans(1).unchecked
+    assert ans(2).checked
+    assert ans(3).unchecked
+    assert ans(4).unchecked
 
-    expected_revision_status = (
-        CbxState.CHECKED,
-        CbxState.CHECKED,
-        CbxState.UNCHECKED,
-    )
+    assert ans(1).reviewed
+    assert ans(2).reviewed
+    assert not ans(3).reviewed
+    assert ans(4).reviewed
 
-    for original_answer_num, status in zip(original_answers_numbers, expected_revision_status):
-        assert revision_status[(original_question_num, original_answer_num)] == status
+    assert not doc.checkboxes_need_review
 
     # There should be no remaining question.
     assert custom_input.is_empty(), custom_input.remaining()

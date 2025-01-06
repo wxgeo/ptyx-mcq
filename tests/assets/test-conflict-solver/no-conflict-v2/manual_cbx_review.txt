@@ -1,0 +1,82 @@
+# Manual review of the checkboxes states.
+# The number inside square brackets is the document id.
+# Then, for each document question, the checkboxes states are given, as displayed on the pdf document.
+# For example, 13:01000000 means that for question 13, the checkboxes states are, in the following order:
+# UNCHECKED (0), CHECKED (1), UNCHECKED (0), UNCHECKED (0), UNCHECKED (0), UNCHECKED (0), UNCHECKED (0), UNCHECKED (0)
+# Note that the questions are numbered as displayed on the pdf (i.e. those are the apparent question numbers,
+# not the original ones.)
+
+[17]
+13:01000000
+14:11110
+15:0000000100
+6:100010
+7:001000000
+8:000100000000
+9:1101001110
+10:0010110
+11:000000010000
+12:010000
+3:0100000
+4:001000
+5:00111
+# (A checkbox was erased by the student in the following question.)
+1:100000
+2:000100000
+
+[70]
+14:0000100
+15:000000000000
+13:000000000
+6:0000000
+7:00000
+8:0000000
+9:1001101000
+10:00101
+11:00000001000000
+12:000000
+1:00000100000
+2:000100000
+3:001000
+4:01000000
+5:001000
+
+[3]
+12:000000100
+13:100000000
+14:0001000
+15:10000000
+7:000000000000
+8:00000000000001
+9:0000000
+10:000010
+# (For the following question (11), a checkbox was accidentally 
+# deleted when anonymizing the pdf.)
+11:100110
+1:01011
+2:00001000000
+3:0111001011
+4:100000
+5:10011
+6:0000000
+
+[4]
+12:000000100
+13:000000100
+14:000100000000
+15:000000010000
+# (The last checkbox was erased by the student in the following question).
+9:0000100
+10:01110
+11:11011
+7:1101000
+8:000010
+1:1011111110
+2:001000
+3:00000001
+4:0101000
+5:101001
+6:00010000000
+
+
+

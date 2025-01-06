@@ -10,6 +10,21 @@ from ptyx_mcq.scan.data.conflict_gestion.data_check.cl_fix import (
 from tests.test_conflict_solver import ASSETS_DIR
 
 
+def fail_on_input(text=""):
+    assert False, f"Unexpected input request: {text!r}"
+
+
+def test_no_conflict(monkeypatch, patched_conflict_solver):
+    """No interaction should occur if there is no conflict."""
+    monkeypatch.setattr("builtins.input", fail_on_input)
+    patched_conflict_solver.run()
+    docs = list(patched_conflict_solver.scan_data.index)
+    assert docs == [3, 4, 17, 70], docs
+    for doc in patched_conflict_solver.scan_data:
+        # No conflict: all pictures are used.
+        assert doc.pictures == doc.used_pictures
+
+
 def test_blank_page_inserted(tmp_path):
     """Test what happens when a blank page (or any unrelated paper) has been scanned by error.
 
@@ -22,11 +37,11 @@ def test_blank_page_inserted(tmp_path):
     print(copy / ".scan/scores.csv")
     print(origin / "reference_scores.csv")
 
-    def same_file(path: Path, path2: Path) -> bool:
-        return path.read_text(encoding="utf8") == path2.read_text(encoding="utf8")
+    def assert_same_file(path: Path, path2: Path) -> None:
+        assert path.read_text(encoding="utf8") == path2.read_text(encoding="utf8"), (path, path2)
 
-    assert same_file(copy / "out/scores.csv", origin / "reference_scores.csv")
-    assert same_file(copy / "out/infos.csv", origin / "reference_infos.csv")
+    assert_same_file(copy / "out/scores.csv", origin / "reference_scores.csv")
+    assert_same_file(output := copy / "out/infos.csv", expected := origin / "reference_infos.csv")
 
 
 def test_empty_document(no_display, tmp_path, custom_input):
