@@ -1,7 +1,6 @@
 from ptyx_mcq.scan.data.conflict_gestion.data_check.cl_fix import (
     ClAnswersReviewer as AnswersReviewer,
 )
-from ptyx_mcq.scan.data.documents import Document
 from ptyx_mcq.scan.data.questions import CbxState, Answer
 from ptyx_mcq.tools.config_parser import (
     DocumentId,
@@ -81,13 +80,13 @@ def test_check_review(patched_conflict_solver, custom_input) -> None:
     assert not doc.checkboxes_need_review
 
     # Modify some checkboxes states in the last document, to pretend something went wrong.
-    modified = {
+    modifications = {
         A(1): CbxState.PROBABLY_CHECKED,
         A(2): CbxState.PROBABLY_UNCHECKED,
         A(3): CbxState.PROBABLY_UNCHECKED,
         A(4): CbxState.PROBABLY_CHECKED,
     }
-    for a, state in modified.items():
+    for a, state in modifications.items():
         answers[a]._initial_state = state
 
     assert doc.checkboxes_need_review
@@ -106,7 +105,7 @@ def test_check_review(patched_conflict_solver, custom_input) -> None:
     # we have to retrieve the apparent question number (i.e. the one which appears on the document).
     # The same holds for the answers.
     conv = {}
-    for a in modified:
+    for a in modifications:
         q_num, a_num = real2apparent(Q(1), a, config, doc.doc_id)
         assert a_num is not None
         conv[a] = a_num
@@ -145,52 +144,55 @@ def test_check_review(patched_conflict_solver, custom_input) -> None:
 
 def test_check_review_navigation(patched_conflict_solver, custom_input) -> None:
     """Test to change check status."""
-    # Shortcuts:
-    doc_id = DocumentId(1)
     config = patched_conflict_solver.scan_data.config
-    doc_data: DocumentData = patched_conflict_solver.data[doc_id]
-    detection_status = {page: doc_data.pages[page].detection_status for page in doc_data.pages}
-    answered = {page: doc_data.pages[page].answered for page in doc_data.pages}
-    revision_status = {page: doc_data.pages[page].revision_status for page in doc_data.pages}
 
-    # Original values after automatic evaluation.
-    assert detection_status == ANSWERS_CHECK_DATA
-    assert answered == ANSWERED
+    doc = patched_conflict_solver.scan_data.index[DocumentId(17)]
 
-    # Modified values:
-    detection_status[PageNum(1)] |= {(20, 1): PROBABLY_CHECKED, (25, 2): PROBABLY_UNCHECKED}  # type: ignore
-    detection_status[PageNum(2)] |= {(3, 1): PROBABLY_CHECKED}  # type:ignore
-    detection_status[PageNum(3)] |= {(30, 2): PROBABLY_UNCHECKED}  # type:ignore
-    answered[PageNum(1)][OriginalQuestionNumber(20)].add(OriginalAnswerNumber(1))
-    assert OriginalAnswerNumber(2) not in answered[PageNum(1)][OriginalQuestionNumber(25)]
-    answered[PageNum(2)][OriginalQuestionNumber(3)].add(OriginalAnswerNumber(1))
-    answered[PageNum(3)][OriginalQuestionNumber(30)].remove(OriginalAnswerNumber(2))
+    # Modify some checkboxes states in the last document, to pretend something went wrong.
+    modifications: dict[PageNum, dict[ApparentQuestionNumber, dict[ApparentAnswerNumber, CbxState]]] = {
+        PageNum(1): {
+            ApparentQuestionNumber(1): {
+                ApparentAnswerNumber(1): CbxState.PROBABLY_UNCHECKED,
+                ApparentAnswerNumber(2): CbxState.PROBABLY_UNCHECKED,
+            },
+            ApparentQuestionNumber(2): {
+                ApparentAnswerNumber(4): CbxState.PROBABLY_UNCHECKED,
+            },
+        },
+        PageNum(2): {
+            ApparentQuestionNumber(3): {
+                ApparentAnswerNumber(1): CbxState.PROBABLY_CHECKED,
+                ApparentAnswerNumber(2): CbxState.PROBABLY_CHECKED,
+            },
+        },
+        PageNum(4): {
+            ApparentQuestionNumber(14): {
+                ApparentAnswerNumber(2): CbxState.PROBABLY_CHECKED,
+                ApparentAnswerNumber(5): CbxState.PROBABLY_CHECKED,
+            },
+        },
+    }
 
-    # Since the questions and answers were shuffled when generating the document,
-    # we have to retrieve the apparent question number (i.e. the one which appears on the document).
-    # The same holds for the answers.
-    translation = {}
-    for q, a in [
-        (20, 1),  # on page 1
-        (25, 2),  # idem
-        (3, 1),  # on page 2
-        (30, 2),  # on page 3
-    ]:
-        q_a = (OriginalQuestionNumber(q), OriginalAnswerNumber(a))
-        translation[q_a] = real2apparent(*q_a, config=config, doc_id=doc_id)
+    for page_num in modifications:
+        for q_num in modifications[page_num]:
+            for a_num, state in modifications[page_num][q_num].items():
+                # Since the questions and answers were shuffled when generating the document,
+                # we have to retrieve the apparent question number (i.e. the one which appears on the document).
+                # The same holds for the answers.
+                q, a = apparent2real(q_num, a_num, config, doc.doc_id)
+                doc.questions[q].answers[a]._initial_state = state
+                # Memorize the conversion between apparent and real questions and answers numbers:
 
     # Test a scenario, simulating questions for the user in the terminal and the user's answers.
     # The variable `scenario` is the list of the successive expected questions and their corresponding answers.
     # noinspection PyUnboundLocalVariable
-    q25, a25_2 = translation[(OriginalQuestionNumber(25), OriginalAnswerNumber(2))]
-    q3, a3_1 = translation[(OriginalQuestionNumber(3), OriginalAnswerNumber(1))]
     custom_input.set_scenario(
         [
             "Page 1",
             (AnswersReviewer.ENTER_COMMAND, ">"),
             "Page 2",
             (AnswersReviewer.ENTER_COMMAND, ">"),
-            "Page 3",
+            "Page 4",
             (AnswersReviewer.ENTER_COMMAND, ">"),
             "Last page reached: restart review.",
             "So, we're back to page 1.",
@@ -200,41 +202,64 @@ def test_check_review_navigation(patched_conflict_solver, custom_input) -> None:
             "Stay on page 1, since there is no page before.",
             (AnswersReviewer.ENTER_COMMAND, ""),
             (AnswersReviewer.IS_CORRECT, ""),
-            (AnswersReviewer.SELECT_QUESTION, f"{q25}"),
-            (AnswersReviewer.EDIT_ANSWERS, f"+{a25_2}"),
+            (AnswersReviewer.SELECT_QUESTION, "2"),
+            (AnswersReviewer.EDIT_ANSWERS, "-4"),
+            (AnswersReviewer.SELECT_QUESTION, "1"),
+            (AnswersReviewer.EDIT_ANSWERS, "+1 +2"),
+            (AnswersReviewer.SELECT_QUESTION, "1"),
+            (AnswersReviewer.EDIT_ANSWERS, "+3 -1"),
             (AnswersReviewer.SELECT_QUESTION, "0"),
             (AnswersReviewer.IS_CORRECT, "y"),
             "Page 2",
             (AnswersReviewer.ENTER_COMMAND, ">"),
-            "Page 3",
+            "Page 4",
             (AnswersReviewer.ENTER_COMMAND, ""),
             (AnswersReviewer.IS_CORRECT, "y"),
             "Last page reached: restart review.",
             "So, we go back to page 2 (this is the only remaining unreviewed page).",
             (AnswersReviewer.ENTER_COMMAND, ""),
             (AnswersReviewer.IS_CORRECT, "n"),
-            (AnswersReviewer.SELECT_QUESTION, f"{q3}"),
-            (AnswersReviewer.EDIT_ANSWERS, f"-{a3_1}"),
+            (AnswersReviewer.SELECT_QUESTION, "3"),
+            (AnswersReviewer.EDIT_ANSWERS, "-2  -1 "),
             "Finally, add it again.",
-            (AnswersReviewer.SELECT_QUESTION, f"{q3}"),
-            (AnswersReviewer.EDIT_ANSWERS, f"+{a3_1}"),
+            (AnswersReviewer.SELECT_QUESTION, "3"),
+            (AnswersReviewer.EDIT_ANSWERS, "+1"),
             (AnswersReviewer.SELECT_QUESTION, "0"),
             (AnswersReviewer.IS_CORRECT, "y"),
         ],
     )
 
+    final_states: dict[PageNum, dict[ApparentQuestionNumber, dict[ApparentAnswerNumber, bool]]] = {
+        PageNum(1): {
+            ApparentQuestionNumber(1): {
+                ApparentAnswerNumber(1): False,
+                ApparentAnswerNumber(2): True,
+                ApparentAnswerNumber(3): True,
+            },
+            ApparentQuestionNumber(2): {ApparentAnswerNumber(4): False},
+        },
+        PageNum(3): {
+            ApparentQuestionNumber(3): {
+                ApparentAnswerNumber(1): True,
+                ApparentAnswerNumber(2): False,
+            },
+        },
+        PageNum(4): {
+            ApparentQuestionNumber(14): {
+                ApparentAnswerNumber(2): True,
+                ApparentAnswerNumber(5): True,
+            },
+        },
+    }
     patched_conflict_solver.run()
     # There should be no remaining question.
     assert custom_input.is_empty(), custom_input.remaining()
 
-    assert (
-        revision_status[PageNum(1)][(OriginalQuestionNumber(25), OriginalAnswerNumber(2))]
-        == RevisionStatus.MARKED_AS_CHECKED
-    )
-    assert answered[PageNum(1)][OriginalQuestionNumber(25)] == {2, 3}
-
-    assert (
-        revision_status[PageNum(2)][(OriginalQuestionNumber(3), OriginalAnswerNumber(1))]
-        == RevisionStatus.MARKED_AS_CHECKED
-    )
-    assert answered[PageNum(2)][OriginalQuestionNumber(3)] == {1, 2, 6, 7}
+    for page_num in final_states:
+        for q_num in final_states[page_num]:
+            for a_num, is_checked in final_states[page_num][q_num].items():
+                # Since the questions and answers were shuffled when generating the document,
+                # we have to retrieve the apparent question number (i.e. the one which appears on the document).
+                # The same holds for the answers.
+                q, a = apparent2real(q_num, a_num, config, doc.doc_id)
+                assert doc.questions[q].answers[a].checked == is_checked
