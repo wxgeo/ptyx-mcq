@@ -351,29 +351,25 @@ def test_make_without_force(tmp_path, custom_input):
     assert _pdf_look_the_same(path / "new.pdf", targets / "two-docs-version.pdf")
 
 
-# TODO: rewrite this test.
-@pytest.mark.slow
+def csv2list(path: Path) -> list[str]:
+    return path.read_text(encoding="utf8").split("\n")
+
+
 def test_previous_scan_data_loading(tmp_path):
     """Test that previously entered data is correctly handled.
 
     In particular, data manually entered by user during previous scans
-    is stored in `more_infos.csv`, and should take precedence over all other information.
+    is stored in `out/.fix`, and should take precedence over all other information.
     """
     copy = tmp_path / "caching_test"
-    origin = TEST_DIR / "data/cli-tests/caching_test"
+    origin = ASSETS_DIR / "cli-tests/caching_test"
     shutil.copytree(origin, copy)
-    assert (origin / ".scan/data/1.scandata").is_file()
-    assert (origin / ".scan/unpatched_scores.csv").is_file()
-    assert (copy / ".scan/data/1.scandata").is_file()
+    assert (origin / "unpatched_scores.csv").is_file()
     main(["scan", str(copy)])
-    assert (copy / ".scan/scores.csv").read_text(encoding="utf8") == (
-        origin / ".scan/patched_scores.csv"
-    ).read_text(encoding="utf8")
-    (copy / ".scan/cfg/more_infos.csv").unlink()
+    assert sorted(csv2list(copy / "out/scores.csv")) == sorted(csv2list(origin / "patched_scores.csv"))
+    shutil.rmtree(copy / "out/.fix")
     main(["scan", str(copy), "--reset"])
-    assert (copy / ".scan/scores.csv").read_text(encoding="utf8") == (
-        origin / ".scan/unpatched_scores.csv"
-    ).read_text(encoding="utf8")
+    assert sorted(csv2list(copy / "out/scores.csv")) == sorted(csv2list(origin / "unpatched_scores.csv"))
 
 
 # if __name__ == "__main__":
