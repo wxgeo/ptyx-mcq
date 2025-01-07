@@ -62,7 +62,7 @@ def test_is_ptyx_file(tmp_path):
 
 
 def test_get_file_with_extension():
-    path = ASSETS_DIR / "test-conflict-solver/no-conflict/no-conflict.ptyx.mcq.config.json"
+    path = ASSETS_DIR / "test-conflict-solver/no-conflict-v2/ie2.ptyx.mcq.config.json"
     assert get_file_with_extension(path.parent, extension=".ptyx.mcq.config.json") == path
     assert get_file_with_extension(path, extension=".ptyx.mcq.config.json") == path
     with pytest.raises(FileNotFoundError):
