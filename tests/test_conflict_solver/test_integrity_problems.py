@@ -12,9 +12,6 @@ from ptyx_mcq.scan.data.conflict_gestion.data_check.cl_fix import (
 from ptyx_mcq.tools.config_parser import (
     DocumentId,
     PageNum,
-    OriginalQuestionNumber,
-    OriginalAnswerNumber,
-    real2apparent,
     apparent2real,
     ApparentQuestionNumber,
     ApparentAnswerNumber,
@@ -53,7 +50,7 @@ def test_blank_page_inserted(tmp_path):
         assert path.read_text(encoding="utf8") == path2.read_text(encoding="utf8"), (path, path2)
 
     assert_same_file(copy / "out/scores.csv", origin / "reference_scores.csv")
-    assert_same_file(output := copy / "out/infos.csv", expected := origin / "reference_infos.csv")
+    assert_same_file(copy / "out/infos.csv", origin / "reference_infos.csv")
 
 
 # todo
@@ -107,7 +104,7 @@ def test_bug_inconsistent_checkboxes_state(tmp_path):
     shutil.copytree(origin, copy)
     scan_data = ScanData(config_path=tmp_path / "duplicate-files")
     scan_data.run()
-    pic1, pic2 = scan_data.index[DocumentId(44)].pages[PageNum(3)].pictures
+    pic1, pic2 = scan_data.index[DocumentId(44)].pages[PageNum(3)].all_pictures
     assert pic1.as_hashable_tuple() == pic2.as_hashable_tuple()
 
     # This bug was caused by an error in the calibration process: rotation was not saved!
@@ -139,7 +136,7 @@ def duplicate_documents_test_base(
     doc = mcq_parser.scan_data.index[doc_id]
     config = mcq_parser.scan_data.config
 
-    pic1, pic2 = doc.pages[page_num].pictures
+    pic1, pic2 = doc.pages[page_num].all_pictures
     print("pic1:", pic1.short_path)
     print("pic2:", pic2.short_path)
     if chosen_version == "1":

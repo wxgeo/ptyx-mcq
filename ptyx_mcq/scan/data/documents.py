@@ -24,12 +24,16 @@ if TYPE_CHECKING:
 class Page:
     doc: "Document"
     page_num: PageNum
-    pictures: list[Picture]
+    _pictures: list[Picture]
 
     @property
     def has_conflicts(self) -> bool:
         """Test whether there are several (undiscarded) pictures associated with this page."""
         return len(self.used_pictures) >= 2
+
+    @property
+    def all_pictures(self) -> Iterator[Picture]:
+        return iter(self._pictures)
 
     @property
     def used_pictures(self) -> list[Picture]:
@@ -40,7 +44,7 @@ class Page:
         resulting in several pictures (aka. versions) for the same page.
         (Most of the time, this indicates that the same page as been scanned twice by the user).
         """
-        return [pic for pic in self.pictures if pic.use]
+        return [pic for pic in self.all_pictures if pic.use]
 
     # @property
     # def _conflicting_versions(self) -> list[Picture]:
@@ -48,26 +52,24 @@ class Page:
 
     @property
     def pic(self) -> Picture:
-        assert self.pictures
-        if self.has_conflicts:
-            raise ValueError(
-                f"Only one picture expected, but {len(self.pictures)} conflicting versions found."
-            )
-        return self.used_pictures[0]
+        pictures = self.used_pictures
+        assert pictures
+        if len(pictures) >= 2:
+            raise ValueError(f"Only one picture expected, but {len(pictures)} conflicting versions found.")
+        return pictures[0]
 
     def disable_duplicates(self) -> None:
         """Remove pictures which contain the same information, keeping only conflicting versions."""
         seen = set()
-        for pic in self.pictures:
-            if pic.use:
-                t = pic.as_hashable_tuple()
-                if t in seen:
-                    pic.use = False
-                else:
-                    seen.add(t)
+        for pic in self.used_pictures:
+            t = pic.as_hashable_tuple()
+            if t in seen:
+                pic.use = False
+            else:
+                seen.add(t)
 
     def __iter__(self) -> Iterator[Picture]:
-        return iter(self.pictures)
+        return iter(self.used_pictures)
 
 
 @dataclass
@@ -91,9 +93,9 @@ class Document:
         return self.pages.get(PageNum(1))
 
     @property
-    def pictures(self) -> list[Picture]:
+    def all_pictures(self) -> Iterator[Picture]:
         """Return all the pictures associated with this document, even discarded ones."""
-        return [pic for page in self.pages.values() for pic in page.pictures]
+        return iter(pic for page in self.pages.values() for pic in page.all_pictures)
 
     @property
     def used_pictures(self) -> list[Picture]:
@@ -124,9 +126,9 @@ class Document:
 
     @student.setter
     def student(self, value: Student) -> None:
-        for pic in self.pictures:
-            if pic.page_num == 1:
-                pic.student = value
+        if self.first_page is None:
+            raise ValueError(f"No first page found for document {self.doc_id}!")
+        self.first_page.pic.student = value
 
     @property
     def student_name(self) -> StudentName:
@@ -148,7 +150,7 @@ class Document:
 
     def _as_str(self):
         return "\n".join(
-            f"{page.page_num}: " + ", ".join(pic.short_path for pic in page.pictures) for page in self
+            f"{page.page_num}: " + ", ".join(pic.short_path for pic in page.all_pictures) for page in self
         )
 
     def save_index(self):
@@ -166,7 +168,7 @@ class Document:
         If not found, generate the info by evaluating the blackness of each checkbox.
         """
         matrices: dict[str, ndarray] = {}
-        pictures = self.pictures
+        pictures = self.all_pictures
 
         # Step 1: evaluate checkboxes state if needed.
         cbx_states: list[CheckboxAnalyzeResult] | None = None
@@ -196,7 +198,7 @@ class Document:
 
         Save those changes on disk, to be able to interrupt and resume the scan if needed."""
         if cbx_states is not None:
-            for pic, pic_cbx_states in zip(self.pictures, cbx_states):
+            for pic, pic_cbx_states in zip(self.all_pictures, cbx_states):
                 for (q, a), state in pic_cbx_states.items():
                     pic.questions[q].answers[a].state = state
                 pic.save_checkboxes_state()

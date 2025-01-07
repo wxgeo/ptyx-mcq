@@ -71,8 +71,9 @@ class IntegrityChecker:
         duplicates: DuplicatePages = {}
         for doc_id, doc in self.scan_data.index.items():
             for page_num, page in doc.pages.items():
-                if len(page.pictures) >= 2:
-                    print_info(f"Page {page_num} of document {doc_id} found in {len(page.pictures)} copies.")
+                count_versions = sum(1 for _ in page.all_pictures)
+                if count_versions >= 2:
+                    print_info(f"Page {page_num} of document {doc_id} found in {count_versions} copies.")
                     page.disable_duplicates()
                     duplicates.setdefault(doc_id, []).append(page_num)
         return duplicates

@@ -151,11 +151,12 @@ class ScanData:
         self._index = {}
         for pdf_hash, content in self.input_pdf_extractor.data.items():
             for pic_num, (calibration_data, identification_data) in content.items():
+                # noinspection PyProtectedMember
                 self._index.setdefault(
                     doc_id := identification_data.doc_id, doc := Document(self, doc_id, {})
                 ).pages.setdefault(
                     page_num := identification_data.page_num, page := Page(doc, page_num, [])
-                ).pictures.append(
+                )._pictures.append(
                     Picture(
                         page=page,
                         path=self.dirs.cache / f"{pdf_hash}/{pic_num}.webp",

@@ -11,7 +11,7 @@ from pathlib import Path
 
 import pytest
 from PIL import Image, ImageDraw
-import pymupdf
+import pymupdf  # type: ignore
 
 
 from ptyx.shell import print_info

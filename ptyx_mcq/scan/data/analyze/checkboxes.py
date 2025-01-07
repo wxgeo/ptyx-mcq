@@ -248,7 +248,7 @@ def export_checkboxes(scan_data: "ScanData", export_all=False, path: Path = None
     This is used to build regressions tests.
     """
     for doc in scan_data:
-        if export_all or any(pic.checkboxes_reviewed for pic in doc.pictures):
+        if export_all or any(pic.checkboxes_reviewed for pic in doc.used_pictures):
             _export_document_checkboxes(doc, path=path, compact=compact)
 
 

@@ -79,18 +79,21 @@ class MCQPictureParser:
                 doc.student_id,
                 doc_id,
                 doc.score,
-                sorted(pic.short_path for page in doc for pic in page.pictures),
+                sorted(pic.short_path for page in doc for pic in page.used_pictures),
+                sorted(pic.short_path for page in doc for pic in page.all_pictures if not pic.use),
             )
             for doc_id, doc in self.scan_data.index.items()
         )
 
+        def fmt(paths: list[str]):
+            return ", ".join(str(pth) for pth in paths)
+
         with open(info_path, "w", newline="") as csvfile:
             # noinspection PyTypeChecker
             writerow = csv.writer(csvfile).writerow
-            writerow(("Name", "Student ID", "Doc ID", "Score", "Pictures"))
-            for name, student_id, doc_id, score, paths in info:
-                paths_as_str = ", ".join(str(pth) for pth in paths)
-                writerow([name, student_id, doc_id, score, paths_as_str])
+            writerow(("Name", "Student ID", "Doc ID", "Score", "Pictures", "Duplicate pictures"))
+            for name, student_id, doc_id, score, pics, unused_pics in info:
+                writerow([name, student_id, doc_id, score, fmt(pics), fmt(unused_pics)])
         print(f'Infos stored in "{info_path}"\n')
 
     def _generate_amended_pdf(self) -> None:
