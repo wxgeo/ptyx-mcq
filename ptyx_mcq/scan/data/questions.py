@@ -87,7 +87,7 @@ class Answer:
         # `{state!r}` and not `{state}`, to get "CHECKED" and not "CbxState.CHECKED".
         return "" if state is None else f"{self.answer_num}: {state!r}"
 
-    def as_hashable_tuple(self):
+    def as_hashable_tuple(self) -> tuple[str, str]:
         return self.as_str(), self.as_str(is_fix=True)
 
     @property
@@ -144,8 +144,8 @@ class Question:
                 else:
                     answer._initial_state = state
 
-    def as_hashable_tuple(self):
-        return tuple(answer.as_hashable_tuple() for answer in self)
+    def as_hashable_tuple(self) -> tuple[OriginalQuestionNumber, tuple[tuple[str, str], ...]]:
+        return self.question_num, tuple(answer.as_hashable_tuple() for answer in self)
 
     @property
     def checked_answers(self) -> list[Answer]:

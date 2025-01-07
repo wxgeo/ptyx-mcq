@@ -28,11 +28,18 @@ class Page:
 
     @property
     def has_conflicts(self) -> bool:
-        # No conflict is the data are the same (checkboxes + names).
+        """Test whether there are several (undiscarded) pictures associated with this page."""
         return len(self.used_pictures) >= 2
 
     @property
     def used_pictures(self) -> list[Picture]:
+        """
+        Return the page pictures, except for the discarded one.
+
+        While there should be only one picture associated with one page, they may be conflicts
+        resulting in several pictures (aka. versions) for the same page.
+        (Most of the time, this indicates that the same page as been scanned twice by the user).
+        """
         return [pic for pic in self.pictures if pic.use]
 
     # @property

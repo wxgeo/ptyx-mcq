@@ -77,7 +77,14 @@ class Picture:
         """The page number in the original document."""
         return self.identification_data.page_num
 
-    def as_hashable_tuple(self) -> tuple:
+    def as_hashable_tuple(
+        self,
+    ) -> tuple[
+        Student | None,
+        DocumentId,
+        PageNum,
+        tuple[tuple[OriginalQuestionNumber, tuple[tuple[str, str], ...]], ...],
+    ]:
         return (
             self.student,
             self.identification_data.doc_id,
@@ -99,6 +106,7 @@ class Picture:
         else:
             # Write a file <pdf-hash>/<pic-num>.skip,
             # to indicate that the picture should be ignored in case of a future run.
+            self._skip_file.parent.mkdir(parents=True, exist_ok=True)
             self._skip_file.touch()
 
     # ------------------
@@ -133,8 +141,7 @@ class Picture:
 
     @property
     def _skip_file(self) -> Path:
-        folder = self.fix_dir / self.pdf_hash
-        return folder / f"{self.num}.skip"
+        return self.fix_dir / f"{self.num}.skip"
 
     @property
     def _fix_checkboxes_file(self) -> Path:
