@@ -52,5 +52,16 @@ class AbstractIntegrityIssuesFixer(ABC):
                 while page.has_conflicts:
                     print(f"Document {doc_id}: please select a version for page {page_num}.")
                     pic1, pic2, *_ = page.pictures
-                    page.pictures[self.select_version(pic1, pic2) - 1].use = False
+                    version = self.select_version(pic1, pic2)
+                    match version:
+                        case 1:
+                            pic2.use = False
+                            print(f"Picture 1 selected ({pic1.short_path})")
+                            print(f"Picture 2 discarded ({pic2.short_path})")
+                        case 2:
+                            pic1.use = False
+                            print(f"Picture 1 discarded ({pic1.short_path})")
+                            print(f"Picture 2 selected ({pic2.short_path})")
+                        case _ as selection:
+                            raise ValueError(f"Value must be 1 or 2, not {selection}.")
                     # print(len(page.used_pictures), [pic.use for pic in page.pictures])

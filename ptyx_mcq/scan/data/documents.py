@@ -53,7 +53,7 @@ class Page:
             raise ValueError(
                 f"Only one picture expected, but {len(self.pictures)} conflicting versions found."
             )
-        return self.pictures[0]
+        return self.used_pictures[0]
 
     def disable_duplicates(self) -> None:
         """Remove pictures which contain the same information, keeping only conflicting versions."""
@@ -116,7 +116,7 @@ class Document:
     @property
     def questions(self) -> dict[OriginalQuestionNumber, Question]:
         """All the (original) question numbers found in the picture."""
-        return {q: question for page in self for pic in page for q, question in pic.questions.items()}
+        return {q: question for page in self for q, question in page.pic.questions.items()}
 
     @property
     def student(self) -> Student | None:

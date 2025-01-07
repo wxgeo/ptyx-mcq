@@ -112,6 +112,8 @@ class IntegrityChecker:
                         print_warning(
                             f"Document {doc_id}: different conflicting versions of page {page_num} were found!"
                         )
+                        for pic in self.scan_data.index[doc_id].pages[page_num].used_pictures:
+                            print_warning(f"  - {pic.short_path}")
                     else:
                         print_info("(Same content in all versions, so we can safely keep only one of them.)")
         else:

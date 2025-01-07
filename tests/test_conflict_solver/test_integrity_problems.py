@@ -1,5 +1,6 @@
 import shutil
 from pathlib import Path
+from typing import Literal
 
 import pytest
 
@@ -14,6 +15,9 @@ from ptyx_mcq.tools.config_parser import (
     OriginalQuestionNumber,
     OriginalAnswerNumber,
     real2apparent,
+    apparent2real,
+    ApparentQuestionNumber,
+    ApparentAnswerNumber,
 )
 from tests.test_conflict_solver import ASSETS_DIR
 
@@ -84,7 +88,6 @@ def test_empty_document(no_display, tmp_path, custom_input):
     assert mcq_parser.scores_manager.results == target
 
 
-# todo
 def test_identical_duplicate_documents(no_display, tmp_path, custom_input):
     custom_input.set_scenario([])
     origin = ASSETS_DIR / "duplicate-files"
@@ -99,62 +102,84 @@ def test_identical_duplicate_documents(no_display, tmp_path, custom_input):
 
 
 def test_bug_inconsistent_checkboxes_state(tmp_path):
-    Q = OriginalQuestionNumber
-    A = OriginalAnswerNumber
     origin = ASSETS_DIR / "duplicate-files"
     copy = tmp_path / "duplicate-files"
     shutil.copytree(origin, copy)
     scan_data = ScanData(config_path=tmp_path / "duplicate-files")
     scan_data.run()
     pic1, pic2 = scan_data.index[DocumentId(44)].pages[PageNum(3)].pictures
-    assert pic1.questions[Q(17)].answers[A(5)].state == pic2.questions[Q(17)].answers[A(5)].state, (
-        real2apparent(Q(17), A(5), scan_data.config, DocumentId(44)),
-        pic1.short_path,
-        pic2.short_path,
-        pic1.path,
-        pic2.path,
-    )
     assert pic1.as_hashable_tuple() == pic2.as_hashable_tuple()
 
+    # This bug was caused by an error in the calibration process: rotation was not saved!
+    # So, test that a rotation has been applied to align the pictures corners.
+    for pic in (pic1, pic2):
+        assert abs(pic.calibration_data.positions.TL[0] - pic.calibration_data.positions.TR[0]) < 1
+        assert abs(pic.calibration_data.positions.TL[1] - pic.calibration_data.positions.BL[1]) < 1
 
-def test_different_duplicate_documents_keep_first(no_display, tmp_path, custom_input):
+
+def duplicate_documents_test_base(
+    tmp_path, custom_input, chosen_version: Literal["1", "2"], scores: dict[str, float]
+):
     custom_input.set_scenario(
         [
             "Message indicating that a duplicate has been found.",
             (NamesReviewer.PRESS_ENTER, ""),
             "Keep the first version",
-            ("Answer: ", "1"),
+            ("Answer: ", chosen_version),
         ]
     )
     origin = ASSETS_DIR / "duplicate-files"
     copy = tmp_path / "duplicate-files"
     shutil.copytree(origin, copy)
     mcq_parser = scan(copy)
-    assert len(mcq_parser.scan_data.index[DocumentId(45)].pages[PageNum(1)].pictures) == 2
+
+    # Shortcuts
+    doc_id = DocumentId(44)
+    page_num = PageNum(1)
+    doc = mcq_parser.scan_data.index[doc_id]
+    config = mcq_parser.scan_data.config
+
+    pic1, pic2 = doc.pages[page_num].pictures
+    print("pic1:", pic1.short_path)
+    print("pic2:", pic2.short_path)
+    if chosen_version == "1":
+        chosen_pic, discarded_pic = pic1, pic2
+    else:
+        chosen_pic, discarded_pic = pic2, pic1
+
+    assert not discarded_pic.use
+    assert doc.pages[page_num].pic is chosen_pic
+
+    q, a = apparent2real(ApparentQuestionNumber(1), ApparentAnswerNumber(1), config, doc_id)
+    answer = doc.questions[q].answers[a]
+    assert pic1.questions[q].answers[a].checked
+    assert pic2.questions[q].answers[a].unchecked
+    assert answer.checked if chosen_version == "1" else answer.unchecked
     # Score for John changed (8.83 -> 8.63).
-    target = pytest.approx({"John": 8.63333333, "Edward": 9.45595238})
+    target = pytest.approx(scores)
     assert mcq_parser.scores_manager.scores == target
     assert mcq_parser.scores_manager.results == target
+
+
+def test_different_duplicate_documents_keep_first(no_display, tmp_path, custom_input):
+    duplicate_documents_test_base(
+        custom_input=custom_input,
+        tmp_path=tmp_path,
+        chosen_version="1",
+        scores={
+            "John": 8.63333333,  # Don't change score! Invalid John score indicates a bug.
+            "Edward": 9.45595238,
+        },
+    )
 
 
 def test_different_duplicate_documents_keep_second(no_display, tmp_path, custom_input):
-    custom_input.set_scenario(
-        [
-            "Message indicating that a duplicate has been found.",
-            (NamesReviewer.PRESS_ENTER, ""),
-            "Keep the seconde version",
-            ("Answer: ", "2"),
-        ]
+    duplicate_documents_test_base(
+        custom_input=custom_input,
+        tmp_path=tmp_path,
+        chosen_version="2",
+        scores={
+            "John": 8.83333333,  # Don't change score! Invalid John score indicates a bug.
+            "Edward": 9.45595238,
+        },
     )
-    origin = ASSETS_DIR / "duplicate-files"
-    copy = tmp_path / "duplicate-files"
-    shutil.copytree(origin, copy)
-    mcq_parser = scan(copy)
-    assert (
-        Path(mcq_parser.data[45].pages[1].pic_path).parent
-        == Path(mcq_parser.data[44].pages[1].pic_path).parent
-    )
-    # Score for John was left unchanged.
-    target = pytest.approx({"John": 8.83333333, "Edward": 9.45595238})
-    assert mcq_parser.scores_manager.scores == target
-    assert mcq_parser.scores_manager.results == target
