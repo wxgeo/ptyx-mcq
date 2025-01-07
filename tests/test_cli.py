@@ -6,6 +6,7 @@ Test new, make and scan subcommands.
 
 import csv
 import shutil
+from functools import partial
 from os import listdir
 from pathlib import Path
 
@@ -16,7 +17,8 @@ import pymupdf  # type: ignore
 
 from ptyx.shell import print_info
 
-from ptyx_mcq.cli import main, Handlers, get_handler
+from ptyx_mcq.cli import main as main_, Handlers, get_handler
+from ptyx_mcq.dev_cli import DevHandlers
 from ptyx_mcq.parameters import CELL_SIZE_IN_CM, DEFAULT_TEMPLATE_NAME
 from ptyx_mcq.tools.colors import Color, RGB
 from ptyx_mcq.tools.math import round
@@ -29,6 +31,8 @@ from ptyx_mcq.tools.config_parser import (
 
 
 from .toolbox import TEST_DIR
+
+main = partial(main_, _restart_process_if_needed=False)
 
 DPI = 200
 PX_PER_CM = DPI / 2.54
@@ -120,7 +124,7 @@ def write_students_id_to_csv(path: Path, students: dict[StudentId, StudentName])
 def read_students_scores(path: Path) -> dict[StudentName, str]:
     students: dict[StudentName, str] = {}
     # TODO : store scores outside of .scan folder, in a RESULTS folder !
-    with open(score_path := path / ".scan/scores.csv") as csvfile:
+    with open(score_path := path / "out/scores.csv") as csvfile:
         reader = csv.reader(csvfile)
         for row in reader:
             match row:
@@ -137,6 +141,7 @@ def read_students_scores(path: Path) -> dict[StudentName, str]:
 def test_many_docs(tmp_path):
     number_of_documents = 10
     path = tmp_path / "mcq"
+
     # Test mcq new
     main(["new", str(path), "--template", DEFAULT_TEMPLATE_NAME])
     assert "new.ptyx" in listdir(path)
@@ -149,7 +154,10 @@ def test_many_docs(tmp_path):
 
 def test_handlers() -> None:
     """Test that all command line handlers do still exist."""
+    handler: Handlers | DevHandlers
     for handler in Handlers:
+        assert callable(get_handler(handler))
+    for handler in DevHandlers:
         assert callable(get_handler(handler))
 
 
@@ -166,7 +174,9 @@ def test_cli(tmp_path: Path) -> None:
     # ----------------
     # Test `mcq new`
     # ----------------
+
     main(["new", str(path), "--template", DEFAULT_TEMPLATE_NAME])
+
     assert "new.ptyx" in listdir(path)
 
     with open(path / "new.ptyx") as ptyxfile:
@@ -179,6 +189,7 @@ def test_cli(tmp_path: Path) -> None:
     # Test `mcq make`
     # ----------------
     main(["make", str(path), "-n", str(number_of_documents)])
+
     assert "new.pdf" in listdir(path)
     # No correction generated anymore by default.
     assert "new-corr.pdf" not in listdir(path)
@@ -271,7 +282,8 @@ def test_cli(tmp_path: Path) -> None:
     # Test `mcq clear`
     # ----------------
     paths_to_be_removed = [
-        ".scan",
+        "out/.cache",
+        ".compile",
         "new.pdf",
         "new.ptyx.mcq.config.json",
     ]
@@ -339,6 +351,7 @@ def test_make_without_force(tmp_path, custom_input):
     assert _pdf_look_the_same(path / "new.pdf", targets / "two-docs-version.pdf")
 
 
+# TODO: rewrite this test.
 @pytest.mark.slow
 def test_previous_scan_data_loading(tmp_path):
     """Test that previously entered data is correctly handled.

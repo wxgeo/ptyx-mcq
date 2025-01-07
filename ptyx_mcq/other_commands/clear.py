@@ -13,7 +13,7 @@ def clear(path: Path) -> None:
     ptyxfile_path = get_file_or_sysexit(path, extension=".ptyx")
     filename = ptyxfile_path.name
     root = ptyxfile_path.parent
-    for directory in (".scan", ".compile"):
+    for directory in ("out/.cache", ".compile"):
         try:
             shutil.rmtree(root / directory)
         except FileNotFoundError as e:
