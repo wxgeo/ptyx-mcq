@@ -30,7 +30,7 @@ from ptyx_mcq.scan.picture_analyze.types_declaration import (
     Row,
 )
 from ptyx_mcq.scan.picture_analyze.image_viewer import ImageViewer
-from ptyx_mcq.tools.pic import array_to_image
+from ptyx_mcq.tools.pic import array_to_image, image_to_array
 
 ValidCornerStringValues = Literal["TL", "TR", "BL", "BR"]
 
@@ -717,10 +717,12 @@ def calibrate(m: ndarray, debug=False) -> tuple[ndarray, CalibrationData]:
 
     if debug:
         print(f"Rotate picture: {round(rotation, 4)}°")
-    array_to_image(m).rotate(
-        rotation,
-        resample=Image.Resampling.BICUBIC,
-        fillcolor=255,
+    m = image_to_array(
+        array_to_image(m).rotate(
+            rotation,
+            resample=Image.Resampling.BICUBIC,
+            fillcolor=255,
+        )
     )
     # cache, m = transform(
     #     cache,
