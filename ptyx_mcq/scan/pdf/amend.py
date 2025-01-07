@@ -20,7 +20,7 @@ from ptyx_mcq.scan.data.questions import Answer
 from ptyx_mcq.scan.data import ScanData
 from ptyx_mcq.scan.data.documents import Document
 from ptyx_mcq.tools.io_tools import generate_progression_callback
-from ptyx_mcq.scan.picture_analyze.types_declaration import Pixel, Line, Col
+from ptyx_mcq.scan.picture_analyze.types_declaration import Pixel, Row, Col
 from ptyx_mcq.tools.colors import Color, RGB
 from ptyx_mcq.tools.config_parser import OriginalQuestionNumber, QuestionNumberOrDefault, real2apparent
 
@@ -111,7 +111,7 @@ def amend_doc(doc: Document, max_score_per_question: dict[QuestionNumberOrDefaul
     draw = ImageDraw.Draw(pages[0])
     assert doc.score is not None
     # noinspection PyUnboundLocalVariable
-    _write_score(draw, (Line(2 * size), Col(4 * size)), doc.score, max_score, 2 * size)
+    _write_score(draw, (Row(2 * size), Col(4 * size)), doc.score, max_score, 2 * size)
     pages[0].save(
         join(doc.scan_data.dirs.pdf, f"{doc.student_name}-{doc_id}.pdf"),
         save_all=True,

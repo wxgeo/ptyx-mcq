@@ -10,9 +10,9 @@ from ptyx_mcq.tools.colors import RGB, Color
 #         POSITIONS
 # ==========================
 
-Line = NewType("Line", int)
+Row = NewType("Row", int)
 Col = NewType("Col", int)
-Pixel = tuple[Line, Col]
+Pixel = tuple[Row, Col]
 FloatPosition = tuple[float, float]
 
 
@@ -47,7 +47,7 @@ class Rectangle(Shape):
     @property
     def end(self) -> Pixel:
         assert self.height is not None
-        return Line(self.position[0] + self.height), Col(self.position[1] + self.width)
+        return Row(self.position[0] + self.height), Col(self.position[1] + self.width)
 
 
 @dataclass

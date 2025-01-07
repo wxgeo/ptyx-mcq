@@ -24,7 +24,7 @@ from ptyx_mcq.scan.picture_analyze.calibration import (
 )
 from ptyx_mcq.scan.picture_analyze.identify_doc import read_doc_id_and_page, IdentificationData
 from ptyx_mcq.scan.picture_analyze.image_viewer import ImageViewer
-from ptyx_mcq.scan.picture_analyze.types_declaration import CalibrationError, Col, Line
+from ptyx_mcq.scan.picture_analyze.types_declaration import CalibrationError, Col, Row
 from ptyx_mcq.scan.pdf.utilities import number_of_pages
 from ptyx_mcq.tools.colors import Color
 from ptyx_mcq.tools.extend_literal_eval import extended_literal_eval
@@ -174,7 +174,7 @@ class PdfCollectionExtractor:
         viewer.add_rectangle(calib_data.id_band_position, small_size)
         i, j = calib_data.positions.BR
         viewer.add
-        viewer.add_area(calib_data.positions.TL, (Line(i + size), Col(j + size)), color=Color.green)
+        viewer.add_area(calib_data.positions.TL, (Row(i + size), Col(j + size)), color=Color.green)
         for position in calib_data.positions:
             viewer.add_rectangle(position, size)
         return viewer.display(wait=False)

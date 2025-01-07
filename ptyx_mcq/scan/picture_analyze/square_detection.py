@@ -2,7 +2,7 @@ from typing import Literal, Iterator, Iterable
 
 from numpy import array, nonzero, transpose, ndarray
 
-from ptyx_mcq.scan.picture_analyze.types_declaration import Pixel, Col, Line
+from ptyx_mcq.scan.picture_analyze.types_declaration import Pixel, Col, Row
 from ptyx_mcq.scan.picture_analyze.image_viewer import color2debug
 
 
@@ -194,7 +194,7 @@ def find_black_rectangle(
             # ~ print(to_avoid)
             if debug:
                 input("-- pause --")
-            yield Line(int(i)), Col(int(j))  # convert from np.int64 to int.
+            yield Row(int(i)), Col(int(j))  # convert from np.int64 to int.
 
 
 def find_black_square(
@@ -209,7 +209,7 @@ def find_black_square(
 
 def test_square_color(
     m: ndarray,
-    i: Line,
+    i: Row,
     j: Col,
     size: int,
     proportion: float = 0.3,
@@ -240,7 +240,7 @@ def test_square_color(
     return square.sum() > proportion * len(square) ** 2 and core.sum() > proportion * len(core) ** 2
 
 
-def eval_square_color(m: ndarray, i: Line, j: Col, size: int, margin: int = 0, _debug=False) -> float:
+def eval_square_color(m: ndarray, i: Row, j: Col, size: int, margin: int = 0, _debug=False) -> float:
     """Return an indicator of blackness, which is a float in range (0, 1).
     The bigger the float returned, the darker the square.
 
@@ -262,7 +262,7 @@ def eval_square_color(m: ndarray, i: Line, j: Col, size: int, margin: int = 0, _
 
 
 def adjust_checkbox(
-    m: ndarray, i: Line, j: Col, size: int, level1: float = 0.5, level2: float = 0.6, delta: int = 5
+    m: ndarray, i: Row, j: Col, size: int, level1: float = 0.5, level2: float = 0.6, delta: int = 5
 ) -> Pixel:
     # return (i, j)
     # Try to adjust top edge of the checkbox

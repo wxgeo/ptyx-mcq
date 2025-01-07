@@ -1,10 +1,10 @@
 from dataclasses import dataclass
 from enum import Enum, auto
 
-from ptyx_mcq.scan.picture_analyze.types_declaration import Line, Col, Pixel
+from ptyx_mcq.scan.picture_analyze.types_declaration import Row, Col, Pixel
 from ptyx_mcq.tools.config_parser import CbxRef, OriginalAnswerNumber, OriginalQuestionNumber
 
-CbxPositions = dict[CbxRef, tuple[Line, Col]]
+CbxPositions = dict[CbxRef, tuple[Row, Col]]
 
 
 class InvalidFormat(RuntimeError):

@@ -4,7 +4,7 @@ from ptyx.shell import print_warning
 from ptyx_mcq.scan.data.students import Student
 from ptyx_mcq.scan.picture_analyze.identify_doc import DebugInfo
 from ptyx_mcq.scan.picture_analyze.square_detection import eval_square_color, test_square_color
-from ptyx_mcq.scan.picture_analyze.types_declaration import Pixel, Rectangle, Line, Col
+from ptyx_mcq.scan.picture_analyze.types_declaration import Pixel, Rectangle, Row, Col
 from ptyx_mcq.tools.colors import Color
 from ptyx_mcq.tools.config_parser import StudentId, StudentName, StudentIdFormat
 
@@ -33,7 +33,7 @@ def read_student_id_and_name(
     ev = eval_square_color
     for n in range(id_length):
         # Top of the row.
-        i = Line(round(i0 + n * f_cell_size))
+        i = Row(round(i0 + n * f_cell_size))
         black_cells = []
         # If a cell is black enough, a couple (indicator_of_blackness, digit)
         # will be appended to the list `cells`.
@@ -62,8 +62,8 @@ def read_student_id_and_name(
                 # and top right squares (avoiding the top left one).
                 square_blackness = (
                     ev(m, i, Col(j + half_cell), half_cell)
-                    + ev(m, Line(i + half_cell), j, half_cell)
-                    + ev(m, Line(i + half_cell), Col(j + half_cell), half_cell)
+                    + ev(m, Row(i + half_cell), j, half_cell)
+                    + ev(m, Row(i + half_cell), Col(j + half_cell), half_cell)
                 ) / 3
                 black_cells.append((square_blackness, d))
                 # print("Found:", d, square_blackness)

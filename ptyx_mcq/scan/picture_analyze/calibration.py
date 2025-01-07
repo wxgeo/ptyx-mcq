@@ -27,7 +27,7 @@ from ptyx_mcq.scan.picture_analyze.types_declaration import (
     Area,
     IdBandNotFound,
     Col,
-    Line,
+    Row,
 )
 from ptyx_mcq.scan.picture_analyze.image_viewer import ImageViewer
 from ptyx_mcq.tools.pic import array_to_image
@@ -103,7 +103,7 @@ class CalibrationData:
         top, left = self.positions.TL
         v_resolution = self.v_pixels_per_mm
         h_resolution = self.h_pixels_per_mm
-        return Line(round((287 - y) * v_resolution + top)), Col(round((x - 10) * h_resolution + left))
+        return Row(round((287 - y) * v_resolution + top)), Col(round((x - 10) * h_resolution + left))
 
 
 @dataclass(frozen=True)
@@ -263,7 +263,7 @@ def find_black_cell(grid, width: int, height: int, detection_level: float) -> Pi
             #                j0 = half*j   # before running this code.
             #                color2debug(m, (i0, j0), (i0 + half, j0 + half))
             if grid[i, j] < detection_level:
-                return Line(i), Col(j)
+                return Row(i), Col(j)
     raise MissingSquare("Corner square not found.")
 
 
@@ -405,7 +405,7 @@ def find_corner_square(
         print(f"WARNING: Corner square {corner} not found " f"(not dark enough: {whiteness_measure}!)")
         raise MissingSquare(
             f"Corner square {corner} not found.",
-            details=[Rectangle((Line(i0), Col(j0)), size, color=Color.blue)],
+            details=[Rectangle((Row(i0), Col(j0)), size, color=Color.blue)],
         )
 
     if corner.v == VPosition.BOTTOM:
@@ -413,7 +413,7 @@ def find_corner_square(
     if corner.h == HPosition.RIGHT:
         j0 = width - 1 - j0 - size
 
-    return Line(i0), Col(j0)
+    return Row(i0), Col(j0)
 
 
 def orthogonal(corner: ValidCornerKey, positions: CornersPositions) -> bool:
@@ -584,7 +584,7 @@ def _detect_four_squares(
             i0, j0 = pos0
             i1, j1 = pos1
             i2, j2 = pos2
-            i = Line(i2 + (i1 - i0))
+            i = Row(i2 + (i1 - i0))
             j = Col(j2 + (j1 - j0))
 
             # Calculate the last corner (ABCD parallelogram <=> Vec{AB} = \Vec{DC})
@@ -602,10 +602,10 @@ def _detect_four_squares(
     return positions, ij1, ij2
 
 
-def find_document_id_band(m: ndarray, i: Line, j1: Col, j2: Col, square_size: int) -> Rectangle:
+def find_document_id_band(m: ndarray, i: Row, j1: Col, j2: Col, square_size: int) -> Rectangle:
     """Return the top left corner (coordinates in pixels) of the document ID band first square."""
     margin = square_size
-    i1, i2 = Line(i - margin), Line(i + square_size + margin)
+    i1, i2 = Row(i - margin), Row(i + square_size + margin)
     j1, j2 = Col(j1 + 3 * square_size), Col(j2 - 2 * square_size)
     search_area = m[i1:i2, j1:j2]
     try:
