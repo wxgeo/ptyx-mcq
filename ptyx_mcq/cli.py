@@ -90,7 +90,9 @@ class Handlers(StrEnum):
     install_shell_completion = "ptyx_mcq.other_commands.install.install_shell_completion"
 
 
-def main(args: Optional[list] = None, _restart_process_if_needed=True) -> None:
+def launcher(
+    parser_creator: Callable[[], ArgumentParser], args: Optional[list] = None, _restart_process_if_needed=True
+) -> None:
     """Main entry point, called whenever the `mcq` command is executed.
 
     Advanced parameter `_restart_process_if_needed`: It should be left to `True` in normal usage
@@ -98,7 +100,7 @@ def main(args: Optional[list] = None, _restart_process_if_needed=True) -> None:
     However, you must set it to `False` when using debugging in PyCharm (and possibly other IDE), otherwise a crash
     occurs, since PyCharm don't expect the python process to be restarted.
     """
-    parser = create_mcq_arg_parser()
+    parser = parser_creator()
     argcomplete.autocomplete(parser, always_complete_options=False)
     parsed_args = parser.parse_args(args)
 
@@ -256,7 +258,7 @@ def create_mcq_arg_parser() -> ArgumentParser:
         default=None,
         help="Used for debugging: scan only this picture, without storing scan's results.",
     ).completer = FilesCompleter("jpg")
-    scan_parser.set_defaults(enforce_determinism=True, handler="ptyx_mcq.scan.scan")
+    scan_parser.set_defaults(enforce_determinism=True, handler=Handlers.scan)
 
     # ------------------------------------------
     #     $ mcq clear
@@ -452,6 +454,10 @@ def create_mcq_arg_parser() -> ArgumentParser:
     # TODO: enable to update pTyX-MCQ version.
 
     return parser
+
+
+def main(args: Optional[list] = None, _restart_process_if_needed=True) -> None:
+    launcher(create_mcq_arg_parser, args, _restart_process_if_needed=_restart_process_if_needed)
 
 
 if __name__ == "__main__":
