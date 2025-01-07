@@ -50,5 +50,7 @@ class AbstractIntegrityIssuesFixer(ABC):
             for page_num in page_num_list:
                 page = self.index[doc_id].pages[page_num]
                 while page.has_conflicts:
+                    print(f"Document {doc_id}: please select a version for page {page_num}.")
                     pic1, pic2, *_ = page.pictures
                     page.pictures[self.select_version(pic1, pic2) - 1].use = False
+                    # print(len(page.used_pictures), [pic.use for pic in page.pictures])

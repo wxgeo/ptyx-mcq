@@ -109,7 +109,11 @@ class IntegrityChecker:
                 for page_num in page_num_list:
                     print_info(f"Page {page_num} of document {doc_id} was scanned several times.")
                     if self.scan_data.index[doc_id].pages[page_num].has_conflicts:
-                        print_warning("Different conflicting versions of this page were found!")
+                        print_warning(
+                            f"Document {doc_id}: different conflicting versions of page {page_num} were found!"
+                        )
+                    else:
+                        print_info("(Same content in all versions, so we can safely keep only one of them.)")
         else:
             print_success("No duplicate pages.")
 
