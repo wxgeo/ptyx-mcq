@@ -285,7 +285,7 @@ def test_missing_name_skip_doc(patched_conflict_solver, custom_input) -> None:
     )
 
     patched_conflict_solver.run()
-    assert doc_id not in patched_conflict_solver.scan_data.index
+    assert doc_id not in patched_conflict_solver.scan_data.used_docs
 
     # There should be no remaining question.
     assert custom_input.is_empty(), f"List of remaining questions/answers: {custom_input.remaining()}"

@@ -24,7 +24,8 @@ class AbstractDocHeaderDisplayer(AbstractContextManager, ABC):
 
     # noinspection PyUnusedLocal
     @abstractmethod
-    def __init__(self, data_storage: ScanData, doc_id: DocumentId): ...
+    def __init__(self, data_storage: ScanData, doc_id: DocumentId):
+        ...
 
     @abstractmethod
     def display(self) -> None:
@@ -124,9 +125,9 @@ class AbstractNamesReviewer(ABC, metaclass=ABCMeta):
         or skip document).
         """
         doc = self.scan_data.index[doc_id]
-        if doc.first_page is None:
-            print_error(f"No first page found for document {doc_id}!")
-            return Action.NEXT
+        # if doc.first_page is None:
+        #     print_error(f"No first page found for document {doc_id}!")
+        #     return Action.NEXT
 
         # Ask user for name.
         student_name, student_id, action = self.enter_name_and_id(
@@ -220,7 +221,7 @@ class AbstractAnswersReviewer(ABC, metaclass=ABCMeta):
         or skip document), and a boolean which indicates if the document as been
         effectively reviewed."""
         doc = self.scan_data.index[doc_id]
-        if doc.student_name == Action.DISCARD.value:
+        if not doc.use:
             # Skip this document.
             return Action.NEXT
         else:
@@ -295,10 +296,16 @@ class DefaultAllDataIssuesFixer:
                 else:
                     doc_id, page = list(answers_to_review)[position - len(names_to_review)]
                     action = self.answers_reviewer.review_answer(doc_id, page)
-                if action in (Action.NEXT, Action.APPLY):
-                    position += 1
-                elif action == Action.BACK:
-                    position = max(0, position - 1)
+                match action:
+                    case Action.NEXT | Action.APPLY:
+                        position += 1
+                    case Action.BACK:
+                        position = max(0, position - 1)
+                    case Action.DISCARD:
+                        position += 1
+                        self.scan_data.index[doc_id].use = False
+                    case _:
+                        assert False, f"Invalid action: {action}."
 
             # # Apply changes definitively.
             # for doc_id in names_to_review:

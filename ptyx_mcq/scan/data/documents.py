@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Iterator, TYPE_CHECKING
 
 from numpy import ndarray
@@ -32,17 +33,24 @@ class Page:
         return len(self.used_pictures) >= 2
 
     @property
-    def all_pictures(self) -> Iterator[Picture]:
-        return iter(self._pictures)
+    def all_pictures(self) -> list[Picture]:
+        """
+        Return all the page pictures, including the discarded ones.
+
+        The returned list is a copy, so removing items will not affect the document internal state.
+        """
+        return list(self._pictures)
 
     @property
     def used_pictures(self) -> list[Picture]:
         """
-        Return the page pictures, except for the discarded one.
+                Return the page pictures, except for the discarded one.
 
-        While there should be only one picture associated with one page, they may be conflicts
-        resulting in several pictures (aka. versions) for the same page.
-        (Most of the time, this indicates that the same page as been scanned twice by the user).
+                While there should be only one picture associated with one page, they may be conflicts
+                resulting in several pictures (aka. versions) for the same page.
+                (Most of the time, this indicates that the same page as been scanned twice by the user).
+        ³³³
+                The returned list is a copy, so removing items will not affect the document internal state.
         """
         return [pic for pic in self.all_pictures if pic.use]
 
@@ -78,6 +86,28 @@ class Document:
     doc_id: DocumentId
     pages: dict[PageNum, Page]
     score_per_question: dict[OriginalQuestionNumber, float] | None = None
+    _use: bool | None = None
+
+    @property
+    def use(self) -> bool:
+        if self._use is None:
+            self._use = not self._skip_file.is_file()
+        return self._use
+
+    @use.setter
+    def use(self, value: bool) -> None:
+        self._use = value
+        if value:
+            self._skip_file.unlink(missing_ok=True)
+        else:
+            # Write a file <pdf-hash>/<pic-num>.skip,
+            # to indicate that the picture should be ignored in case of a future run.
+            self._skip_file.parent.mkdir(parents=True, exist_ok=True)
+            self._skip_file.touch()
+
+    @property
+    def _skip_file(self) -> Path:
+        return self.scan_data.dirs.fix / f"skipped-docs/{self.doc_id}"
 
     @property
     def score(self) -> float | None:
@@ -89,13 +119,16 @@ class Document:
         return score
 
     @property
-    def first_page(self) -> Page | None:
-        return self.pages.get(PageNum(1))
+    def first_page(self) -> Page:
+        try:
+            return self.pages[PageNum(1)]
+        except KeyError:
+            raise ValueError(f"No first page found for document {self.doc_id}!")
 
     @property
-    def all_pictures(self) -> Iterator[Picture]:
+    def all_pictures(self) -> list[Picture]:
         """Return all the pictures associated with this document, even discarded ones."""
-        return iter(pic for page in self.pages.values() for pic in page.all_pictures)
+        return [pic for page in self.pages.values() for pic in page.all_pictures]
 
     @property
     def used_pictures(self) -> list[Picture]:
@@ -122,12 +155,10 @@ class Document:
 
     @property
     def student(self) -> Student | None:
-        return self.pages[PageNum(1)].pic.student
+        return self.first_page.pic.student
 
     @student.setter
     def student(self, value: Student) -> None:
-        if self.first_page is None:
-            raise ValueError(f"No first page found for document {self.doc_id}!")
         self.first_page.pic.student = value
 
     @property
@@ -161,7 +192,7 @@ class Document:
         """
         (self.scan_data.dirs.index / str(self.doc_id)).write_text(self._as_str() + "\n", encoding="utf8")
 
-    def analyze(self) -> tuple[Student | None, list[CheckboxAnalyzeResult] | None]:
+    def analyze(self) -> tuple[list[Student | None], list[CheckboxAnalyzeResult] | None]:
         """Retrieve the state of each checkbox (checked or not) and the student id and name.
 
         Attempt to load it from disk.
@@ -186,14 +217,21 @@ class Document:
             cbx_states = analyze_checkboxes(cbx)
 
         # Step 2: retrieve student name and ID if needed.
-        student: Student | None = None
-        for pic in pictures:
-            if pic.page_num == 1:
-                if pic.student is None:
-                    student = pic.retrieve_student(matrices.get(pic.short_path, pic.as_matrix()))
-        return student, cbx_states
+        all_first_page_pics = (pic for pic in pictures if pic.page_num == 1)
 
-    def update_info(self, student: Student | None, cbx_states: list[CheckboxAnalyzeResult] | None) -> None:
+        def get_student(pic: Picture) -> Student | None:
+            return (
+                pic.retrieve_student(matrices.get(pic.short_path, pic.as_matrix()))
+                if pic.student is None
+                else None
+            )
+
+        students = [get_student(pic) for pic in all_first_page_pics]
+        return students, cbx_states
+
+    def update_info(
+        self, students: list[Student | None], cbx_states: list[CheckboxAnalyzeResult] | None
+    ) -> None:
         """Update the state of each checkbox (checked or not) and the student id and name.
 
         Save those changes on disk, to be able to interrupt and resume the scan if needed."""
@@ -202,8 +240,11 @@ class Document:
                 for (q, a), state in pic_cbx_states.items():
                     pic.questions[q].answers[a].state = state
                 pic.save_checkboxes_state()
-        if student is not None:
-            self.student = student
+
+        all_first_page_pics = (pic for pic in self.all_pictures if pic.page_num == 1)
+        for pic, student in zip(all_first_page_pics, students):
+            if student is not None:
+                pic.student = student
 
     @property
     def detection_status(self):

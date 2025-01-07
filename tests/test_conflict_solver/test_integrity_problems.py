@@ -31,7 +31,7 @@ def test_no_conflict(monkeypatch, patched_conflict_solver):
     assert docs == [3, 4, 17, 70], docs
     for doc in patched_conflict_solver.scan_data:
         # No conflict: all pictures are used.
-        assert doc.pictures == doc.used_pictures
+        assert doc.all_pictures == doc.used_pictures
 
 
 def test_blank_page_inserted(tmp_path):

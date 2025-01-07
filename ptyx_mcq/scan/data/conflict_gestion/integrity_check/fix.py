@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from enum import StrEnum
 from typing import Literal
 
 from ptyx.shell import print_success
@@ -51,7 +52,7 @@ class AbstractIntegrityIssuesFixer(ABC):
                 page = self.index[doc_id].pages[page_num]
                 while page.has_conflicts:
                     print(f"Document {doc_id}: please select a version for page {page_num}.")
-                    pic1, pic2, *_ = page.pictures
+                    pic1, pic2, *_ = page.used_pictures
                     version = self.select_version(pic1, pic2)
                     match version:
                         case 1:

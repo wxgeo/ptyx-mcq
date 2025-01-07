@@ -1,5 +1,7 @@
 import multiprocessing
 from collections.abc import Callable
+
+# noinspection PyProtectedMember
 from multiprocessing.pool import AsyncResult
 from pathlib import Path
 from typing import Iterator
@@ -45,7 +47,7 @@ class ScanData:
             open(self._log_file, "w").close()
 
     def __iter__(self) -> Iterator[Document]:
-        return iter(self.index.values())
+        return iter(self.used_docs.values())
 
     @property
     def pages(self) -> Iterator[Page]:
@@ -131,6 +133,7 @@ class ScanData:
 
     @property
     def index(self) -> dict[DocumentId, Document]:
+        """Index of all documents, included discarded ones."""
         if self._index is None:
             self._generate_index()
             # Keep a track of the index, to make debugging easier.
@@ -138,6 +141,11 @@ class ScanData:
             print("Index generated.")
         assert self._index is not None
         return self._index
+
+    @property
+    def used_docs(self) -> dict[DocumentId, Document]:
+        """Index of used documents (discarded ones are not included)."""
+        return {doc_id: doc for doc_id, doc in self.index.items() if doc.use}
 
     def _generate_index(self) -> None:
         """Generate the tree of all the documents.

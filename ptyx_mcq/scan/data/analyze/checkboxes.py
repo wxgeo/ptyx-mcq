@@ -33,7 +33,7 @@ class InvalidFormat(RuntimeError):
 
 
 def _get_max_blackness(blackness: list[dict[CbxRef, float]]) -> float:
-    return max(max(pic_blackness.values(), default=0) for pic_blackness in blackness)
+    return max((max(pic_blackness.values(), default=0) for pic_blackness in blackness), default=0)
 
 
 def _get_average_blackness(blackness: list[dict[CbxRef, float]]) -> float:
@@ -250,52 +250,3 @@ def export_checkboxes(scan_data: "ScanData", export_all=False, path: Path = None
     for doc in scan_data:
         if export_all or any(pic.checkboxes_reviewed for pic in doc.used_pictures):
             _export_document_checkboxes(doc, path=path, compact=compact)
-
-
-# =====================================
-# TODO: remove or update
-# =====================================
-
-
-# class OldCheckboxesDataAnalyzer:
-#     """Analyze all data checkboxes."""
-#
-#     # TODO: Remove old code???
-#
-#     # ==========
-#     #  OLD CODE
-#     # ==========
-#
-#     # -------------------------
-#     #    Checkboxes analyze
-#     # =========================
-#
-#     def _parallel_checkboxes_analyze(self, number_of_processes: int = 2, display=False):
-#         to_analyze = self._collect_untreated_checkboxes()
-#         with concurrent.futures.ProcessPoolExecutor(
-#             max_workers=number_of_processes, mp_context=multiprocessing.get_context("spawn")
-#         ) as executor:
-#             # Use an iterator, to limit memory consumption.
-#             todo = (executor.submit(self._analyze_document_checkboxes, doc_id) for doc_id in to_analyze)
-#             for i, future in enumerate(concurrent.futures.as_completed(todo), start=1):
-#                 doc_id, detection_status = future.result()
-#                 self._save_checkbox_analyze_result(doc_id, detection_status)
-#                 print(f"Document {i}/{len(to_analyze)} processed.", end="\r")
-#                 if display:
-#                     self.display_analyze_results(doc_id)
-#
-#     def _serial_checkboxes_analyse(self, display=False):
-#         for doc_id in self._collect_untreated_checkboxes():
-#             _, detection_status = self._analyze_document_checkboxes(doc_id)
-#             self._save_checkbox_analyze_result(doc_id, detection_status)
-#             if display:
-#                 self.display_analyze_results(doc_id)
-#             else:
-#                 print(f"Analyzing checkboxes of document {doc_id}...")
-#
-#     def analyze_checkboxes(self, number_of_processes=1, display=False):
-#         """Determine whether each checkbox is checked or not, and update data accordingly."""
-#         if number_of_processes == 1:
-#             self._serial_checkboxes_analyse(display)
-#         else:
-#             self._parallel_checkboxes_analyze(number_of_processes=number_of_processes)

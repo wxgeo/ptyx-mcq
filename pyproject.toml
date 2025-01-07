@@ -88,19 +88,3 @@ commands =
     poetry run mypy ptyx_mcq tests
     poetry run pytest -n auto tests
 """
-
-#[tool.tox]
-#legacy_tox_ini = """
-#[tox]
-#skipsdist = true
-#isolated_build = True
-#envlist = py311
-#
-#[testenv]
-#passenv = HOME
-#allowlist_externals = poetry
-#commands =
-#    poetry install -v
-#    poetry run mypy ptyx_mcq
-#    poetry run ruff check ptyx_mcq
-#"""

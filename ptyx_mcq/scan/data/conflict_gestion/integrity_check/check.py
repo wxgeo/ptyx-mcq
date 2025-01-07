@@ -25,20 +25,6 @@ class IntegrityCheckResult:
     missing_pages: dict[DocumentId, list[PageNum]]
 
 
-# def detect_duplicates(pictures: list[Picture]) -> tuple[list[Picture], list[Picture]]:
-#     already_seen = set()
-#     no_duplicates = []
-#     duplicates = []
-#     for pic in pictures:
-#         tuple_ = pic.as_hashable_tuple()
-#         if tuple_ in already_seen:
-#             duplicates.append(pic)
-#         else:
-#             no_duplicates.append(pic)
-#             already_seen.add(tuple_)
-#     return no_duplicates, duplicates
-
-
 class IntegrityChecker:
     """Test for data integrity: each scanned document must appear only once, and must be complete."""
 
