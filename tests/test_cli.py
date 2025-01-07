@@ -30,7 +30,7 @@ from ptyx_mcq.tools.config_parser import (
 )
 
 
-from .toolbox import TEST_DIR
+from .toolbox import TEST_DIR, ASSETS_DIR
 
 main = partial(main_, _restart_process_if_needed=False)
 
@@ -310,7 +310,7 @@ def _pdf_look_the_same(pdf_file1: Path, pdf_file2: Path) -> bool:
 
 def test_make_for_review(tmp_path):
     path = tmp_path / "new dir with non-ascii characters like éhô"
-    targets = TEST_DIR / "data/cli-tests/pdf-targets"
+    targets = ASSETS_DIR / "cli-tests/pdf-targets"
     main(["new", str(path), "--template", DEFAULT_TEMPLATE_NAME])
     assert not (path / "new.review.pdf").is_file()
     main(["make", str(path), "--for-review"])
@@ -322,7 +322,7 @@ def test_make_for_review(tmp_path):
 
 def test_make_force(tmp_path):
     path = tmp_path / "new dir"
-    targets = TEST_DIR / "data/cli-tests/pdf-targets"
+    targets = ASSETS_DIR / "cli-tests/pdf-targets"
     main(["new", str(path), "--template", DEFAULT_TEMPLATE_NAME])
     main(["make", str(path)])
     assert _pdf_look_the_same(path / "new.pdf", targets / "vanilla-version.pdf")
@@ -335,7 +335,7 @@ def test_make_force(tmp_path):
 
 def test_make_without_force(tmp_path, custom_input):
     path = tmp_path / "new dir"
-    targets = TEST_DIR / "data/cli-tests/pdf-targets"
+    targets = ASSETS_DIR / "cli-tests/pdf-targets"
     main(["new", str(path), "--template", DEFAULT_TEMPLATE_NAME])
     main(["make", str(path)])
     assert _pdf_look_the_same(path / "new.pdf", targets / "vanilla-version.pdf")
