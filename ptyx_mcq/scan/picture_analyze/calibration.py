@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from enum import Enum
 from math import hypot, atan, degrees
-from typing import Literal, Iterator
+from typing import Literal, Iterator, NamedTuple
 
 import numpy as np
 from PIL import Image
@@ -68,6 +68,13 @@ class HPosition(_VHPosition):
     RIGHT = 1
 
 
+class FinalCornerPositions(NamedTuple):
+    TL: Pixel
+    TR: Pixel
+    BL: Pixel
+    BR: Pixel
+
+
 @dataclass(kw_only=True, frozen=True)
 class CalibrationData:
     """Data returned by the calibration process."""
@@ -76,7 +83,7 @@ class CalibrationData:
     v_pixels_per_mm: float
     f_cell_size: float
     f_square_size: float
-    top_left_corner_position: Pixel
+    positions: FinalCornerPositions
     id_band_position: Pixel
 
     @property
@@ -93,7 +100,7 @@ class CalibrationData:
         """
         # Top left square is printed at 1 cm from the left and the top of the sheet.
         # 29.7 cm - 1 cm = 28.7 cm (A4 sheet format = 21 cm x 29.7 cm)
-        top, left = self.top_left_corner_position
+        top, left = self.positions.TL
         v_resolution = self.v_pixels_per_mm
         h_resolution = self.h_pixels_per_mm
         return Line(round((287 - y) * v_resolution + top)), Col(round((x - 10) * h_resolution + left))
@@ -215,6 +222,18 @@ class CornersPositions:
                 if (value := getattr(self, name)) is not None
             ]
         )
+
+    def as_final_positions(self) -> FinalCornerPositions:
+        """Return an instance of FinalCornerPositions, which is frozen (it is implemented as a NamedTuple)."""
+        if self.TL is None:
+            raise ValueError("TL position is undefined.")
+        if self.BL is None:
+            raise ValueError("BL position is undefined.")
+        if self.TR is None:
+            raise ValueError("TR position is undefined.")
+        if self.BR is None:
+            raise ValueError("BR position is undefined.")
+        return FinalCornerPositions(TL=self.TL, BL=self.BL, TR=self.TR, BR=self.BR)
 
 
 CORNER_NAMES: tuple[ValidCornerStringValues] = ("TL", "TR", "BL", "BR")  # type:ignore
@@ -802,7 +821,7 @@ def calibrate(m: ndarray, debug=False) -> tuple[ndarray, CalibrationData]:
         v_pixels_per_mm=v_pixels_per_mm,
         f_square_size=f_square_size,
         f_cell_size=f_cell_size,
-        top_left_corner_position=positions.TL,
+        positions=positions.as_final_positions(),
         id_band_position=first_id_square.position,
     )
 

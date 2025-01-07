@@ -1,4 +1,5 @@
 import io
+import subprocess
 from hashlib import blake2b
 from multiprocessing.pool import AsyncResult
 from pathlib import Path
@@ -15,13 +16,20 @@ from ptyx.shell import print_warning
 from ptyx_mcq.parameters import IMAGE_FORMAT
 from ptyx_mcq.scan.data.paths_manager import PathsHandler
 
-from ptyx_mcq.scan.picture_analyze.calibration import calibrate, CalibrationData, adjust_contrast
+from ptyx_mcq.scan.picture_analyze.calibration import (
+    calibrate,
+    CalibrationData,
+    adjust_contrast,
+    FinalCornerPositions,
+)
 from ptyx_mcq.scan.picture_analyze.identify_doc import read_doc_id_and_page, IdentificationData
-from ptyx_mcq.scan.picture_analyze.types_declaration import CalibrationError
+from ptyx_mcq.scan.picture_analyze.image_viewer import ImageViewer
+from ptyx_mcq.scan.picture_analyze.types_declaration import CalibrationError, Col, Line
 from ptyx_mcq.scan.pdf.utilities import number_of_pages
+from ptyx_mcq.tools.colors import Color
 from ptyx_mcq.tools.extend_literal_eval import extended_literal_eval
 from ptyx_mcq.tools.io_tools import Silent, generate_progression_callback
-from ptyx_mcq.tools.pic import array_to_image, image_to_array
+from ptyx_mcq.tools.pic import array_to_image, image_to_array, load_webp
 
 if TYPE_CHECKING:
     from ptyx_mcq.scan.data import ScanData
@@ -154,6 +162,23 @@ class PdfCollectionExtractor:
         with Silent(log_file=log_file):
             return extract_pdf_page(pdf_file, dest, page_num)
 
+    def display_picture_with_calibration_info(
+        self, pdf_hash: PdfHash, pic_num: PicNum
+    ) -> subprocess.CompletedProcess | subprocess.Popen:
+        """Display the picture of the MCQ with its checkboxes colored following their detection status."""
+        calib_data, id_data = self.data[pdf_hash][pic_num]
+        pic_path = self.paths.dirs.cache / pdf_hash / f"{pic_num}.{IMAGE_FORMAT}"
+        viewer = ImageViewer(array=load_webp(pic_path))
+        size = calib_data.cell_size
+        small_size = int(calib_data.f_square_size)
+        viewer.add_rectangle(calib_data.id_band_position, small_size)
+        i, j = calib_data.positions.BR
+        viewer.add
+        viewer.add_area(calib_data.positions.TL, (Line(i + size), Col(j + size)), color=Color.green)
+        for position in calib_data.positions:
+            viewer.add_rectangle(position, size)
+        return viewer.display(wait=False)
+
 
 def extract_pdf_page(
     pdf_file: Path, dest: Path, page_num: PicNum
@@ -194,7 +219,8 @@ def extract_pdf_page(
             valid_pic = False
         try:
             calibration_data = extended_literal_eval(
-                calibration_file.read_text("utf8"), {"CalibrationData": CalibrationData}
+                calibration_file.read_text("utf8"),
+                {"CalibrationData": CalibrationData, "FinalCornerPositions": FinalCornerPositions},
             )
         except Exception as e:
             print(e)

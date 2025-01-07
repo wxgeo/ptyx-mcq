@@ -9,6 +9,8 @@ from typing import Union, Optional
 # from numpy import ndarray
 from ptyx.shell import ANSI_RESET, ANSI_GREEN, print_success
 from ptyx.sys_info import CPU_PHYSICAL_CORES
+from ptyx_mcq.scan.data.extract import PicNum, PdfHash
+
 from ptyx_mcq.scan.data.conflict_gestion.data_check.cl_fix import ClAnswersReviewer
 
 from ptyx_mcq.parameters import CONFIG_FILE_EXTENSION, IMAGE_FORMAT
@@ -96,8 +98,7 @@ class MCQPictureParser:
 
     def scan_single_picture(self, short_path: str | Path) -> None:
         """This is used for debugging (it allows to test one page specifically)."""
-        # TODO: Still useful?
-        #       Test it or remove it.
+        # TODO: add tests for this.
         short_path = str(short_path)
         if short_path.endswith(ext := f".{IMAGE_FORMAT}"):
             short_path = short_path[: -len(ext)]
@@ -108,6 +109,16 @@ class MCQPictureParser:
         else:
             raise FileNotFoundError(f"Unable to find picture {short_path!r}.")
         ClAnswersReviewer.display_picture_with_detected_answers(pic)
+
+    def display_picture_calibration(self, short_path: str | Path) -> None:
+        """This is used for debugging (it allows to test one page specifically)."""
+        # TODO: add tests for this.
+        short_path = Path(short_path)
+
+        pdf_hash = PdfHash(short_path.parent.name)
+        pic_num = PicNum(int(short_path.stem))
+
+        self.scan_data.input_pdf_extractor.display_picture_with_calibration_info(pdf_hash, pic_num)
 
     def analyze_pages(
         self,

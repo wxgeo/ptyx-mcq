@@ -16,6 +16,7 @@ smallgraphlib = ">=0.10"
 platformdirs = "^4"
 openpyxl = ">=3.1.2"
 argcomplete = "^3.1.2"
+pymupdf = "^1.25.1"
 
 
 [tool.poetry.group.dev.dependencies]
@@ -36,7 +37,7 @@ pytest-xdist = "^3.5.0"
 
 [tool.poetry.scripts]
 newmcq = 'ptyx_mcq.cli:main'
-mcq-dev = 'ptyx_mcq.dev_cli:main'
+newmcq-dev = 'ptyx_mcq.dev_cli:main'
 
 [tool.poetry.plugins."ptyx.extensions"]
 mcq = "ptyx_mcq"

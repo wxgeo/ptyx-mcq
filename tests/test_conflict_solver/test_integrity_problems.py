@@ -4,8 +4,16 @@ from pathlib import Path
 import pytest
 
 from ptyx_mcq.scan import scan
+from ptyx_mcq.scan.data import ScanData
 from ptyx_mcq.scan.data.conflict_gestion.data_check.cl_fix import (
     ClNamesReviewer as NamesReviewer,
+)
+from ptyx_mcq.tools.config_parser import (
+    DocumentId,
+    PageNum,
+    OriginalQuestionNumber,
+    OriginalAnswerNumber,
+    real2apparent,
 )
 from tests.test_conflict_solver import ASSETS_DIR
 
@@ -44,6 +52,7 @@ def test_blank_page_inserted(tmp_path):
     assert_same_file(output := copy / "out/infos.csv", expected := origin / "reference_infos.csv")
 
 
+# todo
 def test_empty_document(no_display, tmp_path, custom_input):
     """Simulate an empty document (i.e. a valid unfilled document) being inserted by mistake."""
 
@@ -75,6 +84,7 @@ def test_empty_document(no_display, tmp_path, custom_input):
     assert mcq_parser.scores_manager.results == target
 
 
+# todo
 def test_identical_duplicate_documents(no_display, tmp_path, custom_input):
     custom_input.set_scenario([])
     origin = ASSETS_DIR / "duplicate-files"
@@ -86,6 +96,25 @@ def test_identical_duplicate_documents(no_display, tmp_path, custom_input):
     target = pytest.approx({"John": 8.83333333, "Edward": 9.45595238})
     assert mcq_parser.scores_manager.scores == target
     assert mcq_parser.scores_manager.results == target
+
+
+def test_bug_inconsistent_checkboxes_state(tmp_path):
+    Q = OriginalQuestionNumber
+    A = OriginalAnswerNumber
+    origin = ASSETS_DIR / "duplicate-files"
+    copy = tmp_path / "duplicate-files"
+    shutil.copytree(origin, copy)
+    scan_data = ScanData(config_path=tmp_path / "duplicate-files")
+    scan_data.run()
+    pic1, pic2 = scan_data.index[DocumentId(44)].pages[PageNum(3)].pictures
+    assert pic1.questions[Q(17)].answers[A(5)].state == pic2.questions[Q(17)].answers[A(5)].state, (
+        real2apparent(Q(17), A(5), scan_data.config, DocumentId(44)),
+        pic1.short_path,
+        pic2.short_path,
+        pic1.path,
+        pic2.path,
+    )
+    assert pic1.as_hashable_tuple() == pic2.as_hashable_tuple()
 
 
 def test_different_duplicate_documents_keep_first(no_display, tmp_path, custom_input):
@@ -101,10 +130,7 @@ def test_different_duplicate_documents_keep_first(no_display, tmp_path, custom_i
     copy = tmp_path / "duplicate-files"
     shutil.copytree(origin, copy)
     mcq_parser = scan(copy)
-    assert (
-        Path(mcq_parser.data[45].pages[1].pic_path).parent
-        != Path(mcq_parser.data[44].pages[1].pic_path).parent
-    )
+    assert len(mcq_parser.scan_data.index[DocumentId(45)].pages[PageNum(1)].pictures) == 2
     # Score for John changed (8.83 -> 8.63).
     target = pytest.approx({"John": 8.63333333, "Edward": 9.45595238})
     assert mcq_parser.scores_manager.scores == target

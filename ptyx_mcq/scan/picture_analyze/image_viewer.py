@@ -169,6 +169,8 @@ class ImageViewer:
                 for i in range(i2 + 1 - thickness, i2 + 1):
                     self._set_pixel(pixels, i, j, color)
 
+    # def draw_line(self, start:Pixel, end:Pixel, color: RGB= Color.red, ):
+
     @overload
     def display(self, wait: Literal[True] = True) -> subprocess.CompletedProcess:
         """Function signature when wait is True."""

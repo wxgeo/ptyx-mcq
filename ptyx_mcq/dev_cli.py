@@ -46,14 +46,29 @@ def main(args: list[str] | None = None) -> None:
     #     $ mcq-dev scan-picture
     # ------------------------------------------
     # create the parser for the "make" command
-    scan_picture_parser = add_parser("scan-picture", help="Scan one picture for debugging.")
-    scan_picture_parser.add_argument(  # type: ignore[attr-defined]
+    review_picture_parser = add_parser("review", help="Review one picture for debugging.")
+    review_picture_parser.add_argument(
         "picture", metavar="PIC", type=Path
-    ).completer = FilesCompleter("ptyx")
-    scan_picture_parser.add_argument(  # type: ignore[attr-defined]
+    )  # .completer = FilesCompleter("ptyx")
+    review_picture_parser.add_argument(  # type: ignore[attr-defined]
         "path", nargs="?", metavar="PATH", type=Path, default="."
     ).completer = FilesCompleter("ptyx")
-    scan_picture_parser.set_defaults(func=scan_picture)
+    review_picture_parser.set_defaults(func=review)
+
+    # ------------------------------------------
+    #     $ mcq-dev calibration
+    # ------------------------------------------
+    # create the parser for the "make" command
+    calibration_picture_parser = add_parser(
+        "calibration", help="Display the picture calibration information."
+    )
+    calibration_picture_parser.add_argument(
+        "picture", metavar="PIC", type=Path
+    )  # .completer = FilesCompleter("ptyx")
+    calibration_picture_parser.add_argument(  # type: ignore[attr-defined]
+        "path", nargs="?", metavar="PATH", type=Path, default="."
+    ).completer = FilesCompleter("ptyx")
+    calibration_picture_parser.set_defaults(func=calibration)
 
     # ------------------------------------------
     argcomplete.autocomplete(parser, always_complete_options=False)
@@ -69,11 +84,22 @@ def main(args: list[str] | None = None) -> None:
     func(**kwargs)
 
 
-def scan_picture(
+def calibration(
     picture: Path,
     path: Path | str = ".",
 ) -> None:
-    """Implement `mcq scan` command."""
+    """Implement `mcq-dev calibration` command."""
+    from .scan.scan_doc import MCQPictureParser
+
+    MCQPictureParser(path).display_picture_calibration(picture)
+    print_success(f"Picture '{picture}' displayed.")
+
+
+def review(
+    picture: Path,
+    path: Path | str = ".",
+) -> None:
+    """Implement `mcq review` command."""
     from .scan.scan_doc import MCQPictureParser
 
     MCQPictureParser(path).scan_single_picture(picture)
