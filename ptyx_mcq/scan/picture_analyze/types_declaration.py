@@ -45,6 +45,10 @@ class Rectangle(Shape):
             self.height = self.width
 
     @property
+    def start(self) -> Pixel:
+        return self.position
+
+    @property
     def end(self) -> Pixel:
         assert self.height is not None
         return Row(self.position[0] + self.height), Col(self.position[1] + self.width)
@@ -52,6 +56,12 @@ class Rectangle(Shape):
 
 @dataclass
 class Area(Shape):
+    start: Pixel
+    end: Pixel
+
+
+@dataclass
+class Line(Shape):
     start: Pixel
     end: Pixel
 

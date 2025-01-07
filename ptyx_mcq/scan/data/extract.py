@@ -162,7 +162,7 @@ class PdfCollectionExtractor:
         with Silent(log_file=log_file):
             return extract_pdf_page(pdf_file, dest, page_num)
 
-    def display_picture_with_calibration_info(
+    def display_calibrated_picture(
         self, pdf_hash: PdfHash, pic_num: PicNum
     ) -> subprocess.CompletedProcess | subprocess.Popen:
         """Display the picture of the MCQ with its checkboxes colored following their detection status."""
@@ -173,10 +173,24 @@ class PdfCollectionExtractor:
         small_size = int(calib_data.f_square_size)
         viewer.add_rectangle(calib_data.id_band_position, small_size)
         i, j = calib_data.positions.BR
-        viewer.add
+        viewer.add_line(calib_data.positions.TL, calib_data.positions.BL, color=Color.red)
+        viewer.add_line(calib_data.positions.TL, calib_data.positions.TR, color=Color.red)
         viewer.add_area(calib_data.positions.TL, (Row(i + size), Col(j + size)), color=Color.green)
         for position in calib_data.positions:
             viewer.add_rectangle(position, size)
+        print(
+            "\n-------------------------",
+            "\n    Calibration data     ",
+            "\n-------------------------",
+        )
+        print(calib_data)
+        print(
+            "\n-------------------------",
+            "\n    Identification data     ",
+            "\n-------------------------",
+        )
+        print(id_data)
+        print()
         return viewer.display(wait=False)
 
 

@@ -118,7 +118,7 @@ class MCQPictureParser:
         pdf_hash = PdfHash(short_path.parent.name)
         pic_num = PicNum(int(short_path.stem))
 
-        self.scan_data.input_pdf_extractor.display_picture_with_calibration_info(pdf_hash, pic_num)
+        self.scan_data.input_pdf_extractor.display_calibrated_picture(pdf_hash, pic_num)
 
     def analyze_pages(
         self,

@@ -15,6 +15,7 @@ from ptyx_mcq.scan.picture_analyze.types_declaration import (
     Shape,
     Rectangle,
     Area,
+    Line,
     Pixel,
     Col,
     Row,
@@ -63,7 +64,7 @@ class ImageViewer:
             if array is not None:
                 raise ValueError("Arguments `array` and `image` must not be both specified.")
             self.image = image
-        self._shapes: list[Area] = []
+        self._shapes: list[Shape] = []
         self.add_shapes(*debug_info)
 
     @staticmethod
@@ -119,19 +120,32 @@ class ImageViewer:
         i, j = start
         self.add_area(start, (Row(i + width), Col(j + height)), color=color, thickness=thickness, fill=fill)
 
+    def add_line(self, start: Pixel, end: Pixel, color: RGB = Color.red, thickness: int = 2):
+        """
+        Annotate the image with a colored line.
+
+        Drawing algorithm is very basic (no antialiasing...), but it is enough for debugging.
+        """
+        self._shapes.append(Line(start, end, color=color, thickness=thickness))
+
     def clear(self):
         """Clear all previous stored annotations."""
         self._shapes.clear()
 
     def _draw_rectangles(self) -> None:
-        for rectangle in self._shapes:
-            self._draw_rectangle(rectangle)
+        for shape in self._shapes:
+            if isinstance(shape, (Area, Rectangle)):
+                self._draw_rectangle(shape)
+            elif isinstance(shape, Line):
+                self._draw_line(shape.start, shape.end, shape.color, shape.thickness)
+            else:
+                raise NotImplementedError(f"Unknown shape type: {shape} ({type(shape)}).")
 
     def _set_pixel(self, pixels: "PixelAccess", i: int, j: int, color: RGB) -> None:
         if 0 <= i < self.image.height and 0 <= j < self.image.width:
             pixels[j, i] = color
 
-    def _draw_rectangle(self, rectangle: Area) -> None:
+    def _draw_rectangle(self, rectangle: Rectangle | Area) -> None:
         i1, j1 = rectangle.start
         i2, j2 = rectangle.end or rectangle.start
         if i2 is None:
@@ -169,7 +183,40 @@ class ImageViewer:
                 for i in range(i2 + 1 - thickness, i2 + 1):
                     self._set_pixel(pixels, i, j, color)
 
-    # def draw_line(self, start:Pixel, end:Pixel, color: RGB= Color.red, ):
+    def _draw_line_in_vertical_mode(self, i1: Row, i2: Row, j1: Col, j2: Col, color: RGB = Color.red):
+        pixels = self.image.load()
+        if i2 == i1:
+            raise ValueError("Horizontal line can't be drawn in vertical mode!")
+        # Affine function : i -> j = a * i + b
+        a = (j2 - j1) / (i2 - i1)
+        b = j1 - a * i1
+        for i in range(i1, i2):
+            self._set_pixel(pixels, i, int(round(a * i + b)), color)
+
+    def _draw_line_in_horizontal_mode(self, i1: Row, i2: Row, j1: Col, j2: Col, color: RGB = Color.red):
+        pixels = self.image.load()
+        if j2 == j1:
+            raise ValueError("Vertical line can't be drawn in horizontal mode!")
+        # Affine function : j -> i = a * j + b
+        a = (i2 - i1) / (j2 - j1)
+        b = i1 - a * j1
+        for j in range(j1, j2):
+            self._set_pixel(pixels, round(a * j + b), j, color)
+
+    def _draw_line(self, start: Pixel, end: Pixel, color: RGB = Color.red, thickness: int = 2):
+        i1, j1 = start
+        i2, j2 = end
+        if start == end:
+            return
+        # Try to center the thickened line around the axis "start - end".
+        shift_range = range(_start := round(-(thickness - 1) / 2), _start + thickness)
+        if abs(i2 - i1) > abs(j2 - j1):
+            # The line is more vertical than horizontal.
+            for k in shift_range:
+                self._draw_line_in_vertical_mode(i1, i2, Col(j1 + k), Col(j2 + k), color)
+        else:
+            for k in shift_range:
+                self._draw_line_in_horizontal_mode(Row(i1 + k), Row(i2 + k), j1, j2, color)
 
     @overload
     def display(self, wait: Literal[True] = True) -> subprocess.CompletedProcess:
