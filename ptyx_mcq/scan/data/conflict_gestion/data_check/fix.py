@@ -3,7 +3,7 @@ from abc import ABC, abstractmethod, ABCMeta
 from contextlib import AbstractContextManager
 from enum import StrEnum
 
-from ptyx.shell import print_warning, print_error, print_info
+from ptyx.shell import print_warning, print_info
 
 from ptyx_mcq.scan.data.conflict_gestion.data_check.check import DataChecker, DataCheckResult
 from ptyx_mcq.scan.data import ScanData
@@ -24,8 +24,7 @@ class AbstractDocHeaderDisplayer(AbstractContextManager, ABC):
 
     # noinspection PyUnusedLocal
     @abstractmethod
-    def __init__(self, data_storage: ScanData, doc_id: DocumentId):
-        ...
+    def __init__(self, data_storage: ScanData, doc_id: DocumentId): ...
 
     @abstractmethod
     def display(self) -> None:
@@ -124,7 +123,7 @@ class AbstractNamesReviewer(ABC, metaclass=ABCMeta):
         Return the action to do (go to next document, go back to previous one,
         or skip document).
         """
-        doc = self.scan_data.index[doc_id]
+        # doc = self.scan_data.index[doc_id]
         # if doc.first_page is None:
         #     print_error(f"No first page found for document {doc_id}!")
         #     return Action.NEXT

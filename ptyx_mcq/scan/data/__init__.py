@@ -127,7 +127,7 @@ class ScanData:
     @staticmethod
     def analyze_doc(
         doc: Document, log_file: Path
-    ) -> tuple[Student | None, list[CheckboxAnalyzeResult] | None]:
+    ) -> tuple[list[Student | None], list[CheckboxAnalyzeResult] | None]:
         with Silent(log_file=log_file):
             return doc.analyze()
 

@@ -71,10 +71,13 @@ def test_empty_document(no_display, tmp_path, custom_input):
     copy = tmp_path / "unfilled-doc-test"
     shutil.copytree(origin, copy)
     mcq_parser = scan(copy)
-    assert mcq_parser.scores_manager.scores == {"John": 8.833333333333332, "Edward": 9.455952380952379}
-    assert mcq_parser.scores_manager.results == {"John": 8.833333333333332, "Edward": 9.455952380952379}
+    target = pytest.approx({"John": 8.833333333333332, "Edward": 9.455952380952379})
+    assert mcq_parser.scores_manager.scores == target
+    assert mcq_parser.scores_manager.results == target
     # There should be no remaining question.
     assert custom_input.is_empty(), f"List of remaining questions/answers: {custom_input.remaining()}"
+
+    # Launch a new scan. No question should be asked this time, since previous answers have been cached.
     custom_input.set_scenario([])
     mcq_parser = scan(copy)
     # There should be no remaining question.
