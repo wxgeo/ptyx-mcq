@@ -40,6 +40,7 @@ class Picture:
 
     page: "Page"
     path: Path
+    original_pdf: Path
     calibration_data: CalibrationData
     identification_data: IdentificationData
     questions: dict[OriginalQuestionNumber, Question]

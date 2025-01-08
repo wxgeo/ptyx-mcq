@@ -107,7 +107,7 @@ class Document:
 
     @property
     def _skip_file(self) -> Path:
-        return self.scan_data.dirs.fix / f"skipped-docs/{self.doc_id}"
+        return self.scan_data.dirs.fix / f"skipped-documents/{self.doc_id}"
 
     @property
     def score(self) -> float | None:

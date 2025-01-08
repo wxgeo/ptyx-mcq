@@ -178,6 +178,22 @@ et même étudiant s'il s'agit des 1res pages), on n'en garde qu'une seule.
   [9]
   3: CHECKED
   ```
+  
+### Documents ignorés
+
+En cas de conflit de nom, il est possible d'ignorer complètement un document un indiquant `/` comme nom d'étudiant.
+
+C'est notamment pratique lorsque l'on scanne par erreur un document vierge 
+au milieu des documents complétés par les étudiants.
+
+Un fichier `.fix/skipped-documents/<document-id>` est alors généré pour chaque document ignoré.
+
+La propriété booléenne `Document.use` permet de savoir si un document est utilisé ou ignoré.
+
+`ScanData.used_docs` renvoie la liste des documents à utiliser (contrairement à `ScanData.index` qui renvoie
+l'ensemble des documents, y compris les documents ignorés).
+Les documents ignorés n'apparaissent pas dans les fichiers générés (fichier Excel contenant les notes
+et fichiers pdf contenant une correction personnalisée du sujet). 
 
 ### Calcul des scores
 

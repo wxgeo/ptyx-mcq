@@ -309,8 +309,26 @@ def _pdf_as_pixels_list(pdf_file: Path) -> list[bytes]:
     return [page.get_pixmap(alpha=False, dpi=96).samples for page in pymupdf.open(pdf_file)]
 
 
-def _pdf_look_the_same(pdf_file1: Path, pdf_file2: Path) -> bool:
-    return _pdf_as_pixels_list(pdf_file1) == _pdf_as_pixels_list(pdf_file2)
+def assert_pdf_look_the_same(pdf_file1: Path, pdf_file2: Path) -> None:
+    px1 = _pdf_as_pixels_list(pdf_file1)
+    px2 = _pdf_as_pixels_list(pdf_file2)
+    equal = px1 == px2
+    if not equal:
+        print("The PDF files seem to differ:")
+        print(pdf_file1)
+        print(pdf_file2)
+    assert equal
+
+
+def assert_pdf_look_different(pdf_file1: Path, pdf_file2: Path) -> None:
+    px1 = _pdf_as_pixels_list(pdf_file1)
+    px2 = _pdf_as_pixels_list(pdf_file2)
+    differ = px1 != px2
+    if not differ:
+        print("The PDF files seem identical:")
+        print(pdf_file1)
+        print(pdf_file2)
+    assert differ
 
 
 def test_make_for_review(tmp_path):
@@ -321,8 +339,8 @@ def test_make_for_review(tmp_path):
     main(["make", str(path), "--for-review"])
     assert (path / "new.review.pdf").is_file()
     assert not (path / "new.pdf").is_file()
-    assert not _pdf_look_the_same(path / "new.review.pdf", targets / "vanilla-version.pdf")
-    assert _pdf_look_the_same(path / "new.review.pdf", targets / "for-review-version.pdf")
+    assert_pdf_look_different(path / "new.review.pdf", targets / "vanilla-version.pdf")
+    assert_pdf_look_the_same(path / "new.review.pdf", targets / "for-review-version.pdf")
 
 
 def test_make_force(tmp_path):
@@ -330,12 +348,12 @@ def test_make_force(tmp_path):
     targets = ASSETS_DIR / "cli-tests/pdf-targets"
     main(["new", str(path), "--template", DEFAULT_TEMPLATE_NAME])
     main(["make", str(path)])
-    assert _pdf_look_the_same(path / "new.pdf", targets / "vanilla-version.pdf")
-    assert not _pdf_look_the_same(path / "new.pdf", targets / "for-review-version.pdf")
-    assert not _pdf_look_the_same(path / "new.pdf", targets / "two-docs-version.pdf")
+    assert_pdf_look_the_same(path / "new.pdf", targets / "vanilla-version.pdf")
+    assert_pdf_look_different(path / "new.pdf", targets / "for-review-version.pdf")
+    assert_pdf_look_different(path / "new.pdf", targets / "two-docs-version.pdf")
     # Force rebuild
     main(["make", str(path), "-n", "2", "-f"])
-    assert _pdf_look_the_same(path / "new.pdf", targets / "two-docs-version.pdf")
+    assert_pdf_look_the_same(path / "new.pdf", targets / "two-docs-version.pdf")
 
 
 def test_make_without_force(tmp_path, custom_input):
@@ -343,17 +361,17 @@ def test_make_without_force(tmp_path, custom_input):
     targets = ASSETS_DIR / "cli-tests/pdf-targets"
     main(["new", str(path), "--template", DEFAULT_TEMPLATE_NAME])
     main(["make", str(path)])
-    assert _pdf_look_the_same(path / "new.pdf", targets / "vanilla-version.pdf")
+    assert_pdf_look_the_same(path / "new.pdf", targets / "vanilla-version.pdf")
 
     custom_input.set_scenario([("A previous compiled version exist, overwrite it (y∕N) ?", "")])
     with pytest.raises(SystemExit):
         main(["make", str(path), "-n", "2"])
     assert custom_input.is_empty()
-    assert _pdf_look_the_same(path / "new.pdf", targets / "vanilla-version.pdf")
+    assert_pdf_look_the_same(path / "new.pdf", targets / "vanilla-version.pdf")
 
     custom_input.set_scenario([("A previous compiled version exist, overwrite it (y∕N) ?", "y")])
     main(["make", str(path), "-n", "2"])
-    assert _pdf_look_the_same(path / "new.pdf", targets / "two-docs-version.pdf")
+    assert_pdf_look_the_same(path / "new.pdf", targets / "two-docs-version.pdf")
 
 
 def csv2list(path: Path) -> list[str]:

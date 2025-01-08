@@ -168,6 +168,7 @@ class ScanData:
                     Picture(
                         page=page,
                         path=self.dirs.cache / f"{pdf_hash}/{pic_num}.webp",
+                        original_pdf=self.input_pdf_extractor.hash2pdf[pdf_hash],
                         calibration_data=calibration_data,
                         identification_data=identification_data,
                         questions=self._generate_questions_tree(doc_id, page_num, calibration_data),

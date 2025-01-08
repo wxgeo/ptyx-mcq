@@ -1,6 +1,8 @@
 import io
 import subprocess
 from hashlib import blake2b
+
+# noinspection PyProtectedMember
 from multiprocessing.pool import AsyncResult
 from pathlib import Path
 from shutil import rmtree
@@ -66,16 +68,17 @@ class PdfCollectionExtractor:
     def paths(self) -> PathsHandler:
         return self.scan_data.paths
 
+    @staticmethod
+    def _pdf_hash(pdf_path: Path) -> PdfHash:
+        with open(pdf_path, "rb") as pdf_file:
+            return PdfHash(blake2b(pdf_file.read(), digest_size=20).hexdigest())
+
     def _generate_current_pdf_hashes(self) -> dict[PdfHash, Path]:
         """Return the hashes of all the pdf files found in `scan/` directory.
 
         Return: {hash: pdf path}
         """
-        hashes = dict()
-        for path in self.paths.input_dir.glob("**/*.pdf"):
-            with open(path, "rb") as pdf_file:
-                hashes[PdfHash(blake2b(pdf_file.read(), digest_size=20).hexdigest())] = path
-        return hashes
+        return {self._pdf_hash(path): path for path in self.paths.input_dir.glob("**/*.pdf")}
 
     def save_hashes(self) -> None:
         """Save the pdf hashes on drive (useful for debugging)."""
@@ -150,6 +153,7 @@ class PdfCollectionExtractor:
                     f'rm -r "{path.parent}"'
                 )
             # Remove any directory whose name don't match any existing pdf file, and all corresponding data.
+            # (Each directory name must be an existing pdf hash.)
             if path.name not in self.hash2pdf:
                 rmtree(path)
 

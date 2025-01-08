@@ -1,4 +1,4 @@
-* Select the correct code:
+Select the correct code:
 
 # If `@@` is used the line before an answer, the following answers will be displayed in verbatim mode:
 # a fixed-width font is used, spaces are kept intact and latex special characters like `{` or `$`

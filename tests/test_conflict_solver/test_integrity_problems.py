@@ -117,9 +117,7 @@ def test_bug_inconsistent_checkboxes_state(tmp_path):
         assert abs(pic.calibration_data.positions.TL[1] - pic.calibration_data.positions.BL[1]) < 1
 
 
-def duplicate_documents_test_base(
-    tmp_path, custom_input, chosen_version: Literal["1", "2"], scores: dict[str, float]
-):
+def duplicate_documents_test_base(tmp_path, custom_input, chosen_version: Literal["1", "2"]):
     custom_input.set_scenario(
         [
             "Message indicating that a duplicate has been found.",
@@ -140,11 +138,11 @@ def duplicate_documents_test_base(
     config = mcq_parser.scan_data.config
 
     pic1, pic2 = doc.pages[page_num].all_pictures
-    print("pic1:", pic1.short_path)
-    print("pic2:", pic2.short_path)
+
     if chosen_version == "1":
         chosen_pic, discarded_pic = pic1, pic2
     else:
+        assert chosen_version == "2"
         chosen_pic, discarded_pic = pic2, pic1
 
     assert not discarded_pic.use
@@ -152,13 +150,43 @@ def duplicate_documents_test_base(
 
     q, a = apparent2real(ApparentQuestionNumber(1), ApparentAnswerNumber(1), config, doc_id)
     answer = doc.questions[q].answers[a]
-    assert pic1.questions[q].answers[a].checked
-    assert pic2.questions[q].answers[a].unchecked
-    assert answer.checked if chosen_version == "1" else answer.unchecked
-    # Score for John changed (8.83 -> 8.63).
-    target = pytest.approx(scores)
-    assert mcq_parser.scores_manager.scores == target
-    assert mcq_parser.scores_manager.results == target
+
+    # The pdf `flat-scan-conflict.pdf` has its first checkbox checked,
+    # contrary to the pdf `flat-scan.pdf`.
+    # The problem is, the order of the pictures seems non-deterministic (but I don't why...)
+    # So, we have two cases:
+    if pic1.original_pdf.name == "flat-scan-conflict.pdf":
+        # pic1 is the checked version, pic2 the unchecked one.
+        assert pic2.original_pdf.name == "flat-scan.pdf"
+        assert pic1.questions[q].answers[a].checked
+        assert pic2.questions[q].answers[a].unchecked
+        checked_version_chosen = chosen_version == "1"
+    else:
+        # pic1 is the unchecked version, pic2 the checked one.
+        assert pic1.original_pdf.name == "flat-scan.pdf"
+        assert pic2.original_pdf.name == "flat-scan-conflict.pdf"
+        assert pic1.questions[q].answers[a].unchecked
+        assert pic2.questions[q].answers[a].checked
+        checked_version_chosen = chosen_version == "2"
+
+    assert answer.checked if checked_version_chosen else answer.unchecked
+    if checked_version_chosen:
+        # Score for John changed (8.83 -> 8.63).
+        scores = {
+            "John": 8.63333333,  # Don't change score! Invalid John score indicates a bug.
+            "Edward": 9.45595238,
+        }
+
+    else:
+        scores = {
+            "John": 8.83333333,  # Don't change score! Invalid John score indicates a bug.
+            "Edward": 9.45595238,
+        }
+
+    for student in scores:
+        target = pytest.approx(scores[student])
+        assert mcq_parser.scores_manager.scores[student] == target
+        assert mcq_parser.scores_manager.results[student] == target
 
 
 def test_different_duplicate_documents_keep_first(no_display, tmp_path, custom_input):
@@ -166,10 +194,6 @@ def test_different_duplicate_documents_keep_first(no_display, tmp_path, custom_i
         custom_input=custom_input,
         tmp_path=tmp_path,
         chosen_version="1",
-        scores={
-            "John": 8.63333333,  # Don't change score! Invalid John score indicates a bug.
-            "Edward": 9.45595238,
-        },
     )
 
 
@@ -178,8 +202,4 @@ def test_different_duplicate_documents_keep_second(no_display, tmp_path, custom_
         custom_input=custom_input,
         tmp_path=tmp_path,
         chosen_version="2",
-        scores={
-            "John": 8.83333333,  # Don't change score! Invalid John score indicates a bug.
-            "Edward": 9.45595238,
-        },
     )

@@ -1,4 +1,4 @@
-* $x+x=$
+$x+x=$
 
 # `@` is used to apply a formatting to all answers (`%s` corresponds to the answer content).
 @$%s$
