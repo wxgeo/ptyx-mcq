@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "ptyx-mcq"
-version = "28.0.0"
+version = "29.0.0"
 description = "pTyX-MCQ is a generator/scanner of MCQ, based on pTyX."
 authors = ["Nicolas Pourcelot <nicolas.pourcelot@gmail.com>"]
 repository = "https://github.com/wxgeo/ptyx"
@@ -36,8 +36,8 @@ ruff = "^0.7.2"
 pytest-xdist = "^3.5.0"
 
 [tool.poetry.scripts]
-newmcq = 'ptyx_mcq.cli:main'
-newmcq-dev = 'ptyx_mcq.dev_cli:main'
+mcq = 'ptyx_mcq.cli:main'
+mcq-dev = 'ptyx_mcq.dev_cli:main'
 
 [tool.poetry.plugins."ptyx.extensions"]
 mcq = "ptyx_mcq"
