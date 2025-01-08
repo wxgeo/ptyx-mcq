@@ -3,9 +3,8 @@ from pathlib import Path
 
 from ptyx.shell import print_error, print_success
 
-from ptyx_mcq import FatalError
 from ptyx_mcq.other_commands.template import get_template_path
-from ptyx_mcq.tools.io_tools import get_file_or_sysexit
+from ptyx_mcq.tools.io_tools import get_file_or_sysexit, FatalError
 
 
 def new(path: Path, include: Path = None, template="") -> None:

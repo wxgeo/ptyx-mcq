@@ -6,7 +6,7 @@ from platformdirs import PlatformDirs
 
 from ptyx.shell import print_error, print_success, print_info
 
-from ptyx_mcq import FatalError
+from ptyx_mcq.tools.io_tools import FatalError
 from ptyx_mcq.parameters import PACKAGE_ROOT
 
 CLI_SCRIPT = PACKAGE_ROOT / "cli.py"

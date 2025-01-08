@@ -3,8 +3,9 @@ ptyx MCQ
 
 This extension enables computer corrected quizzes.
 
-An example:
+This is an example of a source file, to be compiled by ptyx-mcq to a pdf file:
 
+```
     #LOAD{mcq}
     #SEED{8737545887}
 
@@ -35,7 +36,7 @@ An example:
     - I. Newton
     - W. Churchill
     - Queen Victoria
-    - Some bloody idiot
+    - Master Yoda
 
     * Jean de la Fontaine was a famous French
     - pop singer
@@ -54,25 +55,29 @@ An example:
     + none of the above is correct
 
     >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-
+```
 
 One may include some PTYX code of course.
 
     """
 
-import re
+from importlib import metadata
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from ptyx.extensions import CompilerExtension
     from ptyx.latex_generator import Compiler
 
-from ptyx_mcq.tools.io_tools import print_error, FatalError
+
+__version__ = metadata.version(__package__)
+__all__ = ["__version__", "main", "extend_compiler"]
 
 
 def extend_compiler() -> "CompilerExtension":
-    """Function called by the compiler when loading this extension, to add ability to parse new tags."""
-    from .make.extend_latex_generator import MCQLatexGenerator
+    """This function is called by pTyX extension machinery to add new tags to the compiler.
+
+    This function will be automatically called by the compiler when loading this extension."""
+    from ptyx_mcq.make.extend_latex_generator import MCQLatexGenerator
 
     # Note for closing tags:
     # '@END' means closing tag #END must be consumed, unlike 'END'.
@@ -102,30 +107,15 @@ def extend_compiler() -> "CompilerExtension":
     return {"latex_generator": MCQLatexGenerator, "tags": tags}
 
 
-def autodetect_smallgraphlib(text: str) -> list[str]:
-    smallgraphlib_detected = (
-        re.search("(^import smallgraphlib)|(^from smallgraphlib import)", text, re.MULTILINE) is not None
-    )
-    if smallgraphlib_detected:
-        try:
-            # noinspection PyUnresolvedReferences
-            from smallgraphlib.tikz_export import TikzPrinter
-
-            preamble_additions = TikzPrinter.latex_preamble_additions()
-            preamble_additions.remove(r"\usepackage{tikz}")
-            return preamble_additions
-        except ImportError:
-            print_error(
-                "This file tries to import `smallgraphlib` library, but it is not installed.\n"
-                "You can install it with the following command:\npip install smallgraphlib"
-            )
-    return []
-
-
+# TODO: `main` is commonly used in python as the main entry point for scripts.
+# TODO: So, on other name should be chosen for the pTyX extension parser (maybe `preparse()`?).
 def main(text: str, compiler: "Compiler") -> str:
+    """This function is automatically called by pTyX extension machinery to preparse MCQ code and return pTyX code."""
     from ptyx.extensions import extended_python
-    from .make.generate_ptyx_code import generate_ptyx_code
+    from ptyx_mcq.make.generate_ptyx_code import generate_ptyx_code
     from ptyx_mcq.make.include_directives_parsing import resolve_includes
+    from ptyx_mcq.tools.io_tools import print_error, FatalError
+    from ptyx_mcq.make.parser_tools import autodetect_smallgraphlib
 
     # Generation algorithm is the following:
     # 1. Parse AutoQCM code, to convert it to plain pTyX code.
@@ -162,6 +152,7 @@ def main(text: str, compiler: "Compiler") -> str:
             "may fix it."
         )
         raise FatalError
+
     additional_header_lines = autodetect_smallgraphlib(text)
 
     # Call extended_python extension.

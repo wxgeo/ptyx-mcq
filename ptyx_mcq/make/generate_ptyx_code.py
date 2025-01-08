@@ -7,9 +7,8 @@ import re
 from typing import Iterable
 
 from ptyx.utilities import extract_verbatim_tag_content, restore_verbatim_tag_content, find_closing_bracket
-from ptyx_mcq.tools.io_tools import FatalError
+from ptyx_mcq.tools.io_tools import FatalError, print_error
 
-from ptyx_mcq import print_error
 from ptyx_mcq.make.parser_tools import is_new_exercise_start, is_mcq_start, is_mcq_end, is_section_start
 
 

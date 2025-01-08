@@ -4,7 +4,7 @@ from pathlib import Path
 from platformdirs import PlatformDirs
 from ptyx.shell import print_error, print_success, ANSI_CYAN, ANSI_RESET, ANSI_PURPLE
 
-from ptyx_mcq import FatalError
+from ptyx_mcq.tools.io_tools import FatalError
 from ptyx_mcq.parameters import DEFAULT_TEMPLATE_NAME, DEFAULT_TEMPLATE_FULLPATH
 
 

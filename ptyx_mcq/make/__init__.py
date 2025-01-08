@@ -3,7 +3,7 @@ from pathlib import Path
 
 from ptyx.shell import print_success, print_error
 
-from ptyx_mcq import FatalError
+from ptyx_mcq.tools.io_tools import FatalError
 from ptyx_mcq.make.make_command import make_command
 
 

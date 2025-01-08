@@ -2,7 +2,7 @@ from pathlib import Path
 
 from ptyx.shell import print_error, print_success
 
-from ptyx_mcq import FatalError
+from ptyx_mcq.tools.io_tools import FatalError
 from ptyx_mcq.parameters import CONFIG_FILE_EXTENSION
 from ptyx_mcq.tools.config_parser import Configuration
 from ptyx_mcq.tools.io_tools import get_file_or_sysexit

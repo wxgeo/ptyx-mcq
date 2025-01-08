@@ -3,7 +3,7 @@ from pathlib import Path
 
 from ptyx.shell import print_error, print_warning, print_info
 
-from ptyx_mcq import FatalError
+from ptyx_mcq.tools.io_tools import FatalError
 
 
 def see(name: str) -> None:

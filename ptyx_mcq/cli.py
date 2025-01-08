@@ -43,8 +43,8 @@ from importlib import import_module
 import argcomplete
 from argcomplete import DirectoriesCompleter, FilesCompleter
 
+from ptyx_mcq import __version__
 from ptyx_mcq.other_commands.template import get_user_templates_path
-
 from ptyx_mcq.parameters import DEFAULT_TEMPLATE_NAME
 from ptyx_mcq.tools.io_tools import FatalError, ProcessInterrupted
 
@@ -101,6 +101,7 @@ def launcher(
     occurs, since PyCharm don't expect the python process to be restarted.
     """
     parser = parser_creator()
+    parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
     argcomplete.autocomplete(parser, always_complete_options=False)
     parsed_args = parser.parse_args(args)
 
