@@ -53,8 +53,12 @@ def amend_all(scan_data: ScanData, progression: Callable[..., None] = None) -> N
     assert isinstance(max_score, (float, int)), repr(max_score)
 
     with Pool() as pool:
-        for doc in scan_data:
+        results = [
             pool.apply_async(amend_doc, (doc, max_score_per_question), callback=progression)  # type: ignore
+            for doc in scan_data
+        ]
+        for result in results:
+            result.get()
 
 
 # TODO: maybe restrict the data passed to amend_doc?
@@ -113,7 +117,7 @@ def amend_doc(doc: Document, max_score_per_question: dict[QuestionNumberOrDefaul
     # noinspection PyUnboundLocalVariable
     _write_score(draw, (Row(2 * size), Col(4 * size)), doc.score, max_score, 2 * size)
     pages[0].save(
-        join(doc.scan_data.dirs.pdf, f"{doc.student_name}-{doc_id}.pdf"),
+        join(doc.scan_data.dirs.pdf, f"{doc.student_name}-{doc.student_id}-{doc_id}.pdf"),
         save_all=True,
         append_images=pages[1:],
     )

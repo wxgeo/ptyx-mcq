@@ -30,7 +30,7 @@ from ptyx_mcq.tools.config_parser import (
 )
 
 
-from .toolbox import TEST_DIR, ASSETS_DIR
+from .toolbox import ASSETS_DIR
 
 main = partial(main_, _restart_process_if_needed=False)
 
@@ -38,10 +38,12 @@ DPI = 200
 PX_PER_CM = DPI / 2.54
 PX_PER_MM = PX_PER_CM / 10
 CELL_SIZE_IN_PX = CELL_SIZE_IN_CM * PX_PER_CM
+
 STUDENTS = {
     StudentId("12345678"): StudentName("Jean Dupond"),
     StudentId("34567890"): StudentName("Martin De La Tour"),
 }
+
 MAX_ID_LEN = max(len(student_id) for student_id in STUDENTS)
 
 
@@ -234,6 +236,9 @@ def test_cli(tmp_path: Path) -> None:
     assert set(students_scores) == set(STUDENTS.values()), repr(students_scores)
 
     assert (path / "new.scores.xlsx").exists()
+    assert (output_pdf_path := path / "out/pdf").exists()
+    for doc_id, (student_id, student_name) in enumerate(STUDENTS.items(), start=1):
+        assert (output_pdf_path / f"{student_name}-{student_id}-{doc_id}.pdf").is_file()
 
     # ------------------------
     # Test `mcq fix`
