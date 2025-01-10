@@ -34,6 +34,8 @@ python-semantic-release = "7.28.1"
 ptyx = {path = "../ptyx", develop = true}
 ruff = "^0.7.2"
 pytest-xdist = "^3.5.0"
+pytest-profiling = "^1.8.1"
+
 
 [tool.poetry.scripts]
 mcq = 'ptyx_mcq.cli:main'
@@ -49,6 +51,8 @@ testpaths = [
 ]
 filterwarnings = [
     'ignore:builtin type swigvarlink has no __module__ attribute:DeprecationWarning',
+    'ignore:builtin type SwigPyPacked has no __module__ attribute:DeprecationWarning',
+    'ignore:builtin type SwigPyObject has no __module__ attribute:DeprecationWarning',
 ]
 
 [tool.mypy]

@@ -19,5 +19,6 @@ dist/
 ptyx.egg-info/
 */__pycache__/*
 .mypy_cache/
-.pytest_cache
-do-not-track
+.pytest_cache/
+do-not-track/
+prof/
