@@ -7,7 +7,7 @@ from ptyx_mcq.tools.extend_literal_eval import extended_literal_eval
 from ptyx_mcq.tools.io_tools import is_ptyx_file, get_file_with_extension
 from ptyx_mcq.tools.pdf import similar_pdfs, similar_pdf_page
 from ptyx_mcq.tools.pic import load_webp, save_webp, convert_to_webp
-from .toolbox import ASSETS_DIR
+from tests import ASSETS_DIR
 
 
 def calculate_rmse(image1, image2):

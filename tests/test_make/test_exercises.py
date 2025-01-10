@@ -1,6 +1,7 @@
 from ptyx_mcq.make.exercises_parsing import generate_exercise_latex_code_for_preview
 
-from .toolbox import ASSETS_DIR, rstripped_lines
+from tests.test_make.toolbox import rstripped_lines
+from tests import ASSETS_DIR
 
 
 def get_content(name: str) -> str:

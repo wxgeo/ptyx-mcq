@@ -15,7 +15,7 @@ from ptyx_mcq.make.include_directives_parsing import (
     resolve_includes_from_file,
     UnsafeUpdate,
 )
-from tests.toolbox import ASSETS_DIR
+from tests import ASSETS_DIR
 
 
 def _dir(directory: str, is_disabled=False, comment=""):

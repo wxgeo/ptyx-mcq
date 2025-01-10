@@ -22,7 +22,7 @@ from ptyx_mcq.tools.config_parser import (
 #     PROBABLY_UNCHECKED,
 #     ANSWERED,
 # )
-from tests.toolbox import ASSETS_DIR
+from tests import ASSETS_DIR
 
 
 def manual_reviewed_cbx_states():

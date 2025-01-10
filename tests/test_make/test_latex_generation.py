@@ -16,7 +16,8 @@ from ptyx_mcq.make import make
 from ptyx_mcq.make.extend_latex_generator import SameAnswerError
 from ptyx_mcq.tools.config_parser import Configuration, DocumentId, OriginalQuestionNumber
 
-from .toolbox import load_ptyx_file, ASSETS_DIR
+from tests.test_make.toolbox import load_ptyx_file
+from tests import ASSETS_DIR
 
 
 def copy_test(folder: str, tmp_path) -> Path:

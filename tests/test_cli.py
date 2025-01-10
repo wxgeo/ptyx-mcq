@@ -30,7 +30,7 @@ from ptyx_mcq.tools.config_parser import (
 )
 from ptyx_mcq.tools.pdf import similar_pdfs
 
-from .toolbox import ASSETS_DIR
+from tests import ASSETS_DIR
 
 main = partial(main_, _restart_process_if_needed=False)
 

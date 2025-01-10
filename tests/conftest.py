@@ -15,7 +15,7 @@ class CustomInput:
     Instead, use `custom_input()` fixture, to instantiate it.
 
     Before using it, one should add a scenario, using `set_scenario()`.
-    A scenario is a list of expected questions and corresponding user answers.
+    A scenario is a list of expected questions and the corresponding user answers to provide.
     Each question/answer couple must be a couple of strings.
     Example:
 

@@ -16,7 +16,7 @@ from ptyx_mcq.tools.config_parser import (
     ApparentQuestionNumber,
     ApparentAnswerNumber,
 )
-from tests.test_conflict_solver import ASSETS_DIR
+from tests.test_scan.test_conflict_solver import ASSETS_DIR
 
 
 def fail_on_input(text=""):
