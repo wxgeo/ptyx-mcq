@@ -14,7 +14,7 @@ from ptyx_mcq.scan.data.extract import PicNum, PdfHash
 from ptyx_mcq.scan.data.conflict_gestion.data_check.cl_fix import ClAnswersReviewer
 
 from ptyx_mcq.parameters import CONFIG_FILE_EXTENSION, IMAGE_FORMAT
-from ptyx_mcq.scan.pdf.amend import amend_all
+from ptyx_mcq.scan.data.amend import amend_all
 
 from ptyx_mcq.scan.data.conflict_gestion import ConflictSolver
 from ptyx_mcq.scan.data import ScanData

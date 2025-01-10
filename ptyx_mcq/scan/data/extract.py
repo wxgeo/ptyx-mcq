@@ -27,7 +27,7 @@ from ptyx_mcq.scan.picture_analyze.calibration import (
 from ptyx_mcq.scan.picture_analyze.identify_doc import read_doc_id_and_page, IdentificationData
 from ptyx_mcq.scan.picture_analyze.image_viewer import ImageViewer
 from ptyx_mcq.scan.picture_analyze.types_declaration import CalibrationError, Col, Row
-from ptyx_mcq.scan.pdf.utilities import number_of_pages
+from ptyx_mcq.tools.pdf import number_of_pages
 from ptyx_mcq.tools.colors import Color
 from ptyx_mcq.tools.extend_literal_eval import extended_literal_eval
 from ptyx_mcq.tools.io_tools import Silent, generate_progression_callback

@@ -5,6 +5,7 @@ import numpy as np
 
 from ptyx_mcq.tools.extend_literal_eval import extended_literal_eval
 from ptyx_mcq.tools.io_tools import is_ptyx_file, get_file_with_extension
+from ptyx_mcq.tools.pdf import similar_pdfs, similar_pdf_page
 from ptyx_mcq.tools.pic import load_webp, save_webp, convert_to_webp
 from .toolbox import ASSETS_DIR
 
@@ -86,3 +87,13 @@ def test_webp(tmp_path):
     convert_to_webp(ASSETS_DIR / "scan-results-samples/mcq.png", tmp_file)
     assert calculate_rmse(load_webp(tmp_file), array) < tolerance
     assert calculate_rmse(array, array2) > tolerance
+
+
+def test_pdf_comparison():
+    folder = ASSETS_DIR / "cli-tests/pdf-targets"
+    assert similar_pdfs(pdf := folder / "vanilla-version.pdf", pdf)
+    assert similar_pdf_page(pdf, 0, pdf)
+    assert not similar_pdfs(pdf, other_pdf := folder / "for-review-version.pdf")
+    assert not similar_pdf_page(pdf, 0, other_pdf)
+    folder = ASSETS_DIR / "test-conflict-solver/duplicate-files/scan"
+    assert not similar_pdf_page(folder / "flat-scan-conflict.pdf", 0, folder / "flat-scan.pdf")
