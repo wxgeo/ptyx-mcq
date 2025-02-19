@@ -1,0 +1,32 @@
+#LOAD{mcq}
+#SEED{0}
+
+
+<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+
+*
+#PYTHON
+a = 3
+b = 4
+c = a + b
+#END_PYTHON
+
+$ a + b = $
+
++ #c
+- #{a*b}
+
+OR
+
+#PYTHON
+# The following line should fail, since `a` and `b` should not be defined
+# (both questions versions should be independent).
+c = a * b
+#END_PYTHON
+
+$ a + b = $
+
++ #c
+- #{a + b}
+
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>

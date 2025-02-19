@@ -389,8 +389,6 @@ class MCQLatexGenerator(LatexGenerator):
     def _parse_NEW_QUESTION_tag(self, node: Node) -> None:
         self.mcq_current_state.question_number += 1
         self.mcq_current_state.version_number = 0
-        # Each question must be independent, so reset all local variables.
-        self.set_new_context(self.mcq_context)
         self._mcq_pick_and_parse_children(node, children=node.children, target="VERSION")
 
     def _parse_CONSECUTIVE_QUESTION_tag(self, node: Node) -> None:
@@ -404,6 +402,9 @@ class MCQLatexGenerator(LatexGenerator):
 
         Tag usage: #VERSION{num}
         """
+        # Each question and question version must be independent, so reset all local variables.
+        self.set_new_context(self.mcq_context)
+
         self.mcq_current_state.version_number += 1
         n = OriginalQuestionNumber(int(node.arg(0)))
         self.mcq_question_number = n

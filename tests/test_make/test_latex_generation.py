@@ -8,7 +8,8 @@ import re
 import shutil
 from pathlib import Path
 
-# import atexit
+import pytest
+from ptyx.errors import PythonBlockError, ErrorInformation
 
 from ptyx.latex_generator import Compiler, Node
 
@@ -19,11 +20,23 @@ from ptyx_mcq.tools.config_parser import Configuration, DocumentId, OriginalQues
 from tests.test_make.toolbox import load_ptyx_file
 from tests import ASSETS_DIR
 
+PTYX_FILES_DIR = ASSETS_DIR / "ptyx-files"
+
 
 def copy_test(folder: str, tmp_path) -> Path:
-    """Copy folder from "{TEST_DIR}/data/ptyx-files" to tmp_path."""
-    shutil.copytree(ASSETS_DIR / "ptyx-files" / folder, copy_ := tmp_path / folder)
+    """Copy folder from "{ASSETS_DIR}/ptyx-files" to tmp_path."""
+    shutil.copytree(PTYX_FILES_DIR / folder, copy_ := tmp_path / folder)
     return copy_
+
+
+def link_to_tmp_path(path: str | Path, tmp_path) -> Path:
+    """Link file from "{ASSETS_DIR}/ptyx-files" to tmp_path."""
+    path = PTYX_FILES_DIR / path
+    if not path.is_file():
+        raise FileNotFoundError(f"'{path}' is not a file.")
+    link = tmp_path / path.name
+    link.symlink_to(path)
+    return link
 
 
 def test_minimal_MCQ(tmp_path):
@@ -41,8 +54,8 @@ def test_at_directives(tmp_path):
 
 
 def test_mcq_basics(tmp_path):
-    folder = copy_test("other", tmp_path)
-    c = load_ptyx_file(folder / "partial-test.ptyx")
+    ptyx_file = link_to_tmp_path("other/partial-test.ptyx", tmp_path)
+    c = load_ptyx_file(ptyx_file)
     assert "VERSION" in c.syntax_tree_generator.tags
     assert "VERSION" in c.latex_generator.parser.tags
     assert "END_QCM" in c.syntax_tree_generator.tags
@@ -173,8 +186,8 @@ def test_include_glob(monkeypatch, tmp_path):
 
 
 def test_question_context(tmp_path):
-    folder = copy_test("other", tmp_path)
-    c = load_ptyx_file(folder / "questions_context.ptyx")
+    ptyx_file = link_to_tmp_path("other/questions_context.ptyx", tmp_path)
+    c = load_ptyx_file(ptyx_file)
     c.generate_syntax_tree()
     latex = c.get_latex()
 
@@ -221,8 +234,8 @@ def test_loading_of_sty_files(tmp_path):
 
 
 def test_neutralized_questions(tmp_path) -> None:
-    folder = copy_test("other", tmp_path)
-    c = load_ptyx_file(folder / "neutralized_questions.ptyx")
+    ptyx_file = link_to_tmp_path("other/neutralized_questions.ptyx", tmp_path)
+    c = load_ptyx_file(ptyx_file)
     c.generate_syntax_tree()
     c.get_latex()
     data: Configuration = c.latex_generator.mcq_data
@@ -271,8 +284,8 @@ def test_verbatim_code(tmp_path):
 
 
 def test_multiline_answers(tmp_path):
-    folder = copy_test("other", tmp_path)
-    c = load_ptyx_file(folder / "multiline_answers.ptyx")
+    ptyx_file = link_to_tmp_path("other/multiline_answers.ptyx", tmp_path)
+    c = load_ptyx_file(ptyx_file)
     c.generate_syntax_tree()
     latex = c.get_latex()
     print(latex)
@@ -288,8 +301,8 @@ def test_multiline_answers(tmp_path):
 
 
 def test_question_config(tmp_path):
-    folder = copy_test("other", tmp_path)
-    c = load_ptyx_file(folder / "question_config.ptyx")
+    ptyx_file = link_to_tmp_path("other/question_config.ptyx", tmp_path)
+    c = load_ptyx_file(ptyx_file)
     c.generate_syntax_tree()
     c.get_latex()
     assert c.latex_generator.mcq_data.mode[1] == "all"
@@ -337,6 +350,43 @@ def test_bug_verbatim_ex(tmp_path):
 def test_verbatim_alt(tmp_path):
     copy = copy_test("with-exercises/example_with_verbatim", tmp_path)
     make(copy / "test.ptyx")
+
+
+def test_multiple_versions_good(tmp_path):
+    ptyx_file = link_to_tmp_path("with-exercises/multiple_versions-good.ptyx", tmp_path)
+    c = load_ptyx_file(ptyx_file)
+    c.generate_syntax_tree()
+    single_version = c.get_latex()
+    multiple_versions = c.get_latex(MCQ_KEEP_ALL_VERSIONS=True)
+    assert single_version != multiple_versions
+    v1_1 = "\\ptyxMCQTab{\\checkBox{white}{Q1-1}}{7}"
+    v1_2 = "\\ptyxMCQTab{\\checkBox{white}{Q1-2}}{54}"
+    v2_1 = "\\ptyxMCQTab{\\checkBox{white}{Q2-1}}{16}"
+    v2_2 = "\\ptyxMCQTab{\\checkBox{white}{Q2-2}}{54}"
+    assert v1_1 in multiple_versions
+    assert v1_2 in multiple_versions
+    assert v2_1 in multiple_versions
+    assert v2_2 in multiple_versions
+    assert v1_1 not in single_version
+    assert v1_2 not in single_version
+    assert v2_1 in single_version
+    assert v2_2 in single_version
+
+
+def test_multiple_versions_bad(tmp_path):
+    """Test that even if `MCQ_KEEP_ALL_VERSIONS=True` is set,
+    the context is reset between each version."""
+    ptyx_file = link_to_tmp_path("with-exercises/multiple_versions-bad.ptyx", tmp_path)
+    c = load_ptyx_file(ptyx_file)
+    c.generate_syntax_tree()
+    for options in ({}, {"MCQ_KEEP_ALL_VERSIONS": True}):
+        with pytest.raises(PythonBlockError) as e_info:
+            c.get_latex(**options)
+        assert e_info.value.python_code == "c = a * b"
+        assert e_info.value.label == ""
+        assert e_info.value.info == ErrorInformation(
+            message="name 'a' is not defined", row=1, end_row=1, col=4, end_col=5
+        )
 
 
 # @atexit.register

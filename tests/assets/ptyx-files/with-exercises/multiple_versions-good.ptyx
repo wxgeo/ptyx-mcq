@@ -1,0 +1,38 @@
+#LOAD{mcq}
+#SEED{0}
+
+
+<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+
+*
+#PYTHON
+a = 3
+b = 4
+c = a + b
+#END_PYTHON
+
+$ a + b = $
+
++ #c
+- 54
+
+OR
+
+#PYTHON
+# The following line should fail, since `a` and `b` should not be defined
+# (both questions versions should be independent).
+a = 2
+b = 8
+c = a * b
+#END_PYTHON
+
+$ a + b = $
+
+# Both versions have the answer 54,
+# but it should not generate a `SameAnswerError`,
+# since those are distinct versions.
+
++ #c
+- 54
+
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
