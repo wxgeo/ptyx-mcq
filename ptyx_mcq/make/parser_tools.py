@@ -43,7 +43,7 @@ def autodetect_smallgraphlib(text: str) -> list[str]:
     if smallgraphlib_detected:
         try:
             # noinspection PyUnresolvedReferences
-            from smallgraphlib.tikz_export import TikzPrinter
+            from smallgraphlib.printers.tikz import TikzPrinter
 
             preamble_additions = TikzPrinter.latex_preamble_additions()
             preamble_additions.remove(r"\usepackage{tikz}")
