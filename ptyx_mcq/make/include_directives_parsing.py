@@ -192,6 +192,7 @@ def resolve_includes(code: str, default_dir: Path, strict=True) -> str:
     # pTyX code after includes resolution.
     ptyx_code: list[str] = []
 
+    line_num = 0
     for section, lines in enumerate(_split_around_mcq(code=code)):
         for line in lines:
             if isinstance(line, Directive):
@@ -203,14 +204,14 @@ def resolve_includes(code: str, default_dir: Path, strict=True) -> str:
                         # New files to include.
                         ptyx_code.append(
                             "\n".join(
-                                _get_ex_file_content(path, exercise=(section == 1))
+                                _get_ex_file_content(path, exercise=(section == 1), position=str(line_num))
                                 for path in line.get_all_files(directory, error_if_none=strict)
                             )
                         )
             else:
                 assert isinstance(line, str)
                 ptyx_code.append(line)
-
+            line_num += 1
     return "\n".join(ptyx_code) + "\n"
 
 

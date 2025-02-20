@@ -110,14 +110,16 @@ def test_successive_calls(tmp_path):
         == f"""#LOAD{{mcq}}#SEED{{123456}}
 <<<<<<<<<<<<<<<<<
 *
-#PRINT{{\x1b[36mIMPORTING\x1b[0m "{tmp_path}/questions/\x1b[36m1.ex\x1b[0m"}}
+#INCLUDE_START{{{tmp_path/"questions/1.ex"}}}{{}}
 #QUESTION_NAME{{1.ex}}
 (1.ex content)
+#INCLUDE_END
 
 *
-#PRINT{{\x1b[36mIMPORTING\x1b[0m "{tmp_path}/questions/\x1b[36m2.ex\x1b[0m"}}
+#INCLUDE_START{{{tmp_path/"questions/2.ex"}}}{{}}
 #QUESTION_NAME{{2.ex}}
 (2.ex content)
+#INCLUDE_END
 
 >>>>>>>>>>>>>>>>>
 """
@@ -278,8 +280,6 @@ def test_latex_code(tmp_path):
         AddPath(Path("**/*.ex"), is_disabled=False, comment=""),
         ">>>  ",
     ]
-    str_folder = str(folder).replace("#", "##")
-    ex_file_name = ex_file.name.replace("#", "##")
     assert (
         resolve_includes_from_file(ptyx_file=ptyx_path)
         == f"""
@@ -287,12 +287,13 @@ def test_latex_code(tmp_path):
 #SEED{{5}}
 <<<
 *
-#PRINT{{\u001b[36mIMPORTING\u001b[0m "{str_folder}/\u001b[36m{ex_file_name}\u001b[0m"}}
+#INCLUDE_START{{{ex_file}}}{{}}
 #QUESTION_NAME{{s##me stüpiɖ ├il€ N@Me.ex}}
 "Hello world!" is a:
 - question
 + exclamation
 - 42
+#INCLUDE_END
 
 >>>  
 """
@@ -346,36 +347,41 @@ def test_includes_outside_mcq(tmp_path):
         resolve_includes_from_file(ptyx_file)
         == f"""
 #LOAD{{mcq}}#SEED{{123456}}
-#PRINT{{\x1b[36mIMPORTING\x1b[0m "{tmp_path}/\x1b[36mheader.txt\x1b[0m"}}
+#INCLUDE_START{{{tmp_path / "header.txt"}}}{{}}
 Introduction...
+#INCLUDE_END
+
 <<<<<<<<<<<<<<<<<
 *
-#PRINT{{\x1b[36mIMPORTING\x1b[0m "{root}/short questions/\x1b[36mquestion1.ex\x1b[0m"}}
+#INCLUDE_START{{{root/"short questions/question1.ex"}}}{{}}
 #QUESTION_NAME{{question1.ex}}
 q1
 
 + 1
 - 2
+#INCLUDE_END
 
 *
-#PRINT{{\x1b[36mIMPORTING\x1b[0m "{root}/short questions/\x1b[36mquestion2.ex\x1b[0m"}}
+#INCLUDE_START{{{root/"short questions/question2.ex"}}}{{}}
 #QUESTION_NAME{{question2.ex}}
 q2
 
 - 1
 + 2
+#INCLUDE_END
 
 *
-#PRINT{{\x1b[36mIMPORTING\x1b[0m "{root}/short questions/\x1b[36mquestion3.ex\x1b[0m"}}
+#INCLUDE_START{{{root/"short questions/question3.ex"}}}{{}}
 #QUESTION_NAME{{question3.ex}}
 q3
 
 - 1
 - 2
 + 3
+#INCLUDE_END
 
 *
-#PRINT{{\x1b[36mIMPORTING\x1b[0m "{root}/short questions/\x1b[36mquestion4.ex\x1b[0m"}}
+#INCLUDE_START{{{root/"short questions/question4.ex"}}}{{}}
 #QUESTION_NAME{{question4.ex}}
 q4
 
@@ -383,9 +389,12 @@ q4
 - 2
 - 3
 + 4
+#INCLUDE_END
 
 >>>>>>>>>>>>>>>>>
-#PRINT{{\x1b[36mIMPORTING\x1b[0m "{tmp_path}/\x1b[36mfooter.txt\x1b[0m"}}
+#INCLUDE_START{{{tmp_path/"footer.txt"}}}{{}}
 Conclusion.
+#INCLUDE_END
+
 """
     )

@@ -49,7 +49,7 @@ def generate_exercise_latex_code_for_preview(*, code: str = None, path: Path = N
     return compiler.parse(code=code, **context)
 
 
-def improve_ex_file_content(file_content: str, ex_file_path: Path = None) -> str:
+def improve_ex_file_content(file_content: str, ex_file_path: Path = None, position: str = "") -> str:
     """Improve the content of the exercise file, escaping `*` characters notably."""
     # Search for lines starting inadvertently with `* `, since a star is the symbol used to
     # start a new exercise.
@@ -86,20 +86,22 @@ def improve_ex_file_content(file_content: str, ex_file_path: Path = None) -> str
     for line in file_content.split("\n"):
         lines.append(line)
         if is_new_exercise_start(line):
-            lines.append(f'#PRINT{{\u001b[36mIMPORTING\u001b[0m "{_prettify_path(ex_file_path)}"}}')
+            # lines.append(f"#{{MCQ_CURRENT_IMPORT_PATH={str(ex_file_path)!r};}}")
+            lines.append(f"#INCLUDE_START{{{ex_file_path}}}{{{position}}}")
             question_name = ex_file_path.name.replace("#", "##") if ex_file_path is not None else "?"
             lines.append(f"#QUESTION_NAME{{{question_name}}}")
-    file_content = "\n".join(lines) + "\n"
+    # lines.append("#{MCQ_CURRENT_IMPORT_PATH=None;}")
+    file_content = "\n".join(lines) + "\n#INCLUDE_END\n"
     return restore_verbatim_tag_content(file_content, verbatim_contents)
 
 
-def _prettify_path(ex_file_path: Path = None) -> str:
-    if ex_file_path is None:
-        return "?"
-    return str(ex_file_path.parent / f"\u001b[36m{ex_file_path.name}\u001b[0m").replace("#", "##")
+# def _prettify_path(ex_file_path: Path = None) -> str:
+#     if ex_file_path is None:
+#         return "?"
+#     return str(ex_file_path.parent / f"\u001b[36m{ex_file_path.name}\u001b[0m").replace("#", "##")
 
 
-def _get_ex_file_content(ex_file_path: Path, exercise=True) -> str:
+def _get_ex_file_content(ex_file_path: Path, exercise=True, position: str = "") -> str:
     """Get the content of the file to include, with a few enhancements.
 
     - Prefix the file content with `*` if needed (each pTyX exercise must begin with `*`).
@@ -113,6 +115,6 @@ def _get_ex_file_content(ex_file_path: Path, exercise=True) -> str:
         # Each exercise must start with a star. Since each included file is supposed to be an exercise,
         # add the initial star if missing.
         if exercise:
-            return improve_ex_file_content(file_content, ex_file_path=ex_file_path)
+            return improve_ex_file_content(file_content, ex_file_path=ex_file_path, position=position)
         else:
-            return f'#PRINT{{\u001b[36mIMPORTING\u001b[0m "{_prettify_path(ex_file_path)}"}}\n' + file_content
+            return f"#INCLUDE_START{{{ex_file_path}}}{{{position}}}\n" + file_content + "\n#INCLUDE_END\n"
