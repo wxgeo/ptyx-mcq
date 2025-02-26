@@ -144,8 +144,9 @@ def id_band(doc_id: int, calibration=True) -> str:
 def extract_students_id_and_name_from_csv(csv_path: Path, script_path: Path) -> Dict[StudentId, StudentName]:
     """`csv_path` is the path of the CSV file who contains students names and ids.
     The first column of the CSV file must contain the ids.
+    The other column's content will be merged to generate the name.
 
-    Return a dictionnary containing the students ID and corresponding names.
+    Return a dictionary containing the students ID and corresponding names.
     """
     csv_path = csv_path.expanduser()
     if not csv_path.is_absolute():

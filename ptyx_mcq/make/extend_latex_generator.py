@@ -175,7 +175,11 @@ def _analyze_ids(ids: List[str]) -> Tuple[int, int, List[Tuple[str, ...]]]:
     lengths = {len(iD) for iD in ids}
     if len(lengths) != 1:
         print(ids)
-        raise IdentifiantError("All students ID must have the same length !")
+        raise IdentifiantError(
+            "All students ID must have the same length!\n"
+            "Hint: the 1st column of the CSV file must contain students ID (with no header),"
+            " and the 2nd one their names."
+        )
     id_length = lengths.pop()
     # Create the list of the sets of all possible values for each digit.
     digits: List[Set[str]] = [set() for _ in range(id_length)]
@@ -394,7 +398,7 @@ class MCQLatexGenerator(LatexGenerator):
     def _parse_CONSECUTIVE_QUESTION_tag(self, node: Node) -> None:
         self.mcq_current_state.question_number += 1
         self.mcq_current_state.version_number = 0
-        # For a consecutive question, the context (ie. local variables) must not be reset.
+        # For a consecutive question, the context (i. e. local variables) must not be reset.
         self._mcq_pick_and_parse_children(node, children=node.children, target="VERSION")
 
     def _parse_VERSION_tag(self, node: Node) -> None:
@@ -766,7 +770,7 @@ class MCQLatexGenerator(LatexGenerator):
                         data = _detect_id_format(ids, id_format)
                     except IdentifiantError as e:
                         msg = e.args[0]
-                        raise IdentifiantError(f"Error in {csv!r} : {msg!r}")
+                        raise IdentifiantError(f"Error in {csv!r}: {msg!r}")
 
                     self.mcq_data.id_format = data["id_format"]
                     self.mcq_data.students_ids = data["students_ids"]
@@ -808,8 +812,8 @@ class MCQLatexGenerator(LatexGenerator):
             header = "\n".join([header1, self._parse_sty_list(sty), header2, raw_latex, r"\begin{document}"])
             self.mcq_cache["header"] = header
 
-        # Generate barcode
-        # Barcode must NOT be put in the cache, since each document has a
+        # Generate the barcode.
+        # The barcode must NOT be put in the cache, since each document has a
         # unique ID.
         n = self.NUM
         calibration = "MCQ__SCORE_FOR_THIS_STUDENT" not in self.context
