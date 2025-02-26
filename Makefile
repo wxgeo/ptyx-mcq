@@ -30,3 +30,6 @@ slow-test:
 
 single-processor-test:
 	poetry run pytest tests/
+
+lock:
+	git commit poetry.lock -m "dev: update poetry.lock"
