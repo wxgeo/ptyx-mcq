@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg
+   width="74.832916mm"
+   height="74.832916mm"
+   viewBox="0 0 74.832916 74.832917"
+   version="1.1"
+   id="svg5"
+   inkscape:version="1.2.2 (b0a8486541, 2022-12-01)"
+   sodipodi:docname="icon.svg"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <sodipodi:namedview
+     id="namedview7"
+     pagecolor="#ffffff"
+     bordercolor="#000000"
+     borderopacity="0.25"
+     inkscape:showpageshadow="2"
+     inkscape:pageopacity="0.0"
+     inkscape:pagecheckerboard="0"
+     inkscape:deskcolor="#d1d1d1"
+     inkscape:document-units="mm"
+     showgrid="false"
+     inkscape:zoom="1.0519801"
+     inkscape:cx="-257.60945"
+     inkscape:cy="150.19296"
+     inkscape:window-width="2560"
+     inkscape:window-height="1007"
+     inkscape:window-x="0"
+     inkscape:window-y="36"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="layer1" />
+  <defs
+     id="defs2" />
+  <g
+     inkscape:label="Calque 1"
+     inkscape:groupmode="layer"
+     id="layer1"
+     transform="translate(-46.422379,-0.12704086)">
+    <rect
+       style="fill:#ffedbf;fill-opacity:1;stroke:#ca3413;stroke-width:4;stroke-linecap:round;stroke-dasharray:none;stroke-opacity:1;stop-color:#000000"
+       id="rect1149"
+       width="70.832916"
+       height="70.832916"
+       x="48.422379"
+       y="2.1270409"
+       rx="10"
+       ry="10" />
+    <g
+       id="g1093"
+       transform="matrix(0.9195136,0,0,0.9195136,6.7478859,6.3006176)"
+       style="stroke-width:1.08753">
+      <text
+         xml:space="preserve"
+         style="font-size:28.8184px;font-family:FreeSans;-inkscape-font-specification:FreeSans;fill:#2f7a36;fill-opacity:1;stroke:#d5c1bf;stroke-width:0.575487;-inkscape-stroke:none;stop-color:#000000"
+         x="51.821575"
+         y="20.631998"
+         id="text236"><tspan
+           sodipodi:role="line"
+           id="tspan234"
+           style="font-style:italic;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:28.8184px;font-family:'Linux Biolinum O';-inkscape-font-specification:'Linux Biolinum O Italic';fill:#73b75a;fill-opacity:1;stroke:none;stroke-width:0.575487"
+           x="51.821575"
+           y="20.631998">p<tspan
+   style="font-style:italic;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:'Linux Biolinum O';-inkscape-font-specification:'Linux Biolinum O Italic';fill:#000000;fill-opacity:1;stroke-width:0.575487"
+   id="tspan2072">T</tspan>y<tspan
+   style="font-style:italic;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:'Linux Biolinum O';-inkscape-font-specification:'Linux Biolinum O Italic';fill:#000000;fill-opacity:1;stroke-width:0.575487"
+   id="tspan2082">X</tspan></tspan></text>
+      <g
+         id="g305"
+         transform="matrix(2.0223674,0,0,2.0223674,-122.92195,43.662846)"
+         style="stroke-width:0.537752">
+        <text
+           xml:space="preserve"
+           style="font-size:14.1111px;font-family:FreeSans;-inkscape-font-specification:FreeSans;fill:none;fill-opacity:1;stroke:#000000;stroke-width:0.645302;stroke-dasharray:none;stroke-opacity:1;stop-color:#000000"
+           x="85.668182"
+           y="10.456388"
+           id="text1216"><tspan
+             sodipodi:role="line"
+             id="tspan1214"
+             style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:14.1111px;font-family:'Linux Biolinum O';-inkscape-font-specification:'Linux Biolinum O';fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.645302"
+             x="85.668182"
+             y="10.456388">MC</tspan></text>
+        <g
+           aria-label="O"
+           transform="matrix(0.93352215,0,0,0.89020001,19.734528,0.25010715)"
+           id="text3913"
+           style="font-size:15.9471px;font-family:'Linux Biolinum O';-inkscape-font-specification:'Linux Biolinum O';fill:#474747;fill-opacity:1;stroke-width:0.707875;stop-color:#000000">
+          <path
+             d="m 99.832599,1.5609406 c 4.620691,0 4.108231,1.0486095 4.108231,4.3656062 0,2.8545308 0.38048,4.3344302 -3.994675,4.3344302 -5.048656,0 -4.211883,-0.9492521 -4.211883,-4.0110952 0,-3.3488909 -0.07036,-4.6889412 4.098327,-4.6889412 z m 5.326331,4.657047 c 0,-3.1575257 0.008,-5.2465958 -5.11902,-5.2465958 -5.027487,0 -5.039282,2.4239592 -5.039282,5.5495907 0,3.1415786 0.07154,5.1030715 5.055232,5.1030715 5.00991,0 5.10307,-2.2166465 5.10307,-5.4060664 z"
+             style="fill:#474747;fill-opacity:1;stroke-width:0.707875"
+             id="path3921"
+             sodipodi:nodetypes="ssssssssss" />
+        </g>
+        <text
+           xml:space="preserve"
+           style="font-size:11.7485px;font-family:FreeSans;-inkscape-font-specification:FreeSans;fill:#ca3413;fill-opacity:1;stroke:#d5c1bf;stroke-width:0.28456;-inkscape-stroke:none;stop-color:#000000"
+           x="109.48064"
+           y="-3.6436677"
+           id="text290"
+           transform="scale(1,-1)"><tspan
+             sodipodi:role="line"
+             id="tspan288"
+             style="fill:#ca3413;fill-opacity:1;stroke:none;stroke-width:0.28456"
+             x="109.48064"
+             y="-3.6436677">✓</tspan></text>
+      </g>
+      <path
+         id="path359"
+         style="fill:#474747;fill-opacity:1;stroke-width:0.652519;stroke-linecap:round;stroke-opacity:0.661228;stop-color:#000000"
+         d="m 91.406973,39.762059 c 3.399008,-0.589282 5.132129,-3.535853 3.87099,-6.581276 -0.227173,-0.54773 -0.544158,-1.076562 -0.940525,-1.569073 0.166384,2.453393 -1.565636,4.448468 -4.269142,4.917542 -6.247497,0.895996 -8.130672,-5.705668 -13.797593,-4.871631 -3.39901,0.589284 -5.132132,3.535855 -3.87099,6.581276 0.226966,0.547944 0.543823,1.077012 0.940116,1.569768 -0.166725,-2.453801 1.565554,-4.449266 4.26955,-4.918237 6.248987,-0.896091 8.127491,5.709135 13.797594,4.871631 z"
+         sodipodi:nodetypes="ccccccccc" />
+    </g>
+  </g>
+</svg>
