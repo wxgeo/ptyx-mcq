@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Union, Optional
 
 # from numpy import ndarray
-from ptyx.shell import ANSI_RESET, ANSI_GREEN, print_success
+from ptyx.pretty_print import print_success, green
 from ptyx.sys_info import CPU_PHYSICAL_CORES
 from ptyx_mcq.scan.data.extract import PicNum, PdfHash
 
@@ -213,4 +213,4 @@ class MCQPictureParser:
         # Time to synthesize & store all those information!
         self.generate_documents()
 
-        print(f"\n{ANSI_GREEN}Success ! {ANSI_RESET}:)")
+        print(green("\nSuccess ! :)"))

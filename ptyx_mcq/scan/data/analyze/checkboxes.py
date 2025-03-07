@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from numpy import ndarray, concatenate
-from ptyx.shell import ANSI_CYAN, ANSI_RESET, ANSI_GREEN, ANSI_YELLOW
+from ptyx.pretty_print import term_color, TermColors
 
 from ptyx_mcq.scan.data.questions import CbxState
 from ptyx_mcq.scan.picture_analyze.square_detection import test_square_color
@@ -184,7 +184,7 @@ def display_analyze_results(doc: "Document") -> None:
             q0 = real2apparent(q, None, config, doc.doc_id)
             # `q0` is the apparent number of the question, as displayed on the document,
             # while `q` is the internal number of the question (attributed before shuffling).
-            print(f"\n{ANSI_CYAN}• Question {q0}{ANSI_RESET} (Q{q})")
+            print(term_color(f"\n• Question {q0}", TermColors.CYAN) + f" (Q{q})")
             for a, answer in question.answers.items():
                 is_correct = answer.is_correct
                 match answer.state:
@@ -202,8 +202,8 @@ def display_analyze_results(doc: "Document") -> None:
                         ok = not is_correct
                     case other:
                         raise ValueError(f"Unknown detection status: {other!r}.")
-                term_color = ANSI_GREEN if ok else ANSI_YELLOW
-                print(f"  {term_color}{c} {a}  {ANSI_RESET}", end="\t")
+                color = TermColors.GREEN if ok else TermColors.YELLOW
+                print(term_color(f"  {c} {a}  ", color=color), end="\t")
         print()
 
 

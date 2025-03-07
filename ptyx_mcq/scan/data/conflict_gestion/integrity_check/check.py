@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 
-from ptyx.shell import print_warning, print_info, print_success, print_error
+from ptyx.pretty_print import print_warning, print_info, print_success, print_error
 
 from ptyx_mcq.scan.data import ScanData
 from ptyx_mcq.scan.data.documents import Document

@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Type, Callable
 
 from mypy.ipc import TracebackType
-from ptyx.shell import print_error
+from ptyx.pretty_print import print_error
 
 
 class FatalError(BaseException):

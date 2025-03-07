@@ -32,7 +32,7 @@ from ptyx.printers import sympy2latex
 from ptyx.latex_generator import LatexGenerator
 from ptyx.syntax_tree import Node, Tag
 from ptyx.utilities import latex_verbatim
-from ptyx.shell import print_warning
+from ptyx.pretty_print import print_warning
 
 from ptyx_mcq.tools.config_parser import (
     Configuration,

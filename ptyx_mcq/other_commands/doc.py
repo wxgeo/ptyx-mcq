@@ -1,6 +1,6 @@
 import re
 
-from ptyx.shell import ANSI_REVERSE_PURPLE, ANSI_RESET, ANSI_BLUE, ANSI_REVERSE_BLUE
+from ptyx.pretty_print import term_color, TermColors
 
 from ptyx_mcq.scan.score_management.evaluation_strategies import EvaluationStrategies
 from ptyx_mcq.make.extend_latex_generator import HeaderConfigKeys
@@ -11,19 +11,26 @@ def _document_options(title: str, options_info: dict[str, str]) -> None:
 
     After listing all the options, each option will be described.
     """
+
+    def blue(s: str, reverse: bool = False) -> str:
+        return term_color(s, TermColors.BLUE, reverse=reverse)
+
+    def reverse_purple(s: str) -> str:
+        return term_color(s, TermColors.PURPLE, reverse=True)
+
     # Display options list.
-    print(f"\n{ANSI_REVERSE_PURPLE}[ {title} ]{ANSI_RESET}")
+    print(reverse_purple(f"\n[ {title} ]"))
     print(", ".join(options_info))
     print()
     # Describe each option.
-    print(f"\n{ANSI_REVERSE_PURPLE}[ Details ]{ANSI_RESET}")
+    print(reverse_purple("\n[ Details ]"))
     for option_name, option_doc in options_info.items():
-        print(f"\n {ANSI_BLUE}╭───╴{ANSI_RESET}{ANSI_REVERSE_BLUE} {option_name} {ANSI_RESET} ")
-        print(f" {ANSI_BLUE}│{ANSI_RESET} ")
+        print(blue("\n ╭───╴") + blue(f" {option_name}  ", reverse=True))
+        print(blue(" │ "))
         for line in option_doc.split("\n"):
-            print(f" {ANSI_BLUE}│{ANSI_RESET} " + line.strip())
-        print(f" {ANSI_BLUE}│{ANSI_RESET} ")
-        print(f" {ANSI_BLUE}╰───╴{ANSI_RESET}")
+            print(blue(" │ ") + line.strip())
+        print(blue(" │ "))
+        print(blue(" ╰───╴"))
 
 
 def doc_strategies() -> None:

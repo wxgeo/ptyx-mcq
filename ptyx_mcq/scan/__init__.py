@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from ptyx.shell import print_success, print_warning, print_info
+from ptyx.pretty_print import print_success, print_warning, print_info
 
 from ptyx_mcq.scan.scan_doc import MCQPictureParser
 from ptyx_mcq.tools.io_tools import ProcessInterrupted

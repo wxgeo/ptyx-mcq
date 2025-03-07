@@ -6,7 +6,7 @@ from typing import Literal, Iterator, NamedTuple
 import numpy as np
 from PIL import Image
 from numpy import ndarray, flipud, fliplr, zeros, amin, dot, amax
-from ptyx.shell import print_warning
+from ptyx.pretty_print import print_warning
 
 from ptyx_mcq.parameters import (
     SQUARE_SIZE_IN_CM,

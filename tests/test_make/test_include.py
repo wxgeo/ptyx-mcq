@@ -110,13 +110,13 @@ def test_successive_calls(tmp_path):
         == f"""#LOAD{{mcq}}#SEED{{123456}}
 <<<<<<<<<<<<<<<<<
 *
-#INCLUDE_START{{{tmp_path/"questions/1.ex"}}}{{}}
+#INCLUDE_START{{{tmp_path/"questions/1.ex"}}}{{2}}
 #QUESTION_NAME{{1.ex}}
 (1.ex content)
 #INCLUDE_END
 
 *
-#INCLUDE_START{{{tmp_path/"questions/2.ex"}}}{{}}
+#INCLUDE_START{{{tmp_path/"questions/2.ex"}}}{{3}}
 #QUESTION_NAME{{2.ex}}
 (2.ex content)
 #INCLUDE_END
@@ -287,7 +287,7 @@ def test_latex_code(tmp_path):
 #SEED{{5}}
 <<<
 *
-#INCLUDE_START{{{ex_file}}}{{}}
+#INCLUDE_START{{{ex_file}}}{{4}}
 #QUESTION_NAME{{s##me stüpiɖ ├il€ N@Me.ex}}
 "Hello world!" is a:
 - question
@@ -347,13 +347,13 @@ def test_includes_outside_mcq(tmp_path):
         resolve_includes_from_file(ptyx_file)
         == f"""
 #LOAD{{mcq}}#SEED{{123456}}
-#INCLUDE_START{{{tmp_path / "header.txt"}}}{{}}
+#INCLUDE_START{{{tmp_path / "header.txt"}}}{{2}}
 Introduction...
 #INCLUDE_END
 
 <<<<<<<<<<<<<<<<<
 *
-#INCLUDE_START{{{root/"short questions/question1.ex"}}}{{}}
+#INCLUDE_START{{{root/"short questions/question1.ex"}}}{{6}}
 #QUESTION_NAME{{question1.ex}}
 q1
 
@@ -362,7 +362,7 @@ q1
 #INCLUDE_END
 
 *
-#INCLUDE_START{{{root/"short questions/question2.ex"}}}{{}}
+#INCLUDE_START{{{root/"short questions/question2.ex"}}}{{7}}
 #QUESTION_NAME{{question2.ex}}
 q2
 
@@ -371,7 +371,7 @@ q2
 #INCLUDE_END
 
 *
-#INCLUDE_START{{{root/"short questions/question3.ex"}}}{{}}
+#INCLUDE_START{{{root/"short questions/question3.ex"}}}{{8}}
 #QUESTION_NAME{{question3.ex}}
 q3
 
@@ -381,7 +381,7 @@ q3
 #INCLUDE_END
 
 *
-#INCLUDE_START{{{root/"short questions/question4.ex"}}}{{}}
+#INCLUDE_START{{{root/"short questions/question4.ex"}}}{{9}}
 #QUESTION_NAME{{question4.ex}}
 q4
 
@@ -392,7 +392,7 @@ q4
 #INCLUDE_END
 
 >>>>>>>>>>>>>>>>>
-#INCLUDE_START{{{tmp_path/"footer.txt"}}}{{}}
+#INCLUDE_START{{{tmp_path/"footer.txt"}}}{{12}}
 Conclusion.
 #INCLUDE_END
 

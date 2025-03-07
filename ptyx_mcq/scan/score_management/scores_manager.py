@@ -2,15 +2,7 @@ import csv
 import math
 from typing import TYPE_CHECKING, Callable
 
-from ptyx.shell import (
-    print_info,
-    ANSI_RESET,
-    ANSI_RED,
-    ANSI_GREEN,
-    ANSI_YELLOW,
-    ANSI_CYAN,
-    ANSI_BOLD,
-)
+from ptyx.pretty_print import print_info, term_color, TermColors, red, green, yellow, bold
 
 from ptyx_mcq.scan.score_management.evaluation_strategies import (
     AnswersData,
@@ -87,12 +79,12 @@ class ScoresManager:
                     earn = ceil
 
                 if earn == scores_data.correct:
-                    color = ANSI_GREEN
+                    color = TermColors.GREEN
                 elif earn == scores_data.incorrect:
-                    color = ANSI_RED
+                    color = TermColors.RED
                 else:
-                    color = ANSI_YELLOW
-                print(f"-  {color}Rating (Q{q}): {color}{earn:g}{ANSI_RESET}")
+                    color = TermColors.YELLOW
+                print("-  " + term_color(f"Rating (Q{q}): {earn:g}", color=color))
                 # Don't forget to include the weight of the question to calculate the global score.
                 earn *= float(cfg.weight.get(q, default_weight))
                 # Don't use weight for per question score, since it would make success rates
@@ -116,7 +108,7 @@ class ScoresManager:
         min_score: float = math.inf
         max_score: float = -math.inf
         print()
-        print(f"{ANSI_CYAN}SCORES (/{self.max_score:g}):{ANSI_RESET}")
+        print(term_color(f"SCORES (/{self.max_score:g}):", color=TermColors.CYAN))
         for name, score in sorted(self.scores.items()):
             score = self._convert(score)
             if isinstance(score, (float, int)):
@@ -127,11 +119,8 @@ class ScoresManager:
             print(f" - {name}: {self._convert(score)}")
         if self.results:
             mean = round(sum(self.results.values()) / len(self.results), 2)
-            print(
-                f"{ANSI_YELLOW}Mean: "
-                f"{ANSI_BOLD}{mean:g}{ANSI_RESET}{ANSI_YELLOW}/{self.max_score:g}{ANSI_RESET}"
-            )
-            print(f"Min: {ANSI_RED}{min_score}{ANSI_RESET} - Max: {ANSI_GREEN}{max_score}{ANSI_RESET}")
+            print(yellow("Mean: " + bold(f"{mean:g}") + f"/{self.max_score:g}"))
+            print(f"Min: {red(min_score)} - Max: {green(max_score)}")
         else:
             print("No score found !")
         print()

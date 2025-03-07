@@ -2,7 +2,7 @@ import shutil
 from os import unlink
 from pathlib import Path
 
-from ptyx.shell import print_success
+from ptyx.pretty_print import print_success
 
 from ptyx_mcq.parameters import CONFIG_FILE_EXTENSION
 from ptyx_mcq.tools.io_tools import get_file_or_sysexit

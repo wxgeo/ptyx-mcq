@@ -3,7 +3,7 @@ from abc import ABC, abstractmethod, ABCMeta
 from contextlib import AbstractContextManager
 from enum import StrEnum
 
-from ptyx.shell import print_warning, print_info
+from ptyx.pretty_print import print_warning, print_info
 
 from ptyx_mcq.scan.data.conflict_gestion.data_check.check import DataChecker, DataCheckResult
 from ptyx_mcq.scan.data import ScanData

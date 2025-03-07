@@ -15,7 +15,7 @@ from PIL import Image, ImageDraw
 import pymupdf  # type: ignore
 
 
-from ptyx.shell import print_info
+from ptyx.pretty_print import print_info
 
 from ptyx_mcq.cli import main as main_, Handlers, get_handler
 from ptyx_mcq.dev_cli import DevHandlers

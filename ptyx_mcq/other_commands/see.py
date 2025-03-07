@@ -1,7 +1,7 @@
 import subprocess
 from pathlib import Path
 
-from ptyx.shell import print_error, print_warning, print_info
+from ptyx.pretty_print import print_error, print_warning, print_info
 
 from ptyx_mcq.tools.io_tools import FatalError
 

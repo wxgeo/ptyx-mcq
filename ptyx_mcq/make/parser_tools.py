@@ -4,7 +4,7 @@ Tools used to check mcq syntax.
 
 import re
 
-from ptyx.shell import print_error
+from ptyx.pretty_print import print_error
 
 
 def is_new_exercise_start(line_of_code: str) -> bool:

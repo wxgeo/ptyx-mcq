@@ -12,7 +12,7 @@ keywords = ["python", "tikz", "latex", "pdf", "exam", "mcq", "student"]
 python = "^3.10"
 Pillow = ">=9.2"
 ptyx = ">=29.2"
-smallgraphlib = ">=0.10"
+smallgraphlib = ">=1.0.0"
 platformdirs = "^4"
 openpyxl = ">=3.1.2"
 argcomplete = "^3.1.2"

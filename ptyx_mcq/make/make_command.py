@@ -10,7 +10,7 @@ from typing import Any
 from ptyx.compilation import make_files, compile_latex_to_pdf
 from ptyx.compilation_options import CompilationOptions
 from ptyx.latex_generator import Compiler
-from ptyx.shell import print_error, print_info
+from ptyx.pretty_print import print_error, print_info
 from ptyx.utilities import force_hardlink_to
 
 from ptyx_mcq.parameters import CONFIG_FILE_EXTENSION

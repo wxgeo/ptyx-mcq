@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from ptyx.shell import print_warning
+from ptyx.pretty_print import print_warning
 
 from ptyx_mcq.tools.config_parser import DocumentId, StudentName, PageNum
 

@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from ptyx.shell import print_error, print_success
+from ptyx.pretty_print import print_error, print_success
 
 from ptyx_mcq.tools.io_tools import FatalError
 from ptyx_mcq.parameters import CONFIG_FILE_EXTENSION

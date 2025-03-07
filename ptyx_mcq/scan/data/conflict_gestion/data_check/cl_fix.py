@@ -1,7 +1,7 @@
 from subprocess import Popen, CompletedProcess
 
 
-from ptyx.shell import print_warning
+from ptyx.pretty_print import print_warning
 
 from ptyx_mcq.scan.data.conflict_gestion.data_check.fix import (
     Action,

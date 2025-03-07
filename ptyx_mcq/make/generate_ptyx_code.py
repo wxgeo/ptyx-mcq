@@ -250,6 +250,7 @@ def generate_ptyx_code(text: str, additional_header_lines: Iterable[str] = ()) -
                 raise RuntimeError("No question before answers list !")
             answer_num += 1
             end = 2
+            correct: bool | None | str
             match line[0]:
                 case "+":
                     correct = True

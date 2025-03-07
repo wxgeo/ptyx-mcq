@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import Literal
 
-from ptyx.shell import print_success
+from ptyx.pretty_print import print_success
 
 from ptyx_mcq.scan.data import ScanData, Picture
 from ptyx_mcq.scan.data.conflict_gestion.integrity_check.check import (

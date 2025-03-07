@@ -1,5 +1,5 @@
 from numpy import ndarray
-from ptyx.shell import print_warning
+from ptyx.pretty_print import print_warning
 
 from ptyx_mcq.scan.data.students import Student
 from ptyx_mcq.scan.picture_analyze.identify_doc import DebugInfo

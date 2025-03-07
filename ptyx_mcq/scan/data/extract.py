@@ -13,7 +13,7 @@ import pymupdf  # type: ignore
 import numpy as np
 from PIL import Image, UnidentifiedImageError
 from numpy import ndarray
-from ptyx.shell import print_warning
+from ptyx.pretty_print import print_warning
 
 from ptyx_mcq.parameters import IMAGE_FORMAT
 from ptyx_mcq.scan.data.paths_manager import PathsHandler

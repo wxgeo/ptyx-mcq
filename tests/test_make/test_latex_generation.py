@@ -245,7 +245,7 @@ def test_neutralized_questions(tmp_path) -> None:
 
 
 def _smallgraphlib_import_detection(tmp_path, **context):
-    from smallgraphlib.tikz_export import TikzPrinter
+    from smallgraphlib.printers.tikz import TikzPrinter
 
     folder = copy_test("with-exercises", tmp_path)
     c = load_ptyx_file(folder / "smallgraphlib.ptyx")

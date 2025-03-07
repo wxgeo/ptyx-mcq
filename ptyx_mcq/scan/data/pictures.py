@@ -4,7 +4,7 @@ from typing import Iterator, TYPE_CHECKING
 
 from PIL import Image
 from numpy import ndarray, array
-from ptyx.shell import print_error
+from ptyx.pretty_print import print_error
 
 from ptyx_mcq.scan.data.analyze.student_names import read_student_id_and_name
 
