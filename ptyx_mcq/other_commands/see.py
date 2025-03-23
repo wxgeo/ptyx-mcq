@@ -12,9 +12,9 @@ def see(name: str) -> None:
         name = f"*{name}*"
     if not name.endswith(".pdf"):
         name += ".pdf"
-    directory = Path.cwd() / ".scan/pdf"
+    directory = Path.cwd() / "out/pdf"
     if not directory.is_dir():
-        print_error("No scan results found, run `mcq scan .` first or change directory.")
+        print_error("No scan results found. Run `mcq scan .` first, or change directory.")
         raise FatalError
     results = list(directory.glob(name))
     # TODO: use `case_sensitive=False` once python 11 support is dropped.
