@@ -664,7 +664,7 @@ class MCQLatexGenerator(LatexGenerator):
             return key_.strip().replace(" ", "_").lower()
 
         # {alias: standard key name}
-        aliases: Dict[str, HeaderConfigKeys] = {
+        aliases: dict[str, HeaderConfigKeys] = {
             "name": HeaderConfigKeys.names,
             "student": HeaderConfigKeys.names,
             "students": HeaderConfigKeys.names,
@@ -687,7 +687,7 @@ class MCQLatexGenerator(LatexGenerator):
                 raw_key, val = line.split("=", maxsplit=1)
                 # Normalize the key.
                 key = format_key(raw_key)
-                key = aliases.get(raw_key, key)
+                key = aliases.get(key, key)
                 try:
                     config[getattr(HeaderConfigKeys, key)] = val.strip()
                 except AttributeError:

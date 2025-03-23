@@ -69,7 +69,7 @@ class TemplatesCompleter(argcomplete.completers.BaseCompleter):
 def get_handler(handler_location: str) -> Callable:
     # Import handler.
     module_name, function_name = handler_location.rsplit(".", maxsplit=1)
-    # Launch handler.
+    # Get handler.
     return getattr(import_module(module_name), function_name)
 
 
