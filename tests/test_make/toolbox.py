@@ -1,10 +1,18 @@
+import re
 from pathlib import Path
 
 from ptyx.latex_generator import Compiler
 
 
-def rstripped_lines(s: str) -> list[str]:
-    return [line.rstrip() for line in s.split("\n")]
+def normalize_text(s: str) -> str:
+    """Remove indentation and more than two consecutive line breaks."""
+    s = re.sub("^ +", "", s, flags=re.MULTILINE)
+    s = re.sub("\n{2,}", "\n\n", s)
+    return s
+
+
+def test_normalize_text():
+    assert normalize_text("  a\nb\n\n \n \n c") == "a\nb\n\nc"
 
 
 # def has_same_rstripped_lines(s1: str, s2: str) -> bool:

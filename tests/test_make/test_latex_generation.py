@@ -385,7 +385,7 @@ def test_multiple_versions_bad(tmp_path):
         assert e_info.value.python_code == "c = a * b"
         assert e_info.value.label == ""
         assert e_info.value.info == ErrorInformation(
-            message="name 'a' is not defined", row=1, end_row=1, col=4, end_col=5
+            type="NameError", message="name 'a' is not defined", row=1, end_row=1, col=4, end_col=5
         )
 
 
