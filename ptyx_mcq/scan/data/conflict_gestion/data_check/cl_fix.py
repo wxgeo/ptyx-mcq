@@ -1,6 +1,5 @@
 from subprocess import Popen, CompletedProcess
 
-
 from ptyx.pretty_print import print_warning
 
 from ptyx_mcq.scan.data.conflict_gestion.data_check.fix import (
@@ -22,6 +21,9 @@ from ptyx_mcq.tools.config_parser import (
     StudentName,
     StudentId,
     PageNum,
+    OriginalQuestionNumber,
+    OriginalAnswerNumber,
+    real2apparent,
 )
 
 
@@ -129,7 +131,12 @@ class ClAnswersReviewer(AbstractAnswersReviewer):
     )
     IS_CORRECT = "Is this correct ? [(y)es/(N)o]"
     SELECT_QUESTION = "Write a question number, or 0 to escape:"
-    EDIT_ANSWERS = "Add or remove answers (Example: +2 -1 -4 to add answer 2, and remove answers 1 et 4):"
+    EDIT_ANSWERS = (
+        "Add or remove answers."
+        ' For example, write "+2 -1 -4" to add the answer 2, and remove the answers 1 et 4.'
+        " To add all the answers, use +*, and to remove all of them, use -*."
+        "\nWhat should we do?"
+    )
 
     default_colors: dict[CbxState, RGB] = {
         CbxState.CHECKED: Color.blue,
@@ -151,6 +158,29 @@ class ClAnswersReviewer(AbstractAnswersReviewer):
         CbxState.CHECKED: 5,
         CbxState.UNCHECKED: 5,
     }
+
+    def _update_answer(
+        self, op: str, doc_id: DocumentId, q: OriginalQuestionNumber, a: OriginalAnswerNumber
+    ) -> None:
+        """Update an answer status according to the user input during the review."""
+        q0, a0 = real2apparent(q, a, self.scan_data.config, doc_id)
+        question = self.scan_data.used_docs[doc_id].questions[q]
+        answer = question.answers[a]
+        assert answer.state is not None
+        checked = answer.state.seems_checked
+        if op == "+":
+            if checked:
+                print(f"Warning: answer {a0} is already marked as checked.")
+            else:
+                answer.state = CbxState.CHECKED
+                print(f"Answer {a0} checked.")
+        else:
+            assert op == "-", op
+            if checked:
+                answer.state = CbxState.UNCHECKED
+                print(f"Answer {a0} unchecked.")
+            else:
+                print(f"Warning: answer {a0} was not marked as checked.")
 
     @copy_docstring(AbstractAnswersReviewer.edit_answers)
     def edit_answers(self, doc_id: DocumentId, page_num: PageNum) -> Action:
@@ -183,26 +213,19 @@ class ClAnswersReviewer(AbstractAnswersReviewer):
                     # checked = answered[q]
                     a_str = input(self.EDIT_ANSWERS)
                     for val in a_str.split():
-                        op, a0 = val[0], ApparentAnswerNumber(int(val[1:]))
-                        q, a = apparent2real(q0, a0, config, doc_id)
-                        answer = question.answers[a]
-                        # state = changes.get((q, a), answer.state)
-                        assert answer.state is not None
-                        checked = answer.state.seems_checked
-                        if op == "+":
-                            if checked:
-                                print(f"Warning: answer {a0} is already marked as checked.")
-                            else:
-                                answer.state = CbxState.CHECKED
-                                print(f"Answer {a0} checked.")
-                        elif op == "-":
-                            if checked:
-                                answer.state = CbxState.UNCHECKED
-                                print(f"Answer {a0} unchecked.")
-                            else:
-                                print(f"Warning: answer {a0} was not marked as checked.")
+                        op = val[0]
+                        if op not in ("+", "-"):
+                            print(f"Invalid operation: {op} in {val!r} should be - or +.")
+                            continue
+                        ref = val[1:]
+                        if ref == "*":
+                            for a in question.answers:
+                                self._update_answer(op, doc_id, q, a)
                         else:
-                            print(f"Invalid operation: {val!r}")
+                            a0 = ApparentAnswerNumber(int(ref))
+                            q, a = apparent2real(q0, a0, config, doc_id)
+                            # state = changes.get((q, a), answer.state)
+                            self._update_answer(op, doc_id, q, a)
                 except ValueError:
                     print("Invalid value.")
                     continue

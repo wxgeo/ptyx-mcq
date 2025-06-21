@@ -23,7 +23,7 @@ def no_display(monkeypatch):
 
 
 @pytest.fixture
-def patched_conflict_solver(monkeypatch, tmp_path, no_display):
+def patched_conflict_solver(monkeypatch, tmp_path, no_display) -> ConflictSolver:
     shutil.copytree(ASSETS_DIR / "no-conflict-v2", tmp_path / "no-conflict-v2")
     scan_data = ScanData(config_path=tmp_path / "no-conflict-v2")
     conflict_solver = ConflictSolver(scan_data)

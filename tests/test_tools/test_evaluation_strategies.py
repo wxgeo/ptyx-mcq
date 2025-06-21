@@ -103,7 +103,7 @@ def get_random_answers_data(
     all_answers = set(range(number_of_answers))
     correct_answers = rand_subset(all_answers, size=number_of_correct_answers)
     checked_answers = rand_subset(all_answers, size=number_of_checked_answers)
-    return AnswersData(checked=checked_answers, correct=correct_answers, all=all_answers)  # type: ignore
+    return AnswersData(checked=checked_answers, correct=correct_answers, all=all_answers)
 
 
 # noinspection PyTypeChecker

@@ -1,3 +1,4 @@
+from ptyx_mcq.scan.data import Document
 from ptyx_mcq.scan.data.conflict_gestion.data_check.cl_fix import (
     ClAnswersReviewer as AnswersReviewer,
 )
@@ -142,12 +143,17 @@ def test_check_review(patched_conflict_solver, custom_input) -> None:
     assert custom_input.is_empty(), custom_input.remaining()
 
 
-def test_check_review_navigation(patched_conflict_solver, custom_input) -> None:
-    """Test to change check status."""
+def _get_config_and_doc_with_conflicts(patched_conflict_solver) -> tuple[Configuration, Document]:
+    """
+    Get an example of a document with artificially generated conflicts for testing.
+
+    The document can be found at:
+    tests/assets/test-conflict-solver/no-conflict-v2/scan/output.pdf
+
+    Conflicts are generated only for pages 1, 2 and 4 (*not* 3).
+    """
     config = patched_conflict_solver.scan_data.config
-
     doc = patched_conflict_solver.scan_data.index[DocumentId(17)]
-
     # Modify some checkboxes states in the last document, to pretend something went wrong.
     modifications: dict[PageNum, dict[ApparentQuestionNumber, dict[ApparentAnswerNumber, CbxState]]] = {
         PageNum(1): {
@@ -172,7 +178,6 @@ def test_check_review_navigation(patched_conflict_solver, custom_input) -> None:
             },
         },
     }
-
     for page_num in modifications:
         for q_num in modifications[page_num]:
             for a_num, state in modifications[page_num][q_num].items():
@@ -182,6 +187,13 @@ def test_check_review_navigation(patched_conflict_solver, custom_input) -> None:
                 q, a = apparent2real(q_num, a_num, config, doc.doc_id)
                 doc.questions[q].answers[a]._initial_state = state
                 # Memorize the conversion between apparent and real questions and answers numbers:
+    return config, doc
+
+
+def test_check_review_navigation(patched_conflict_solver, custom_input) -> None:
+    """Test to change check status."""
+
+    config, doc = _get_config_and_doc_with_conflicts(patched_conflict_solver)
 
     # Test a scenario, simulating questions for the user in the terminal and the user's answers.
     # The variable `scenario` is the list of the successive expected questions and their corresponding answers.
@@ -249,6 +261,84 @@ def test_check_review_navigation(patched_conflict_solver, custom_input) -> None:
                 ApparentAnswerNumber(2): True,
                 ApparentAnswerNumber(5): True,
             },
+        },
+    }
+    patched_conflict_solver.run()
+    # There should be no remaining question.
+    assert custom_input.is_empty(), custom_input.remaining()
+
+    for page_num in final_states:
+        for q_num in final_states[page_num]:
+            for a_num, is_checked in final_states[page_num][q_num].items():
+                # Since the questions and answers were shuffled when generating the document,
+                # we have to retrieve the apparent question number (i.e. the one which appears on the document).
+                # The same holds for the answers.
+                q, a = apparent2real(q_num, a_num, config, doc.doc_id)
+                assert doc.questions[q].answers[a].checked == is_checked
+
+
+def test_check_review_navigation_enhanced_syntax(patched_conflict_solver, custom_input) -> None:
+    """Test that the +* and -* syntax are well supported when editing answers state."""
+    config, doc = _get_config_and_doc_with_conflicts(patched_conflict_solver)
+
+    # Test a scenario, simulating questions for the user in the terminal and the user's answers.
+    # The variable `scenario` is the list of the successive expected questions and their corresponding answers.
+    # noinspection PyUnboundLocalVariable
+    custom_input.set_scenario(
+        [
+            "Page 1",
+            (AnswersReviewer.ENTER_COMMAND, ""),
+            (AnswersReviewer.IS_CORRECT, "n"),
+            (AnswersReviewer.SELECT_QUESTION, "1"),
+            (AnswersReviewer.EDIT_ANSWERS, "+* -2"),
+            (AnswersReviewer.SELECT_QUESTION, "2"),
+            (AnswersReviewer.EDIT_ANSWERS, "+*"),
+            (AnswersReviewer.SELECT_QUESTION, "0"),
+            (AnswersReviewer.IS_CORRECT, "y"),
+            "Page 2",
+            (AnswersReviewer.ENTER_COMMAND, ""),
+            (AnswersReviewer.IS_CORRECT, "n"),
+            (AnswersReviewer.SELECT_QUESTION, "4"),
+            (AnswersReviewer.EDIT_ANSWERS, "+* -1 -6"),
+            (AnswersReviewer.SELECT_QUESTION, "5"),
+            (AnswersReviewer.EDIT_ANSWERS, "-* +1 +3"),
+            (AnswersReviewer.SELECT_QUESTION, "0"),
+            (AnswersReviewer.IS_CORRECT, "y"),
+            "Page 4",
+            (AnswersReviewer.ENTER_COMMAND, ""),
+            (AnswersReviewer.IS_CORRECT, "y"),
+        ],
+    )
+
+    final_states: dict[PageNum, dict[ApparentQuestionNumber, dict[ApparentAnswerNumber, bool]]] = {
+        PageNum(1): {
+            ApparentQuestionNumber(1): {
+                ApparentAnswerNumber(1): True,
+                ApparentAnswerNumber(2): False,
+                ApparentAnswerNumber(3): True,
+                ApparentAnswerNumber(4): True,
+                ApparentAnswerNumber(5): True,
+            },
+            ApparentQuestionNumber(2): {ApparentAnswerNumber(_): True for _ in range(1, 10)},
+        },
+        PageNum(2): {
+            ApparentQuestionNumber(4): {ApparentAnswerNumber(_): True for _ in range(1, 7)}
+            | {ApparentAnswerNumber(1): False, ApparentAnswerNumber(6): False},
+            ApparentQuestionNumber(5): {ApparentAnswerNumber(_): False for _ in range(1, 6)}
+            | {ApparentAnswerNumber(1): True, ApparentAnswerNumber(3): True},
+        },
+        PageNum(4): {
+            ApparentQuestionNumber(13): {ApparentAnswerNumber(_): False for _ in range(1, 9)}
+            | {ApparentAnswerNumber(2): True},
+            ApparentQuestionNumber(14): {
+                ApparentAnswerNumber(1): True,
+                ApparentAnswerNumber(2): True,
+                ApparentAnswerNumber(3): True,
+                ApparentAnswerNumber(4): True,
+                ApparentAnswerNumber(5): True,
+            },
+            ApparentQuestionNumber(15): {ApparentAnswerNumber(_): False for _ in range(1, 11)}
+            | {ApparentAnswerNumber(8): True},
         },
     }
     patched_conflict_solver.run()
