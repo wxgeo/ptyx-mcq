@@ -13,6 +13,12 @@ from ptyx_mcq.scan.score_management.evaluation_strategies import (
 if TYPE_CHECKING:
     from ptyx_mcq.scan.scan_doc import MCQPictureParser
 
+STATISTIC_INFO = {
+    "mean": "AVERAGE",
+    "min": "MIN",
+    "max": "MAX"
+}
+
 
 class ScoresManager:
     def __init__(self, mcq_parser: "MCQPictureParser"):
@@ -138,6 +144,11 @@ class ScoresManager:
                     self._convert(score, factor=100 / max_score) if max_score else 0,
                 ]
             )
+        writerow([])
+        # Append some statistics concerning the students' scores.
+        n = len(self.scores)
+        for legend, formula in STATISTIC_INFO.items():
+            writerow([legend.capitalize()] + [f"={formula}({col}2:{col}{n + 1})" for col in "BCD"])
 
     def generate_csv_file(self) -> None:
         scores_path = self.mcq_parser.scan_data.files.csv_scores
