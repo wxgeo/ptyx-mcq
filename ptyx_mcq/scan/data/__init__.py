@@ -6,6 +6,7 @@ from multiprocessing.pool import AsyncResult
 from pathlib import Path
 from typing import Iterator
 
+from ptyx.pretty_print import print_error, print_info
 
 from ptyx_mcq.scan.data.extract import PdfCollectionExtractor
 from ptyx_mcq.scan.data.paths_manager import PathsHandler, DirsPaths, FilesPaths
@@ -167,11 +168,11 @@ class ScanData:
                 )._pictures.append(
                     Picture(
                         page=page,
-                        path=self.dirs.cache / f"{pdf_hash}/{pic_num}.webp",
+                        path=(pic_path := self.dirs.cache / f"{pdf_hash}/{pic_num}.webp"),
                         original_pdf=self.input_pdf_extractor.hash2pdf[pdf_hash],
                         calibration_data=calibration_data,
                         identification_data=identification_data,
-                        questions=self._generate_questions_tree(doc_id, page_num, calibration_data),
+                        questions=self._generate_questions_tree(doc_id, page_num, calibration_data, pic_path),
                     )
                 )
         # Sort by document id and page number.
@@ -180,7 +181,7 @@ class ScanData:
             doc.pages = {page_num: doc.pages[page_num] for page_num in sorted(doc.pages)}
 
     def _generate_questions_tree(
-        self, doc_id: DocumentId, page_num: PageNum, calibration_data: CalibrationData
+        self, doc_id: DocumentId, page_num: PageNum, calibration_data: CalibrationData, pic_path: Path
     ) -> dict[OriginalQuestionNumber, Question]:
         """
         Generate the tree of all the questions and answers of the given document, using configuration file.
@@ -189,7 +190,15 @@ class ScanData:
         """
         answers_per_question: dict[OriginalQuestionNumber, dict[OriginalAnswerNumber, Answer]] = {}
         # The last page of a document may not contain any question at all, so the `.get(page_num, {})`.
-        latex_positions = self.config.boxes[doc_id].get(page_num, {})
+        try:
+            latex_positions = self.config.boxes[doc_id].get(page_num, {})
+        except KeyError as e:
+            print_info(f"Valid document IDs: {', '.join(str(_id) for _id in self.config.boxes)}")
+            print_error(f"Unknown document ID: {doc_id} (file: {pic_path})")
+            raise KeyError(
+                f"Unknown document ID: {doc_id}\n"
+                "Hint: are you sure you didn't print and scan another document (maybe a previous version)?"
+            )
         for q, a in sorted(latex_positions):
             x, y = latex_positions[(q, a)]
             position = calibration_data.xy2ij(x, y)
