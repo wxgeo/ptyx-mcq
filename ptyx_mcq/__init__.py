@@ -59,7 +59,7 @@ This is an example of a source file, to be compiled by ptyx-mcq to a pdf file:
 
 One may include some PTYX code of course.
 
-    """
+"""
 
 from importlib import metadata
 from typing import TYPE_CHECKING

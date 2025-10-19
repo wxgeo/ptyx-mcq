@@ -1,6 +1,15 @@
 import csv
 import math
+from collections import Counter
 from typing import TYPE_CHECKING, Callable
+
+from openpyxl import Workbook
+from openpyxl.worksheet.worksheet import Worksheet
+from openpyxl.worksheet.table import Table, TableStyleInfo
+from openpyxl.utils import get_column_letter
+from openpyxl.chart import Reference, LineChart
+from openpyxl.chart.layout import Layout, ManualLayout
+from openpyxl.drawing.line import LineProperties
 
 from ptyx.pretty_print import print_info, term_color, TermColors, red, green, yellow, bold
 
@@ -13,11 +22,7 @@ from ptyx_mcq.scan.score_management.evaluation_strategies import (
 if TYPE_CHECKING:
     from ptyx_mcq.scan.scan_doc import MCQPictureParser
 
-STATISTIC_INFO = {
-    "mean": "AVERAGE",
-    "min": "MIN",
-    "max": "MAX"
-}
+STATISTIC_INFO = {"mean": "AVERAGE", "min": "MIN", "max": "MAX"}
 
 
 class ScoresManager:
@@ -132,6 +137,7 @@ class ScoresManager:
         print()
 
     def _write_scores(self, writerow: Callable) -> None:
+        # max_score is the maximal theoretical score, not the highest actually obtained.
         max_score = self.max_score
         writerow(("Name", f"Score/{max_score:g}", "Score/20", "Score/100"))
         for name, score in sorted(self.scores.items()):
@@ -150,6 +156,62 @@ class ScoresManager:
         for legend, formula in STATISTIC_INFO.items():
             writerow([legend.capitalize()] + [f"={formula}({col}2:{col}{n + 1})" for col in "BCD"])
 
+    def _append_chart(self, wb: Workbook) -> None:
+        """Append a chart representing the scores' distribution as a new sheet."""
+        ws = wb.create_sheet(title="Scores Distribution")
+
+        # Count how many times each score appears
+        score_counts = Counter(
+            (round(score) for score in self.scores.values() if isinstance(score, (int, float)))
+        )
+
+        # Prepare continuous range 0–20 (even if some scores are missing)
+        ws.append(["Score", "Count"])
+        for score in range(21):
+            ws.append([score, score_counts.get(score, 0)])
+
+        # Data range for chart
+        n = ws.max_row
+        counts_ref = Reference(ws, min_col=2, min_row=2, max_row=n)  # counts
+        scores_ref = Reference(ws, min_col=1, min_row=2, max_row=n)  # scores
+
+        # Create a line chart
+        chart = LineChart()
+        chart.title = "Scores Distribution"
+        chart.x_axis.title = "Score"
+        chart.y_axis.title = "Number of Students"
+        chart.style = 13
+
+        # Add data and categories
+        chart.add_data(counts_ref, titles_from_data=False)
+        chart.set_categories(scores_ref)
+        # chart.xvalues = scores_ref
+
+        chart.style = 2
+        chart.legend.overlay = False
+        chart.layout = Layout()
+        chart.x_axis.delete = False
+        chart.y_axis.delete = False
+        chart.width = 21
+        chart.height = 9
+        chart.layout = Layout(
+            manualLayout=ManualLayout(x=0.005, y=0.05, w=0.75, h=0.8, xMode="factor", yMode="factor")
+        )
+        chart.layout.layoutTarget = "inner"
+        chart.legend = None
+        chart.series[0].smooth = False
+        # Configure axes
+        chart.x_axis.scaling.min = 1
+        chart.x_axis.scaling.max = 21
+
+        # Set line color to solid red
+        chart.series[0].graphicalProperties.line = LineProperties(
+            solidFill="FF0000",  # RGB hex code for red
+        )
+
+        # Add the chart to the worksheet
+        ws.add_chart(chart, "E2")
+
     def generate_csv_file(self) -> None:
         scores_path = self.mcq_parser.scan_data.files.csv_scores
         with open(scores_path, "w", newline="") as csvfile:
@@ -157,11 +219,6 @@ class ScoresManager:
         print_info(f'Results stored in "{scores_path}"')
 
     def generate_xlsx_file(self) -> None:
-        from openpyxl import Workbook
-        from openpyxl.worksheet.worksheet import Worksheet
-        from openpyxl.worksheet.table import Table, TableStyleInfo
-        from openpyxl.utils import get_column_letter
-
         wb = Workbook()
         # grab the active worksheet
         sheet: Worksheet = wb.active  # type:ignore
@@ -180,4 +237,5 @@ class ScoresManager:
         # noinspection PyTypeChecker
         tab.tableStyleInfo = style
         sheet.column_dimensions["A"].width = 1.23 * max(len(name) for name in self.scores)
+        self._append_chart(wb)
         wb.save(self.mcq_parser.scan_data.files.xlsx_scores)
