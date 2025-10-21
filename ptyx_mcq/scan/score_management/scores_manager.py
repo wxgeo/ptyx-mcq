@@ -150,11 +150,6 @@ class ScoresManager:
                     self._convert(score, factor=100 / max_score) if max_score else 0,
                 ]
             )
-        writerow([])
-        # Append some statistics concerning the students' scores.
-        n = len(self.scores)
-        for legend, formula in STATISTIC_INFO.items():
-            writerow([legend.capitalize()] + [f"={formula}({col}2:{col}{n + 1})" for col in "BCD"])
 
     def _append_chart(self, wb: Workbook) -> None:
         """Append a chart representing the scores' distribution as a new sheet."""
@@ -188,7 +183,7 @@ class ScoresManager:
         # chart.xvalues = scores_ref
 
         chart.style = 2
-        chart.legend.overlay = False
+        # chart.legend.overlay = False
         chart.layout = Layout()
         chart.x_axis.delete = False
         chart.y_axis.delete = False
@@ -197,7 +192,7 @@ class ScoresManager:
         chart.layout = Layout(
             manualLayout=ManualLayout(x=0.005, y=0.05, w=0.75, h=0.8, xMode="factor", yMode="factor")
         )
-        chart.layout.layoutTarget = "inner"
+        chart.layout.layoutTarget = "inner"  # type: ignore
         chart.legend = None
         chart.series[0].smooth = False
         # Configure axes
@@ -237,5 +232,11 @@ class ScoresManager:
         # noinspection PyTypeChecker
         tab.tableStyleInfo = style
         sheet.column_dimensions["A"].width = 1.23 * max(len(name) for name in self.scores)
+        sheet.append([])
+        # Append some statistics concerning the students' scores.
+        n = len(self.scores)
+        for legend, formula in STATISTIC_INFO.items():
+            sheet.append([legend.capitalize()] + [f"={formula}({col}2:{col}{n + 1})" for col in "BCD"])
+
         self._append_chart(wb)
         wb.save(self.mcq_parser.scan_data.files.xlsx_scores)

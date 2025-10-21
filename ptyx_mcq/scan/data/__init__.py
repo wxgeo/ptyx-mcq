@@ -192,7 +192,7 @@ class ScanData:
         # The last page of a document may not contain any question at all, so the `.get(page_num, {})`.
         try:
             latex_positions = self.config.boxes[doc_id].get(page_num, {})
-        except KeyError as e:
+        except KeyError:
             print_info(f"Valid document IDs: {', '.join(str(_id) for _id in self.config.boxes)}")
             print_error(f"Unknown document ID: {doc_id} (file: {pic_path})")
             raise KeyError(
