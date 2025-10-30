@@ -1,6 +1,6 @@
 [project]
 name = "ptyx-mcq"
-version = "30.0.0"
+version = "31.0.0"
 description = "pTyX-MCQ is a generator/scanner of MCQ, based on pTyX."
 authors = [{ name = "Nicolas Pourcelot", email = "nicolas.pourcelot@gmail.com" }]
 requires-python = ">=3.10"
