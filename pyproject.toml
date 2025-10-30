@@ -1,49 +1,67 @@
-[tool.poetry]
+[project]
 name = "ptyx-mcq"
 version = "30.0.0"
 description = "pTyX-MCQ is a generator/scanner of MCQ, based on pTyX."
-authors = ["Nicolas Pourcelot <nicolas.pourcelot@gmail.com>"]
-repository = "https://github.com/wxgeo/ptyx"
-license = "GPL-3.0-or-later"
+authors = [{ name = "Nicolas Pourcelot", email = "nicolas.pourcelot@gmail.com" }]
+requires-python = ">=3.10"
 readme = "README.md"
-keywords = ["python", "tikz", "latex", "pdf", "exam", "mcq", "student"]
+license = "GPL-3.0-or-later"
+keywords = [
+    "python",
+    "tikz",
+    "latex",
+    "pdf",
+    "exam",
+    "mcq",
+    "student",
+]
+dependencies = [
+    "Pillow>=9.2",
+    "ptyx>=29.2",
+    "smallgraphlib>=1.0.0",
+    "platformdirs>=4,<5",
+    "openpyxl>=3.1.2",
+    "argcomplete>=3.1.2,<4",
+    "pymupdf>=1.25.1,<2",
+]
 
-[tool.poetry.dependencies]
-python = "^3.10"
-Pillow = ">=9.2"
-ptyx = ">=29.2"
-smallgraphlib = ">=1.0.0"
-platformdirs = "^4"
-openpyxl = ">=3.1.2"
-argcomplete = "^3.1.2"
-pymupdf = "^1.25.1"
+[project.urls]
+Repository = "https://github.com/wxgeo/ptyx"
 
+[project.scripts]
+mcq = "ptyx_mcq.cli:main"
+mcq-dev = "ptyx_mcq.dev_cli:main"
 
-[tool.poetry.group.dev.dependencies]
-types-openpyxl = "^3.1.0.12"
-types-Pillow = "^9.0.20"
-pytest = "^7"
-mypy = "^1.0"
-black = "^24.10.0"
-tox = "^4.14"
-sphinx-autodoc-typehints = "^1.18.3"
-sphinx-rtd-theme = "^1.0.0"#
-myst-parser = "^1.0.0"
-# Version 7.29+ are buggy !
-python-semantic-release = "7.28.1"
-ptyx = {path = "../ptyx", develop = true}
-ruff = "^0.9.1"
-pytest-xdist = "^3.5.0"
-pytest-profiling = "^1.8.1"
-
-
-[tool.poetry.scripts]
-mcq = 'ptyx_mcq.cli:main'
-mcq-dev = 'ptyx_mcq.dev_cli:main'
-
-[tool.poetry.plugins."ptyx.extensions"]
+[project.entry-points."ptyx.extensions"]
 mcq = "ptyx_mcq"
 
+[dependency-groups]
+dev = [
+    "types-openpyxl>=3.1.0.12,<4",
+    "types-Pillow>=9.0.20,<10",
+    "pytest>=7,<8",
+    "mypy~=1.0",
+    "black>=24.10.0,<25",
+    "tox~=4.14",
+    "sphinx-autodoc-typehints>=1.18.3,<2",
+    "sphinx-rtd-theme>=1.0.0,<2",
+    "myst-parser>=1.0.0,<2",
+    "python-semantic-release==7.28.1",
+    "ptyx",
+    "ruff>=0.9.1,<0.10",
+    "pytest-xdist>=3.5.0,<4",
+    "pytest-profiling>=1.8.1,<2",
+    "rust-just>=1.43.0",
+]
+
+[tool.uv]
+
+[tool.uv.sources]
+ptyx = { path = "../ptyx", editable = true }
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
 
 [tool.pytest.ini_options]
 testpaths = [
@@ -71,10 +89,6 @@ line-length = 110
 
 [tool.ruff]
 line-length = 110
-
-[build-system]
-requires = ["poetry-core>=1.0.0"]
-build-backend = "poetry.core.masonry.api"
 
 [tool.tox]
 legacy_tox_ini = """
