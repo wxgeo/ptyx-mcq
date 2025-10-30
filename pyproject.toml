@@ -57,7 +57,7 @@ dev = [
 [tool.uv]
 
 [tool.uv.sources]
-ptyx = { path = "../ptyx", editable = true }
+ptyx = { workspace = true, editable = true }
 
 [build-system]
 requires = ["hatchling"]
