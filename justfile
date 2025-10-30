@@ -25,6 +25,10 @@ pytest:
     
 test: ruff mypy pytest
 
+push:
+    git push
+    git push --tags    
+
 slow-test:
 	{{uv}} run pytest -n auto --runslow tests/
 
@@ -37,10 +41,10 @@ version:
 update-version:
     {{uv}} run semantic-release version
 	
-build: update-version
+build-new-version: update-version
     {{uv}} build
     
-publish: build
+publish: build-new-version
     {{uv}} publish
 	
 fix:
