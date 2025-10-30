@@ -12,11 +12,18 @@ sync:
 doc:
     {{uv}} run make -C doc autodoc
     {{uv}} run make -C doc html
-    
-test:
+
+ruff:
     {{uv}} run ruff check ptyx_mcq tests
+
+mypy: 
     {{uv}} run mypy ptyx_mcq tests
+
+pytest:
     {{uv}} run pytest -n auto tests
+    
+test: ruff mypy pytest
+
 
 slow-test:
 	{{uv}} run pytest -n auto --runslow tests/
