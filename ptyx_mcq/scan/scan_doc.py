@@ -143,7 +143,7 @@ class MCQPictureParser:
 
         if number_of_processes <= 0:
             cores = os.cpu_count()
-            number_of_processes = 1 if cores is None else min(cores - 1, CPU_PHYSICAL_CORES)
+            number_of_processes = 1 if cores is None else min(cores - 1, CPU_PHYSICAL_CORES)  # type: ignore
 
         # TODO: number_of_processes=number_of_processes
         # Test if the PDF files of the input directory have changed and

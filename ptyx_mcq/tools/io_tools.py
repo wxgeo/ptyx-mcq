@@ -1,9 +1,9 @@
 import sys
 import traceback
 from pathlib import Path
+from types import TracebackType
 from typing import Type, Callable
 
-from mypy.ipc import TracebackType
 from ptyx.pretty_print import print_error
 
 
