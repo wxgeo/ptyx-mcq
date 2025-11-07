@@ -1,11 +1,10 @@
 import shutil
 from pathlib import Path
 
-from platformdirs import PlatformDirs
 from ptyx.pretty_print import print_error, print_success, term_color, TermColors
 
 from ptyx_mcq.tools.io_tools import FatalError
-from ptyx_mcq.parameters import DEFAULT_TEMPLATE_NAME, DEFAULT_TEMPLATE_FULLPATH
+from ptyx_mcq.parameters import DEFAULT_TEMPLATE_NAME, DEFAULT_TEMPLATE_FULLPATH, APP_CONFIG_DIR
 
 
 def create_template(name: str = "default") -> None:
@@ -57,4 +56,4 @@ def get_template_path(template_name: str = "") -> Path:
 
 def get_user_templates_path():
     """Return the path of the directory where the user's templates are stored."""
-    return PlatformDirs().user_config_path / "ptyx-mcq/templates"
+    return APP_CONFIG_DIR / "templates"

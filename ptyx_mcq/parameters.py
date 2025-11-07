@@ -1,5 +1,7 @@
 from pathlib import Path
 
+from platformdirs import PlatformDirs
+
 # The root of the package, i.e. the `ptyx_mcq` directory.
 PACKAGE_ROOT = Path(__file__).resolve().parent
 
@@ -7,6 +9,9 @@ PACKAGE_ROOT = Path(__file__).resolve().parent
 DEFAULT_TEMPLATE_DIR = "assets/templates"
 DEFAULT_TEMPLATE_NAME = "original"
 DEFAULT_TEMPLATE_FULLPATH = PACKAGE_ROOT / DEFAULT_TEMPLATE_DIR / DEFAULT_TEMPLATE_NAME
+
+# The configuration directory of the application.
+APP_CONFIG_DIR = PlatformDirs().user_config_path / "ptyx-mcq"
 
 CACHE_DIR = ".cache"
 FIX_DIR = ".fix"
