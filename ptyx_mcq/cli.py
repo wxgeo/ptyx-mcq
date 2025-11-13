@@ -295,6 +295,9 @@ def create_mcq_arg_parser() -> ArgumentParser:
     # ------------------------
     # create the parser for the "fix doc" command
     fix_doc_parser = add_fix_parser("doc", help="Resolve conflicts concerning the students answers.")
+    fix_doc_parser.add_argument(  # type: ignore[attr-defined]
+        "path", nargs="?", metavar="PATH", type=Path, default="."
+    ).completer = FilesCompleter("ptyx")
     fix_doc_parser.add_argument(
         "-d",
         "--doc",
@@ -329,13 +332,16 @@ def create_mcq_arg_parser() -> ArgumentParser:
     # ------------------------
     # create the parser for the "fix name" command
     fix_name_parser = add_fix_parser("name", help="Resolve conflicts concerning the students name.")
+    fix_name_parser.add_argument(  # type: ignore[attr-defined]
+        "path", nargs="?", metavar="PATH", type=Path, default="."
+    ).completer = FilesCompleter("ptyx")
     fix_name_parser.add_argument(
         "--doc",
         metavar="DOC",
         type=int,
         help="The identifier of the document.",
     )  # TODO: add a completer ?
-    fix_doc_parser.set_defaults(handler=Handlers.fix_name)
+    fix_name_parser.set_defaults(handler=Handlers.fix_name)
 
     # ------------------------------------------
     #     $ mcq update

@@ -1,7 +1,10 @@
+from pathlib import Path
+
 from ptyx_mcq.tools.config_parser import DocumentId, StudentName, StudentId, PageNum
 
 
 def fix_doc(
+    path: Path,
     doc: DocumentId | None = None,
     page: PageNum | None = None,
     student_name: StudentName | None = None,
@@ -11,6 +14,6 @@ def fix_doc(
     raise NotImplementedError
 
 
-def fix_name(doc: DocumentId) -> None:
+def fix_name(path: Path, doc: DocumentId) -> None:
     """Launch a verification of the student's name and identifier for the specified document."""
     raise NotImplementedError
