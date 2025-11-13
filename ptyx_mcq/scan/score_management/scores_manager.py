@@ -6,10 +6,10 @@ from typing import TYPE_CHECKING, Callable
 from openpyxl import Workbook
 from openpyxl.worksheet.worksheet import Worksheet
 from openpyxl.worksheet.table import Table, TableStyleInfo
-from openpyxl.utils import get_column_letter
-from openpyxl.chart import Reference, LineChart
-from openpyxl.chart.layout import Layout, ManualLayout
-from openpyxl.drawing.line import LineProperties
+from openpyxl.utils import get_column_letter  # type: ignore
+from openpyxl.chart import Reference, LineChart  # type: ignore
+from openpyxl.chart.layout import Layout, ManualLayout  # type: ignore
+from openpyxl.drawing.line import LineProperties  # type: ignore
 
 from ptyx.pretty_print import print_info, term_color, TermColors, red, green, yellow, bold
 
@@ -18,6 +18,7 @@ from ptyx_mcq.scan.score_management.evaluation_strategies import (
     ScoreData,
     EvaluationStrategies,
 )
+from ptyx_mcq.tools.config_parser import StudentId, StudentName
 
 if TYPE_CHECKING:
     from ptyx_mcq.scan.scan_doc import MCQPictureParser
@@ -28,8 +29,8 @@ STATISTIC_INFO = {"mean": "AVERAGE", "min": "MIN", "max": "MAX"}
 class ScoresManager:
     def __init__(self, mcq_parser: "MCQPictureParser"):
         self.mcq_parser = mcq_parser
-        self.scores: dict[str, float | str] = {}
-        self.results: dict[str, float] = {}
+        self.scores: dict[tuple[StudentId, StudentName], float | str] = {}
+        self.results: dict[tuple[StudentId, StudentName], float] = {}
 
     @property
     def max_score(self):
@@ -103,9 +104,14 @@ class ScoresManager:
                 question.score = earn
 
         default = self.mcq_parser.config.default_score
-        self.scores = {name: default for name in self.mcq_parser.config.students_ids.values()}
+        self.scores = {
+            (student_id, student_name): default
+            for student_id, student_name in self.mcq_parser.config.students_ids.items()
+        }
         self.results = {
-            doc.student_name: doc.score for doc in self.mcq_parser.scan_data if doc.score is not None
+            (doc.student_id, doc.student_name): doc.score
+            for doc in self.mcq_parser.scan_data
+            if doc.score is not None
         }
         self.scores.update(self.results)
 
@@ -120,14 +126,14 @@ class ScoresManager:
         max_score: float = -math.inf
         print()
         print(term_color(f"SCORES (/{self.max_score:g}):", color=TermColors.CYAN))
-        for name, score in sorted(self.scores.items()):
+        for (student_id, student_name), score in sorted(self.scores.items()):
             score = self._convert(score)
             if isinstance(score, (float, int)):
                 if score < min_score:
                     min_score = score
                 if score > max_score:
                     max_score = score
-            print(f" - {name}: {self._convert(score)}")
+            print(f" - {student_name}: {self._convert(score)}")
         if self.results:
             mean = round(sum(self.results.values()) / len(self.results), 2)
             print(yellow("Mean: " + bold(f"{mean:g}") + f"/{self.max_score:g}"))
@@ -139,12 +145,13 @@ class ScoresManager:
     def _write_scores(self, writerow: Callable) -> None:
         # max_score is the maximal theoretical score, not the highest actually obtained.
         max_score = self.max_score
-        writerow(("Name", f"Score/{max_score:g}", "Score/20", "Score/100"))
-        for name, score in sorted(self.scores.items()):
+        writerow(("ID", "Name", f"Score/{max_score:g}", "Score/20", "Score/100"))
+        for (student_id, student_name), score in sorted(self.scores.items()):
             # TODO: Add ability to change the notation system.
             writerow(
                 [
-                    name,
+                    student_id,
+                    student_name,
                     self._convert(score),
                     self._convert(score, factor=20 / max_score) if max_score else 0,
                     self._convert(score, factor=100 / max_score) if max_score else 0,
@@ -160,9 +167,9 @@ class ScoresManager:
             (round(score) for score in self.scores.values() if isinstance(score, (int, float)))
         )
 
-        # Prepare continuous range 0–20 (even if some scores are missing)
+        # Prepare continuous range 0–<max-score> (even if some scores are missing)
         ws.append(["Score", "Count"])
-        for score in range(21):
+        for score in range(math.ceil(self.max_score) + 1):
             ws.append([score, score_counts.get(score, 0)])
 
         # Data range for chart
@@ -192,12 +199,12 @@ class ScoresManager:
         chart.layout = Layout(
             manualLayout=ManualLayout(x=0.005, y=0.05, w=0.75, h=0.8, xMode="factor", yMode="factor")
         )
-        chart.layout.layoutTarget = "inner"  # type: ignore
+        chart.layout.layoutTarget = "inner"
         chart.legend = None
         chart.series[0].smooth = False
         # Configure axes
         chart.x_axis.scaling.min = 1
-        chart.x_axis.scaling.max = 21
+        chart.x_axis.scaling.max = self.max_score + 1
 
         # Set line color to solid red
         chart.series[0].graphicalProperties.line = LineProperties(
@@ -216,7 +223,7 @@ class ScoresManager:
     def generate_xlsx_file(self) -> None:
         wb = Workbook()
         # grab the active worksheet
-        sheet: Worksheet = wb.active  # type:ignore
+        sheet: Worksheet = wb.active
         sheet.title = "Resume"
         self._write_scores(writerow=sheet.append)
         tab = Table(displayName="Table1", ref=f"A1:{get_column_letter(sheet.max_column)}{sheet.max_row}")
@@ -231,12 +238,13 @@ class ScoresManager:
         )
         # noinspection PyTypeChecker
         tab.tableStyleInfo = style
-        sheet.column_dimensions["A"].width = 1.23 * max(len(name) for name in self.scores)
+        sheet.column_dimensions["A"].width = 1.23 * max(len(student_id) for student_id, _ in self.scores)
+        sheet.column_dimensions["B"].width = 1.23 * max(len(student_name) for _, student_name in self.scores)
         sheet.append([])
         # Append some statistics concerning the students' scores.
         n = len(self.scores)
         for legend, formula in STATISTIC_INFO.items():
-            sheet.append([legend.capitalize()] + [f"={formula}({col}2:{col}{n + 1})" for col in "BCD"])
+            sheet.append([legend.capitalize(), ""] + [f"={formula}({col}2:{col}{n + 1})" for col in "CDE"])
 
         self._append_chart(wb)
         wb.save(self.mcq_parser.scan_data.files.xlsx_scores)

@@ -15,6 +15,8 @@ from ptyx_mcq.tools.config_parser import (
     apparent2real,
     ApparentQuestionNumber,
     ApparentAnswerNumber,
+    StudentId,
+    StudentName,
 )
 from tests.test_scan.test_conflict_solver import ASSETS_DIR
 
@@ -71,7 +73,9 @@ def test_empty_document(no_display, tmp_path, custom_input):
     copy = tmp_path / "unfilled-doc-test"
     shutil.copytree(origin, copy)
     mcq_parser = scan(copy)
-    target = pytest.approx({"John": 8.833333333333332, "Edward": 9.455952380952379})
+    target = pytest.approx(
+        {("22301935", "John"): 8.833333333333332, ("22301417", "Edward"): 9.455952380952379}
+    )
     assert mcq_parser.scores_manager.scores == target
     assert mcq_parser.scores_manager.results == target
     # There should be no remaining question.
@@ -83,7 +87,7 @@ def test_empty_document(no_display, tmp_path, custom_input):
     # There should be no remaining question.
     assert custom_input.is_empty(), f"List of remaining questions/answers: {custom_input.remaining()}"
     # No change in results of course.
-    target = pytest.approx({"John": 8.83333333, "Edward": 9.45595238})
+    target = pytest.approx({("22301935", "John"): 8.83333333, ("22301417", "Edward"): 9.45595238})
     assert mcq_parser.scores_manager.scores == target
     assert mcq_parser.scores_manager.results == target
 
@@ -96,7 +100,7 @@ def test_identical_duplicate_documents(no_display, tmp_path, custom_input):
     (copy / "scan/flat-scan-conflict.pdf").unlink()
     shutil.copy(copy / "scan/flat-scan.pdf", copy / "scan/flat-scan-bis.pdf")
     mcq_parser = scan(copy)
-    target = pytest.approx({"John": 8.83333333, "Edward": 9.45595238})
+    target = pytest.approx({("22301935", "John"): 8.83333333, ("22301417", "Edward"): 9.45595238})
     assert mcq_parser.scores_manager.scores == target
     assert mcq_parser.scores_manager.results == target
 
@@ -173,14 +177,16 @@ def duplicate_documents_test_base(tmp_path, custom_input, chosen_version: Litera
     if checked_version_chosen:
         # Score for John changed (8.83 -> 8.63).
         scores = {
-            "John": 8.63333333,  # Don't change score! Invalid John score indicates a bug.
-            "Edward": 9.45595238,
+            # Don't change John's score! An invalid John's score indicates a bug.
+            (StudentId("22301935"), StudentName("John")): 8.63333333,
+            (StudentId("22301417"), StudentName("Edward")): 9.45595238,
         }
 
     else:
         scores = {
-            "John": 8.83333333,  # Don't change score! Invalid John score indicates a bug.
-            "Edward": 9.45595238,
+            # Don't change John's score! An invalid John's score indicates a bug.
+            (StudentId("22301935"), StudentName("John")): 8.83333333,
+            (StudentId("22301417"), StudentName("Edward")): 9.45595238,
         }
 
     for student in scores:

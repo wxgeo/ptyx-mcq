@@ -123,17 +123,17 @@ def write_students_id_to_csv(path: Path, students: dict[StudentId, StudentName])
     return csv_path
 
 
-def read_students_scores(path: Path) -> dict[StudentName, str]:
-    students: dict[StudentName, str] = {}
+def read_students_scores(path: Path) -> dict[tuple[StudentId, StudentName], str]:
+    students: dict[tuple[StudentId, StudentName], str] = {}
     # TODO : store scores outside of .scan folder, in a RESULTS folder !
     with open(score_path := path / "out/scores.csv") as csvfile:
         reader = csv.reader(csvfile)
         for row in reader:
             match row:
-                case ["Name", _, "Score/20", "Score/100"]:
+                case ["ID", "Name", _, "Score/20", "Score/100"]:
                     pass  # Header row
-                case [name, score, _, _]:
-                    students[StudentName(name)] = score
+                case [id_, name, score, _, _]:
+                    students[StudentId(id_), StudentName(name)] = score
                 case _:
                     raise ValueError(f"Invalid format in '{score_path}': {row!r}.")
     return students
@@ -230,10 +230,10 @@ def test_cli(tmp_path: Path) -> None:
     main(["scan", str(path)])
 
     # TODO : store scores outside of .scan folder, in a RESULTS folder !
-    students_scores: dict[StudentName, str] = read_students_scores(path)
+    students_scores: dict[tuple[StudentId, StudentName], str] = read_students_scores(path)
     for score in students_scores.values():
         assert abs(float(score) - 4.0) < 1e-10, repr(score)  # Maximal score
-    assert set(students_scores) == set(STUDENTS.values()), repr(students_scores)
+    assert set(students_scores) == set(STUDENTS.items()), repr(students_scores)
 
     assert (path / "new.scores.xlsx").exists()
     assert (output_pdf_path := path / "out/pdf").exists()
@@ -241,7 +241,7 @@ def test_cli(tmp_path: Path) -> None:
         assert (output_pdf_path / f"{student_name}-{student_id}-{doc_id}.pdf").is_file()
 
     # ------------------------
-    # Test `mcq fix`
+    # Test `mcq update`
     # ------------------------
     STUDENTS[StudentId("12345678")] = StudentName(new_student_name := "Julien Durand")
     csv_path = write_students_id_to_csv(tmp_path, STUDENTS)
@@ -265,17 +265,19 @@ def test_cli(tmp_path: Path) -> None:
     students_scores = read_students_scores(path)
     # Names are not updated yet, since they are stored in `.scandata` cache files.
     # Updating names requires clearing cache
-    for student in students_scores:
-        if student != new_student_name:
-            assert float(students_scores[student]) < float(old_students_scores[student])
+    for student_id, student_name in students_scores:
+        if student_name != new_student_name:
+            assert float(students_scores[student_id, student_name]) < float(
+                old_students_scores[student_id, student_name]
+            )
         else:
             # TODO: add configuration option for default value.
-            assert students_scores[student] == "ABI"
+            assert students_scores[student_id, student_name] == "ABI"
     # Names are  Updating names requires clearing cache,
     # through `--reset` option.
     main(["scan", "--reset", str(path)])
     students_scores = read_students_scores(path)
-    assert set(students_scores) == set(STUDENTS.values()), repr(students_scores)
+    assert set(students_scores) == set(STUDENTS.items()), repr(students_scores)
 
     # ---------------------
     # Test `mcq doc`
@@ -303,6 +305,13 @@ def test_cli(tmp_path: Path) -> None:
         assert not (pth := path / path_end).exists(), pth
     for path_end in paths_to_be_kept:
         assert (pth := path / path_end).exists(), pth
+
+    # --------------
+    # Test `mcq fix`
+    # --------------
+
+    # todo:
+    #  main(["fix", "doc"])
 
 
 def test_make_for_review(tmp_path):
