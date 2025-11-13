@@ -163,7 +163,8 @@ class ImageViewer:
 
         color = rectangle.color
         thickness = rectangle.thickness
-        pixels: "PixelAccess" = self.image.load()
+        pixels: "PixelAccess | None" = self.image.load()
+        assert pixels is not None
 
         if rectangle.fill:
             for i in range(i1, i2 + 1):
@@ -185,6 +186,7 @@ class ImageViewer:
 
     def _draw_line_in_vertical_mode(self, i1: Row, i2: Row, j1: Col, j2: Col, color: RGB = Color.red):
         pixels = self.image.load()
+        assert pixels is not None
         if i2 == i1:
             raise ValueError("Horizontal line can't be drawn in vertical mode!")
         # Affine function : i -> j = a * i + b
@@ -195,6 +197,7 @@ class ImageViewer:
 
     def _draw_line_in_horizontal_mode(self, i1: Row, i2: Row, j1: Col, j2: Col, color: RGB = Color.red):
         pixels = self.image.load()
+        assert pixels is not None
         if j2 == j1:
             raise ValueError("Vertical line can't be drawn in horizontal mode!")
         # Affine function : j -> i = a * j + b

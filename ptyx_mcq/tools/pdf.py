@@ -32,7 +32,7 @@ def rasterize_pdf_page(pdf_path: Path | str, page_number: int, dpi: int = 96) ->
 def _as_same_size_images(img1, img2) -> tuple[Image.Image, Image.Image]:
     """Resize both images to the same dimensions, using the maximal width and height of the 2 images."""
     size = max(img1.width, img2.width), max(img1.height, img2.height)
-    return img1.resize(size, Image.BICUBIC), img2.resize(size, Image.BICUBIC)
+    return img1.resize(size, Image.Resampling.BICUBIC), img2.resize(size, Image.Resampling.BICUBIC)
 
 
 def _compare_images(img1: Image.Image, img2: Image.Image, tolerance: int = 10) -> bool:

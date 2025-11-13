@@ -100,7 +100,11 @@ class MCQPictureParser:
         amend_all(self.scan_data)
 
     def scan_single_picture(self, short_path: str | Path) -> None:
-        """This is used for debugging (it allows to test one page specifically)."""
+        """
+        This is used for debugging (it allows to test one page specifically).
+
+        Expected `short_path` format: "<pdf-hash>/<pic_num>.webp".
+        """
         # TODO: add tests for this.
         short_path = str(short_path)
         if short_path.endswith(ext := f".{IMAGE_FORMAT}"):
