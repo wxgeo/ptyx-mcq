@@ -389,6 +389,20 @@ def test_multiple_versions_bad(tmp_path):
         )
 
 
+def test_latex_packages(tmp_path):
+    """
+    Test ability to load
+    """
+    copy = copy_test("with-exercises/custom_latex_packages", tmp_path)
+    c = load_ptyx_file(copy / "custom_packages.ptyx")
+    c.generate_syntax_tree()
+    latex = c.get_latex()
+    for package in ("amssymb", "amsmath", "fontawesome5", "cancel", "framed"):
+        assert fr"\usepackage{{{package}}}" in latex
+    assert r"\usepackage[table]{xcolor}" in latex
+    assert r"\usepackage[most]{tcolorbox}" in latex
+
+
 # @atexit.register
 # def cleanup():
 #     files_found = False

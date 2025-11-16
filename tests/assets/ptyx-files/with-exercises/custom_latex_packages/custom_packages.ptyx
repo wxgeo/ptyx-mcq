@@ -1,0 +1,32 @@
+#LOAD{mcq}
+# The following number is used to initialize the pseudorandom numbers generator.
+# Feel free to change it.
+#SEED{124456}
+
+===========================
+sty = amssymb, amsmath, [table]xcolor, fontawesome5
+correct = 1
+incorrect = -1
+skipped = 0
+# floor = 0
+# ceil = 1
+mode=correct_minus_incorrect
+ids = /home/nicolas/Travail/administratif/listings/TBFCT1-210-25-26.csv
+id format=8 digits
+default score = ABI
+---------------------------
+# You may include here raw LaTeX code (definition of new LaTeX commands for example).
+# It will be appended to the LaTeX preamble.
+
+===========================
+
+# You may include raw LaTeX code here as well.
+# It will then be added ** after ** the LaTeX preamble.
+
+\textbf{\textit{Noircir la ou les cases correspondant aux réponses correctes (15 points).}}
+
+\textit{Si vous avez noircie une case par erreur, effacez toute la case \textbf{sans chercher à redessiner le contour.}}
+
+<<<<<<<<<<<<<<<<<
+-- ex/custom_packages.ex
+>>>>>>>>>>>>>>>>>

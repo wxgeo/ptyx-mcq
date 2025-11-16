@@ -66,6 +66,7 @@ def test_update_include():
         ],
     }
     assert set(updater.local_includes) == {
+        _file("custom_latex_packages/ex/custom_packages.ex", comment="new"),
         _file("exercises/ex1.ex", is_disabled=True),
         _file("exercises/ex2.ex"),
         _file("example_with_verbatim/ex/2.ex", comment="new"),

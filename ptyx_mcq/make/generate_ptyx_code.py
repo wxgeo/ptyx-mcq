@@ -4,9 +4,11 @@
 # class Levels(Enum):
 #     ROOT, QCM, SECTION, QUESTION, VERSION, ANSWERS_BLOCK, NEW_ANSWER = range(7)
 import re
-from typing import Iterable
+from typing import Iterable, Any
 
+from ptyx.pretty_print import print_warning
 from ptyx.utilities import extract_verbatim_tag_content, restore_verbatim_tag_content, find_closing_bracket
+
 from ptyx_mcq.tools.io_tools import FatalError, print_error
 
 from ptyx_mcq.make.parser_tools import is_new_exercise_start, is_mcq_start, is_mcq_end, is_section_start
@@ -37,6 +39,56 @@ def parse_at_directive(line: str) -> str:
     if formatting == "":
         formatting = "%s"
     return f"#{{RAW_CODE={raw};APPLY_TO_ANSWERS={formatting!r};}}"
+
+
+class LatexPackages(
+    dict[str, set[str]]
+):  # dict[str=<latex-package-name>, list[str=[<option>|<module-name>]]]
+    """
+    Container for LaTeX packages information.
+    """
+
+    def update_packages(self, packages_enumeration: str):
+        for key, val in self._parse_packages_enumeration(packages_enumeration).items():
+            self.setdefault(key, set()).update(val)
+
+    def generate_code(self) -> str:
+        def format_options(options: set[str]) -> str:
+            return f"[{','.join(options)}]" if options else ""
+
+        return ",".join(f"{format_options(val)}{key}" for key, val in self.items())
+
+    @staticmethod
+    def _parse_packages_enumeration(packages_enumeration: str) -> dict[str, set[str]]:
+        packages: dict[str, set[str]] = {}
+        current_options: set[str] = set()
+        start = 0
+        while True:
+            position = min(
+                (pos for char in ",[" if (pos := packages_enumeration.find(char, start)) != -1), default=None
+            )
+            if position is None:
+                break
+            match packages_enumeration[position]:
+                case "[":
+                    start = position + 1
+                    position = find_closing_bracket(packages_enumeration, start, brackets="[]")
+                    current_options = set(
+                        option
+                        for val in packages_enumeration[start:position].split(",")
+                        if (option := val.strip())
+                    )
+                case ",":
+                    packages.setdefault(packages_enumeration[start:position].strip(), set()).update(
+                        current_options
+                    )
+                    current_options = set()
+                case char:
+                    assert False, f"Unexpected case: {char} !"
+            start = position + 1
+
+        packages.setdefault(packages_enumeration[start:position].strip(), set()).update(current_options)
+        return packages
 
 
 def generate_ptyx_code(text: str, additional_header_lines: Iterable[str] = ()) -> str:
@@ -136,7 +188,12 @@ def generate_ptyx_code(text: str, additional_header_lines: Iterable[str] = ()) -
     before_mcq = True
     is_header = False
     is_header_raw_code = False
-    header = ["#QCM_HEADER{"]
+    # header = ["#QCM_HEADER{"]
+    #
+    header: dict[str, Any] = {
+        "_raw_code": [],
+        "sty": LatexPackages(),
+    }
     question_num = 0
 
     # Don't use ASK_ONLY: if one insert Python code here, it would be removed
@@ -152,12 +209,6 @@ def generate_ptyx_code(text: str, additional_header_lines: Iterable[str] = ()) -
 
         if is_mcq_start(line):  # <<<
             # MCQ start tag detected.
-            # First, we must close the header.
-            if not is_header_raw_code:
-                header.append("}{")
-            header.extend(additional_header_lines)
-            header.append("}")
-            code.extend(header)
             is_header = is_header_raw_code = False
             # Now, let's start the MCQ body.
             intro.append("#END % (introduction)")
@@ -176,9 +227,19 @@ def generate_ptyx_code(text: str, additional_header_lines: Iterable[str] = ()) -
                     # A line of --- is used as a delimiter between the `key = value` entries
                     # and the optional LaTeX code.
                     is_header_raw_code = True
-                    header.append("}{")
+                elif is_header_raw_code:
+                    header["_raw_code"].append(_line_)
                 else:
-                    header.append(_line_)
+                    match _line_.split("="):
+                        case key, val:
+                            key = key.strip()
+                            if key == "sty":
+                                header["sty"].update_packages(val)
+                            else:
+                                header[key] = val.strip()
+                        case _:
+                            if _line_.strip():
+                                print_warning(f"Ignored invalid line in header: {_line_!r}")
             else:
                 intro.append(_line_)
 
@@ -209,6 +270,14 @@ def generate_ptyx_code(text: str, additional_header_lines: Iterable[str] = ()) -
         #     # (Usually, questions are closed when seeing answers, i.e. lines
         #     # introduced by '-' or '+').
         #     code.append(line)
+
+        elif line.startswith(prefix := ":LATEX-PACKAGES:"):
+            header["sty"].update_packages(line[len(prefix) :])
+
+        elif line.startswith(prefix := ":LATEX-HEADER:"):
+            if not header["_raw_code"].endswith("\n"):
+                header["_raw_code"] += "\n"
+            header["_raw_code"] += line[len(prefix) :] + "\n"
 
         elif line.startswith("<->"):
             # Examples:
@@ -282,5 +351,15 @@ def generate_ptyx_code(text: str, additional_header_lines: Iterable[str] = ()) -
 
     code.append("#QCM_FOOTER")
 
-    text = "\n".join(code)
+    header_code: list[str] = ["#QCM_HEADER{"]
+    for key, val in header.items():
+        if key == "sty":
+            # Additional LaTeX packages
+            header_code.append(f"sty = {val.generate_code()}")
+        elif key != "_raw_code":
+            header_code.append(f"{key} = {val}")
+    header_code.extend(["}{", *header["_raw_code"], *additional_header_lines, "}"])
+    header_code.extend(additional_header_lines)
+    text = "\n".join(header_code + code)
+    print(text)
     return restore_verbatim_tag_content(text, verbatim_contents)

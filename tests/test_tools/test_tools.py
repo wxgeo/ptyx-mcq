@@ -3,6 +3,7 @@ import shutil
 import pytest
 import numpy as np
 
+from ptyx_mcq.make.generate_ptyx_code import LatexPackages
 from ptyx_mcq.tools.extend_literal_eval import extended_literal_eval
 from ptyx_mcq.tools.io_tools import is_ptyx_file, get_file_with_extension
 from ptyx_mcq.tools.pdf import similar_pdfs, similar_pdf_page
@@ -97,3 +98,17 @@ def test_pdf_comparison():
     assert not similar_pdf_page(pdf, 0, other_pdf)
     folder = ASSETS_DIR / "test-conflict-solver/duplicate-files/scan"
     assert not similar_pdf_page(folder / "flat-scan-conflict.pdf", 0, folder / "flat-scan.pdf")
+
+
+def test_parse_packages_enumeration():
+    d = LatexPackages()
+    d.update_packages("[opt=3,module]package ,[blabla]  other_package, third_package")
+    d.update_packages(
+        "[]new_package ,[blabla2]  other_package, [one, two] third_package, [three,]third_package"
+    )
+    assert d == {
+        "package": {"opt=3", "module"},
+        "other_package": {"blabla", "blabla2"},
+        "third_package": {"one", "two", "three"},
+        "new_package": set(),
+    }
