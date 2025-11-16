@@ -6,10 +6,10 @@ from typing import TYPE_CHECKING, Callable
 from openpyxl import Workbook
 from openpyxl.worksheet.worksheet import Worksheet
 from openpyxl.worksheet.table import Table, TableStyleInfo
-from openpyxl.utils import get_column_letter  # type: ignore
-from openpyxl.chart import Reference, LineChart  # type: ignore
-from openpyxl.chart.layout import Layout, ManualLayout  # type: ignore
-from openpyxl.drawing.line import LineProperties  # type: ignore
+from openpyxl.utils import get_column_letter
+from openpyxl.chart import Reference, LineChart
+from openpyxl.chart.layout import Layout, ManualLayout
+from openpyxl.drawing.line import LineProperties
 
 from ptyx.pretty_print import print_info, term_color, TermColors, red, green, yellow, bold
 
@@ -199,7 +199,7 @@ class ScoresManager:
         chart.layout = Layout(
             manualLayout=ManualLayout(x=0.005, y=0.05, w=0.75, h=0.8, xMode="factor", yMode="factor")
         )
-        chart.layout.layoutTarget = "inner"
+        chart.layout.layoutTarget = "inner"  # type: ignore
         chart.legend = None
         chart.series[0].smooth = False
         # Configure axes
@@ -223,7 +223,8 @@ class ScoresManager:
     def generate_xlsx_file(self) -> None:
         wb = Workbook()
         # grab the active worksheet
-        sheet: Worksheet = wb.active
+        sheet: Worksheet | None = wb.active
+        assert sheet is not None
         sheet.title = "Resume"
         self._write_scores(writerow=sheet.append)
         tab = Table(displayName="Table1", ref=f"A1:{get_column_letter(sheet.max_column)}{sheet.max_row}")
