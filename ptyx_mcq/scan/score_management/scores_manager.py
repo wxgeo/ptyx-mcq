@@ -4,6 +4,7 @@ from collections import Counter
 from typing import TYPE_CHECKING, Callable
 
 from openpyxl import Workbook
+from openpyxl.styles import PatternFill, Font
 from openpyxl.worksheet.worksheet import Worksheet
 from openpyxl.worksheet.table import Table, TableStyleInfo
 from openpyxl.utils import get_column_letter
@@ -29,8 +30,8 @@ STATISTIC_INFO = {"mean": "AVERAGE", "min": "MIN", "max": "MAX"}
 class ScoresManager:
     def __init__(self, mcq_parser: "MCQPictureParser"):
         self.mcq_parser = mcq_parser
-        self.scores: dict[tuple[StudentId, StudentName], float | str] = {}
-        self.results: dict[tuple[StudentId, StudentName], float] = {}
+        self.scores: dict[tuple[StudentName, StudentId], float | str] = {}
+        self.results: dict[tuple[StudentName, StudentId], float] = {}
 
     @property
     def max_score(self):
@@ -105,11 +106,11 @@ class ScoresManager:
 
         default = self.mcq_parser.config.default_score
         self.scores = {
-            (student_id, student_name): default
+            (student_name, student_id): default
             for student_id, student_name in self.mcq_parser.config.students_ids.items()
         }
         self.results = {
-            (doc.student_id, doc.student_name): doc.score
+            (doc.student_name, doc.student_id): doc.score
             for doc in self.mcq_parser.scan_data
             if doc.score is not None
         }
@@ -126,7 +127,7 @@ class ScoresManager:
         max_score: float = -math.inf
         print()
         print(term_color(f"SCORES (/{self.max_score:g}):", color=TermColors.CYAN))
-        for (student_id, student_name), score in sorted(self.scores.items()):
+        for (student_name, student_id), score in sorted(self.scores.items()):
             score = self._convert(score)
             if isinstance(score, (float, int)):
                 if score < min_score:
@@ -146,7 +147,7 @@ class ScoresManager:
         # max_score is the maximal theoretical score, not the highest actually obtained.
         max_score = self.max_score
         writerow(("ID", "Name", f"Score/{max_score:g}", "Score/20", "Score/100"))
-        for (student_id, student_name), score in sorted(self.scores.items()):
+        for (student_name, student_id), score in sorted(self.scores.items()):
             # TODO: Add ability to change the notation system.
             writerow(
                 [
@@ -227,6 +228,27 @@ class ScoresManager:
         assert sheet is not None
         sheet.title = "Resume"
         self._write_scores(writerow=sheet.append)
+
+        header_fill = PatternFill(start_color="4472C4", end_color="4472C4", fill_type="solid")
+        header_font = Font(color="FFFFFF", bold=True)
+
+        # Row Stripes: Light Blue background
+        row_stripe_fill = PatternFill(start_color="D9E1F2", end_color="D9E1F2", fill_type="solid")
+        # ---------------------------------------
+
+        # 2. Iterate and apply Direct Formatting (for LibreOffice)
+        # We iterate from row 1 (header) to max_row
+        for row in sheet.iter_rows(min_row=1, max_row=sheet.max_row, max_col=sheet.max_column):
+            for cell in row:
+                assert cell.row is not None
+                # Apply Header Style
+                if cell.row == 1:
+                    cell.fill = header_fill
+                    cell.font = header_font
+                # Apply Striped Row Style (Even rows)
+                elif cell.row % 2 == 0:
+                    cell.fill = row_stripe_fill
+
         tab = Table(displayName="Table1", ref=f"A1:{get_column_letter(sheet.max_column)}{sheet.max_row}")
 
         # Add a default style with striped rows and banded columns
@@ -239,13 +261,18 @@ class ScoresManager:
         )
         # noinspection PyTypeChecker
         tab.tableStyleInfo = style
-        sheet.column_dimensions["A"].width = 1.23 * max(len(student_id) for student_id, _ in self.scores)
-        sheet.column_dimensions["B"].width = 1.23 * max(len(student_name) for _, student_name in self.scores)
+        sheet.add_table(tab)
+
+        # Fix columns' widths.
+        sheet.column_dimensions["A"].width = 1.23 * max(len(student_id) for _, student_id in self.scores)
+        sheet.column_dimensions["B"].width = 1.23 * max(len(student_name) for student_name, _ in self.scores)
         sheet.append([])
+
         # Append some statistics concerning the students' scores.
         n = len(self.scores)
         for legend, formula in STATISTIC_INFO.items():
             sheet.append([legend.capitalize(), ""] + [f"={formula}({col}2:{col}{n + 1})" for col in "CDE"])
 
+        # Add a chart to illustrate scores' distribution.
         self._append_chart(wb)
         wb.save(self.mcq_parser.scan_data.files.xlsx_scores)
