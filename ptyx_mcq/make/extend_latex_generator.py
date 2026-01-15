@@ -753,12 +753,12 @@ class MCQLatexGenerator(LatexGenerator):
             self.mcq_data.default_score = config.pop(HeaderConfigKeys.default_score)
 
         # Config should be empty by now ! Any remaining key is invalid.
-        for key in config:
+        for key, val in config.items():
             # Key "scores" existed in old versions of ptyx-mcq:
             if key == "scores":
-                right, wrong, skipped = config[key].split()
+                right, wrong, skipped = val.split()
                 print_warning("Please update your ptyx file header:")
-                print(f"Replace `scores = {config[key]}` with:")
+                print(f"Replace `scores = {val}` with:")
                 print(20 * "-")
                 print(f"correct = {right}")
                 print(f"incorrect = {wrong}")

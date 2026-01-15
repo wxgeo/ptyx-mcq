@@ -11,7 +11,6 @@ from ptyx_mcq.tools.io_tools import get_file_or_sysexit
 def clear(path: Path) -> None:
     """Implement `mcq clear` command."""
     ptyxfile_path = get_file_or_sysexit(path, extension=".ptyx")
-    filename = ptyxfile_path.name
     root = ptyxfile_path.parent
     for directory in ("out/.cache", ".compile"):
         try:
@@ -22,7 +21,6 @@ def clear(path: Path) -> None:
     for filepath in (
         ptyxfile_path.with_suffix(".pdf"),
         ptyxfile_path.with_suffix(CONFIG_FILE_EXTENSION),
-        ptyxfile_path.with_name(f".{filename}.plain-ptyx"),
         ptyxfile_path.with_name(f"{ptyxfile_path.stem}-corr.pdf"),
     ):
         try:
