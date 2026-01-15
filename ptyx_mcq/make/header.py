@@ -403,7 +403,13 @@ def _checkbox_code(preview_mode: bool = False) -> str:
 
 
 def packages_and_macros(preview_mode: bool = False) -> tuple[str, str]:
-    """Generate LaTeX default header (loading LaTeX packages and defining some custom macros)."""
+    """Generate LaTeX default header (loading LaTeX packages and defining some custom macros).
+
+    The output consists of two strings:
+    - The first one is the latex code that must precede the packages manually requested by the user:
+      mainly the document class, the encoding and the geometry of the page.
+    - The 2nd one is the latex code that will follow them (almost all packages).
+    """
     # https://tex.stackexchange.com/questions/37297/how-to-get-element-position-in-latex
     paper_format = f"{PAPER_FORMAT.lower()}paper"
     # LaTeX header is in two part, so as user may insert some customization here.

@@ -1,3 +1,4 @@
+% Header section
 \documentclass[a4paper,twoside,10pt]{article}
 \PassOptionsToPackage{utf8}{inputenc}
 \PassOptionsToPackage{document}{ragged2e}
@@ -19,6 +20,11 @@
 \newcounter{answerNumber}
 \renewcommand{\thesubsection}{\Alph{subsection}}
 
+% Packages requested by the user
+\usepackage{amssymb}
+\usepackage{amsmath}
+\usepackage[table]{xcolor}
+% Default packages
 \usepackage{inputenc}
 \usepackage[T1]{fontenc}
 \usepackage{ragged2e}
@@ -35,6 +41,7 @@
 \usepackage[ active, tightpage]{preview}
 \usetikzlibrary{calc}
 \usetikzlibrary{math}
+
 
 \makeatletter
 \newcommand\dimtomm[1]{%
@@ -62,22 +69,35 @@
   \fi%
 }
 
+% Header raw code
 
+
+
+
+% Additional headers lines.
 
 \begin{document}
+
+% Barcode
 \renewcommand{\PreviewBorder}{1.5cm}
 \begin{preview}
 
 \newcommand{\CustomHeader}{}
 
- % (introduction)
+
+% Student identifier input
+ % (introduction start)
 
 
 
 
 
 
- % (introduction)
+
+
+
+
+ % (introduction end)
 \begin{enumerate}[resume]\pagebreak[3]\item\filbreak\setcounter{answerNumber}{0}
 
 
@@ -97,7 +117,7 @@ Question
 \end{flushleft}
 \end{minipage}\end{enumerate}
 
-
+ 
 
 \end{preview}
 \end{document}

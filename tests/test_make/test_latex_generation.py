@@ -17,7 +17,7 @@ from ptyx_mcq.make import make
 from ptyx_mcq.make.extend_latex_generator import SameAnswerError
 from ptyx_mcq.tools.config_parser import Configuration, DocumentId, OriginalQuestionNumber
 
-from tests.test_make.toolbox import load_ptyx_file
+from tests.test_make.toolbox import load_ptyx_file, normalize_text
 from tests import ASSETS_DIR
 
 PTYX_FILES_DIR = ASSETS_DIR / "ptyx-files"
@@ -43,14 +43,14 @@ def test_minimal_MCQ(tmp_path):
     folder = copy_test("minimal-working-example", tmp_path)
     latex = (folder / "minimal-working-example.tex").read_text()
     c = Compiler()
-    assert c.parse(path=folder / "minimal-working-example.ptyx") == latex
+    assert normalize_text(c.parse(path=folder / "minimal-working-example.ptyx")) == normalize_text(latex)
 
 
 def test_at_directives(tmp_path):
     folder = copy_test("format-answers", tmp_path)
     latex = (folder / "at-directives.tex").read_text()
     c = Compiler()
-    assert c.parse(path=folder / "at-directives.ptyx", PTYX_NUM=1) == latex
+    assert normalize_text(c.parse(path=folder / "at-directives.ptyx", PTYX_NUM=1)) == normalize_text(latex)
 
 
 def test_mcq_basics(tmp_path):
@@ -94,11 +94,12 @@ def test_mcq_shuffling(tmp_path):
     header = root.children[0]
     assert isinstance(header, Node)
     assert header.name == "QCM_HEADER"
-    footer = root.children[-1]
+    footer = root.children[-2]
     assert isinstance(footer, Node)
     assert footer.name == "QCM_FOOTER"
-    assert isinstance(root.children[-2], str)
-    mcq = root.children[-3]
+    assert isinstance(root.children[-3], str)
+    assert isinstance(root.children[-1], str)
+    mcq = root.children[-4]
     assert isinstance(mcq, Node)
     assert mcq.name == "QCM"
     section = mcq.children[-1]

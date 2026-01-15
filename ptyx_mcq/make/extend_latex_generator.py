@@ -704,7 +704,72 @@ class MCQLatexGenerator(LatexGenerator):
             self.write("\n\\cleardoublepage")
         if self.context.get("MCQ_PREVIEW_MODE"):
             self.write("\\end{preview}")
-        self.write("\n\\end{document}")
+
+
+    def _parse_header(self, code: str) -> str:
+        """Parse the header, and update self.mcq_data accordingly.
+
+        Return the generated latex code.
+        """
+        # Type of config keys: any valid `config_parser.Configuration` field name.
+        config = self._extract_config_from_header(code)
+
+        # Update self.mcq_data for all the score management's settings.
+        for score_key, val_type in SCORE_CONFIG_KEYS_TYPES.items():
+            if score_key in config:
+                getattr(self.mcq_data, score_key)["default"] = val_type(config.pop(score_key))
+
+        # Handle the students names and ids.
+        if "names" in config:
+            csv = config.pop(HeaderConfigKeys.names)
+            # the value must be the path of a CSV file.
+            if not self.WITH_ANSWERS:
+                students = extract_students_name_from_csv(Path(csv), self.compiler.file_path)
+                self.mcq_data.students_list = students
+
+        if "students_ids" in config or "id_format" in config:
+            # config['ids'] must be the path of a CSV file.
+            csv = config.pop(HeaderConfigKeys.students_ids, "")
+            id_format = config.pop(HeaderConfigKeys.id_format, "")
+
+            if not self.WITH_ANSWERS:
+                if csv:
+                    ids = extract_students_id_and_name_from_csv(Path(csv), self.compiler.file_path)
+                else:
+                    ids = {}
+
+                try:
+                    data = _detect_id_format(ids, id_format)
+                except IdentifiantError as e:
+                    msg = e.args[0]
+                    raise IdentifiantError(f"Error in {csv!r}: {msg!r}")
+
+                self.mcq_data.id_format = data["id_format"]
+                self.mcq_data.students_ids = data["students_ids"]
+
+        sty = self._parse_sty_list(config.pop(HeaderConfigKeys.sty, ""))
+
+        if "default_score" in config:
+            self.mcq_data.default_score = config.pop(HeaderConfigKeys.default_score)
+
+        # Config should be empty by now ! Any remaining key is invalid.
+        for key in config:
+            # Key "scores" existed in old versions of ptyx-mcq:
+            if key == "scores":
+                right, wrong, skipped = config[key].split()
+                print_warning("Please update your ptyx file header:")
+                print(f"Replace `scores = {config[key]}` with:")
+                print(20 * "-")
+                print(f"correct = {right}")
+                print(f"incorrect = {wrong}")
+                print(f"skipped = {skipped}")
+                print(20 * "-")
+            # Unknown key: raise an error.
+            raise NameError(f"Unknown key {key!r} in the header of the pTyX file.")
+
+        header1, header2 = packages_and_macros(preview_mode=self.context.get("MCQ_PREVIEW_MODE", False))
+        return "\n".join([header1, "% Packages requested by the user", sty, "% Default packages", header2])
+
 
     def _parse_QCM_HEADER_tag(self, node: Node) -> None:
         """Parse HEADER.
@@ -725,96 +790,16 @@ class MCQLatexGenerator(LatexGenerator):
 
         The list of the existing configuration keys can be found in `HeaderConfigKeys`.
         """
-
-        sty = ""
-        # raw_latex = ""
-        #    if self.WITH_ANSWERS:
-        #        self.context['format_ask'] = (lambda s: '')
-
-        check_id_or_name = self.mcq_cache["check_id_or_name"]
-        if self.context.get("MCQ_REMOVE_HEADER"):
-            check_id_or_name = ""
-            raw_latex = node.arg(1)
-        elif check_id_or_name is None:
-            code = ""
-
-            # Type of config keys: any valid `config_parser.Configuration` field name.
-            config = self._extract_config_from_header(node.arg(0))
-            # After the `key = value` entries, the user may append some raw LaTeX code.
-            raw_latex = node.arg(1)
-
-            for score_key, val_type in SCORE_CONFIG_KEYS_TYPES.items():
-                if score_key in config:
-                    getattr(self.mcq_data, score_key)["default"] = val_type(config.pop(score_key))
-
-            if "names" in config:
-                # the value must be the path of a CSV file.
-                csv = config.pop(HeaderConfigKeys.names)
-                if not self.WITH_ANSWERS:
-                    students = extract_students_name_from_csv(Path(csv), self.compiler.file_path)
-                    code = students_checkboxes(students)
-                    self.mcq_data.students_list = students
-
-            if "students_ids" in config or "id_format" in config:
-                # config['ids'] must be the path of a CSV file.
-                csv = config.pop(HeaderConfigKeys.students_ids, "")
-                id_format = config.pop(HeaderConfigKeys.id_format, "")
-
-                if not self.WITH_ANSWERS:
-                    if csv:
-                        ids = extract_students_id_and_name_from_csv(Path(csv), self.compiler.file_path)
-                    else:
-                        ids = {}
-
-                    try:
-                        data = _detect_id_format(ids, id_format)
-                    except IdentifiantError as e:
-                        msg = e.args[0]
-                        raise IdentifiantError(f"Error in {csv!r}: {msg!r}")
-
-                    self.mcq_data.id_format = data["id_format"]
-                    self.mcq_data.students_ids = data["students_ids"]
-                    code = student_id_table(*data["id_format"])
-
-            if "sty" in config:
-                sty = config.pop(HeaderConfigKeys.sty)
-
-            if "default_score" in config:
-                self.mcq_data.default_score = config.pop(HeaderConfigKeys.default_score)
-
-            # Config should be empty by now !
-            # Warning for old versions of ptyx-mcq:
-            for key in config:
-                if key == "scores":
-                    right, wrong, skipped = config[key].split()
-                    print_warning("Please update your ptyx file header:")
-                    print(f"Replace `scores = {config[key]}` with:")
-                    print(20 * "-")
-                    print(f"correct = {right}")
-                    print(f"incorrect = {wrong}")
-                    print(f"skipped = {skipped}")
-                    print(20 * "-")
-                raise NameError(f"Unknown key {key!r} in the header of the pTyX file.")
-
-            check_id_or_name = code if not self.WITH_ANSWERS else ""
-            self.mcq_cache["check_id_or_name"] = check_id_or_name
-            if check_id_or_name and self.NUM == 1:
-                check_id_or_name += r"""
-            \vspace{1em}
-
-            \tikz{\draw[dotted] ([xshift=2cm]current page.west) -- ([xshift=-1cm]current page.east);}
-            """
-        assert check_id_or_name is not None
-
         header = self.mcq_cache["header"]
         if header is None:
-            header1, header2 = packages_and_macros(preview_mode=self.context.get("MCQ_PREVIEW_MODE", False))
-            header = "\n".join([header1, self._parse_sty_list(sty), header2, raw_latex, r"\begin{document}"])
-            self.mcq_cache["header"] = header
+            header = self.mcq_cache["header"] = self._parse_header(node.arg(0))
+        self.write("% Header section\n")
+        self.write(header)
 
-        # Generate the barcode.
-        # The barcode must NOT be put in the cache, since each document has a
-        # unique ID.
+    def _parse_BARCODE_tag(self, node: Node) -> None:
+        """Generate the barcode, unique to each document version."""
+        # The barcode must *NOT* be put in the cache, since each document has a
+        # unique ID!
         n = self.NUM
         calibration = "MCQ__SCORE_FOR_THIS_STUDENT" not in self.context
         top: list[str] = []
@@ -826,4 +811,32 @@ class MCQLatexGenerator(LatexGenerator):
         else:
             top.append(id_band(doc_id=n, calibration=calibration))
 
-        self.write("\n".join([header, "\n".join(top), check_id_or_name]))
+        self.write("\n% Barcode\n")
+        self.write("\n".join(top))
+
+    def _get_student_identifier_input_code(self)->str:
+        """Generate the latex code corresponding to the #STUDENT_IDENTIFIER_INPUT tag."""
+        code = ""
+        if not self.WITH_ANSWERS:
+            if self.mcq_data.students_list:
+                code = students_checkboxes(self.mcq_data.students_list)
+            elif self.mcq_data.id_format is not None:
+                code = student_id_table(*self.mcq_data.id_format)
+        if code:
+            code += r"""
+                \vspace{1em}
+    
+                \tikz{\draw[dotted] ([xshift=2cm]current page.west) -- ([xshift=-1cm]current page.east);}
+                """
+        return code
+
+
+    def _parse_STUDENT_IDENTIFIER_INPUT_tag(self, node: Node) -> None:
+        """Generate the grid or list used by students to enter either their ID or their name."""
+        check_id_or_name = self.mcq_cache["check_id_or_name"]
+        if self.context.get("MCQ_REMOVE_HEADER"):
+            check_id_or_name = ""
+        elif check_id_or_name is None:
+            check_id_or_name = self._get_student_identifier_input_code()
+        self.write("\n% Student identifier input\n")
+        self.write(check_id_or_name)

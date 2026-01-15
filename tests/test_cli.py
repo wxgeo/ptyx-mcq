@@ -15,7 +15,7 @@ from PIL import Image, ImageDraw
 import pymupdf  # type: ignore
 
 
-from ptyx.pretty_print import print_info
+from ptyx.pretty_print import print_info, print_warning
 
 from ptyx_mcq.cli import main as main_, Handlers, get_handler
 from ptyx_mcq.dev_cli import DevHandlers
@@ -336,7 +336,12 @@ def test_make_force(tmp_path):
     assert not similar_pdfs(path / "new.pdf", targets / "two-docs-version.pdf")
     # Force rebuild
     main(["make", str(path), "-n", "2", "-f"])
-    assert similar_pdfs(path / "new.pdf", targets / "two-docs-version.pdf")
+    similar = similar_pdfs(path / "new.pdf", targets / "two-docs-version.pdf")
+    if not similar:
+        print_warning("Both PDF look different:")
+        print(path / "new.pdf")
+        print(targets / "two-docs-version.pdf")
+    assert similar
 
 
 def test_make_without_force(tmp_path, custom_input):

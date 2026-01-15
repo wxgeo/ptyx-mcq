@@ -97,7 +97,9 @@ def extend_compiler() -> "CompilerExtension":
         "NEW_ANSWER": (2, 0, ["NEW_ANSWER", "END_ANSWERS_BLOCK"]),
         "ANSWERS_LIST": (2, 0, None),
         # Other tags
-        "QCM_HEADER": (2, 0, None),
+        "QCM_HEADER": (1, 0, None),
+        "BARCODE": (0, 0, None),
+        "STUDENT_IDENTIFIER_INPUT": (0, 0, None),
         "QCM_FOOTER": (0, 0, None),
         "QUESTION_CONFIG": (1, 0, None),
         "DEBUG_MCQ": (0, 0, None),
@@ -153,6 +155,12 @@ def main(text: str, compiler: "Compiler") -> str:
         )
         raise FatalError
 
+    # Smallgraphlib needs some specific tikz packages and latex commands
+    # to generate its figures. Though user could add them manually in the .ptyx file,
+    # we will add them automatically if `import smallgraphlib` or `from smallgraphlib import `
+    # is found in the code, for convenience. (False positives will only result in a slight slowdown,
+    # and false negatives should almost never occur, and can be fixed by manual import of the missing
+    # latex packages and commands).
     additional_header_lines = autodetect_smallgraphlib(text)
 
     # Call extended_python extension.

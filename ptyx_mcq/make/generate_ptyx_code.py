@@ -198,7 +198,7 @@ def generate_ptyx_code(text: str, additional_header_lines: Iterable[str] = ()) -
 
     # Don't use ASK_ONLY: if one insert Python code here, it would be removed
     # silently when generating the pdf files with the answers !
-    intro = ["#ASK % (introduction)"]
+    intro = ["#ASK % (introduction start)"]
 
     text, verbatim_contents = extract_verbatim_tag_content(text)
 
@@ -209,10 +209,12 @@ def generate_ptyx_code(text: str, additional_header_lines: Iterable[str] = ()) -
 
         if is_mcq_start(line):  # <<<
             # MCQ start tag detected.
+            # Close any header section that may still be open,
+            # although the user should have already closed it manually.
             is_header = is_header_raw_code = False
             # Now, let's start the MCQ body.
-            intro.append("#END % (introduction)")
-            code.extend(intro)
+            intro.append("#END % (introduction end)")
+            # code.extend(intro)
             print("Parsing MCQ...\n")
             print("STRUCTURE:\n")
             begin("QCM")
@@ -222,6 +224,8 @@ def generate_ptyx_code(text: str, additional_header_lines: Iterable[str] = ()) -
             if n >= 3 and all(c == "=" for c in line):  # ===
                 # Enter (or leave) header section.
                 is_header = not is_header
+                if not is_header:
+                    is_header_raw_code = False
             elif is_header:
                 if line.startswith("---") and not is_header_raw_code:
                     # A line of --- is used as a delimiter between the `key = value` entries
@@ -358,8 +362,10 @@ def generate_ptyx_code(text: str, additional_header_lines: Iterable[str] = ()) -
             header_code.append(f"sty = {val.generate_code()}")
         elif key != "_raw_code":
             header_code.append(f"{key} = {val}")
-    header_code.extend(["}{", *header["_raw_code"], *additional_header_lines, "}"])
+    header_code.append("}\n\n% Header raw code")
+    header_code.extend(header["_raw_code"])
+    header_code.append("% Additional headers lines.")
     header_code.extend(additional_header_lines)
-    text = "\n".join(header_code + code)
+    text = "\n".join([*header_code, "", "\\begin{document}", "#BARCODE", "#STUDENT_IDENTIFIER_INPUT", *intro, *code, "\\end{document}\n"])
     print(text)
     return restore_verbatim_tag_content(text, verbatim_contents)
