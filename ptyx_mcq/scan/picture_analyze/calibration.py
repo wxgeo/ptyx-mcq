@@ -369,6 +369,14 @@ def find_corner_square(
             raise NotImplementedError
         j0 = round((j - 1 + t2 / (t1 + t2)) * half)
 
+    # ----------
+    # UNCOMMENT THIS SECTION TO DEBUG
+    # viewer = ImageViewer(array=area)
+    # viewer.add_rectangle((i0, j0), size, size, color=Color.red, thickness=4)
+    # viewer.add_rectangle((i0, j0), 2, 2, color=Color.blue, thickness=4)
+    # viewer.display()
+    # ----------
+
     # Adjust line by line for more precision.
     # First, vertically.
     j1 = j0
@@ -378,7 +386,7 @@ def find_corner_square(
         # shift one pixel down
         i0 += 1
         shift_down = True
-    if not shift_down:
+    if not shift_down and i0 + size - 1 < height // 4:
         while i0 > 0 and area[i0 - 1, j1:j2].sum() < area[i0 + size - 1, j1:j2].sum():
             # shift one pixel up
             i0 -= 1
@@ -391,7 +399,7 @@ def find_corner_square(
         # shift one pixel right
         j0 += 1
         shift_right = True
-    if not shift_right:
+    if not shift_right and j0 + size - 1 < width//4:
         while j0 > 0 and area[i1:i2, j0 - 1].sum() < area[i1:i2, j0 + size - 1].sum():
             # shift one pixel left
             j0 -= 1

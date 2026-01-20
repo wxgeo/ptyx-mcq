@@ -279,9 +279,7 @@ def generate_ptyx_code(text: str, additional_header_lines: Iterable[str] = ()) -
             header["sty"].update_packages(line[len(prefix) :])
 
         elif line.startswith(prefix := ":LATEX-HEADER:"):
-            if not header["_raw_code"].endswith("\n"):
-                header["_raw_code"] += "\n"
-            header["_raw_code"] += line[len(prefix) :] + "\n"
+            header["_raw_code"].append(line[len(prefix) :] + "\n")
 
         elif line.startswith("<->"):
             # Examples:
@@ -362,10 +360,21 @@ def generate_ptyx_code(text: str, additional_header_lines: Iterable[str] = ()) -
             header_code.append(f"sty = {val.generate_code()}")
         elif key != "_raw_code":
             header_code.append(f"{key} = {val}")
-    header_code.append("}\n\n% Header raw code")
+    header_code.append("}\n\n% Header raw code\n")
     header_code.extend(header["_raw_code"])
     header_code.append("% Additional headers lines.")
     header_code.extend(additional_header_lines)
-    text = "\n".join([*header_code, "", "\\begin{document}", "#BARCODE", "#STUDENT_IDENTIFIER_INPUT", *intro, *code, "\\end{document}\n"])
+    text = "\n".join(
+        [
+            *header_code,
+            "",
+            "\\begin{document}",
+            "#BARCODE",
+            "#STUDENT_IDENTIFIER_INPUT",
+            *intro,
+            *code,
+            "\\end{document}\n",
+        ]
+    )
     print(text)
     return restore_verbatim_tag_content(text, verbatim_contents)

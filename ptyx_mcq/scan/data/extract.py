@@ -255,7 +255,11 @@ def extract_pdf_page(
         return calibration_data, identification_data
     # Else, parse the scanned page image to retrieve info.
     else:
-        return _extract_pdf_page(pdf_file, page_num, pic_file, calibration_file, identification_file)
+        try:
+            return _extract_pdf_page(pdf_file, page_num, pic_file, calibration_file, identification_file)
+        except Exception as e:
+            e.add_note(f"A fatal error occurred when scanning the page {page_num + 1} of '{pdf_file}'.")
+            raise
 
 
 def _extract_pdf_page(

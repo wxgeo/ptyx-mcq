@@ -1,0 +1,126 @@
+% Header section
+\documentclass[a4paper,twoside,10pt]{article}
+\PassOptionsToPackage{utf8}{inputenc}
+\PassOptionsToPackage{document}{ragged2e}
+\PassOptionsToPackage{left=1.5cm,
+    right=1.5cm,
+    top=2.5cm,bottom=2cm}{geometry}
+\parindent=0cm
+\newcommand*\graysquared[1]{\tikz[baseline=(char.base)]{
+    \node[fill=gray,shape=rectangle,draw,inner sep=2pt] (char) {\color{white}\textbf{#1}};}}
+\newcommand*\whitesquared[1]{\tikz[baseline=(char.base)]{
+    \node[fill=white,shape=rectangle,draw,inner sep=2pt] (char) {\color{black}\textbf{#1}};}}
+\newcommand*\ptyxMCQcircled[1]{\tikz[baseline=(char.base)]{
+    \node[shape=circle,fill=blue!20!white,draw,inner sep=2pt] (char) {\textbf{#1}};}}
+\makeatletter
+\newcommand{\ptyxMCQsimfill}{%
+\leavevmode \cleaders \hb@xt@ .50em{\hss $\sim$\hss }\hfill \kern \z@
+}
+\makeatother
+\newcounter{answerNumber}
+\renewcommand{\thesubsection}{\Alph{subsection}}
+
+% Packages requested by the user
+\usepackage{amssymb}
+\usepackage{amsmath}
+\usepackage[table]{xcolor}
+\usepackage{musicography}
+\usepackage{fourier}
+% Default packages
+\usepackage{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{ragged2e}
+\usepackage{geometry}
+\usepackage{pifont}
+\usepackage{textcomp}
+\usepackage{nopageno}
+\usepackage{tikz}
+\usepackage{everypage}
+\usepackage{tabularx}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{colortbl}
+\usepackage[ active, tightpage]{preview}
+\usetikzlibrary{calc}
+\usetikzlibrary{math}
+
+
+\makeatletter
+\newcommand\dimtomm[1]{%
+    \strip@pt\dimexpr 0.351459804\dimexpr#1\relax\relax%
+}
+\makeatother
+
+\newcommand{\checkBox}[2]{%
+    \begin{tikzpicture}[baseline=-12pt,color=black, thick]
+        \draw[fill=#1] (0,0)
+            node {}
+            rectangle (.5,-.5);
+    \end{tikzpicture}
+}
+
+\usepackage{enumitem} % To resume an enumeration.
+\setenumerate[0]{label=\protect\ptyxMCQcircled{\arabic*}}
+\newlength{\ptyxMCQTabLength}
+\newcommand{\ptyxMCQTab}[2]{%
+  \settowidth{\ptyxMCQTabLength}{#1{}#2}
+  \ifdim \ptyxMCQTabLength<\textwidth%
+  \begin{tabular}{l@{\,\,}l}#1&#2\end{tabular}%
+  \else%
+  \begin{tabularx}{\linewidth}{l@{\,\,}X}#1&#2\end{tabularx}%
+  \fi%
+}
+
+% Header raw code
+
+
+
+
+
+\newcommand{\testqcm}{hello}
+
+% Additional headers lines.
+
+\begin{document}
+
+% Barcode
+\renewcommand{\PreviewBorder}{1.5cm}
+\begin{preview}
+
+\newcommand{\CustomHeader}{}
+
+
+% Student identifier input
+ % (introduction start)
+
+
+
+
+
+
+
+
+
+
+ % (introduction end)
+\begin{enumerate}[resume]\pagebreak[3]\item\filbreak\setcounter{answerNumber}{0}
+
+
+
+
+
+Which answer makes use of the musicography latex package?
+\nopagebreak[4]
+
+\begin{minipage}{\textwidth}
+\begin{flushleft}\ptyxMCQTab{\checkBox{white}{Q1-1}}{\musThirtySecondDotted}\quad
+\ptyxMCQTab{\checkBox{white}{Q1-2}}{\danger}\quad
+\ptyxMCQTab{\checkBox{white}{Q1-3}}{\testqcm}\quad
+
+\end{flushleft}
+\end{minipage}\end{enumerate}
+
+ 
+
+\end{preview}
+\end{document}

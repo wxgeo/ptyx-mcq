@@ -243,7 +243,10 @@ class ImageViewer:
                 process = subprocess.run(["feh", "-F", path])
             else:
                 process = subprocess.Popen(["feh", "-F", path], stdin=subprocess.DEVNULL)
-            input("-- pause --\n")
+            try:
+                input("-- pause --\n")
+            except EOFError:
+                pass
             return process
 
 
