@@ -45,6 +45,7 @@ build-new-version: update-version
     {{uv}} build
     
 publish: build-new-version
+    rm -rf dist/
     {{uv}} publish
 	
 fix:
