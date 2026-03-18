@@ -1,33 +1,23 @@
-set shell := ["bash", "-cu"]
-
-uv := "env -u VIRTUAL_ENV uv"
 project := "ptyx_mcq"
 
-default:
-    just --list
-    
-    
-sync:
-   {{uv}} run sync
-   
 doc:
-    {{uv}} run make -C doc autodoc
-    {{uv}} run make -C doc html
-
+    @cd ".." && just doc {{project}}
 ruff:
-    {{uv}} run ruff check {{project}} tests
-
-mypy: 
-    {{uv}} run mypy {{project}} tests
-
+    @cd ".." && just ruff {{project}}
+mypy:
+    @cd ".." && just mypy {{project}}
 pytest:
-    {{uv}} run pytest -n auto tests
-    
-test: ruff mypy pytest
-
+    @cd ".." && just pytest {{project}}
+fix:
+    @cd ".." && just fix {{project}}
+test:
+    @cd ".." && just test {{project}}
 push:
-    git push
-    git push --tags    
+    @cd ".." && just push {{project}}
+build:
+    @cd ".." && just build {{project}}
+release:
+    @cd ".." && just release {{project}}
 
 slow-test:
 	{{uv}} run pytest -n auto --runslow tests/
@@ -35,22 +25,4 @@ slow-test:
 single-processor-test:
 	{{uv}} run pytest tests/
 
-version:
-    {{uv}} run semantic-release --noop version
 
-update-version:
-    {{uv}} run semantic-release version
-	
-build-new-version: update-version
-    {{uv}} build
-    
-publish: build-new-version
-    rm -rf dist/
-    {{uv}} publish
-	
-fix:
-    {{uv}} run black .
-    {{uv}} run ruff check --fix {{project}} tests
-    
-lock:
-    git commit uv.lock -m "dev: update uv.lock"

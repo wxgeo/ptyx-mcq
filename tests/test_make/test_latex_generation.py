@@ -399,7 +399,7 @@ def test_latex_packages(tmp_path):
     c.generate_syntax_tree()
     latex = c.get_latex()
     for package in ("amssymb", "amsmath", "fontawesome5", "cancel", "framed"):
-        assert fr"\usepackage{{{package}}}" in latex
+        assert rf"\usepackage{{{package}}}" in latex
     assert r"\usepackage[table]{xcolor}" in latex
     assert r"\usepackage[most]{tcolorbox}" in latex
 

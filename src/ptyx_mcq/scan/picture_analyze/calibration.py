@@ -399,7 +399,7 @@ def find_corner_square(
         # shift one pixel right
         j0 += 1
         shift_right = True
-    if not shift_right and j0 + size - 1 < width//4:
+    if not shift_right and j0 + size - 1 < width // 4:
         while j0 > 0 and area[i1:i2, j0 - 1].sum() < area[i1:i2, j0 + size - 1].sum():
             # shift one pixel left
             j0 -= 1

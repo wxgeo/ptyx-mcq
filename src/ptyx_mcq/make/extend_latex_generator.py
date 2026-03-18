@@ -705,7 +705,6 @@ class MCQLatexGenerator(LatexGenerator):
         if self.context.get("MCQ_PREVIEW_MODE"):
             self.write("\\end{preview}")
 
-
     def _parse_header(self, code: str) -> str:
         """Parse the header, and update self.mcq_data accordingly.
 
@@ -770,7 +769,6 @@ class MCQLatexGenerator(LatexGenerator):
         header1, header2 = packages_and_macros(preview_mode=self.context.get("MCQ_PREVIEW_MODE", False))
         return "\n".join([header1, "% Packages requested by the user", sty, "% Default packages", header2])
 
-
     def _parse_QCM_HEADER_tag(self, node: Node) -> None:
         """Parse HEADER.
 
@@ -814,7 +812,7 @@ class MCQLatexGenerator(LatexGenerator):
         self.write("\n% Barcode\n")
         self.write("\n".join(top))
 
-    def _get_student_identifier_input_code(self)->str:
+    def _get_student_identifier_input_code(self) -> str:
         """Generate the latex code corresponding to the #STUDENT_IDENTIFIER_INPUT tag."""
         code = ""
         if not self.WITH_ANSWERS:
@@ -829,7 +827,6 @@ class MCQLatexGenerator(LatexGenerator):
                 \tikz{\draw[dotted] ([xshift=2cm]current page.west) -- ([xshift=-1cm]current page.east);}
                 """
         return code
-
 
     def _parse_STUDENT_IDENTIFIER_INPUT_tag(self, node: Node) -> None:
         """Generate the grid or list used by students to enter either their ID or their name."""
