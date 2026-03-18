@@ -10,7 +10,6 @@ venv/
 *.backup
 *.bak
 *.directory
-BAZAR/
 tmp.py
 temp.py
 extensions/autoqcm/test_complet/
@@ -20,5 +19,4 @@ ptyx.egg-info/
 */__pycache__/*
 .mypy_cache/
 .pytest_cache/
-do-not-track/
-prof/
+not-tracked/
