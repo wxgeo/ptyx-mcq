@@ -1,5 +1,10 @@
-project := "ptyx_mcq"
+project := "ptyx-mcq"
 
+import "../justfiles/config.just"
+
+default:
+    just --list
+    
 doc:
     @cd ".." && just doc {{project}}
 ruff:
