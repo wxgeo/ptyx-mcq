@@ -5,6 +5,7 @@ Created on Thu Aug 29 14:49:37 2019
 
 @author: nicolas
 """
+
 from collections.abc import Generator
 from itertools import chain
 from multiprocessing import Pool

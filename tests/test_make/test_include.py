@@ -111,13 +111,13 @@ def test_successive_calls(tmp_path):
         == f"""#LOAD{{mcq}}#SEED{{123456}}
 <<<<<<<<<<<<<<<<<
 *
-#INCLUDE_START{{{tmp_path/"questions/1.ex"}}}{{2}}
+#INCLUDE_START{{{tmp_path / "questions/1.ex"}}}{{2}}
 #QUESTION_NAME{{1.ex}}
 (1.ex content)
 #INCLUDE_END
 
 *
-#INCLUDE_START{{{tmp_path/"questions/2.ex"}}}{{3}}
+#INCLUDE_START{{{tmp_path / "questions/2.ex"}}}{{3}}
 #QUESTION_NAME{{2.ex}}
 (2.ex content)
 #INCLUDE_END
@@ -354,7 +354,7 @@ Introduction...
 
 <<<<<<<<<<<<<<<<<
 *
-#INCLUDE_START{{{root/"short questions/question1.ex"}}}{{6}}
+#INCLUDE_START{{{root / "short questions/question1.ex"}}}{{6}}
 #QUESTION_NAME{{question1.ex}}
 q1
 
@@ -363,7 +363,7 @@ q1
 #INCLUDE_END
 
 *
-#INCLUDE_START{{{root/"short questions/question2.ex"}}}{{7}}
+#INCLUDE_START{{{root / "short questions/question2.ex"}}}{{7}}
 #QUESTION_NAME{{question2.ex}}
 q2
 
@@ -372,7 +372,7 @@ q2
 #INCLUDE_END
 
 *
-#INCLUDE_START{{{root/"short questions/question3.ex"}}}{{8}}
+#INCLUDE_START{{{root / "short questions/question3.ex"}}}{{8}}
 #QUESTION_NAME{{question3.ex}}
 q3
 
@@ -382,7 +382,7 @@ q3
 #INCLUDE_END
 
 *
-#INCLUDE_START{{{root/"short questions/question4.ex"}}}{{9}}
+#INCLUDE_START{{{root / "short questions/question4.ex"}}}{{9}}
 #QUESTION_NAME{{question4.ex}}
 q4
 
@@ -393,7 +393,7 @@ q4
 #INCLUDE_END
 
 >>>>>>>>>>>>>>>>>
-#INCLUDE_START{{{tmp_path/"footer.txt"}}}{{12}}
+#INCLUDE_START{{{tmp_path / "footer.txt"}}}{{12}}
 Conclusion.
 #INCLUDE_END
 

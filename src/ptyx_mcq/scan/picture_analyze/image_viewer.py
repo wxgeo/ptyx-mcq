@@ -233,7 +233,7 @@ class ImageViewer:
         self._draw_rectangles()
         if subprocess.call(["which", "feh"]) != 0:
             raise RuntimeError(
-                "The `feh` command is not found, please " "install it (`sudo apt install feh` on Ubuntu)."
+                "The `feh` command is not found, please install it (`sudo apt install feh` on Ubuntu)."
             )
         with tempfile.TemporaryDirectory() as tmpdir_name:
             path = join(tmpdir_name, "test.png")

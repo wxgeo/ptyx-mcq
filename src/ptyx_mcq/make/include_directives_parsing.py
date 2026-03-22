@@ -160,7 +160,7 @@ def _parse_directive(line: str) -> Directive | str:
     Else, the line will be returned unchanged.
     """
     m = re.match(
-        "^(?:@(?P<comment>\\w+):)?\\s*" "(?P<disable>!)?" "--\\s+(?P<special>DIR:|ROOT:)?" "(?P<path>.+)$",
+        "^(?:@(?P<comment>\\w+):)?\\s*(?P<disable>!)?--\\s+(?P<special>DIR:|ROOT:)?(?P<path>.+)$",
         line,
     )
     if m is None:

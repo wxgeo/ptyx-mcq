@@ -36,7 +36,7 @@ def update_config_file(path: Path) -> None:
         cmd = f"mcq make {path}"
         sep = len(cmd) * "-"
         cmd = f"{sep}\n{cmd}\n{sep}\n"
-        print_error("Questions or answers changed.\n" "You must run a full compilation:\n" + cmd)
+        print_error("Questions or answers changed.\nYou must run a full compilation:\n" + cmd)
         raise FatalError
 
     # Get back the positions of checkboxes from last full compilation.

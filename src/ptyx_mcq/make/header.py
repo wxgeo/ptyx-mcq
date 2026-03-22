@@ -256,11 +256,11 @@ def student_id_table(id_length: int, max_ndigits: int, digits: List[Tuple[str, .
         # One row for each digit of the student id number.
         for i, d in enumerate(sorted(digits[j])):
             write(
-                rf"""\draw ({i},{-j}) rectangle ({i+1},{-j-1})
-                    ({i+0.25},{-j-0.25}) node  {{\footnotesize\color{{black}}\textsf{{{d}}}}};"""
+                rf"""\draw ({i},{-j}) rectangle ({i + 1},{-j - 1})
+                    ({i + 0.25},{-j - 0.25}) node  {{\footnotesize\color{{black}}\textsf{{{d}}}}};"""
             )
         for i in range(i, max_ndigits):
-            write(rf"""\draw ({i},{-j}) rectangle ({i+1},{-j-1});""")
+            write(rf"""\draw ({i},{-j}) rectangle ({i + 1},{-j - 1});""")
     write(r"\draw[black,->,thick] (-0.5, -0.5) -- (-0.5,%s);" % (0.5 - id_length))
     write(r"\end{tikzpicture}")
     write(
@@ -474,15 +474,12 @@ def answers_and_score(
     table = table_for_answers(config, identifier)
     if score is not None:
         max_score = config.max_score
-        score_latex = (
-            r"""\begin{tikzpicture}
+        score_latex = r"""\begin{tikzpicture}
             \node[draw,very thick,rectangle, rounded corners,red!70!black] (0,0) {
             \begin{Large}
             Score~: %(score)s/%(max_score)s
             \end{Large}};
-            \end{tikzpicture}"""
-            % locals()
-        )
+            \end{tikzpicture}""" % locals()
     else:
         score_latex = ""
     left = MARGIN_LEFT_IN_CM
@@ -490,8 +487,7 @@ def answers_and_score(
     top = MARGIN_TOP_IN_CM
     bottom = MARGIN_BOTTOM_IN_CM
     paper = PAPER_FORMAT
-    return (
-        r"""
+    return r"""
     \documentclass[%(paper)s,10pt]{article}
     \usepackage[utf8]{inputenc}
     \usepackage[document]{ragged2e}
@@ -513,6 +509,4 @@ def answers_and_score(
     %(table)s
 
     \end{document}
-    """
-        % locals()
-    )
+    """ % locals()

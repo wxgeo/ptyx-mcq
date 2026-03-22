@@ -410,7 +410,7 @@ def find_corner_square(
         print(f"Corner square {corner} found...")
     #    color2debug(m, (i0, j0), (i0 + size, j0 + size))
     if whiteness_measure > max_whiteness:
-        print(f"WARNING: Corner square {corner} not found " f"(not dark enough: {whiteness_measure}!)")
+        print(f"WARNING: Corner square {corner} not found (not dark enough: {whiteness_measure}!)")
         raise MissingSquare(
             f"Corner square {corner} not found.",
             details=[Rectangle((Row(i0), Col(j0)), size, color=Color.blue)],
@@ -569,7 +569,7 @@ def _detect_four_squares(
 
         lighter_corner = min(darkness, key=darkness.get)  # type: ignore
         if darkness[lighter_corner] < 0.4:
-            print(f"Removing {lighter_corner.name} corner " f"(too light: {darkness[lighter_corner]} !)")
+            print(f"Removing {lighter_corner.name} corner (too light: {darkness[lighter_corner]} !)")
             del positions[lighter_corner]
 
     if len(positions) == 4:
@@ -649,7 +649,7 @@ def calibrate(m: ndarray, debug=False) -> tuple[ndarray, CalibrationData]:
     cm = m.shape[1] / 21
     # Unit conversion: 1 inch = 2.54 cm
     if debug:
-        print(f"Detect pixels/cm: {cm} (dpi: {2.54*cm})")
+        print(f"Detect pixels/cm: {cm} (dpi: {2.54 * cm})")
 
     # Evaluate approximately squares size using image dpi.
     # Square size is equal to SQUARE_SIZE_IN_CM in theory, but this varies

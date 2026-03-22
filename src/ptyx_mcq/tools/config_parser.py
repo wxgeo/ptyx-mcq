@@ -96,7 +96,10 @@ def recursively_update_dict(
             d1[key] = d2[key]
         elif isinstance(d1[key], dict) and isinstance(d2[key], dict):
             recursively_update_dict(
-                d1[key], d2[key], verify_types=verify_types, new_key_allowed=new_key_allowed  # type: ignore
+                d1[key],
+                d2[key],
+                verify_types=verify_types,
+                new_key_allowed=new_key_allowed,  # type: ignore
             )
         else:
             if verify_types and key in d1 and not isinstance(d2[key], type(d1[key])):

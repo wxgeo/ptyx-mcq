@@ -6,6 +6,7 @@ ptyx MCQ Specific command line interface for development
 
 @author: Nicolas Pourcelot
 """
+
 from argparse import ArgumentParser
 from enum import StrEnum
 from pathlib import Path
