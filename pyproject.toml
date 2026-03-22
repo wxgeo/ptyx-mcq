@@ -37,21 +37,13 @@ mcq = "ptyx_mcq"
 
 [dependency-groups]
 dev = [
-    "types-openpyxl>=3.1.0.12,<4",
-    "types-Pillow>=9.0.20,<10",
-    "pytest>=7,<8",
-    "mypy~=1.0",
-    "black>=24.10.0,<25",
-    "tox~=4.14",
+    "types-openpyxl",
+    "types-Pillow",
     "sphinx-autodoc-typehints>=1.18.3,<2",
     "sphinx-rtd-theme>=1.0.0,<2",
     "myst-parser>=1.0.0,<2",
-    "python-semantic-release>=10",
-    "ptyx",
-    "ruff>=0.9.1,<0.10",
     "pytest-xdist>=3.5.0,<4",
     "pytest-profiling>=1.8.1,<2",
-    "rust-just>=1.43.0",
 ]
 
 [tool.uv]
