@@ -146,8 +146,11 @@ class MCQPictureParser:
         print("\nProcessing pages...")
 
         if number_of_processes <= 0:
-            cores = os.cpu_count()
-            number_of_processes = 1 if cores is None else min(cores - 1, CPU_PHYSICAL_CORES)
+            if (cores := os.cpu_count()) is None:
+                number_of_processes = 1
+            else:
+                assert isinstance(cores, int) and isinstance(CPU_PHYSICAL_CORES, int)  # stupid mypy!
+                number_of_processes = min(cores - 1, CPU_PHYSICAL_CORES)
 
         # TODO: number_of_processes=number_of_processes
         # Test if the PDF files of the input directory have changed and
