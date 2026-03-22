@@ -276,7 +276,7 @@ def create_mcq_arg_parser() -> ArgumentParser:
     see_parser = add_parser("see", help="Show the pdf corresponding to the given student.")
     see_parser.add_argument(
         "name",
-        nargs="?",
+        nargs=1,
         metavar="NAME",
         type=str,
         help='The name of the student, or part of it. Wildcard may be used, like "J*hn*" (use quotes then).',
