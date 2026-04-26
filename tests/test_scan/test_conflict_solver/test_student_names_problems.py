@@ -1,9 +1,10 @@
-from ptyx_mcq.scan.data import Document, Student
+from ptyx_mcq.scan.data import Document
 from ptyx_mcq.scan.data.conflict_gestion.data_check.cl_fix import (
     ClNamesReviewer as NamesReviewer,
 )
 from ptyx_mcq.scan.data.conflict_gestion.data_check.fix import Action
-from ptyx_mcq.tools.config_parser import DocumentId, StudentName, StudentId
+from ptyx_mcq.scan.data.students import Student
+from ptyx_mcq.tools.config_parser import DocumentId, StudentId, StudentName
 
 # NamesReviewer.CORRECT_Y_N = "Is it correct? (Y/n)"
 # NamesReviewer.ASK_FOR_NAME = "Student name or ID (or / to skip this document):"

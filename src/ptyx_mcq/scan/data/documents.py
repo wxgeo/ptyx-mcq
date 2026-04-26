@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterator, TYPE_CHECKING
+from typing import Iterator, TYPE_CHECKING, NamedTuple
 
 from numpy import ndarray
 from ptyx_mcq.scan.data.questions import Question
@@ -19,6 +19,13 @@ from ptyx_mcq.tools.config_parser import (
 
 if TYPE_CHECKING:
     from ptyx_mcq.scan.data import ScanData, Picture
+
+# AnalyzeResult = tuple[list[Student | None], list[CheckboxAnalyzeResult] | None]
+
+
+class AnalyzeResult(NamedTuple):
+    students: list[Student | None]
+    checboxes_states: list[CheckboxAnalyzeResult] | None
 
 
 @dataclass
@@ -192,7 +199,7 @@ class Document:
         """
         (self.scan_data.dirs.index / str(self.doc_id)).write_text(self._as_str() + "\n", encoding="utf8")
 
-    def analyze(self) -> tuple[list[Student | None], list[CheckboxAnalyzeResult] | None]:
+    def analyze(self) -> AnalyzeResult:
         """Retrieve the state of each checkbox (checked or not) and the student id and name.
 
         Attempt to load it from disk.
@@ -227,7 +234,7 @@ class Document:
             )
 
         students = [get_student(pic) for pic in all_first_page_pics]
-        return students, cbx_states
+        return AnalyzeResult(students, cbx_states)
 
     def update_info(
         self, students: list[Student | None], cbx_states: list[CheckboxAnalyzeResult] | None

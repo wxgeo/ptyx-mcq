@@ -7,24 +7,21 @@ from pathlib import Path
 from typing import Iterator
 
 from ptyx.pretty_print import print_error, print_info
-
+from ptyx_mcq.scan.data.documents import AnalyzeResult, Document, Page
 from ptyx_mcq.scan.data.extract import PdfCollectionExtractor
-from ptyx_mcq.scan.data.paths_manager import PathsHandler, DirsPaths, FilesPaths
-from ptyx_mcq.scan.data.documents import Document, Page
+from ptyx_mcq.scan.data.paths_manager import DirsPaths, FilesPaths, PathsHandler
 from ptyx_mcq.scan.data.pictures import Picture
-from ptyx_mcq.scan.data.questions import Question, Answer
-from ptyx_mcq.scan.data.students import Student
+from ptyx_mcq.scan.data.questions import Answer, Question
 from ptyx_mcq.scan.picture_analyze.calibration import CalibrationData
-from ptyx_mcq.scan.data.analyze.checkboxes import CheckboxAnalyzeResult
 from ptyx_mcq.tools.config_parser import (
-    DocumentId,
     Configuration,
-    PageNum,
-    OriginalQuestionNumber,
+    DocumentId,
     OriginalAnswerNumber,
+    OriginalQuestionNumber,
+    PageNum,
     is_answer_correct,
 )
-from ptyx_mcq.tools.io_tools import generate_progression_callback, Silent
+from ptyx_mcq.tools.io_tools import Silent, generate_progression_callback
 
 
 class ScanData:
@@ -92,7 +89,9 @@ class ScanData:
         )
 
     def analyze_pictures(
-        self, number_of_processes: int | None, progression: Callable[..., None] = None
+        self,
+        number_of_processes: int | None,
+        progression: Callable[[AnalyzeResult], None] = None,
     ) -> None:
         """Analyze all documents pictures, retrieving checkboxes states and students names and ids."""
         if progression is None:
@@ -103,13 +102,22 @@ class ScanData:
             self._parallel_analyze(number_of_processes=number_of_processes, progression=progression)
         print("Pictures data have been successfully retrieved.")
 
-    def run(self, number_of_processes: int | None = None, reset=False) -> None:
+    def run(
+        self,
+        number_of_processes: int | None = None,
+        reset=False,
+        progression: Callable[..., None] = None,
+    ) -> None:
         """Main method: extract pictures and analyze them, generating the documents tree."""
         self.initialize(reset=reset)
-        self.extract_pictures(number_of_processes=number_of_processes)
-        self.analyze_pictures(number_of_processes=number_of_processes)
+        self.extract_pictures(number_of_processes=number_of_processes, progression=progression)
+        self.analyze_pictures(number_of_processes=number_of_processes, progression=progression)
 
-    def _parallel_analyze(self, number_of_processes: int | None, progression: Callable[..., None]) -> None:
+    def _parallel_analyze(
+        self,
+        number_of_processes: int | None,
+        progression: Callable[[AnalyzeResult], None],
+    ) -> None:
         pool: multiprocessing.pool.Pool
         results: dict[DocumentId, AsyncResult] = {}
         with multiprocessing.Pool(number_of_processes) as pool:
@@ -120,15 +128,14 @@ class ScanData:
             for doc_id, result in results.items():
                 self.index[doc_id].update_info(*result.get())
 
-    def _sequential_analyze(self, progression: Callable[..., None]) -> None:
+    def _sequential_analyze(self, progression: Callable[[AnalyzeResult], None]) -> None:
         for doc_id, doc in self.index.items():
-            doc.update_info(*self.analyze_doc(doc, self._log_file))
-            progression()
+            analyze_results = self.analyze_doc(doc, self._log_file)
+            doc.update_info(*analyze_results)
+            progression(analyze_results)
 
     @staticmethod
-    def analyze_doc(
-        doc: Document, log_file: Path
-    ) -> tuple[list[Student | None], list[CheckboxAnalyzeResult] | None]:
+    def analyze_doc(doc: Document, log_file: Path) -> AnalyzeResult:
         with Silent(log_file=log_file):
             return doc.analyze()
 
@@ -162,9 +169,11 @@ class ScanData:
             for pic_num, (calibration_data, identification_data) in content.items():
                 # noinspection PyProtectedMember
                 self._index.setdefault(
-                    doc_id := identification_data.doc_id, doc := Document(self, doc_id, {})
+                    doc_id := identification_data.doc_id,
+                    doc := Document(self, doc_id, {}),
                 ).pages.setdefault(
-                    page_num := identification_data.page_num, page := Page(doc, page_num, [])
+                    page_num := identification_data.page_num,
+                    page := Page(doc, page_num, []),
                 )._pictures.append(
                     Picture(
                         page=page,
@@ -181,7 +190,11 @@ class ScanData:
             doc.pages = {page_num: doc.pages[page_num] for page_num in sorted(doc.pages)}
 
     def _generate_questions_tree(
-        self, doc_id: DocumentId, page_num: PageNum, calibration_data: CalibrationData, pic_path: Path
+        self,
+        doc_id: DocumentId,
+        page_num: PageNum,
+        calibration_data: CalibrationData,
+        pic_path: Path,
     ) -> dict[OriginalQuestionNumber, Question]:
         """
         Generate the tree of all the questions and answers of the given document, using configuration file.
@@ -203,7 +216,9 @@ class ScanData:
             x, y = latex_positions[(q, a)]
             position = calibration_data.xy2ij(x, y)
             answers_per_question.setdefault(q, {})[a] = Answer(
-                answer_num=a, position=position, is_correct=is_answer_correct(q, a, self.config, doc_id)
+                answer_num=a,
+                position=position,
+                is_correct=is_answer_correct(q, a, self.config, doc_id),
             )
         return {
             q: Question(question_num=q, answers={a: answer for a, answer in answers.items()})

@@ -1,36 +1,38 @@
 import io
 import subprocess
 from hashlib import blake2b
+from multiprocessing import Pool
 
 # noinspection PyProtectedMember
 from multiprocessing.pool import AsyncResult
 from pathlib import Path
 from shutil import rmtree
-from multiprocessing import Pool
-from typing import TYPE_CHECKING, NewType, Callable
+from typing import TYPE_CHECKING, Callable, NamedTuple, NewType
 
-import pymupdf  # type: ignore
 import numpy as np
-from PIL import Image, UnidentifiedImageError
+import pymupdf  # type: ignore
 from numpy import ndarray
-from ptyx.pretty_print import print_warning
+from PIL import Image, UnidentifiedImageError
 
+from ptyx.pretty_print import print_warning
 from ptyx_mcq.parameters import IMAGE_FORMAT
 from ptyx_mcq.scan.data.paths_manager import PathsHandler
-
 from ptyx_mcq.scan.picture_analyze.calibration import (
-    calibrate,
     CalibrationData,
-    adjust_contrast,
     FinalCornerPositions,
+    adjust_contrast,
+    calibrate,
 )
-from ptyx_mcq.scan.picture_analyze.identify_doc import read_doc_id_and_page, IdentificationData
+from ptyx_mcq.scan.picture_analyze.identify_doc import (
+    IdentificationData,
+    read_doc_id_and_page,
+)
 from ptyx_mcq.scan.picture_analyze.image_viewer import ImageViewer
 from ptyx_mcq.scan.picture_analyze.types_declaration import CalibrationError, Col, Row
-from ptyx_mcq.tools.pdf import number_of_pages
 from ptyx_mcq.tools.colors import Color
 from ptyx_mcq.tools.extend_literal_eval import extended_literal_eval
 from ptyx_mcq.tools.io_tools import Silent, generate_progression_callback
+from ptyx_mcq.tools.pdf import number_of_pages
 from ptyx_mcq.tools.pic import array_to_image, image_to_array, load_webp
 
 if TYPE_CHECKING:
@@ -39,6 +41,17 @@ if TYPE_CHECKING:
 PdfHash = NewType("PdfHash", str)
 PicNum = NewType("PicNum", int)
 PdfData = dict[PdfHash, dict[PicNum, tuple[CalibrationData, IdentificationData]]]
+
+
+class PageData(NamedTuple):
+    """
+    Data extracted from the scan of the page at first pass:
+    - calibration data, mainly the position of the four calibration's squares and the resulting resolution.
+    - identification data, ie. the ID of the document.
+    """
+
+    calibration_data: CalibrationData
+    identification_data: IdentificationData
 
 
 class PdfCollectionExtractor:
@@ -85,14 +98,18 @@ class PdfCollectionExtractor:
         content = "\n".join(f"{pdf_hash}: {pdf_path}" for pdf_hash, pdf_path in self.hash2pdf.items())
         (self.scan_data.dirs.index / "hash").write_text(content + "\n")
 
-    def _parallel_collect(self, number_of_processes: int | None, progression: Callable[..., None]) -> PdfData:
+    def _parallel_collect(
+        self,
+        number_of_processes: int | None,
+        progression: Callable[[PageData | None], None],
+    ) -> PdfData:
         # TODO: use ThreadPool instead?
         with Pool(number_of_processes) as pool:
-            futures: dict[PdfHash, dict[PicNum, AsyncResult]] = {}
+            futures: dict[PdfHash, dict[PicNum, AsyncResult[PageData | None]]] = {}
             for pdf_hash, pdf_path in self.hash2pdf.items():
                 folder = self.paths.dirs.cache / pdf_hash
                 for page_num in range(number_of_pages(pdf_path)):
-                    future_result = pool.apply_async(
+                    future_result: AsyncResult[PageData | None] = pool.apply_async(
                         self.extract_page,
                         (pdf_path, folder, PicNum(page_num), self._log_file),
                         callback=progression,
@@ -106,7 +123,7 @@ class PdfCollectionExtractor:
                         pdf_data.setdefault(pdf_hash, {})[pic_num] = result
         return pdf_data
 
-    def _sequential_collect(self, progression: Callable[..., None]) -> PdfData:
+    def _sequential_collect(self, progression: Callable[[PageData | None], None]) -> PdfData:
         pdf_data: PdfData = {}
         for pdf_hash, pdf_path in self.hash2pdf.items():
             folder = self.paths.dirs.cache / pdf_hash
@@ -114,13 +131,17 @@ class PdfCollectionExtractor:
                 # Only extract a page if the corresponding .pic-data file is not found.
                 # (Resume an interrupted scan without extracting again previously extracted pages).
                 # print(f"Extracting page {page_num + 1} from '{pdf_path}'...")
-                progression()
                 pic_data = self.extract_page(pdf_path, folder, PicNum(page_num), log_file=self._log_file)
+                progression(pic_data)
                 if pic_data is not None:
                     pdf_data.setdefault(PdfHash(folder.name), {})[PicNum(page_num)] = pic_data
         return pdf_data
 
-    def collect_data(self, number_of_processes=1, progression: Callable[..., None] = None) -> PdfData:
+    def collect_data(
+        self,
+        number_of_processes=1,
+        progression: Callable[[PageData | None], None] = None,
+    ) -> PdfData:
         """Test if input data has changed, and update information if needed.
 
         Data are stored on disk, to avoid saturating memory, and to allow resuming
@@ -128,7 +149,8 @@ class PdfCollectionExtractor:
         """
         if progression is None:
             progression = generate_progression_callback(
-                "Extracting pdf data", sum(number_of_pages(pdf_path) for pdf_path in self.hash2pdf.values())
+                "Extracting pdf data",
+                sum(number_of_pages(pdf_path) for pdf_path in self.hash2pdf.values()),
             )
         # 1. Remove old data from disk if there is no corresponding pdf.
         self._remove_obsolete_files()
@@ -161,7 +183,7 @@ class PdfCollectionExtractor:
     @staticmethod
     def extract_page(
         pdf_file: Path, dest: Path, page_num: PicNum, log_file: Path | None = None
-    ) -> tuple[CalibrationData, IdentificationData] | None:
+    ) -> PageData | None:
         """Extract data corresponding to the given page of the pdf."""
         with Silent(log_file=log_file):
             return extract_pdf_page(pdf_file, dest, page_num)
@@ -198,9 +220,7 @@ class PdfCollectionExtractor:
         return viewer.display(wait=False)
 
 
-def extract_pdf_page(
-    pdf_file: Path, dest: Path, page_num: PicNum
-) -> tuple[CalibrationData, IdentificationData] | None:
+def extract_pdf_page(pdf_file: Path, dest: Path, page_num: PicNum) -> PageData | None:
     """Extract data corresponding to the given page of the pdf.
 
     Cached data will be used if available and not corrupted.
@@ -238,21 +258,25 @@ def extract_pdf_page(
         try:
             calibration_data = extended_literal_eval(
                 calibration_file.read_text("utf8"),
-                {"CalibrationData": CalibrationData, "FinalCornerPositions": FinalCornerPositions},
+                {
+                    "CalibrationData": CalibrationData,
+                    "FinalCornerPositions": FinalCornerPositions,
+                },
             )
         except Exception as e:
             print(e)
             print_warning(f"Unable to load file: {calibration_file}")
         try:
             identification_data = extended_literal_eval(
-                identification_file.read_text("utf8"), {"IdentificationData": IdentificationData}
+                identification_file.read_text("utf8"),
+                {"IdentificationData": IdentificationData},
             )
         except Exception as e:
             print(e)
             print_warning(f"Unable to load file: {identification_file}")
         if not valid_pic or calibration_data is None or identification_data is None:
             return _extract_pdf_page(pdf_file, page_num, pic_file, calibration_file, identification_file)
-        return calibration_data, identification_data
+        return PageData(calibration_data, identification_data)
     # Else, parse the scanned page image to retrieve info.
     else:
         try:
@@ -263,8 +287,12 @@ def extract_pdf_page(
 
 
 def _extract_pdf_page(
-    pdf_file: Path, page_num: PicNum, pic_file: Path, calibration_file: Path, identification_file: Path
-) -> tuple[CalibrationData, IdentificationData] | None:
+    pdf_file: Path,
+    page_num: PicNum,
+    pic_file: Path,
+    calibration_file: Path,
+    identification_file: Path,
+) -> PageData | None:
     """
     Extract data corresponding to the given page of the pdf.
     """
@@ -284,7 +312,7 @@ def _extract_pdf_page(
     calibration_file.write_text(repr(calibration_data), "utf8")
     identification_data, _ = read_doc_id_and_page(img_array, calibration_data)
     identification_file.write_text(repr(identification_data), "utf8")
-    return calibration_data, identification_data
+    return PageData(calibration_data, identification_data)
 
 
 def _get_page_content_as_array(pdf_file: Path, page_num: PicNum) -> ndarray:

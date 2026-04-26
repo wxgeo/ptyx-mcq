@@ -155,7 +155,7 @@ def _progression_coroutin(message: str, last_val: int):
         yield
 
 
-def generate_progression_callback(message: str, last_val: int) -> Callable[[], None]:
+def generate_progression_callback(message: str, last_val: int) -> Callable[[object], None]:
     """
     Generate a function that can be used to display a progression in a terminal.
 
@@ -164,7 +164,7 @@ def generate_progression_callback(message: str, last_val: int) -> Callable[[], N
     """
     generator = _progression_coroutin(message, last_val)
 
-    def progression(*args, **kw) -> None:
+    def progression(_: object) -> None:
         generator.__next__()
 
     return progression

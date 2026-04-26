@@ -13,18 +13,20 @@ from os.path import join
 from typing import Callable
 
 # from typing import TYPE_CHECKING
-
 from PIL import ImageDraw, ImageFont
 from PIL.Image import Image
-from ptyx_mcq.scan.data.questions import Answer
 
 from ptyx_mcq.scan.data import ScanData
 from ptyx_mcq.scan.data.documents import Document
+from ptyx_mcq.scan.data.questions import Answer
+from ptyx_mcq.scan.picture_analyze.types_declaration import Col, Pixel, Row
+from ptyx_mcq.tools.colors import RGB, Color
+from ptyx_mcq.tools.config_parser import (
+    OriginalQuestionNumber,
+    QuestionNumberOrDefault,
+    real2apparent,
+)
 from ptyx_mcq.tools.io_tools import generate_progression_callback
-from ptyx_mcq.scan.picture_analyze.types_declaration import Pixel, Row, Col
-from ptyx_mcq.tools.colors import Color, RGB
-from ptyx_mcq.tools.config_parser import OriginalQuestionNumber, QuestionNumberOrDefault, real2apparent
-
 
 # if TYPE_CHECKING:
 #     from ptyx_mcq.scan.scanner import MCQPictureParser
@@ -55,7 +57,7 @@ def amend_all(scan_data: ScanData, progression: Callable[..., None] = None) -> N
 
     with Pool() as pool:
         results = [
-            pool.apply_async(amend_doc, (doc, max_score_per_question), callback=progression)  # type: ignore
+            pool.apply_async(amend_doc, (doc, max_score_per_question), callback=progression)
             for doc in scan_data
         ]
         for result in results:
