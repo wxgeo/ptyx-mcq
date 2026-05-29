@@ -50,6 +50,7 @@ dev = [
 
 [tool.uv.sources]
 ptyx = { workspace = true, editable = true }
+smallgraphlib = { path = "../../smallgraphlib", editable = true }
 
 [build-system]
 requires = ["uv_build>=0.9.6,<0.11.0"]
@@ -57,7 +58,7 @@ build-backend = "uv_build"
 
 [tool.uv.build-backend]
 module-root = "src"
-module-name= "ptyx_mcq"
+module-name = "ptyx_mcq"
 
 [tool.semantic_release]
 version_toml = ["pyproject.toml:project.version"]
