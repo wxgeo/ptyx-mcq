@@ -64,13 +64,48 @@ One may include some PTYX code of course.
 from importlib import metadata
 from typing import TYPE_CHECKING
 
+from ptyx.syntax_tree import TagDict
+
 if TYPE_CHECKING:
     from ptyx.extensions import CompilerExtension
     from ptyx.latex_generator import Compiler
 
 
 __version__ = metadata.version(__package__)
-__all__ = ["__version__", "main", "extend_compiler"]
+__all__ = ["__version__", "main", "extend_compiler", "PTYX_MCQ_TAGS", "DEPRECATED_PTYX_MCQ_TAGS"]
+
+# Define custom MCQ tags
+# ----------------------
+# Note for closing tags:
+# '@END' means closing tag #END must be consumed, unlike 'END'.
+# So, use '@END_QUESTIONS_BLOCK' to close QUESTIONS_BLOCK,
+# but use 'END_QUESTIONS_BLOCK' to close QUESTION, since
+# #END_QUESTIONS_BLOCK must not be consumed then (it must close
+# QUESTIONS_BLOCK too).
+PTYX_MCQ_TAGS: TagDict = {
+    # Tags used to structure MCQ
+    "QCM": (0, 0, ["@END_QCM"]),
+    "SECTION": (0, 0, ["SECTION", "END_QCM"]),
+    "NEW_QUESTION": (0, 0, ["NEW_QUESTION", "CONSECUTIVE_QUESTION", "SECTION", "END_QCM"]),
+    "CONSECUTIVE_QUESTION": (0, 0, ["NEW_QUESTION", "CONSECUTIVE_QUESTION", "SECTION", "END_QCM"]),
+    "QUESTION_NAME": (1, 0, None),
+    "VERSION": (1, 0, ["VERSION", "NEW_QUESTION", "CONSECUTIVE_QUESTION", "SECTION", "END_QCM"]),
+    "ANSWERS_BLOCK": (0, 0, ["@END_ANSWERS_BLOCK"]),
+    "NEW_ANSWER": (2, 0, ["NEW_ANSWER", "END_ANSWERS_BLOCK"]),
+    "ANSWERS_LIST": (2, 0, None),
+    # Other tags
+    "QCM_HEADER": (1, 0, None),
+    "BARCODE": (0, 0, None),
+    "STUDENT_IDENTIFIER_INPUT": (0, 0, None),
+    "QCM_FOOTER": (0, 0, None),
+    "QUESTION_CONFIG": (1, 0, None),
+    "DEBUG_MCQ": (0, 0, None),
+}
+
+# Deprecated tags (don't suggest them in autocompletion).
+DEPRECATED_PTYX_MCQ_TAGS = {
+    "L_ANSWERS": (1, 0, None),
+}
 
 
 def extend_compiler() -> "CompilerExtension":
@@ -79,34 +114,7 @@ def extend_compiler() -> "CompilerExtension":
     This function will be automatically called by the compiler when loading this extension."""
     from ptyx_mcq.make.extend_latex_generator import MCQLatexGenerator
 
-    # Note for closing tags:
-    # '@END' means closing tag #END must be consumed, unlike 'END'.
-    # So, use '@END_QUESTIONS_BLOCK' to close QUESTIONS_BLOCK,
-    # but use 'END_QUESTIONS_BLOCK' to close QUESTION, since
-    # #END_QUESTIONS_BLOCK must not be consumed then (it must close
-    # QUESTIONS_BLOCK too).
-    tags = {
-        # Tags used to structure MCQ
-        "QCM": (0, 0, ["@END_QCM"]),
-        "SECTION": (0, 0, ["SECTION", "END_QCM"]),
-        "NEW_QUESTION": (0, 0, ["NEW_QUESTION", "CONSECUTIVE_QUESTION", "SECTION", "END_QCM"]),
-        "CONSECUTIVE_QUESTION": (0, 0, ["NEW_QUESTION", "CONSECUTIVE_QUESTION", "SECTION", "END_QCM"]),
-        "QUESTION_NAME": (1, 0, None),
-        "VERSION": (1, 0, ["VERSION", "NEW_QUESTION", "CONSECUTIVE_QUESTION", "SECTION", "END_QCM"]),
-        "ANSWERS_BLOCK": (0, 0, ["@END_ANSWERS_BLOCK"]),
-        "NEW_ANSWER": (2, 0, ["NEW_ANSWER", "END_ANSWERS_BLOCK"]),
-        "ANSWERS_LIST": (2, 0, None),
-        # Other tags
-        "QCM_HEADER": (1, 0, None),
-        "BARCODE": (0, 0, None),
-        "STUDENT_IDENTIFIER_INPUT": (0, 0, None),
-        "QCM_FOOTER": (0, 0, None),
-        "QUESTION_CONFIG": (1, 0, None),
-        "DEBUG_MCQ": (0, 0, None),
-        # Deprecated tags
-        "L_ANSWERS": (1, 0, None),
-    }
-    return {"latex_generator": MCQLatexGenerator, "tags": tags}
+    return {"latex_generator": MCQLatexGenerator, "tags": PTYX_MCQ_TAGS | DEPRECATED_PTYX_MCQ_TAGS}
 
 
 # TODO: `main` is commonly used in python as the main entry point for scripts.
