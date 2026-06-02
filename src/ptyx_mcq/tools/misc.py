@@ -1,7 +1,8 @@
 import io
 import sys
 from types import TracebackType
-from typing import Callable, TypeVar
+from typing import TypeVar
+from collections.abc import Callable
 
 F = TypeVar("F", bound=Callable)
 

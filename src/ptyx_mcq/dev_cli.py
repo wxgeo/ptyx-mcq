@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 # PYTHON_ARGCOMPLETE_OK
 """
 ptyx MCQ Specific command line interface for development
@@ -10,7 +9,6 @@ ptyx MCQ Specific command line interface for development
 from argparse import ArgumentParser
 from enum import StrEnum
 from pathlib import Path
-from typing import Optional
 
 from argcomplete import FilesCompleter
 
@@ -73,7 +71,7 @@ def create_mcq_dev_arg_parser() -> ArgumentParser:
     return parser
 
 
-def main(args: Optional[list] = None, _restart_process_if_needed=True) -> None:
+def main(args: list | None = None, _restart_process_if_needed=True) -> None:
     launcher(create_mcq_dev_arg_parser, args, _restart_process_if_needed=_restart_process_if_needed)
 
 

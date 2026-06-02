@@ -1,4 +1,5 @@
-from typing import Literal, Iterator, Iterable
+from typing import Literal
+from collections.abc import Iterator, Iterable
 
 from numpy import array, nonzero, transpose, ndarray
 

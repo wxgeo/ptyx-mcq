@@ -4,7 +4,8 @@
 # class Levels(Enum):
 #     ROOT, QCM, SECTION, QUESTION, VERSION, ANSWERS_BLOCK, NEW_ANSWER = range(7)
 import re
-from typing import Iterable, Any
+from typing import Any
+from collections.abc import Iterable
 
 from ptyx.pretty_print import print_warning
 from ptyx.utilities import extract_verbatim_tag_content, restore_verbatim_tag_content, find_closing_bracket

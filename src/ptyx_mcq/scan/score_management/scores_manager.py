@@ -1,7 +1,8 @@
 import csv
 import math
 from collections import Counter
-from typing import TYPE_CHECKING, Callable
+from typing import TYPE_CHECKING
+from collections.abc import Callable
 
 from openpyxl import Workbook
 from openpyxl.styles import PatternFill, Font
@@ -165,7 +166,7 @@ class ScoresManager:
 
         # Count how many times each score appears
         score_counts = Counter(
-            (round(score) for score in self.scores.values() if isinstance(score, (int, float)))
+            round(score) for score in self.scores.values() if isinstance(score, (int, float))
         )
 
         # Prepare continuous range 0–<max-score> (even if some scores are missing)

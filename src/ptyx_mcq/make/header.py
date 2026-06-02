@@ -1,7 +1,7 @@
 import csv
 from pathlib import Path
 from string import ascii_letters
-from typing import Sequence, List, Optional, Dict, Union, Tuple
+from collections.abc import Sequence
 
 from ..parameters import (
     CELL_SIZE_IN_CM,
@@ -46,7 +46,7 @@ class IdentifiantError(RuntimeError):
     pass
 
 
-def _byte_as_codebar(byte: Union[int, str], n=0) -> str:
+def _byte_as_codebar(byte: int | str, n=0) -> str:
     """Generate LaTeX code (TikZ) for byte number `n` in ID band.
 
     - `byte` is a number between 0 and 255, or some LaTeX code resulting
@@ -141,7 +141,7 @@ def id_band(doc_id: int, calibration=True) -> str:
     return "".join(latex)
 
 
-def extract_students_id_and_name_from_csv(csv_path: Path, script_path: Path) -> Dict[StudentId, StudentName]:
+def extract_students_id_and_name_from_csv(csv_path: Path, script_path: Path) -> dict[StudentId, StudentName]:
     """`csv_path` is the path of the CSV file who contains students names and ids.
     The first column of the CSV file must contain the ids.
     The other column's content will be merged to generate the name.
@@ -154,7 +154,7 @@ def extract_students_id_and_name_from_csv(csv_path: Path, script_path: Path) -> 
     # XXX: support ODS and XLS files ?
     # soffice --convert-to cvs filename.ods
     # https://ask.libreoffice.org/en/question/2641/convert-to-command-line-parameter/
-    ids: Dict[StudentId, StudentName] = {}
+    ids: dict[StudentId, StudentName] = {}
     # Read CSV file and generate the dictionary {id: "student name"}.
     with open(csv_path) as f:
         dialect = csv.Sniffer().sniff(f.read(1024))
@@ -169,7 +169,7 @@ def extract_students_id_and_name_from_csv(csv_path: Path, script_path: Path) -> 
     return ids
 
 
-def extract_students_name_from_csv(csv_path: Path, script_path: Path) -> List[StudentName]:
+def extract_students_name_from_csv(csv_path: Path, script_path: Path) -> list[StudentName]:
     """`csv_path` is the path of the CSV file who contains students names.
 
     Return a list of students names.
@@ -178,7 +178,7 @@ def extract_students_name_from_csv(csv_path: Path, script_path: Path) -> List[St
     if not csv_path.is_absolute():
         csv_path = (script_path.parent / csv_path).absolute()
 
-    names: List[StudentName] = []
+    names: list[StudentName] = []
     # Read CSV file and generate the dictionary {id: "student name"}.
     with open(csv_path) as f:
         for row in csv.reader(f):
@@ -233,7 +233,7 @@ def students_checkboxes(names: Sequence[str], _n_student=None) -> str:
     return "\n".join(content)
 
 
-def student_id_table(id_length: int, max_ndigits: int, digits: List[Tuple[str, ...]]) -> str:
+def student_id_table(id_length: int, max_ndigits: int, digits: list[tuple[str, ...]]) -> str:
     """Generate a table where the student will write its identification number.
 
     The table have a row for each digit, where the student check corresponding
@@ -246,7 +246,7 @@ def student_id_table(id_length: int, max_ndigits: int, digits: List[Tuple[str, .
 
     Return: LaTeX code.
     """
-    content: List[str] = []
+    content: list[str] = []
     write = content.append
     write("\n\n")
     write(r"\begin{tikzpicture}[baseline=-10pt,scale=.5]")
@@ -279,14 +279,14 @@ def student_id_table(id_length: int, max_ndigits: int, digits: List[Tuple[str, .
     return "\n".join(content)
 
 
-def table_for_answers(config: Configuration, doc_id: Optional[DocumentId] = None) -> str:
+def table_for_answers(config: Configuration, doc_id: DocumentId | None = None) -> str:
     """Generate the table where students select correct answers.
 
     - `config` is a dict generated when compiling test.
     - `doc_id` is the document ID if correct answers should be shown.
       If `doc_id` is `None` (default), the table will be left empty.
     """
-    content: List[str] = []
+    content: list[str] = []
     write = content.append
 
     # Generate the table where students will answer.
@@ -467,9 +467,7 @@ def packages_and_macros(preview_mode: bool = False) -> tuple[str, str]:
     return first_part, second_part
 
 
-def answers_and_score(
-    config: Configuration, name: str, identifier: DocumentId, score: Optional[float]
-) -> str:
+def answers_and_score(config: Configuration, name: str, identifier: DocumentId, score: float | None) -> str:
     """Generate plain LaTeX code corresponding to score and correct answers."""
     table = table_for_answers(config, identifier)
     if score is not None:

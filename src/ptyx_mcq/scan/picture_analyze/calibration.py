@@ -1,7 +1,8 @@
 from dataclasses import dataclass
 from enum import Enum
 from math import hypot, atan, degrees
-from typing import Literal, Iterator, NamedTuple
+from typing import Literal, NamedTuple
+from collections.abc import Iterator
 
 import numpy as np
 from PIL import Image

@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterator, TYPE_CHECKING, NamedTuple
+from typing import TYPE_CHECKING, NamedTuple
+from collections.abc import Iterator
 
 from numpy import ndarray
 from ptyx_mcq.scan.data.questions import Question

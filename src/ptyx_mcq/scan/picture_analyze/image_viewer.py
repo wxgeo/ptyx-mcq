@@ -163,7 +163,7 @@ class ImageViewer:
 
         color = rectangle.color
         thickness = rectangle.thickness
-        pixels: "PixelAccess | None" = self.image.load()
+        pixels: PixelAccess | None = self.image.load()
         assert pixels is not None
 
         if rectangle.fill:

@@ -7,7 +7,8 @@ from multiprocessing import Pool
 from multiprocessing.pool import AsyncResult
 from pathlib import Path
 from shutil import rmtree
-from typing import TYPE_CHECKING, Callable, NamedTuple, NewType
+from typing import TYPE_CHECKING, NamedTuple, NewType
+from collections.abc import Callable
 
 import numpy as np
 import pymupdf  # type: ignore

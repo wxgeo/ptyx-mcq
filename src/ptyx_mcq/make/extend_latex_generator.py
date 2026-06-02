@@ -25,7 +25,8 @@ import re
 from dataclasses import dataclass
 from enum import StrEnum, auto
 from pathlib import Path
-from typing import TypedDict, Optional, Set, List, Tuple, Dict, Callable, Type
+from typing import TypedDict
+from collections.abc import Callable
 
 from ptyx.errors import PtyxRuntimeError
 from ptyx.printers import sympy2latex
@@ -113,7 +114,7 @@ class HeaderConfigKeys(StrEnum):
 # Test that the header configuration keys are fields of `config_parser.Configuration`.
 # assert set(HeaderConfigKeys.__members__).issubset(field.name for field in fields(Configuration))
 
-SCORE_CONFIG_KEYS_TYPES: dict[HeaderConfigKeys, Type] = {
+SCORE_CONFIG_KEYS_TYPES: dict[HeaderConfigKeys, type] = {
     HeaderConfigKeys.mode: str,
     HeaderConfigKeys.weight: float,
     HeaderConfigKeys.correct: float,
@@ -129,8 +130,8 @@ class InvalidConfiguration(RuntimeError):
 
 
 class MCQCache(TypedDict):
-    header: Optional[str]
-    check_id_or_name: Optional[str]
+    header: str | None
+    check_id_or_name: str | None
     data: Configuration
 
 
@@ -163,7 +164,7 @@ def _has_option(node: Node, option: str) -> bool:
     return option in [opt.strip() for opt in options_list]
 
 
-def _analyze_ids(ids: List[str]) -> Tuple[int, int, List[Tuple[str, ...]]]:
+def _analyze_ids(ids: list[str]) -> tuple[int, int, list[tuple[str, ...]]]:
     """Given a list of IDs (str), return:
     - the length of an ID (or raise an error if they don't have the same size),
     - the maximal number of different digits in an ID caracter,
@@ -182,7 +183,7 @@ def _analyze_ids(ids: List[str]) -> Tuple[int, int, List[Tuple[str, ...]]]:
         )
     id_length = lengths.pop()
     # Create the list of the sets of all possible values for each digit.
-    digits: List[Set[str]] = [set() for _ in range(id_length)]
+    digits: list[set[str]] = [set() for _ in range(id_length)]
     for iD in ids:
         for i, digit in enumerate(iD):
             digits[i].add(digit)
@@ -198,7 +199,7 @@ class IdFormat(TypedDict):
     id_format: tuple[int, int, list[tuple[str, ...]]]
 
 
-def _detect_id_format(ids: Dict[StudentId, StudentName], id_format: str) -> IdFormat:
+def _detect_id_format(ids: dict[StudentId, StudentName], id_format: str) -> IdFormat:
     """Return IDs and ID format data.
 
     `ids` is a dictionary who contains students names and ids.
@@ -413,7 +414,7 @@ class MCQLatexGenerator(LatexGenerator):
         n = OriginalQuestionNumber(int(node.arg(0)))
         self.mcq_question_number = n
         # This list is used to test that the same answer is not proposed twice.
-        self.mcq_answers: List[str] = []
+        self.mcq_answers: list[str] = []
         data = self.mcq_data.ordering[self.NUM]
         data["questions"].append(n)
         data["answers"][n] = []
@@ -464,7 +465,7 @@ class MCQLatexGenerator(LatexGenerator):
         """
 
         k = OriginalAnswerNumber(int(node.arg(0)))
-        is_correct: Optional[bool] = eval(node.arg(1), self.context)
+        is_correct: bool | None = eval(node.arg(1), self.context)
         if not (is_correct is True or is_correct is False or is_correct is None):
             raise ValueError(
                 "Second #NEW_ANSWER argument must be either True, False or None,"
@@ -518,7 +519,7 @@ class MCQLatexGenerator(LatexGenerator):
         self._close_answer()
 
     def _open_answer(
-        self, n: OriginalQuestionNumber, k: OriginalAnswerNumber, is_correct: Optional[bool]
+        self, n: OriginalQuestionNumber, k: OriginalAnswerNumber, is_correct: bool | None
     ) -> None:
         # `n` is question number *before* shuffling
         # `k` is answer number *before* shuffling
@@ -562,7 +563,7 @@ class MCQLatexGenerator(LatexGenerator):
         converted automatically to math mode latex code (1/2 -> '$\frac{1}{2}$').
         """
 
-        def eval_and_format(arg: str) -> List[str]:
+        def eval_and_format(arg: str) -> list[str]:
             raw_list = eval(arg.strip(), self.context)
             if not isinstance(raw_list, (list, tuple)):
                 raise RuntimeError(f"In #ANSWERS_LIST, argument {arg!r} must be a list of answers.")
@@ -680,7 +681,7 @@ class MCQLatexGenerator(LatexGenerator):
             "ids_format": HeaderConfigKeys.id_format,
         }
         # Read config: a dictionary is generated from the `key = value` entries.
-        config: Dict[HeaderConfigKeys, str] = {}
+        config: dict[HeaderConfigKeys, str] = {}
         for line in text.split("\n"):
             line = line.strip()
             if "=" in line:

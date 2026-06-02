@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 # PYTHON_ARGCOMPLETE_OK
 """
 ptyx MCQ Command Line Interface
@@ -37,7 +36,8 @@ import sys
 from argparse import ArgumentParser, Action, Namespace
 from enum import StrEnum
 from pathlib import Path
-from typing import Optional, Iterable, TYPE_CHECKING, Callable
+from typing import TYPE_CHECKING
+from collections.abc import Iterable, Callable
 from importlib import import_module
 
 import argcomplete
@@ -91,7 +91,7 @@ class Handlers(StrEnum):
 
 
 def launcher(
-    parser_creator: Callable[[], ArgumentParser], args: Optional[list] = None, _restart_process_if_needed=True
+    parser_creator: Callable[[], ArgumentParser], args: list | None = None, _restart_process_if_needed=True
 ) -> None:
     """Main entry point, called whenever the `mcq` command is executed.
 
@@ -462,7 +462,7 @@ def create_mcq_arg_parser() -> ArgumentParser:
     return parser
 
 
-def main(args: Optional[list] = None, _restart_process_if_needed=True) -> None:
+def main(args: list | None = None, _restart_process_if_needed=True) -> None:
     launcher(create_mcq_arg_parser, args, _restart_process_if_needed=_restart_process_if_needed)
 
 

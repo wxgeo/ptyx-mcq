@@ -4,7 +4,7 @@ from collections.abc import Callable
 # noinspection PyProtectedMember
 from multiprocessing.pool import AsyncResult
 from pathlib import Path
-from typing import Iterator
+from collections.abc import Iterator
 
 from ptyx.pretty_print import print_error, print_info
 from ptyx_mcq.scan.data.documents import AnalyzeResult, Document, Page

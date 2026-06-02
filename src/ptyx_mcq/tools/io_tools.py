@@ -2,7 +2,7 @@ import sys
 import traceback
 from pathlib import Path
 from types import TracebackType
-from typing import Type, Callable
+from collections.abc import Callable
 
 from ptyx.pretty_print import print_error
 
@@ -127,7 +127,7 @@ class Silent:
     # noinspection PyShadowingNames
     def __exit__(
         self,
-        exception_type: Type[BaseException] | None,
+        exception_type: type[BaseException] | None,
         value: BaseException | None,
         traceback: TracebackType,
     ) -> None:

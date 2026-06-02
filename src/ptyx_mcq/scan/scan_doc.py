@@ -4,7 +4,6 @@ import os
 
 # import time
 from pathlib import Path
-from typing import Union, Optional
 
 # from numpy import ndarray
 from ptyx.pretty_print import print_success, green
@@ -50,9 +49,9 @@ class MCQPictureParser:
 
     def __init__(
         self,
-        path: Union[str, Path],
-        input_dir: Optional[Path] = None,
-        output_dir: Optional[Path] = None,
+        path: str | Path,
+        input_dir: Path | None = None,
+        output_dir: Path | None = None,
     ):
         self.scan_data = ScanData(Path(path), input_dir=input_dir, output_dir=output_dir)
         self.scores_manager = ScoresManager(self)

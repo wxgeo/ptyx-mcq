@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 """
 Created on Thu Aug 29 14:49:37 2019
 
@@ -10,7 +9,7 @@ from collections.abc import Generator
 from itertools import chain
 from multiprocessing import Pool
 from os.path import join
-from typing import Callable
+from collections.abc import Callable
 
 # from typing import TYPE_CHECKING
 from PIL import ImageDraw, ImageFont

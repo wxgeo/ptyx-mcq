@@ -47,7 +47,8 @@ from dataclasses import dataclass
 from itertools import chain
 from pathlib import Path
 
-from typing import Self, Final, Iterable
+from typing import Self, Final
+from collections.abc import Iterable
 
 from ptyx.pretty_print import print_warning, print_error
 
