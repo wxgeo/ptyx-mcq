@@ -1,6 +1,6 @@
 from pathlib import Path
 
-import pymupdf  # type: ignore
+import pymupdf
 import numpy as np
 from PIL import ImageChops
 from PIL import Image

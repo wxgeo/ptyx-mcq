@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING, NamedTuple, NewType
 from collections.abc import Callable
 
 import numpy as np
-import pymupdf  # type: ignore
+import pymupdf
 from numpy import ndarray
 from PIL import Image, UnidentifiedImageError
 
