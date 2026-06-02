@@ -17,12 +17,12 @@ keywords = [
 ]
 dependencies = [
     "Pillow>=9.2",
-    "ptyx>=30.1",
+    "ptyx>=30.2",
     "smallgraphlib>=1.1.1",
     "platformdirs>=4,<5",
     "openpyxl>=3.1.2",
     "argcomplete>=3.1.2,<4",
-    "pymupdf>=1.25.1,<2",
+    "pymupdf>=1.26.2,<2",
 ]
 
 [project.urls]
