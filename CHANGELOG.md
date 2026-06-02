@@ -2,6 +2,27 @@
 
 <!-- version list -->
 
+## v31.2.0 (2026-06-02)
+
+### Bug Fixes
+
+- Fix regression in `mcq see`.
+  ([`661afad`](https://github.com/wxgeo/ptyx-mcq/commit/661afad337df14e756da3a0b6a8a32c12764224d))
+
+### Features
+
+- Add ability to customize callback functions for external tools.
+  ([`53588c0`](https://github.com/wxgeo/ptyx-mcq/commit/53588c01c67e45d344ab93374c3327af41d1c44d))
+
+- Give access to the specification of each ptyx-mcq defined tags in the API.
+  ([`7af0fdc`](https://github.com/wxgeo/ptyx-mcq/commit/7af0fdc1d451b3c27b5728fa238d8be7a315f47b))
+
+### Refactoring
+
+- Modernize old legacy code.
+  ([`90dd73e`](https://github.com/wxgeo/ptyx-mcq/commit/90dd73e0e01defde48a523090a127fb55deac837))
+
+
 ## v31.1.0 (2026-03-22)
 
 ### Bug Fixes
