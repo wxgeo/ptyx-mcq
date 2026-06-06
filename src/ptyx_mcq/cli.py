@@ -85,8 +85,8 @@ class Handlers(StrEnum):
     update_exercises = "ptyx_mcq.other_commands.update.update_exercises"
     create_templates = "ptyx_mcq.other_commands.template.create_template"
     list_templates = "ptyx_mcq.other_commands.template.list_templates"
-    doc_config = "ptyx_mcq.other_commands.doc.doc_config"
-    doc_strategies = "ptyx_mcq.other_commands.doc.doc_strategies"
+    info_config = "ptyx_mcq.other_commands.info.info_config"
+    info_strategies = "ptyx_mcq.other_commands.info.info_strategies"
     install_shell_completion = "ptyx_mcq.other_commands.install.install_shell_completion"
 
 
@@ -418,24 +418,24 @@ def create_mcq_arg_parser() -> ArgumentParser:
     create_template_parser.set_defaults(handler=Handlers.list_templates)
 
     # ------------------------------------------
-    #     $ mcq doc
+    #     $ mcq info
     # ==========================================
-    # create the parser for the "doc" command
-    doc_parser = add_parser(
-        "doc", help="Display information about available options and evaluation strategies."
+    # create the parser for the "info" command
+    info_parser = add_parser(
+        "info", help="Display information about available options and evaluation strategies."
     )
-    doc_parser.set_defaults(subparser=doc_parser)
-    add_doc_parser = doc_parser.add_subparsers().add_parser
+    info_parser.set_defaults(subparser=info_parser)
+    add_info_parser = info_parser.add_subparsers().add_parser
 
-    # $ mcq doc strategies
+    # $ mcq info strategies
     # --------------------
-    strategies_parser = add_doc_parser("strategies", help="Document available evaluation strategies.")
-    strategies_parser.set_defaults(handler=Handlers.doc_strategies)
+    strategies_parser = add_info_parser("strategies", help="Document available evaluation strategies.")
+    strategies_parser.set_defaults(handler=Handlers.info_strategies)
 
-    # $ mcq doc config
+    # $ mcq info config
     # ----------------
-    config_parser = add_doc_parser("config", help="Document ptyx files configuration options.")
-    config_parser.set_defaults(handler=Handlers.doc_config)
+    config_parser = add_info_parser("config", help="Document ptyx files configuration options.")
+    config_parser.set_defaults(handler=Handlers.info_config)
 
     # ------------------------------------------
     #     $ mcq install
