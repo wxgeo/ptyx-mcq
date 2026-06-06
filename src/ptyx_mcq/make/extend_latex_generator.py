@@ -418,7 +418,7 @@ class MCQLatexGenerator(LatexGenerator):
         data = self.mcq_data.ordering[self.NUM]
         data["questions"].append(n)
         data["answers"][n] = []
-        self.context["APPLY_TO_ANSWERS"] = None
+        self.context["APPLY_TO_ANSWERS"] = ""
         self.context["RAW_CODE"] = None
         self.context["ANSWER_WIDTH"] = None
         self.write(r"\pagebreak[3]\item\filbreak")
@@ -485,7 +485,8 @@ class MCQLatexGenerator(LatexGenerator):
         # TODO(?): functions should be compiled only once for each question block,
         #  not for every answer (though it is probably not a bottleneck in
         #  code execution).
-        apply = self.context.get("APPLY_TO_ANSWERS")
+        apply: str = self.context.get("APPLY_TO_ANSWERS", "").strip()
+
         if apply:
             # Apply template or function to every answer.
             # Support:
@@ -497,7 +498,14 @@ class MCQLatexGenerator(LatexGenerator):
                 functions.append(lambda s: (apply % s))
             else:
                 # Search for the function name in context.
-                functions.append(self.context[apply])
+                try:
+                    functions.append(self.context[apply])
+                except KeyError:
+                    raise RuntimeError(
+                        f"Undefined formatting function: {apply!r}.\n"
+                        f"In the directive '@{apply}', the arobase should be followed by"
+                        " either a function name, or a text containing the '%s' place holder."
+                    )
 
         if self.context.get("RAW_CODE"):
             # Try to emulate verbatim (which is not allowed inside

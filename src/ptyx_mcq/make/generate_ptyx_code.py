@@ -15,15 +15,16 @@ from ptyx_mcq.tools.io_tools import FatalError, print_error
 from ptyx_mcq.make.parser_tools import is_new_exercise_start, is_mcq_start, is_mcq_end, is_section_start
 
 
-def parse_at_directive(line: str) -> str:
+def parse_arobase_directive(line: str) -> str:
     r"""Parse @-directives.
 
     @-directives are lines starting by an `@` character, and preceding answers.
     There used to declare a formatter for all the answers of the same question.
 
-    One may change of f
+    The formatter must be either a function name, or a string containing
+    the placeholder '%s'.
 
-    Examples of formatter definition:
+    Examples of formatters' definitions:
         * "@formatting_function"
         * "@\texttt{%s}"
         * "@@\texttt{%s}"
@@ -31,8 +32,9 @@ def parse_at_directive(line: str) -> str:
     Note that `%s` will be replaced by the provided answer string.
 
     The last one, with two @ characters, is a raw formatter.
-    In that case, \texttt{} will be escaped, so that answer "hello"
-    will be converted to "\\texttt\{hello\}".
+    It emulates LaTeX verbatim mode.
+    So, in this example, \texttt{} will be escaped: an answer "hello"
+    would then be converted to "\textbackslash{}texttt\{hello\}".
     """
     assert line.startswith("@")
     raw = line.startswith("@@")
@@ -214,7 +216,7 @@ def generate_ptyx_code(text: str, additional_header_lines: Iterable[str] = ()) -
             # although the user should have already closed it manually.
             is_header = is_header_raw_code = False
             # Now, let's start the MCQ body.
-            intro.append("#END % (introduction end)")
+            intro.append("#END_ASK % (introduction end)")
             # code.extend(intro)
             print("Parsing MCQ...\n")
             print("STRUCTURE:\n")
@@ -300,7 +302,7 @@ def generate_ptyx_code(text: str, additional_header_lines: Iterable[str] = ()) -
                 raise RuntimeError("No question before answers list !")
             elif previous_line.startswith("@"):
                 # An @-directive have to be written in the line preceding an answer.
-                code[-1] = parse_at_directive(previous_line)
+                code[-1] = parse_arobase_directive(previous_line)
 
             # A blank line is used to separate answers groups.
             if previous_line == "" and current_level == "NEW_ANSWER":

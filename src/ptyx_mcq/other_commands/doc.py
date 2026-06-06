@@ -1,3 +1,7 @@
+"""
+Command line's tools that display information.
+"""
+
 import re
 
 from ptyx.pretty_print import term_color, TermColors
