@@ -1,8 +1,9 @@
-#!/usr/bin/env python3
 """
-Created on Thu Aug 29 14:49:37 2019
+Generate for each student a corrected version of their exam (as a PDF),
+indicating the correct answers and the score for each question.
 
-@author: nicolas
+The main function is `amend_all()`, which will generate the corrected version
+for all students.
 """
 
 from collections.abc import Generator
@@ -34,7 +35,9 @@ from ptyx_mcq.tools.io_tools import generate_progression_callback
 def amend_all(scan_data: ScanData, progression: Callable[..., None] = None) -> None:
     """Amend all generated documents, adding the scores and indicating the correct answers."""
     if progression is None:
-        progression = generate_progression_callback("Generating the amended pdf files", len(scan_data.index))
+        progression = generate_progression_callback(
+            "Generating the amended pdf files", len(scan_data.all_docs_index)
+        )
     cfg = scan_data.config
     default_weight = cfg.weight["default"]
     assert isinstance(default_weight, (int, float))

@@ -153,7 +153,7 @@ def _get_config_and_doc_with_conflicts(patched_conflict_solver) -> tuple[Configu
     Conflicts are generated only for pages 1, 2 and 4 (*not* 3).
     """
     config = patched_conflict_solver.scan_data.config
-    doc = patched_conflict_solver.scan_data.index[DocumentId(17)]
+    doc = patched_conflict_solver.scan_data.all_docs_index[DocumentId(17)]
     # Modify some checkboxes states in the last document, to pretend something went wrong.
     modifications: dict[PageNum, dict[ApparentQuestionNumber, dict[ApparentAnswerNumber, CbxState]]] = {
         PageNum(1): {

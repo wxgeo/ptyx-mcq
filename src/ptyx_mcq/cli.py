@@ -127,7 +127,7 @@ def launcher(
         assert os.getenv("PYTHONHASHSEED")
 
     try:
-        # Launch corresponding handler.
+        # Launch the corresponding handler.
         get_handler(handler)(**kwargs)
     except ProcessInterrupted:
         sys.exit(0)
@@ -320,10 +320,18 @@ def create_mcq_arg_parser() -> ArgumentParser:
     )  # TODO: add a completer ?
     fix_doc_parser.add_argument(
         "-i",
-        "--id",
+        "--student-id",
         metavar="ID",
         type=str,
         help="The identifier of the student.",
+    )  # TODO: add a completer ?
+    fix_doc_parser.add_argument(
+        "-m",
+        "--max-results",
+        metavar="MAX",
+        type=int,
+        default=10,
+        help="The maximal number of found pages to review.",
     )  # TODO: add a completer ?
     fix_doc_parser.set_defaults(handler=Handlers.fix_doc)
 

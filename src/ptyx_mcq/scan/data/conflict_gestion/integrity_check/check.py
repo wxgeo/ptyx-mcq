@@ -33,7 +33,7 @@ class IntegrityChecker:
 
     @property
     def index(self) -> dict[DocumentId, Document]:
-        return self.scan_data.index
+        return self.scan_data.all_docs_index
 
     def run(self) -> IntegrityCheckResult:
         """Main method: check problems, then solve them with user help."""
@@ -55,8 +55,8 @@ class IntegrityChecker:
         for the same document.
         """
         duplicates: DuplicatePages = {}
-        for doc_id, doc in self.scan_data.index.items():
-            for page_num, page in doc.pages.items():
+        for doc_id, doc in self.scan_data.all_docs_index.items():
+            for page_num, page in doc.pages_index.items():
                 count_versions = sum(1 for _ in page.all_pictures)
                 if count_versions >= 2:
                     print_info(f"Page {page_num} of document {doc_id} found in {count_versions} copies.")
@@ -81,7 +81,7 @@ class IntegrityChecker:
                     "Maybe you recompiled the ptyx file in the while ?\n"
                     f"(Executing `mcq make -n {max(self.index)}` might fix it.)"
                 )
-            seen_pages = set(self.index[doc_id].pages)
+            seen_pages = set(self.index[doc_id].pages_index)
             if unseen_pages := expected_pages - seen_pages:
                 missing_pages[doc_id] = sorted(unseen_pages)
         return missing_pages
@@ -95,11 +95,11 @@ class IntegrityChecker:
             for doc_id, page_num_list in integrity_check_results.duplicates.items():
                 for page_num in page_num_list:
                     print_info(f"Page {page_num} of document {doc_id} was scanned several times.")
-                    if self.scan_data.index[doc_id].pages[page_num].has_conflicts:
+                    if self.scan_data.all_docs_index[doc_id].pages_index[page_num].has_conflicts:
                         print_warning(
                             f"Document {doc_id}: different conflicting versions of page {page_num} were found!"
                         )
-                        for pic in self.scan_data.index[doc_id].pages[page_num].used_pictures:
+                        for pic in self.scan_data.all_docs_index[doc_id].pages_index[page_num].used_pictures:
                             print_warning(f"  - {pic.short_path}")
                     else:
                         print_info("(Same content in all versions, so we can safely keep only one of them.)")

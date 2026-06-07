@@ -92,7 +92,7 @@ class Page:
 class Document:
     scan_data: "ScanData"
     doc_id: DocumentId
-    pages: dict[PageNum, Page]
+    pages_index: dict[PageNum, Page]
     score_per_question: dict[OriginalQuestionNumber, float] | None = None
     _use: bool | None = None
 
@@ -129,14 +129,14 @@ class Document:
     @property
     def first_page(self) -> Page:
         try:
-            return self.pages[PageNum(1)]
+            return self.pages_index[PageNum(1)]
         except KeyError:
             raise ValueError(f"No first page found for document {self.doc_id}!")
 
     @property
     def all_pictures(self) -> list[Picture]:
         """Return all the pictures associated with this document, even discarded ones."""
-        return [pic for page in self.pages.values() for pic in page.all_pictures]
+        return [pic for page in self.pages_index.values() for pic in page.all_pictures]
 
     @property
     def used_pictures(self) -> list[Picture]:
@@ -146,15 +146,15 @@ class Document:
         Discarded pictures have their attribute `.use` set to False.
         (Pictures may be discarded during the conflict resolution process.)
         """
-        return [pic for page in self.pages.values() for pic in page.used_pictures]
+        return [pic for page in self.pages_index.values() for pic in page.used_pictures]
 
     # @property
     # def answered(self) -> ChainMap[OriginalQuestionNumber, set[OriginalAnswerNumber]]:
     #     """Answers checked by the student for each question."""
-    #     return ChainMap(*(page.pic.answered for page in self.pages.values()))
+    #     return ChainMap(*(page.pic.answered for page in self.pages_index.values()))
 
     def __iter__(self) -> Iterator[Page]:
-        return iter(self.pages.values())
+        return iter(self.pages_index.values())
 
     @property
     def questions(self) -> dict[OriginalQuestionNumber, Question]:

@@ -45,7 +45,7 @@ class ScanData:
             open(self._log_file, "w").close()
 
     def __iter__(self) -> Iterator[Document]:
-        return iter(self.used_docs.values())
+        return iter(self.used_docs_index.values())
 
     @property
     def pages(self) -> Iterator[Page]:
@@ -56,7 +56,7 @@ class ScanData:
         return iter(pic for doc in self for page in doc for pic in page)
 
     def initialize(self, reset=False) -> None:
-        """Load all information from files."""
+        """Generate dirs and reset them if needed. Save PDF hashes."""
         self.paths.make_dirs(reset)
         self.input_pdf_extractor.save_hashes()
 
@@ -95,7 +95,9 @@ class ScanData:
     ) -> None:
         """Analyze all documents pictures, retrieving checkboxes states and students names and ids."""
         if progression is None:
-            progression = generate_progression_callback("Analyzing all documents data", len(self.index))
+            progression = generate_progression_callback(
+                "Analyzing all documents data", len(self.all_docs_index)
+            )
         if number_of_processes == 1:
             self._sequential_analyze(progression=progression)
         else:
@@ -121,15 +123,15 @@ class ScanData:
         pool: multiprocessing.pool.Pool
         results: dict[DocumentId, AsyncResult] = {}
         with multiprocessing.Pool(number_of_processes) as pool:
-            for doc_id, doc in self.index.items():
+            for doc_id, doc in self.all_docs_index.items():
                 results[doc_id] = pool.apply_async(
                     self.analyze_doc, (doc, self._log_file), callback=progression
                 )
             for doc_id, result in results.items():
-                self.index[doc_id].update_info(*result.get())
+                self.all_docs_index[doc_id].update_info(*result.get())
 
     def _sequential_analyze(self, progression: Callable[[AnalyzeResult], None]) -> None:
-        for doc_id, doc in self.index.items():
+        for doc_id, doc in self.all_docs_index.items():
             analyze_results = self.analyze_doc(doc, self._log_file)
             doc.update_info(*analyze_results)
             progression(analyze_results)
@@ -140,8 +142,12 @@ class ScanData:
             return doc.analyze()
 
     @property
-    def index(self) -> dict[DocumentId, Document]:
-        """Index of all documents, included discarded ones."""
+    def all_docs_index(self) -> dict[DocumentId, Document]:
+        """
+        Index of all documents, included discarded ones.
+
+        To get only the relevant documents, you should use the property `.used_docs_index` instead.
+        """
         if self._index is None:
             self._generate_index()
             # Keep a track of the index, to make debugging easier.
@@ -151,9 +157,14 @@ class ScanData:
         return self._index
 
     @property
-    def used_docs(self) -> dict[DocumentId, Document]:
-        """Index of used documents (discarded ones are not included)."""
-        return {doc_id: doc for doc_id, doc in self.index.items() if doc.use}
+    def used_docs_index(self) -> dict[DocumentId, Document]:
+        """
+        Index of all used documents (discarded ones are not included).
+
+        This is generally the property you're looking for. However, if you need all
+        documents, including the discarded ones, use the property `.all_docs_index` instead.
+        """
+        return {doc_id: doc for doc_id, doc in self.all_docs_index.items() if doc.use}
 
     def _generate_index(self) -> None:
         """Generate the tree of all the documents.
@@ -171,7 +182,7 @@ class ScanData:
                 self._index.setdefault(
                     doc_id := identification_data.doc_id,
                     doc := Document(self, doc_id, {}),
-                ).pages.setdefault(
+                ).pages_index.setdefault(
                     page_num := identification_data.page_num,
                     page := Page(doc, page_num, []),
                 )._pictures.append(
@@ -187,7 +198,7 @@ class ScanData:
         # Sort by document id and page number.
         self._index = {doc_id: self._index[doc_id] for doc_id in sorted(self._index)}
         for doc in self._index.values():
-            doc.pages = {page_num: doc.pages[page_num] for page_num in sorted(doc.pages)}
+            doc.pages_index = {page_num: doc.pages_index[page_num] for page_num in sorted(doc.pages_index)}
 
     def _generate_questions_tree(
         self,

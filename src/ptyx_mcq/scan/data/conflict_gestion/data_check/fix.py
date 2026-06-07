@@ -123,18 +123,18 @@ class AbstractNamesReviewer(ABC, metaclass=ABCMeta):
         Return the action to do (go to next document, go back to previous one,
         or skip document).
         """
-        # doc = self.scan_data.index[doc_id]
+        # doc = self.scan_data.all_docs_index[doc_id]
         # if doc.first_page is None:
         #     print_error(f"No first page found for document {doc_id}!")
         #     return Action.NEXT
 
         # Ask user for name.
         student_name, student_id, action = self.enter_name_and_id(
-            doc_id, default=self.scan_data.index[doc_id].student_name
+            doc_id, default=self.scan_data.all_docs_index[doc_id].student_name
         )
 
         # Store name and student id.
-        first_page = self.scan_data.index[doc_id].first_page
+        first_page = self.scan_data.all_docs_index[doc_id].first_page
         assert first_page is not None
         first_page.pic.student = Student(name=student_name, id=student_id)
         # print([doc.student_name for doc in first_page.doc.scan_data])
@@ -219,19 +219,19 @@ class AbstractAnswersReviewer(ABC, metaclass=ABCMeta):
         Return the action to do (go to next document, go back to previous one,
         or skip document), and a boolean which indicates if the document as been
         effectively reviewed."""
-        doc = self.scan_data.index[doc_id]
+        doc = self.scan_data.all_docs_index[doc_id]
         if not doc.use:
             # Skip this document.
             return Action.NEXT
         else:
-            action = self.edit_answers(doc_id, page_num)
+            action = self._edit_answers(doc_id, page_num)
             # Save changes on drive (to be able to resume scan process).
             if action == Action.APPLY:
-                doc.pages[page_num].pic.save_checkboxes_state(is_fix=True)
+                doc.pages_index[page_num].pic.save_checkboxes_state(is_fix=True)
             return action
 
     @abstractmethod
-    def edit_answers(self, doc_id: DocumentId, page_num: PageNum) -> Action:
+    def _edit_answers(self, doc_id: DocumentId, page_num: PageNum) -> Action:
         """Call interactive editor to change answers.
 
         MCQ parser internal state `self.data` will be modified accordingly.
@@ -264,7 +264,7 @@ class DefaultAllDataIssuesFixer:
     def run(self, check_result: DataCheckResult) -> None:
         """Resolve conflicts manually: unknown student ID, ambiguous answer..."""
         # Each operation is independent of the other ones,
-        # and user should be able to navigate between them.
+        # and the user should be able to navigate between them.
 
         while (
             len(names_to_review := check_result.names_to_review)
@@ -284,11 +284,11 @@ class DefaultAllDataIssuesFixer:
                     doc_id = list(names_to_review)[position]
                     action = self.name_reviewer.review_name(doc_id)
                     # # Verify that the new name has not induced a new conflict.
-                    # for other_doc_id in self.scan_data.index:
+                    # for other_doc_id in self.scan_data.all_docs_index:
                     #     if (
                     #         other_doc_id != doc_id
-                    #         and self.scan_data.index[other_doc_id].student_name
-                    #         == self.scan_data.index[doc_id].student_name
+                    #         and self.scan_data.all_docs_index[other_doc_id].student_name
+                    #         == self.scan_data.all_docs_index[doc_id].student_name
                     #     ):
                     #         if doc_id not in names_to_review:
                     #             names_to_review.append(doc_id)
@@ -302,18 +302,18 @@ class DefaultAllDataIssuesFixer:
                         position = max(0, position - 1)
                     case Action.DISCARD:
                         position += 1
-                        self.scan_data.index[doc_id].use = False
+                        self.scan_data.all_docs_index[doc_id].use = False
                     case _:
                         assert False, f"Invalid action: {action}."
 
             # # Apply changes definitively.
             # for doc_id in names_to_review:
-            #     if self.scan_data.index[doc_id].student_name == Action.DISCARD.value:
+            #     if self.scan_data.all_docs_index[doc_id].student_name == Action.DISCARD.value:
             #         doc_data = self.scan_data.pop(doc_id)
             #         # For each page of the document, add corresponding picture path
             #         # to skipped paths list.
             #         # If `mcq scan` is run again, those pictures will be skipped.
-            #         for pic_data in doc_data.pages.values():
+            #         for pic_data in doc_data.pages_index.values():
             #             self.scan_data.store_skipped_pic(Path(pic_data.pic_path))
             #         # Remove also all corresponding data files.
             #         self.scan_data.remove_doc_files(doc_id)

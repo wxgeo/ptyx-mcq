@@ -29,7 +29,7 @@ def test_no_conflict(monkeypatch, patched_conflict_solver):
     """No interaction should occur if there is no conflict."""
     monkeypatch.setattr("builtins.input", fail_on_input)
     patched_conflict_solver.run()
-    docs = list(patched_conflict_solver.scan_data.index)
+    docs = list(patched_conflict_solver.scan_data.all_docs_index)
     assert docs == [3, 4, 17, 70], docs
     for doc in patched_conflict_solver.scan_data:
         # No conflict: all pictures are used.
@@ -111,7 +111,7 @@ def test_bug_inconsistent_checkboxes_state(tmp_path):
     shutil.copytree(origin, copy)
     scan_data = ScanData(config_path=tmp_path / "duplicate-files")
     scan_data.run()
-    pic1, pic2 = scan_data.index[DocumentId(44)].pages[PageNum(3)].all_pictures
+    pic1, pic2 = scan_data.all_docs_index[DocumentId(44)].pages_index[PageNum(3)].all_pictures
     assert pic1.as_hashable_tuple() == pic2.as_hashable_tuple()
 
     # This bug was caused by an error in the calibration process: rotation was not saved!
@@ -138,10 +138,10 @@ def duplicate_documents_test_base(tmp_path, custom_input, chosen_version: Litera
     # Shortcuts
     doc_id = DocumentId(44)
     page_num = PageNum(1)
-    doc = mcq_parser.scan_data.index[doc_id]
+    doc = mcq_parser.scan_data.all_docs_index[doc_id]
     config = mcq_parser.scan_data.config
 
-    pic1, pic2 = doc.pages[page_num].all_pictures
+    pic1, pic2 = doc.pages_index[page_num].all_pictures
 
     if chosen_version == "1":
         chosen_pic, discarded_pic = pic1, pic2
@@ -150,7 +150,7 @@ def duplicate_documents_test_base(tmp_path, custom_input, chosen_version: Litera
         chosen_pic, discarded_pic = pic2, pic1
 
     assert not discarded_pic.use
-    assert doc.pages[page_num].pic is chosen_pic
+    assert doc.pages_index[page_num].pic is chosen_pic
 
     q, a = apparent2real(ApparentQuestionNumber(1), ApparentAnswerNumber(1), config, doc_id)
     answer = doc.questions[q].answers[a]

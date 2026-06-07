@@ -20,7 +20,7 @@ class AbstractIntegrityIssuesFixer(ABC):
 
     @property
     def index(self):
-        return self.scan_data.index
+        return self.scan_data.all_docs_index
 
     @abstractmethod
     def select_version(self, pic1: Picture, pic2: Picture) -> Literal[1, 2]:
@@ -48,7 +48,7 @@ class AbstractIntegrityIssuesFixer(ABC):
 
         for doc_id, page_num_list in check_results.duplicates.items():
             for page_num in page_num_list:
-                page = self.index[doc_id].pages[page_num]
+                page = self.index[doc_id].pages_index[page_num]
                 while page.has_conflicts:
                     print(f"Document {doc_id}: please select a version for page {page_num}.")
                     pic1, pic2, *_ = page.used_pictures

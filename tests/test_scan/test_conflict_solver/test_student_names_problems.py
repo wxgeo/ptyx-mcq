@@ -23,7 +23,7 @@ STUDENTS: dict[DocumentId, Student] = {
 def test_missing_name(patched_conflict_solver, custom_input) -> None:
     """Test interactions if a name is missing."""
     doc_id = DocumentId(17)
-    doc: Document = patched_conflict_solver.scan_data.index[doc_id]
+    doc: Document = patched_conflict_solver.scan_data.all_docs_index[doc_id]
     student_name = doc.student_name
     assert student_name == "John Smith"
     doc.student = Student(name=StudentName(""), id=StudentId(""))
@@ -53,19 +53,19 @@ def test_missing_name(patched_conflict_solver, custom_input) -> None:
 
     patched_conflict_solver.run()
 
-    assert patched_conflict_solver.scan_data.index[doc_id].student_name == student_name
+    assert patched_conflict_solver.scan_data.all_docs_index[doc_id].student_name == student_name
 
     # There should be no remaining question.
     assert custom_input.is_empty(), custom_input.remaining()
 
-    assert doc is patched_conflict_solver.scan_data.index[doc_id]
+    assert doc is patched_conflict_solver.scan_data.all_docs_index[doc_id]
 
     # Test that student name is memorized now.
     # doc.student.name = StudentName("")
     custom_input.set_scenario([])
 
     patched_conflict_solver.run()
-    assert patched_conflict_solver.scan_data.index[doc_id].student_name == student_name
+    assert patched_conflict_solver.scan_data.all_docs_index[doc_id].student_name == student_name
 
     # There should be no remaining question.
     assert custom_input.is_empty(), f"List of remaining questions/answers: {custom_input.remaining()}"
@@ -74,7 +74,7 @@ def test_missing_name(patched_conflict_solver, custom_input) -> None:
 def test_missing_name2(patched_conflict_solver, custom_input) -> None:
     """Test interactions if a name is missing."""
     doc_id = DocumentId(17)
-    doc: Document = patched_conflict_solver.scan_data.index[doc_id]
+    doc: Document = patched_conflict_solver.scan_data.all_docs_index[doc_id]
     student_name = doc.student_name
     assert student_name == "John Smith"
     doc.student = Student(name=StudentName(""), id=StudentId(""))
@@ -90,7 +90,7 @@ def test_missing_name2(patched_conflict_solver, custom_input) -> None:
     )
 
     patched_conflict_solver.run()
-    assert patched_conflict_solver.scan_data.index[doc_id].student_name == student_name
+    assert patched_conflict_solver.scan_data.all_docs_index[doc_id].student_name == student_name
 
     # There should be no remaining question.
     assert custom_input.is_empty(), f"List of remaining questions/answers: {custom_input.remaining()}"
@@ -101,7 +101,7 @@ def test_several_missing_names(patched_conflict_solver, custom_input) -> None:
 
     In particular, several missing names should not be detected as duplicates!
     """
-    index = patched_conflict_solver.scan_data.index
+    index = patched_conflict_solver.scan_data.all_docs_index
 
     backup_names: dict[int, StudentName] = {}
 
@@ -131,7 +131,7 @@ def test_several_missing_names(patched_conflict_solver, custom_input) -> None:
 
     patched_conflict_solver.run()
     for doc_id in index:
-        assert patched_conflict_solver.scan_data.index[doc_id].student_name == backup_names[doc_id]
+        assert patched_conflict_solver.scan_data.all_docs_index[doc_id].student_name == backup_names[doc_id]
 
     # There should be no remaining question.
     assert custom_input.is_empty(), f"List of remaining questions/answers: {custom_input.remaining()}"
@@ -142,7 +142,7 @@ def test_missing_names_navigation(patched_conflict_solver, custom_input) -> None
 
     In particular, several missing names should not be detected as duplicates!
     """
-    index = patched_conflict_solver.scan_data.index
+    index = patched_conflict_solver.scan_data.all_docs_index
 
     backup_names: dict[int, StudentName] = {}
 
@@ -215,7 +215,7 @@ def test_missing_names_navigation(patched_conflict_solver, custom_input) -> None
 
     patched_conflict_solver.run()
     for doc_id in index:
-        assert patched_conflict_solver.scan_data.index[doc_id].student_name == backup_names[doc_id]
+        assert patched_conflict_solver.scan_data.all_docs_index[doc_id].student_name == backup_names[doc_id]
 
     # There should be no remaining question.
     assert custom_input.is_empty(), f"List of remaining questions/answers: {custom_input.remaining()}"
@@ -223,7 +223,7 @@ def test_missing_names_navigation(patched_conflict_solver, custom_input) -> None
 
 def test_missing_names_autocomplete(patched_conflict_solver, custom_input) -> None:
     """Test name suggestion."""
-    index = patched_conflict_solver.scan_data.index
+    index = patched_conflict_solver.scan_data.all_docs_index
 
     for doc_id in STUDENTS:
         assert index[doc_id].student == STUDENTS[doc_id]
@@ -271,7 +271,7 @@ def test_missing_names_autocomplete(patched_conflict_solver, custom_input) -> No
 def test_missing_name_skip_doc(patched_conflict_solver, custom_input) -> None:
     """Skip a document using '/' as student name."""
     doc_id = DocumentId(3)
-    doc: Document = patched_conflict_solver.scan_data.index[doc_id]
+    doc: Document = patched_conflict_solver.scan_data.all_docs_index[doc_id]
     student_name = doc.student_name
     assert student_name == "Robert Le Hardy"
     doc.student = Student(name=StudentName(""), id=StudentId(""))
@@ -286,7 +286,7 @@ def test_missing_name_skip_doc(patched_conflict_solver, custom_input) -> None:
     )
 
     patched_conflict_solver.run()
-    assert doc_id not in patched_conflict_solver.scan_data.used_docs
+    assert doc_id not in patched_conflict_solver.scan_data.used_docs_index
 
     # There should be no remaining question.
     assert custom_input.is_empty(), f"List of remaining questions/answers: {custom_input.remaining()}"
@@ -298,7 +298,7 @@ def test_duplicate_name(patched_conflict_solver, custom_input):
     assert [doc.student_name for doc in docs.values()] == [student.name for student in STUDENTS.values()]
 
     # Create duplicate name conflict: give the same name to documents 3 and 4.
-    patched_conflict_solver.scan_data.index[DocumentId(4)].student = docs[DocumentId(3)].student
+    patched_conflict_solver.scan_data.all_docs_index[DocumentId(4)].student = docs[DocumentId(3)].student
 
     assert [doc.student_name for doc in docs.values()] != [student.name for student in STUDENTS.values()]
 

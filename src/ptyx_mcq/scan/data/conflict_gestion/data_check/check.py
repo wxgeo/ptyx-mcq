@@ -37,7 +37,7 @@ class DataChecker:
 
     # @property
     # def index(self):
-    #     return self.scan_data.index
+    #     return self.scan_data.all_docs_index
 
     def run(self) -> DataCheckResult:
         print("Searching for unnamed documents...")
@@ -72,8 +72,8 @@ class DataChecker:
         seen_names: dict[StudentName, DocumentId] = {}
         duplicate_names: dict[StudentName, list[DocumentId]] = {}
         # Sorting documents is cheap and make testing easier.
-        for doc_id in sorted(self.scan_data.index):
-            name = self.scan_data.index[doc_id].student_name
+        for doc_id in sorted(self.scan_data.all_docs_index):
+            name = self.scan_data.all_docs_index[doc_id].student_name
             # Be careful to not count unnamed documents as duplicates!
             if name:
                 if name in seen_names:
@@ -88,8 +88,8 @@ class DataChecker:
         # The answers are ambiguous and were not already manually verified in a previous scan.
         return [
             (doc_id, page_num)
-            for doc_id, doc in self.scan_data.index.items()
-            for page_num, page in doc.pages.items()
+            for doc_id, doc in self.scan_data.all_docs_index.items()
+            for page_num, page in doc.pages_index.items()
             if page.pic.checkboxes_need_review
         ]
 

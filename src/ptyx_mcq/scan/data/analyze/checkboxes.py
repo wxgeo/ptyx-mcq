@@ -177,7 +177,7 @@ def display_analyze_results(doc: "Document") -> None:
     """
     print(f"\n[Document {doc.doc_id}]\n")
     config = doc.scan_data.config
-    for page_num, page in doc.pages.items():
+    for page_num, page in doc.pages_index.items():
         print(f"\nPage {page}:")
         pic = page.pic
         for q, question in pic.questions.items():
@@ -219,7 +219,7 @@ def _export_document_checkboxes(doc: "Document", path: Path = None, compact=Fals
     if path is None:
         path = doc.scan_data.paths.dirs.checkboxes
     (doc_dir := path / str(doc.doc_id)).mkdir(exist_ok=True)
-    for page_num, page in doc.pages.items():
+    for page_num, page in doc.pages_index.items():
         pic = page.pic
         cbx_matrices = pic.get_checkboxes()
         index_lines: list[str] = []

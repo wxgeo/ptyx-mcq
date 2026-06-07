@@ -57,7 +57,7 @@ class PageData(NamedTuple):
 
 class PdfCollectionExtractor:
     """
-    Manage all input pdf, and extract its content.
+    Manage all input PDF, and extract their content.
 
     The main method is `.collect_data()`, which populates
     the `.data` dictionary.

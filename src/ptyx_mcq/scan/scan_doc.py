@@ -45,15 +45,15 @@ from ptyx_mcq.scan.score_management.scores_manager import ScoresManager
 
 
 class MCQPictureParser:
-    """Main class for parsing pdf files containing all the scanned MCQ."""
+    """Main class for parsing PDF files containing all the scanned MCQ."""
 
     def __init__(
         self,
-        path: str | Path,
+        config_path: str | Path,
         input_dir: Path | None = None,
         output_dir: Path | None = None,
     ):
-        self.scan_data = ScanData(Path(path), input_dir=input_dir, output_dir=output_dir)
+        self.scan_data = ScanData(Path(config_path), input_dir=input_dir, output_dir=output_dir)
         self.scores_manager = ScoresManager(self)
 
     @property
@@ -81,7 +81,7 @@ class MCQPictureParser:
                 sorted(pic.short_path for page in doc for pic in page.used_pictures),
                 sorted(pic.short_path for page in doc for pic in page.all_pictures if not pic.use),
             )
-            for doc_id, doc in self.scan_data.index.items()
+            for doc_id, doc in self.scan_data.all_docs_index.items()
         )
 
         def fmt(paths: list[str]):
@@ -190,6 +190,7 @@ class MCQPictureParser:
         self._generate_report()
         self._generate_amended_pdf()
 
+    # TODO: remove old debug option or restore it?
     def run(
         self,
         number_of_processes: int = 0,

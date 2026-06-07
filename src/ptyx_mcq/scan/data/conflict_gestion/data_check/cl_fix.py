@@ -34,7 +34,7 @@ from ptyx_mcq.tools.config_parser import (
 
 class ClDocHeaderDisplayer(AbstractDocHeaderDisplayer):
     def __init__(self, scan_data: ScanData, doc_id: DocumentId):
-        array = scan_data.index[doc_id].pages[PageNum(1)].pic.as_matrix()
+        array = scan_data.all_docs_index[doc_id].pages_index[PageNum(1)].pic.as_matrix()
         width = array.shape[1]
         self.viewer = ImageViewer(array=array[0 : int(3 / 4 * width), :])
         self.process: CompletedProcess | Popen | None = None
@@ -164,7 +164,7 @@ class ClAnswersReviewer(AbstractAnswersReviewer):
     ) -> None:
         """Update an answer status according to the user input during the review."""
         q0, a0 = real2apparent(q, a, self.scan_data.config, doc_id)
-        question = self.scan_data.used_docs[doc_id].questions[q]
+        question = self.scan_data.used_docs_index[doc_id].questions[q]
         answer = question.answers[a]
         assert answer.state is not None
         checked = answer.state.seems_checked
@@ -182,11 +182,11 @@ class ClAnswersReviewer(AbstractAnswersReviewer):
             else:
                 print(f"Warning: answer {a0} was not marked as checked.")
 
-    @copy_docstring(AbstractAnswersReviewer.edit_answers)
-    def edit_answers(self, doc_id: DocumentId, page_num: PageNum) -> Action:
+    @copy_docstring(AbstractAnswersReviewer._edit_answers)
+    def _edit_answers(self, doc_id: DocumentId, page_num: PageNum) -> Action:
         config = self.scan_data.config
-        doc = self.scan_data.index[doc_id]
-        pic = doc.pages[page_num].pic
+        doc = self.scan_data.all_docs_index[doc_id]
+        pic = doc.pages_index[page_num].pic
         # answered = pic_data.answered
         # revision_status = pic_data.revision_status
         print_warning(f"Ambiguous answers for student {doc.student_name} (doc {doc_id}, page: {page_num}).")
@@ -242,7 +242,7 @@ class ClAnswersReviewer(AbstractAnswersReviewer):
 
     # def display_page_with_detected_answers(self, doc_id: DocumentId, page_num: PageNum) -> Popen:
     #     """Display the page with its checkboxes colored following their detection status."""
-    #     pic = self.scan_data.index[doc_id].pages[page_num].pic
+    #     pic = self.scan_data.all_docs_index[doc_id].pages_index[page_num].pic
     #     return self.display_picture_with_detected_answers(pic)
 
     @classmethod

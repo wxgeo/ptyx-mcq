@@ -43,14 +43,12 @@ def get_file_or_sysexit(path: Path, *, extension: str, autodetect_ptyx_files=Tru
         raise FatalError
 
 
-def get_file_with_extension(path: Path, *, extension, autodetect_ptyx_files=True) -> Path:
+def get_file_with_extension(path: Path, *, extension: str, autodetect_ptyx_files: bool = True) -> Path:
     """Get the path of the ptyx file corresponding to the given `path`.
 
     If `path` is already the path of a ptyx file, just return `path` unchanged.
     Else, `path` must be a directory which contains a single ptyx file, and the path
     of this ptyx file is returned.
-
-
 
     Raise `FileNotFoundError` if `path` is neither a directory nor a ptyx file, or if `path`
     is a directory but contains no ptyx file or several ptyx files.

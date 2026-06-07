@@ -48,7 +48,7 @@ class ScoresManager:
         default_floor = cfg.floor["default"]
         default_ceil = cfg.ceil["default"]
 
-        for doc_id, doc in self.mcq_parser.scan_data.used_docs.items():
+        for doc_id, doc in self.mcq_parser.scan_data.used_docs_index.items():
             print(f"Test {doc_id} - {doc.student_name}")
             for q, question in doc.questions.items():
                 answered = {answer.answer_num for answer in question if answer.checked}
