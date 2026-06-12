@@ -262,27 +262,15 @@ def test_cli(tmp_path: Path) -> None:
     main(["scan", str(path)])
     old_students_scores = students_scores.copy()
     students_scores = read_students_scores(path)
-    # Names are not updated yet, since they are stored in `.scandata` cache files.
-    # Updating names requires clearing cache
-    for student_id, student_name in students_scores:
-        if student_name != new_student_name:
-            assert float(students_scores[student_id, student_name]) < float(
-                old_students_scores[student_id, student_name]
-            )
-        else:
-            # TODO: add configuration option for default value.
-            assert students_scores[student_id, student_name] == "ABI"
-    # Names are  Updating names requires clearing cache,
-    # through `--reset` option.
-    main(["scan", "--reset", str(path)])
-    students_scores = read_students_scores(path)
+    assert students_scores != old_students_scores
+    # Names are updated too.
     assert set(students_scores) == set(STUDENTS.items()), repr(students_scores)
 
     # ---------------------
-    # Test `mcq doc`
+    # Test `mcq info`
     # ---------------------
-    main(["doc", "strategies"])
-    main(["doc", "config"])
+    main(["info", "strategies"])
+    main(["info", "config"])
 
     # ----------------
     # Test `mcq clear`
