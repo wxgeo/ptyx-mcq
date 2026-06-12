@@ -6,6 +6,8 @@ from multiprocessing.pool import AsyncResult
 from pathlib import Path
 from collections.abc import Iterator
 
+from ptyx_mcq.scan.data.students import Student
+
 from ptyx.pretty_print import print_error, print_info
 from ptyx_mcq.scan.data.documents import AnalyzeResult, Document, Page
 from ptyx_mcq.scan.data.extract import PdfCollectionExtractor
@@ -33,7 +35,7 @@ class ScanData:
         -
     """
 
-    def __init__(self, config_path: Path, input_dir: Path = None, output_dir: Path = None):
+    def __init__(self, config_path: Path, input_dir: Path | None = None, output_dir: Path | None = None):
         self.paths = PathsHandler(config_path=config_path, input_dir=input_dir, output_dir=output_dir)
         self.input_pdf_extractor = PdfCollectionExtractor(self)
         # Read the configuration file and load the mcq configuration.
@@ -244,3 +246,22 @@ class ScanData:
         """
         for doc in self:
             doc.save_index()
+
+    def students(self) -> list[Student]:
+        """
+        List all the currently detected students.
+
+        :return: a list of students.
+        """
+        return [student for doc in self if (student := doc.student) is not None]
+
+    def synchronize_students_names(self) -> None:
+        """
+        Synchronize the students' names using their ID and the configuration file.
+
+        This is useful when the configuration's file have been updated with a new list of students.
+        """
+        for doc in self:
+            name = self.config.students_ids.get(student_id := doc.student_id)
+            if name is not None:
+                doc.student = Student(student_id, name)

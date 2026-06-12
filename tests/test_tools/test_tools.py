@@ -5,7 +5,7 @@ import numpy as np
 
 from ptyx_mcq.make.generate_ptyx_code import LatexPackages
 from ptyx_mcq.tools.extend_literal_eval import extended_literal_eval
-from ptyx_mcq.tools.io_tools import is_ptyx_file, get_file_with_extension
+from ptyx_mcq.tools.io_tools import is_ptyx_mcq_file, get_file_with_extension
 from ptyx_mcq.tools.pdf import similar_pdfs, similar_pdf_page
 from ptyx_mcq.tools.pic import load_webp, save_webp, convert_to_webp
 from tests import ASSETS_DIR
@@ -47,20 +47,20 @@ def test_is_ptyx_file(tmp_path):
     # pTyX files must be accepted
     ptyx_file = ASSETS_DIR / "ptyx-files/minimal-working-example/minimal-working-example.ptyx"
     assert ptyx_file.is_file()
-    assert is_ptyx_file(ptyx_file)
+    assert is_ptyx_mcq_file(ptyx_file)
     # LateX files must be rejected
     latex_file = ptyx_file.with_suffix(".tex")
     assert latex_file.is_file()
-    assert not is_ptyx_file(latex_file)
+    assert not is_ptyx_mcq_file(latex_file)
     # Non-existent files must be rejected
     nonexistent_file = ptyx_file.with_suffix(".nonexistent")
     assert not nonexistent_file.is_file()
-    assert not is_ptyx_file(nonexistent_file)
+    assert not is_ptyx_mcq_file(nonexistent_file)
     # pTyX files with incorrect extensions must yet be accepted
     incorrect_extension_file = tmp_path / "wrong-extension.extension"
     shutil.copy(ptyx_file, incorrect_extension_file)
     assert incorrect_extension_file.is_file()
-    assert is_ptyx_file(incorrect_extension_file)
+    assert is_ptyx_mcq_file(incorrect_extension_file)
 
 
 def test_get_file_with_extension():

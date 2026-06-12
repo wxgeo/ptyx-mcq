@@ -98,6 +98,7 @@ class Picture:
     def use(self) -> bool:
         if self._use is None:
             self._use = not self._skip_file.is_file()
+        assert self._use is not None
         return self._use
 
     @use.setter
@@ -175,6 +176,7 @@ class Picture:
             # The ID have been read in a previous pass, but didn't match any known student at the time.
             # In the while, the students name to ID mapping may have been updated (using `mcq fix` for example).
             # So, let's try again to find the name corresponding to this ID.
+            # noinspection PyTypeChecker
             student = Student(name=self.config.students_ids.get(student.id, student.name), id=student.id)
 
         if self._initial_student is None:
@@ -190,10 +192,10 @@ class Picture:
             self._amended_student = Student.load(self.fix_dir / f"students/{self.num}")
 
     def _save_student(self, is_fix=False) -> None:
-        if self.student is not None:
+        if (student := self.student) is not None:
             root = self.fix_dir if is_fix else self.cache_dir
             (folder := root / "students").mkdir(exist_ok=True, parents=True)
-            self.student.save(folder / str(self.num))
+            student.save(folder / str(self.num))
 
     @property
     def _student_identification_table_position(self) -> Pixel | None:
@@ -257,7 +259,7 @@ class Picture:
         """Answers checked by the student for each question."""
         return {q.question_num: {a.answer_num for a in q if a.checked} for q in self}
 
-    def get_checkboxes(self, matrix: ndarray = None) -> dict[CbxRef, ndarray]:
+    def get_checkboxes(self, matrix: ndarray | None = None) -> dict[CbxRef, ndarray]:
         """
         Retrieve all the arrays representing the checkbox content for the picture `pic`.
 

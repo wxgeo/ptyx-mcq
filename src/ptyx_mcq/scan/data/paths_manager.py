@@ -36,7 +36,7 @@ class PathsHandler:
     input_dir: Path
     output_dir: Path
 
-    def __init__(self, config_path: Path, input_dir: Path = None, output_dir: Path = None):
+    def __init__(self, config_path: Path, input_dir: Path | None = None, output_dir: Path | None = None):
         self.configfile = get_file_or_sysexit(config_path, extension=CONFIG_FILE_EXTENSION)
 
         root = self.configfile.parent

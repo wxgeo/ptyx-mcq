@@ -139,10 +139,10 @@ class Configuration:
         default_correct = self.correct["default"]
         max_score: float = 0
         # Take a random student test, and calculate max score for it.
-        # Maximal score = (number of questions)x(score when answer is correct)
+        # Maximal score = (number of questions)x(score when answer is correct)x(question weight)
         for q in next(iter(self.ordering.values()))["questions"]:
             if self.mode.get(q, default_mode) != "skip":
-                max_score += self.correct.get(q, default_correct)
+                max_score += self.correct.get(q, default_correct) * self.weight.get(q, self.weight["default"])
         return max_score
 
     @property

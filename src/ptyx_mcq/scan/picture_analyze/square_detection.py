@@ -265,8 +265,24 @@ def eval_square_color(m: ndarray, i: Row, j: Col, size: int, margin: int = 0, _d
 def adjust_checkbox(
     m: ndarray, i: Row, j: Col, size: int, level1: float = 0.5, level2: float = 0.6, delta: int = 5
 ) -> Pixel:
-    # return (i, j)
-    # Try to adjust top edge of the checkbox
+    """
+    Try to adjust top-left corner of the checkbox.
+
+    :param m: the picture (as an array)
+    :param i: the row of the initial position of the checkbox
+    :param j: the column of the initial position of the checkbox
+    :param size: the size of the checkbox
+    :param level1: if the checkbox darkness of the first line (resp. first column) is already above this ceil,
+                   no adjustment will occur. It should be a float between 0 and 1.
+    :param level2: once the checkbox darkness of the first line (resp. first column) get above this ceil,
+                   adjustment will stop. It must be a float in range (0, 1).
+    :param delta: the maximal shift allowed (absolute value)
+    :return: the coordinates of the top-left corner of the checkbox
+    """
+    if not (0 <= level1 <= 1 and 0 <= level2 <= 1):
+        raise ValueError(
+            f"Invalid values, `level1` and `level2` must be floats between 0 and 1, but {level1=!r} and {level2=!r}."
+        )
     i0, j0 = i, j
     if m[i : i + size, j : j + 1].sum() < level1 * size:
         for i in range(i0 - delta, i0 + delta + 1):  # type: ignore

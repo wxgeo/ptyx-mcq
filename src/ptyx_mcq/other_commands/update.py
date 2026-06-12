@@ -1,5 +1,7 @@
 from pathlib import Path
 
+from ptyx_mcq.scan.data import ScanData
+
 from ptyx.pretty_print import print_error, print_success
 
 from ptyx_mcq.tools.io_tools import FatalError
@@ -8,6 +10,13 @@ from ptyx_mcq.tools.config_parser import Configuration
 from ptyx_mcq.tools.io_tools import get_file_or_sysexit
 from ptyx_mcq.make.include_directives_parsing import update_file
 from ptyx.latex_generator import Compiler
+
+
+def update_cached_names(config_path: Path):
+    """
+    Update the students' names in cache.
+    """
+    ScanData(config_path).synchronize_students_names()
 
 
 def update_config_file(path: Path) -> None:
@@ -30,23 +39,26 @@ def update_config_file(path: Path) -> None:
     data: Configuration = compiler.latex_generator.mcq_data  # type: ignore
     # Test compatibility of `data` with `config`:
     # The number of questions and their ordering should not have changed,
-    # the same holds for the answers (but their labelling as correct
+    # the same holds for the answers (but their labeling as correct
     # or incorrect is allowed to change).
     if not same_questions_and_answers_numbers(data, config):
         cmd = f"mcq make {path}"
         sep = len(cmd) * "-"
         cmd = f"{sep}\n{cmd}\n{sep}\n"
-        print_error("Questions or answers changed.\nYou must run a full compilation:\n" + cmd)
+        print_error("Questions or answers number changed.\nYou must run a full compilation:\n" + cmd)
         raise FatalError
 
     # Get back the positions of checkboxes from last full compilation.
     data.id_table_pos = config.id_table_pos
     data.boxes = config.boxes
     data.dump(config_file.parent / (config_file.name.split(".")[0] + CONFIG_FILE_EXTENSION))
+    # Students names' cached values must be updated, because the names may have been updated in the config file.
+    update_cached_names(config_file)
     print_success("Configuration file was successfully updated.")
 
 
 def same_questions_and_answers_numbers(config1: Configuration, config2: Configuration) -> bool:
+    """Check that the number of questions and answers per question is the same in both config files."""
     if list(config1.ordering) != list(config2.ordering):
         return False
     for doc_id in config1.ordering:

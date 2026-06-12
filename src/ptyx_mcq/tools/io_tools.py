@@ -20,7 +20,7 @@ class ProcessInterrupted(BaseException):
     """Process was aborted by user."""
 
 
-def is_ptyx_file(path: Path) -> bool:
+def is_ptyx_mcq_file(path: Path) -> bool:
     """Test whether the file looks like a pTyX file."""
     if not path.is_file():
         return False
@@ -44,22 +44,23 @@ def get_file_or_sysexit(path: Path, *, extension: str, autodetect_ptyx_files=Tru
 
 
 def get_file_with_extension(path: Path, *, extension: str, autodetect_ptyx_files: bool = True) -> Path:
-    """Get the path of the ptyx file corresponding to the given `path`.
+    """Get the path of the pTyX file corresponding to the given `path` and the specified extension.
 
-    If `path` is already the path of a ptyx file, just return `path` unchanged.
-    Else, `path` must be a directory which contains a single ptyx file, and the path
+    If `path` is already the path of a pTyX file of the required extension, just return `path` unchanged.
+    Else, `path` must be a directory which contains a single pTyX file with the specified extension, and the path
     of this ptyx file is returned.
 
-    Raise `FileNotFoundError` if `path` is neither a directory nor a ptyx file, or if `path`
-    is a directory but contains no ptyx file or several ptyx files.
+    Raise `FileNotFoundError` if `path` is neither a directory nor a pTyX file, or if `path`
+    is a directory but contains no pTyX file or several ptyx files.
     """
     path = path.expanduser().resolve()
-    if autodetect_ptyx_files and extension == ".ptyx" and is_ptyx_file(path):
+    if autodetect_ptyx_files and extension == ".ptyx" and is_ptyx_mcq_file(path):
+        # Detect pTyX files even if there have another extension, like `.tex`... is it still useful?
         return path
     if path.name.endswith(extension):
         if not path.is_file():
             raise FileNotFoundError(f"File '{path}' not found.")
-    else:
+    elif path.is_dir():
         found_files: list[Path] = list(path.glob("*" + extension))
         if len(found_files) == 0:
             raise FileNotFoundError(f"No '{extension}' file found in '{path}'.")
@@ -68,6 +69,10 @@ def get_file_with_extension(path: Path, *, extension: str, autodetect_ptyx_files
                 f"Several {extension} file found in '{path}', I don't know which one to chose."
             )
         path = found_files[0]
+    else:
+        raise FileNotFoundError(
+            f"'{path}' must be either a '{extension}' file, or a directory containing such a file."
+        )
     return path
 
 
