@@ -9,16 +9,14 @@ import shutil
 from pathlib import Path
 
 import pytest
-from ptyx.errors import PythonBlockError, ErrorInformation
-
+from ptyx.errors import ErrorInformation, PythonBlockError
 from ptyx.latex_generator import Compiler, Node
 
 from ptyx_mcq.make import make
 from ptyx_mcq.make.extend_latex_generator import SameAnswerError
-from ptyx_mcq.tools.config_parser import Configuration, DocumentId, OriginalQuestionNumber
-
-from tests.test_make.toolbox import load_ptyx_file, normalize_text
+from ptyx_mcq.tools.parse_config.config import Configuration, DocumentId, OriginalQuestionNumber
 from tests import ASSETS_DIR
+from tests.test_make.toolbox import load_ptyx_file, normalize_text
 
 PTYX_FILES_DIR = ASSETS_DIR / "ptyx-files"
 

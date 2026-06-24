@@ -4,10 +4,13 @@ Command line's tools that display information.
 
 import re
 
-from ptyx.pretty_print import term_color, TermColors
+from ptyx.pretty_print import TermColors, term_color
 
-from ptyx_mcq.scan.score_management.evaluation_strategies import ScoringImplementations
 from ptyx_mcq.make.extend_latex_generator import HeaderConfigKeys
+from ptyx_mcq.tools.evaluation_strategies import (
+    IMPLEMENTED_STRATEGIES,
+    ScoringImplementations,
+)
 
 
 def _print_options_info(title: str, options_info: dict[str, str]) -> None:
@@ -40,10 +43,11 @@ def _print_options_info(title: str, options_info: dict[str, str]) -> None:
 def info_strategies() -> None:
     """Display all evaluation modes with a description."""
 
-    strategies = ScoringImplementations.get_all_strategies()
     _print_options_info(
         title="Available strategies",
-        options_info={name: getattr(ScoringImplementations, name).__doc__.strip() for name in strategies},
+        options_info={
+            name: getattr(ScoringImplementations, name).__doc__.strip() for name in IMPLEMENTED_STRATEGIES
+        },
     )
 
 

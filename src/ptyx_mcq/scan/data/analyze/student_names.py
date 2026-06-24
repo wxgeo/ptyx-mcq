@@ -4,9 +4,9 @@ from ptyx.pretty_print import print_warning
 from ptyx_mcq.scan.data.students import Student
 from ptyx_mcq.scan.picture_analyze.identify_doc import DebugInfo
 from ptyx_mcq.scan.picture_analyze.square_detection import eval_square_color, test_square_color
-from ptyx_mcq.scan.picture_analyze.types_declaration import Pixel, Rectangle, Row, Col
+from ptyx_mcq.scan.picture_analyze.types_declaration import Col, Pixel, Rectangle, Row
 from ptyx_mcq.tools.colors import Color
-from ptyx_mcq.tools.config_parser import StudentId, StudentName, StudentIdFormat
+from ptyx_mcq.tools.parse_config.config import StudentId, StudentIdFormat, StudentName
 
 
 def read_student_id_and_name(

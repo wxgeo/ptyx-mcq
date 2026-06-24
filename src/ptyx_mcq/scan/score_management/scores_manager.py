@@ -14,13 +14,13 @@ from openpyxl.worksheet.table import Table, TableStyleInfo
 from openpyxl.worksheet.worksheet import Worksheet
 from ptyx.pretty_print import TermColors, bold, green, print_info, red, term_color, yellow
 
-from ptyx_mcq.scan.score_management.evaluation_strategies import (
+from ptyx_mcq.tools.evaluation_strategies import (
     AnswersData,
     ScoreData,
     ScoringImplementations,
     ScoringStrategy,
 )
-from ptyx_mcq.tools.config_parser import StudentId, StudentName
+from ptyx_mcq.tools.parse_config.subtypes import StudentId, StudentName
 
 if TYPE_CHECKING:
     from ptyx_mcq.scan.scan_doc import MCQPictureParser

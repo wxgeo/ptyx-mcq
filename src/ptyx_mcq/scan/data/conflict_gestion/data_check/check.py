@@ -3,7 +3,7 @@ from typing import TYPE_CHECKING
 
 from ptyx.pretty_print import print_warning
 
-from ptyx_mcq.tools.config_parser import DocumentId, StudentName, PageNum
+from ptyx_mcq.tools.parse_config.subtypes import DocumentId, PageNum, StudentName
 
 UnnamedDocsList = list[DocumentId]
 AmbiguousPagesList = list[tuple[DocumentId, PageNum]]

@@ -10,25 +10,24 @@ from functools import partial
 from os import listdir
 from pathlib import Path
 
+import pymupdf
 import pytest
 from PIL import Image, ImageDraw
-import pymupdf
-
 from ptyx.pretty_print import print_info, print_warning
 
-from ptyx_mcq.cli import main as main_, Handlers, get_handler
+from ptyx_mcq.cli import Handlers, get_handler
+from ptyx_mcq.cli import main as main_
 from ptyx_mcq.dev_cli import DevHandlers
 from ptyx_mcq.parameters import CELL_SIZE_IN_CM, DEFAULT_TEMPLATE_NAME
-from ptyx_mcq.tools.colors import Color, RGB
+from ptyx_mcq.tools.colors import RGB, Color
 from ptyx_mcq.tools.math import round
-from ptyx_mcq.tools.config_parser import (
+from ptyx_mcq.tools.parse_config.config import (
     Configuration,
-    is_answer_correct,
     StudentId,
     StudentName,
+    is_answer_correct,
 )
 from ptyx_mcq.tools.pdf import similar_pdfs
-
 from tests import ASSETS_DIR
 
 main = partial(main_, _restart_process_if_needed=False)

@@ -40,19 +40,35 @@ and the directive will be disabled with `!`:
 
     @missing: !-- declared/path/file.ex
 
+Coefficients may be appended to directives, using `:` as separator:
+
+    -- path/to/file.ex:2
+
+An evaluation method may be provided too:
+
+    -- path/to/file.ex:2:all
+
+Or without setting the coefficient:
+
+    -- path/to/file.ex::all
+
+If the path contain colons, the final colons are mandatory:
+
+    -- strang:e/pa:th/w:ith/c:o:l:o:n:s.ex::
+
 """
 
 import re
+from collections.abc import Iterable
 from dataclasses import dataclass
 from itertools import chain
 from pathlib import Path
+from typing import Final, Self
 
-from typing import Self, Final
-from collections.abc import Iterable
-
-from ptyx.pretty_print import print_warning, print_error
+from ptyx.pretty_print import print_error, print_warning
 
 from ptyx_mcq.make.exercises_parsing import _get_ex_file_content
+from ptyx_mcq.tools.evaluation_strategies import ScoringStrategy
 
 
 class UnsafeUpdate(RuntimeError):
@@ -75,6 +91,8 @@ class Directive:
     path: Path
     is_disabled: bool = False
     comment: str = ""
+    coefficient: float = 1
+    evaluation_method: ScoringStrategy = ScoringStrategy.ALL
 
     def __str__(self):
         comment = f"@{self.comment}: " if self.comment else ""

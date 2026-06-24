@@ -1,19 +1,14 @@
 from pathlib import Path
 
-from ptyx.pretty_print import print_info, print_warning, print_success
-
-from ptyx_mcq.scan.data import Document
-
-from ptyx_mcq.scan.data.conflict_gestion.data_check.check import DataCheckResult
-
+from ptyx.pretty_print import print_info, print_success, print_warning
 
 from ptyx_mcq.parameters import CONFIG_FILE_EXTENSION
 from ptyx_mcq.scan import MCQPictureParser
-
-from ptyx_mcq.tools.io_tools import get_file_or_sysexit
-
-from ptyx_mcq.tools.config_parser import DocumentId, StudentName, StudentId, PageNum
+from ptyx_mcq.scan.data import Document
 from ptyx_mcq.scan.data.conflict_gestion.config import Config
+from ptyx_mcq.scan.data.conflict_gestion.data_check.check import DataCheckResult
+from ptyx_mcq.tools.io_tools import get_file_or_sysexit
+from ptyx_mcq.tools.parse_config.subtypes import DocumentId, PageNum, StudentId, StudentName
 
 
 def _get_scan_data(path: Path) -> MCQPictureParser:

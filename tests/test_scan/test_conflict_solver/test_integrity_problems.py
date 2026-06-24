@@ -9,14 +9,14 @@ from ptyx_mcq.scan.data import ScanData
 from ptyx_mcq.scan.data.conflict_gestion.data_check.cl_fix import (
     ClNamesReviewer as NamesReviewer,
 )
-from ptyx_mcq.tools.config_parser import (
+from ptyx_mcq.tools.parse_config.config import (
+    ApparentAnswerNumber,
+    ApparentQuestionNumber,
     DocumentId,
     PageNum,
-    apparent2real,
-    ApparentQuestionNumber,
-    ApparentAnswerNumber,
     StudentId,
     StudentName,
+    apparent2real,
 )
 from tests.test_scan.test_conflict_solver import ASSETS_DIR
 

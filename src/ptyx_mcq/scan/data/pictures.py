@@ -1,29 +1,28 @@
+from collections.abc import Iterator
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING
-from collections.abc import Iterator
 
+from numpy import array, ndarray
 from PIL import Image
-from numpy import ndarray, array
 from ptyx.pretty_print import print_error
 
-from ptyx_mcq.scan.data.analyze.student_names import read_student_id_and_name
-
 from ptyx_mcq.parameters import FIX_DIR
+from ptyx_mcq.scan.data.analyze.student_names import read_student_id_and_name
 from ptyx_mcq.scan.data.extract import PdfHash, PicNum
-from ptyx_mcq.scan.data.students import Student
 from ptyx_mcq.scan.data.questions import Question
+from ptyx_mcq.scan.data.students import Student
 from ptyx_mcq.scan.picture_analyze.calibration import CalibrationData
 from ptyx_mcq.scan.picture_analyze.identify_doc import IdentificationData
 from ptyx_mcq.scan.picture_analyze.square_detection import adjust_checkbox
 from ptyx_mcq.scan.picture_analyze.types_declaration import Pixel
-from ptyx_mcq.tools.config_parser import (
-    OriginalQuestionNumber,
+from ptyx_mcq.tools.parse_config.config import (
+    CbxRef,
     Configuration,
     DocumentId,
-    PageNum,
-    CbxRef,
     OriginalAnswerNumber,
+    OriginalQuestionNumber,
+    PageNum,
 )
 
 if TYPE_CHECKING:

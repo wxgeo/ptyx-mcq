@@ -1,15 +1,15 @@
 import string
-from abc import ABC, abstractmethod, ABCMeta
+from abc import ABC, ABCMeta, abstractmethod
 from contextlib import AbstractContextManager
 from enum import StrEnum
 
-from ptyx.pretty_print import print_warning, print_info
+from ptyx.pretty_print import print_info, print_warning
 
-from ptyx_mcq.scan.data.conflict_gestion.data_check.check import DataChecker, DataCheckResult
 from ptyx_mcq.scan.data import ScanData
+from ptyx_mcq.scan.data.conflict_gestion.data_check.check import DataChecker, DataCheckResult
 from ptyx_mcq.scan.data.students import Student
-from ptyx_mcq.tools.config_parser import DocumentId, StudentName, StudentId, PageNum
 from ptyx_mcq.tools.math import levenshtein_distance
+from ptyx_mcq.tools.parse_config.subtypes import DocumentId, PageNum, StudentId, StudentName
 
 
 class Action(StrEnum):

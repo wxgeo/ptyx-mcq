@@ -3,44 +3,31 @@ import re
 import typing
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Literal, NewType, TypedDict, TypeVar
+from typing import Any, Literal
 
-from ptyx_mcq.scan.score_management.evaluation_strategies import QuestionWeight, ScoringStrategy
-
-if TYPE_CHECKING:
-    pass
-
-T = TypeVar("T")
-K = TypeVar("K", bound=typing.Hashable)
-V = TypeVar("V")
-
-DocumentId = NewType("DocumentId", int)
-StudentId = NewType("StudentId", str)
-StudentName = NewType("StudentName", str)
-
-OriginalQuestionNumber = NewType("OriginalQuestionNumber", int)
-ApparentQuestionNumber = NewType("ApparentQuestionNumber", int)
-QuestionNumber = OriginalQuestionNumber | ApparentQuestionNumber
-
-OriginalAnswerNumber = NewType("OriginalAnswerNumber", int)
-ApparentAnswerNumber = NewType("ApparentAnswerNumber", int)
-AnswerNumber = OriginalAnswerNumber | ApparentAnswerNumber
-
-CbxRef = tuple[OriginalQuestionNumber, OriginalAnswerNumber]
-
-
-class OrderingConfiguration(TypedDict):
-    questions: list[OriginalQuestionNumber]
-    answers: dict[OriginalQuestionNumber, list[tuple[OriginalAnswerNumber, bool | None]]]
-
-
-QuestionNumberOrDefault = Literal["default"] | OriginalQuestionNumber
-
-StudentIdFormat = tuple[int, int, list[tuple[str, ...]]]
-
-OriginalQuestionAnswersDict = dict[OriginalQuestionNumber, set[OriginalAnswerNumber]]
-ApparentQuestionAnswersDict = dict[ApparentQuestionNumber, set[ApparentAnswerNumber]]
-QuestionToAnswerDict = OriginalQuestionAnswersDict | ApparentQuestionAnswersDict
+from ptyx_mcq.tools.evaluation_strategies import ScoringStrategy
+from ptyx_mcq.tools.parse_config.subtypes import (
+    AnswerNumber,
+    ApparentAnswerNumber,
+    ApparentQuestionAnswersDict,
+    ApparentQuestionNumber,
+    CbxRef,
+    DocumentId,
+    K,
+    OrderingConfiguration,
+    OriginalAnswerNumber,
+    OriginalQuestionAnswersDict,
+    OriginalQuestionNumber,
+    PageNum,
+    QuestionNumber,
+    QuestionNumberOrDefault,
+    QuestionWeight,
+    StudentId,
+    StudentIdFormat,
+    StudentName,
+    T,
+    V,
+)
 
 
 class InvalidConfigurationKey(KeyError):
@@ -431,6 +418,3 @@ def _get_apparent_num_answers_with_status(
             }
         correct_answers_by_id[doc_id] = correct_answers
     return correct_answers_by_id
-
-
-PageNum = NewType("PageNum", int)

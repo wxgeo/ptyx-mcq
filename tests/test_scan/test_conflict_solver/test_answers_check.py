@@ -2,17 +2,17 @@ from ptyx_mcq.scan.data import Document
 from ptyx_mcq.scan.data.conflict_gestion.data_check.cl_fix import (
     ClAnswersReviewer as AnswersReviewer,
 )
-from ptyx_mcq.scan.data.questions import CbxState, Answer
-from ptyx_mcq.tools.config_parser import (
-    DocumentId,
-    OriginalQuestionNumber,
+from ptyx_mcq.scan.data.questions import Answer, CbxState
+from ptyx_mcq.tools.parse_config.config import (
     ApparentAnswerNumber,
-    OriginalAnswerNumber,
     ApparentQuestionNumber,
-    real2apparent,
-    PageNum,
     Configuration,
+    DocumentId,
+    OriginalAnswerNumber,
+    OriginalQuestionNumber,
+    PageNum,
     apparent2real,
+    real2apparent,
 )
 
 # from tests.test_conflict_solver.answers_check_data import (

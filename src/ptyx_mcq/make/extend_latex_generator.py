@@ -22,35 +22,35 @@
 #    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 import re
+from collections.abc import Callable
 from dataclasses import dataclass
 from enum import StrEnum, auto
 from pathlib import Path
 from typing import TypedDict
-from collections.abc import Callable
 
 from ptyx.errors import PtyxRuntimeError
-from ptyx.printers import sympy2latex
 from ptyx.latex_generator import LatexGenerator
+from ptyx.pretty_print import print_warning
+from ptyx.printers import sympy2latex
 from ptyx.syntax_tree import Node, Tag
 from ptyx.utilities import latex_verbatim
-from ptyx.pretty_print import print_warning
 
-from ptyx_mcq.tools.config_parser import (
-    Configuration,
-    OriginalQuestionNumber,
+from ptyx_mcq.tools.parse_config.config import Configuration
+from ptyx_mcq.tools.parse_config.subtypes import (
     OriginalAnswerNumber,
+    OriginalQuestionNumber,
     StudentId,
     StudentName,
 )
 
 from .header import (
-    packages_and_macros,
-    id_band,
+    IdentifiantError,
     extract_students_id_and_name_from_csv,
     extract_students_name_from_csv,
+    id_band,
+    packages_and_macros,
     student_id_table,
     students_checkboxes,
-    IdentifiantError,
 )
 
 

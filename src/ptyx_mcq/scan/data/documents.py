@@ -1,25 +1,25 @@
+from collections.abc import Iterator
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, NamedTuple
-from collections.abc import Iterator
 
 from numpy import ndarray
-from ptyx_mcq.scan.data.questions import Question
 
-from ptyx_mcq.scan.data.analyze.checkboxes import analyze_checkboxes, CheckboxAnalyzeResult
+from ptyx_mcq.scan.data.analyze.checkboxes import CheckboxAnalyzeResult, analyze_checkboxes
 from ptyx_mcq.scan.data.pictures import Picture
+from ptyx_mcq.scan.data.questions import Question
 from ptyx_mcq.scan.data.students import Student
-from ptyx_mcq.tools.config_parser import (
+from ptyx_mcq.tools.parse_config.subtypes import (
     DocumentId,
-    StudentName,
+    OriginalAnswerNumber,
     OriginalQuestionNumber,
     PageNum,
     StudentId,
-    OriginalAnswerNumber,
+    StudentName,
 )
 
 if TYPE_CHECKING:
-    from ptyx_mcq.scan.data import ScanData, Picture
+    from ptyx_mcq.scan.data import Picture, ScanData
 
 # AnalyzeResult = tuple[list[Student | None], list[CheckboxAnalyzeResult] | None]
 

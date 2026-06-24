@@ -7,22 +7,22 @@ from functools import partial
 from pathlib import Path
 from typing import Any
 
-from ptyx.compilation import make_files, compile_latex_to_pdf
+from ptyx.compilation import compile_latex_to_pdf, make_files
 from ptyx.compilation_options import CompilationOptions
 from ptyx.latex_generator import Compiler
 from ptyx.pretty_print import print_error, print_info
 from ptyx.utilities import force_hardlink_to
 
-from ptyx_mcq.parameters import CONFIG_FILE_EXTENSION
-from ptyx_mcq.tools.io_tools import get_file_or_sysexit, FatalError
-from ptyx_mcq.tools.config_parser import (
-    Configuration,
-    PageNum,
-    OriginalQuestionNumber,
-    OriginalAnswerNumber,
-    CbxRef,
-)
 from ptyx_mcq.make.exercises_parsing import wrap_exercise
+from ptyx_mcq.parameters import CONFIG_FILE_EXTENSION
+from ptyx_mcq.tools.io_tools import FatalError, get_file_or_sysexit
+from ptyx_mcq.tools.parse_config.config import (
+    CbxRef,
+    Configuration,
+    OriginalAnswerNumber,
+    OriginalQuestionNumber,
+    PageNum,
+)
 
 DEFAULT_PTYX_MCQ_COMPILATION_OPTIONS = CompilationOptions(same_number_of_pages_compact=True, compress=True)
 

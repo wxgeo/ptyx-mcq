@@ -1,6 +1,6 @@
 import pytest
 
-from ptyx_mcq.tools.config_parser import recursively_update_dict
+from ptyx_mcq.tools.parse_config.config import recursively_update_dict
 
 
 def test_dict_updater():

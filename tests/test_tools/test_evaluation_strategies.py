@@ -1,12 +1,9 @@
 # mypy: disable-error-code = "arg-type"
+# mypy: disable-error-code = "call-arg"
 
 import random
 
-from ptyx_mcq.scan.score_management.evaluation_strategies import (
-    ScoringImplementations,
-    AnswersData,
-    ScoreData,
-)
+from ptyx_mcq.tools.evaluation_strategies import AnswersData, ScoreData, ScoringImplementations
 
 
 # noinspection PyTypeChecker

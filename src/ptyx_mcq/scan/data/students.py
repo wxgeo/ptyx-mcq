@@ -3,7 +3,7 @@ from pathlib import Path
 from typing import Self
 
 from ptyx_mcq.scan.data.questions import InvalidFormat
-from ptyx_mcq.tools.config_parser import StudentId, StudentName
+from ptyx_mcq.tools.parse_config.subtypes import StudentId, StudentName
 
 
 @dataclass(frozen=True)

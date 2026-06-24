@@ -6,11 +6,10 @@ The main function is `amend_all()`, which will generate the corrected version
 for all students.
 """
 
-from collections.abc import Generator
+from collections.abc import Callable, Generator
 from itertools import chain
 from multiprocessing import Pool
 from os.path import join
-from collections.abc import Callable
 
 # from typing import TYPE_CHECKING
 from PIL import ImageDraw, ImageFont
@@ -21,12 +20,12 @@ from ptyx_mcq.scan.data.documents import Document
 from ptyx_mcq.scan.data.questions import Answer
 from ptyx_mcq.scan.picture_analyze.types_declaration import Col, Pixel, Row
 from ptyx_mcq.tools.colors import RGB, Color
-from ptyx_mcq.tools.config_parser import (
+from ptyx_mcq.tools.io_tools import generate_progression_callback
+from ptyx_mcq.tools.parse_config.config import (
     OriginalQuestionNumber,
     QuestionNumberOrDefault,
     real2apparent,
 )
-from ptyx_mcq.tools.io_tools import generate_progression_callback
 
 # if TYPE_CHECKING:
 #     from ptyx_mcq.scan.scanner import MCQPictureParser

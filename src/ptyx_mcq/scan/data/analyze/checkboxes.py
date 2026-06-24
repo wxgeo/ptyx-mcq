@@ -11,19 +11,18 @@ from functools import partial
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from numpy import ndarray, concatenate
-from ptyx.pretty_print import term_color, TermColors
+from numpy import concatenate, ndarray
+from ptyx.pretty_print import TermColors, term_color
 
 from ptyx_mcq.scan.data.questions import CbxState
 from ptyx_mcq.scan.picture_analyze.square_detection import test_square_color
-from ptyx_mcq.scan.picture_analyze.types_declaration import Row, Col
-from ptyx_mcq.tools.config_parser import CbxRef, real2apparent
+from ptyx_mcq.scan.picture_analyze.types_declaration import Col, Row
+from ptyx_mcq.tools.parse_config.config import CbxRef, real2apparent
 from ptyx_mcq.tools.pic import save_webp
 
-
 if TYPE_CHECKING:
-    from ptyx_mcq.scan.data.documents import Document
     from ptyx_mcq.scan.data import ScanData
+    from ptyx_mcq.scan.data.documents import Document
 
 CheckboxAnalyzeResult = dict[CbxRef, CbxState]
 

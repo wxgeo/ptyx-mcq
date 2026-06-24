@@ -1,21 +1,21 @@
 import multiprocessing
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
 
 # noinspection PyProtectedMember
 from multiprocessing.pool import AsyncResult
 from pathlib import Path
-from collections.abc import Iterator
-
-from ptyx_mcq.scan.data.students import Student
 
 from ptyx.pretty_print import print_error, print_info
+
 from ptyx_mcq.scan.data.documents import AnalyzeResult, Document, Page
 from ptyx_mcq.scan.data.extract import PdfCollectionExtractor
 from ptyx_mcq.scan.data.paths_manager import DirsPaths, FilesPaths, PathsHandler
 from ptyx_mcq.scan.data.pictures import Picture
 from ptyx_mcq.scan.data.questions import Answer, Question
+from ptyx_mcq.scan.data.students import Student
 from ptyx_mcq.scan.picture_analyze.calibration import CalibrationData
-from ptyx_mcq.tools.config_parser import (
+from ptyx_mcq.tools.io_tools import Silent, generate_progression_callback
+from ptyx_mcq.tools.parse_config.config import (
     Configuration,
     DocumentId,
     OriginalAnswerNumber,
@@ -23,7 +23,6 @@ from ptyx_mcq.tools.config_parser import (
     PageNum,
     is_answer_correct,
 )
-from ptyx_mcq.tools.io_tools import Silent, generate_progression_callback
 
 
 class ScanData:

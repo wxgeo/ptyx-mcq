@@ -1,8 +1,8 @@
 from dataclasses import dataclass
 from enum import Enum, auto
 
-from ptyx_mcq.scan.picture_analyze.types_declaration import Row, Col, Pixel
-from ptyx_mcq.tools.config_parser import CbxRef, OriginalAnswerNumber, OriginalQuestionNumber
+from ptyx_mcq.scan.picture_analyze.types_declaration import Col, Pixel, Row
+from ptyx_mcq.tools.parse_config.subtypes import CbxRef, OriginalAnswerNumber, OriginalQuestionNumber
 
 CbxPositions = dict[CbxRef, tuple[Row, Col]]
 

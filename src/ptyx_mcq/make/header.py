@@ -1,26 +1,25 @@
 import csv
+from collections.abc import Sequence
 from pathlib import Path
 from string import ascii_letters
-from collections.abc import Sequence
 
-from ..parameters import (
-    CELL_SIZE_IN_CM,
-    MARGIN_LEFT_IN_CM,
-    MARGIN_RIGHT_IN_CM,
-    PAPER_FORMAT,
-    MARGIN_BOTTOM_IN_CM,
-    MARGIN_TOP_IN_CM,
+from ptyx_mcq.parameters import (
     CALIBRATION_SQUARE_POSITION,
     CALIBRATION_SQUARE_SIZE,
+    CELL_SIZE_IN_CM,
+    MARGIN_BOTTOM_IN_CM,
+    MARGIN_LEFT_IN_CM,
+    MARGIN_RIGHT_IN_CM,
+    MARGIN_TOP_IN_CM,
+    PAPER_FORMAT,
 )
-from ..tools.config_parser import (
-    get_answers_with_status,
-    Configuration,
-    DocumentId,
+from ptyx_mcq.tools.parse_config.config import Configuration, get_answers_with_status
+from ptyx_mcq.tools.parse_config.subtypes import (
     ApparentAnswerNumber,
     ApparentQuestionNumber,
-    StudentName,
+    DocumentId,
     StudentId,
+    StudentName,
 )
 
 PACKAGES = [

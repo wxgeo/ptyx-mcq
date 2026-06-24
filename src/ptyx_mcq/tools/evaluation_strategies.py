@@ -1,13 +1,14 @@
 from dataclasses import dataclass
 from enum import StrEnum, auto
 from math import isnan, nan
-from typing import Callable, NewType, ParamSpec, TypeVar
+from typing import Callable, ParamSpec, TypeVar
 
-from ptyx_mcq.tools.config_parser import OriginalAnswerNumber
+from ptyx_mcq.tools.parse_config.subtypes import OriginalAnswerNumber
 
 _P = ParamSpec("_P")
 _R = TypeVar("_R", bound=float)
-QuestionWeight = NewType("QuestionWeight", float)
+
+IMPLEMENTED_STRATEGIES: list[str] = []
 
 
 class IncorrectScoreParameter(RuntimeError):
@@ -62,15 +63,10 @@ class ScoringStrategy(StrEnum):
     SKIP = auto()
 
 
-def strategy(f: Callable[_P, _R]) -> Callable[_P, _R]:
+def strategy(f: Callable[[AnswersData, ScoreData], float]) -> Callable[[AnswersData, ScoreData], float]:
     """A decorator for strategies."""
-    f._is_strategy = True  # type: ignore[attr-defined]
+    IMPLEMENTED_STRATEGIES.append(f.__name__)
     return f
-
-
-def is_strategy(f: object):
-    """Return True iff `f` is an scoring strategy."""
-    return callable(f) and getattr(f, "_is_strategy", False)
 
 
 class ScoringImplementations:
@@ -86,10 +82,6 @@ class ScoringImplementations:
     Note that only static methods within the `ScoringImplementations` class will be recognized as
     evaluation strategies, so you may safely define auxiliary class methods without interfering.
     """
-
-    @classmethod
-    def get_all_strategies(cls) -> list[str]:
-        return [name for name, func in vars(cls).items() if isinstance(func, staticmethod)]
 
     @staticmethod
     @strategy
@@ -336,15 +328,19 @@ def _check_strategies():
     Each strategy name referenced in `ScoringStrategy` must have a same-named implementation
     in `ScoringImplementations`, and reciprocally.
     """
-    method_names = {key for key, val in vars(ScoringImplementations).items() if is_strategy(val)}
+    implemented_strategies = set(IMPLEMENTED_STRATEGIES)
     # SKIP is a special case: it is not an evaluation strategy, but simply means "Skip this question".
-    enum_items = {str(item) for item in ScoringStrategy if item != ScoringStrategy.SKIP}
-    if missing := method_names - enum_items:
+    referenced_strategies = {str(item) for item in ScoringStrategy if item != ScoringStrategy.SKIP}
+    if missing := implemented_strategies - referenced_strategies:
+        print("In `ScoringImplementations`:", implemented_strategies)
+        print("In `ScoringStrategy`:", referenced_strategies)
         raise ValueError(
             "Some scoring strategies are implemented in `ScoringImplementations`,"
             f" yet they are not referenced in `ScoringStrategy`: {', '.join(missing)}."
         )
-    if missing := enum_items - method_names:
+    if missing := referenced_strategies - implemented_strategies:
+        print("In `ScoringImplementations`:", implemented_strategies)
+        print("In `ScoringStrategy`:", referenced_strategies)
         raise ValueError(
             "Some scoring strategies are referenced in `ScoringStrategy`,"
             " but are not implemented in `ScoringImplementations`:"

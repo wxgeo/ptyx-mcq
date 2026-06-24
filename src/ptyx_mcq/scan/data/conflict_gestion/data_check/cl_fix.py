@@ -1,31 +1,30 @@
-from subprocess import Popen, CompletedProcess
+from subprocess import CompletedProcess, Popen
 
 from ptyx.pretty_print import print_warning
 
+from ptyx_mcq.scan.data import Picture, ScanData
 from ptyx_mcq.scan.data.conflict_gestion.data_check.fix import (
-    Action,
-    AbstractNamesReviewer,
     AbstractAnswersReviewer,
     AbstractDocHeaderDisplayer,
+    AbstractNamesReviewer,
+    Action,
 )
-from ptyx_mcq.scan.data import ScanData, Picture
-from ptyx_mcq.tools.misc import copy_docstring
-from ptyx_mcq.tools.colors import Color, RGB
 from ptyx_mcq.scan.data.questions import CbxState
 from ptyx_mcq.scan.picture_analyze.image_viewer import ImageViewer
-from ptyx_mcq.tools.config_parser import (
-    DocumentId,
-    ApparentQuestionNumber,
-    apparent2real,
+from ptyx_mcq.tools.colors import RGB, Color
+from ptyx_mcq.tools.misc import copy_docstring
+from ptyx_mcq.tools.parse_config.config import (
     ApparentAnswerNumber,
-    StudentName,
-    StudentId,
-    PageNum,
-    OriginalQuestionNumber,
+    ApparentQuestionNumber,
+    DocumentId,
     OriginalAnswerNumber,
+    OriginalQuestionNumber,
+    PageNum,
+    StudentId,
+    StudentName,
+    apparent2real,
     real2apparent,
 )
-
 
 # --------------------------
 #       Review names
