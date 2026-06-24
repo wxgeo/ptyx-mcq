@@ -1,24 +1,24 @@
 import csv
 import math
 from collections import Counter
-from typing import TYPE_CHECKING
 from collections.abc import Callable
+from typing import TYPE_CHECKING
 
 from openpyxl import Workbook
-from openpyxl.styles import PatternFill, Font
-from openpyxl.worksheet.worksheet import Worksheet
-from openpyxl.worksheet.table import Table, TableStyleInfo
-from openpyxl.utils import get_column_letter
-from openpyxl.chart import Reference, LineChart
+from openpyxl.chart import LineChart, Reference
 from openpyxl.chart.layout import Layout, ManualLayout
 from openpyxl.drawing.line import LineProperties
-
-from ptyx.pretty_print import print_info, term_color, TermColors, red, green, yellow, bold
+from openpyxl.styles import Font, PatternFill
+from openpyxl.utils import get_column_letter
+from openpyxl.worksheet.table import Table, TableStyleInfo
+from openpyxl.worksheet.worksheet import Worksheet
+from ptyx.pretty_print import TermColors, bold, green, print_info, red, term_color, yellow
 
 from ptyx_mcq.scan.score_management.evaluation_strategies import (
     AnswersData,
     ScoreData,
-    EvaluationStrategies,
+    ScoringImplementations,
+    ScoringStrategy,
 )
 from ptyx_mcq.tools.config_parser import StudentId, StudentName
 
@@ -65,13 +65,13 @@ class ScoresManager:
 
                 mode = cfg.mode.get(q, default_mode)
 
-                if mode == "skip":
+                if mode == ScoringStrategy.SKIP:
                     # Used mostly to skip bogus questions.
                     print(f"Question {q} skipped...")
                     continue
 
                 try:
-                    func = getattr(EvaluationStrategies, mode)
+                    func = getattr(ScoringImplementations, mode)
                 except AttributeError:
                     raise AttributeError(f"Unknown evaluation mode: {mode!r}.")
 

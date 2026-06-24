@@ -1,11 +1,17 @@
 from dataclasses import dataclass
-from math import nan, isnan
+from enum import StrEnum, auto
+from math import isnan, nan
+from typing import Callable, NewType, ParamSpec, TypeVar
 
 from ptyx_mcq.tools.config_parser import OriginalAnswerNumber
 
+_P = ParamSpec("_P")
+_R = TypeVar("_R", bound=float)
+QuestionWeight = NewType("QuestionWeight", float)
+
 
 class IncorrectScoreParameter(RuntimeError):
-    """Error raised when a score parameter is incoherent with chosen evaluation strategy."""
+    """Error raised when a score parameter is incoherent with the chosen evaluation strategy."""
 
 
 @dataclass
@@ -42,17 +48,42 @@ class ScoreData:
             self.incorrect = -self.correct
 
 
-class EvaluationStrategies:
+class ScoringStrategy(StrEnum):
+    SOME = auto()
+    ALL = auto()
+    PROPORTIONAL = auto()
+    PARTIAL_ANSWERS = auto()
+    PARTIAL_ANSWERS_QUADRATIC = auto()
+    SPECIAL_CORRECT_MINUS_INCORRECT = auto()
+    SPECIAL_CORRECT_MINUS_INCORRECT_QUADRATIC = auto()
+    CORRECT_MINUS_INCORRECT = auto()
+    CORRECT_MINUS_INCORRECT_QUADRATIC = auto()
+    # Special case: skip the question
+    SKIP = auto()
+
+
+def strategy(f: Callable[_P, _R]) -> Callable[_P, _R]:
+    """A decorator for strategies."""
+    f._is_strategy = True  # type: ignore[attr-defined]
+    return f
+
+
+def is_strategy(f: object):
+    """Return True iff `f` is an scoring strategy."""
+    return callable(f) and getattr(f, "_is_strategy", False)
+
+
+class ScoringImplementations:
     """This class provides a collection of evaluation strategies.
 
      Those will be used to calculate the score for each question.
 
-    Each strategy should be defined as a static method within the `EvaluationStrategies` class,
+    Each strategy should be defined as a static method within the `ScoringImplementations` class,
     with two required parameters:
     - the answers data (of type `AnswersData`),
     - the scores configuration (of type `ScoreData`).
 
-    Note that only static methods within the `EvaluationStrategies` class will be recognized as
+    Note that only static methods within the `ScoringImplementations` class will be recognized as
     evaluation strategies, so you may safely define auxiliary class methods without interfering.
     """
 
@@ -61,6 +92,7 @@ class EvaluationStrategies:
         return [name for name, func in vars(cls).items() if isinstance(func, staticmethod)]
 
     @staticmethod
+    @strategy
     def some(answers: AnswersData, score: ScoreData) -> float:
         """If any of the correct answers have been selected and no incorrect answers
         have been selected, the function returns the maximal score.
@@ -81,6 +113,7 @@ class EvaluationStrategies:
             return score.incorrect
 
     @staticmethod
+    @strategy
     def all(answers: AnswersData, score: ScoreData) -> float:
         """This function returns either the maximal score or the minimal score,
         depending on whether all correct answers are checked or not.
@@ -96,6 +129,7 @@ class EvaluationStrategies:
             return score.incorrect
 
     @staticmethod
+    @strategy
     def proportional(answers: AnswersData, score: ScoreData) -> float:
         """The score returned by this function is calculated as a weighted average
         of the minimal and maximal scores.
@@ -118,12 +152,14 @@ class EvaluationStrategies:
         return round(score.incorrect + proportion * (score.correct - score.incorrect), 2)
 
     @staticmethod
+    @strategy
     def partial_answers(answers: AnswersData, score: ScoreData) -> float:
         """Return `score.incorrect` if an incorrect answer was checked,
         else the proportion of correct answers multiplied by `score.correct`."""
         return _partial_answers(answers, score)
 
     @staticmethod
+    @strategy
     def partial_answers_quadratic(answers: AnswersData, score: ScoreData) -> float:
         """Same algorithm as for `partial_answers`, but the ratio is squared.
 
@@ -131,6 +167,7 @@ class EvaluationStrategies:
         return _partial_answers(answers, score, exposant=2)
 
     @staticmethod
+    @strategy
     def special_correct_minus_incorrect(answers: AnswersData, score: ScoreData) -> float:
         """This algorithm is designed for multiple-choice questions that feature null scores
         for incorrect answers.
@@ -186,6 +223,7 @@ class EvaluationStrategies:
         return _special_correct_minus_incorrect(answers, score)
 
     @staticmethod
+    @strategy
     def special_correct_minus_incorrect_quadratic(answers: AnswersData, score: ScoreData) -> float:
         """Same algorithm as for `special_correct_minus_incorrect`, but the ratio are squared.
 
@@ -194,6 +232,7 @@ class EvaluationStrategies:
         return _special_correct_minus_incorrect(answers, score, exponent=2)
 
     @staticmethod
+    @strategy
     def correct_minus_incorrect(answers: AnswersData, score: ScoreData) -> float:
         """Return the proportion of checked answers among correct ones, minus the proportion of
         checked answers between incorrect ones.
@@ -211,12 +250,17 @@ class EvaluationStrategies:
         return _correct_minus_incorrect(answers, score)
 
     @staticmethod
+    @strategy
     def correct_minus_incorrect_quadratic(answers: AnswersData, score: ScoreData) -> float:
         """Same algorithm as for `correct_minus_incorrect`, but the ratio difference is squared.
 
         This makes more unlikely for a student answering randomly to gain significant score.
         """
         return _correct_minus_incorrect(answers, score, exponent=2)
+
+
+# Helpers
+# -------
 
 
 def _checked_among_correct_proportion(answers: AnswersData) -> float:
@@ -230,7 +274,7 @@ def _checked_among_correct_proportion(answers: AnswersData) -> float:
 
 
 def _partial_answers(answers: AnswersData, score: ScoreData, exposant=1.0) -> float:
-    """See: `EvaluationStrategies.partial_answers`."""
+    """See: `ScoringImplementations.partial_answers`."""
     if answers.checked & answers.incorrect:
         return score.incorrect
     else:
@@ -238,7 +282,7 @@ def _partial_answers(answers: AnswersData, score: ScoreData, exposant=1.0) -> fl
 
 
 def _special_correct_minus_incorrect(answers: AnswersData, score: ScoreData, exponent=1.0) -> float:
-    """See: `EvaluationStrategies.special_correct_minus_incorrect`."""
+    """See: `ScoringImplementations.special_correct_minus_incorrect`."""
     if score.incorrect > 0:
         raise IncorrectScoreParameter(
             f"The score for an incorrect answer must be zero or negative, yet {score.incorrect} > 0."
@@ -251,7 +295,7 @@ def _special_correct_minus_incorrect(answers: AnswersData, score: ScoreData, exp
 
 
 def _correct_minus_incorrect(answers: AnswersData, score: ScoreData, exponent=1.0) -> float:
-    """See: `EvaluationStrategies.correct_minus_incorrect`."""
+    """See: `ScoringImplementations.correct_minus_incorrect`."""
     if score.incorrect > 0:
         raise IncorrectScoreParameter(
             f"The score for an incorrect answer must be zero or negative, yet {score.incorrect} > 0."
@@ -279,3 +323,33 @@ def _correct_minus_incorrect(answers: AnswersData, score: ScoreData, exponent=1.
         diff = correct_ratio - incorrect_ratio
         assert -1 <= diff <= 1
         return abs(diff) ** exponent * (score.correct if diff > 0 else score.incorrect)
+
+
+# Check that the code is up-to-date: `ScoringImplementations` and `ScoringStrategy` must match.
+# --------------------------------------------------------------------------------------------
+
+
+def _check_strategies():
+    """
+    Function that checks that `ScoringImplementations` and `ScoringStrategy` match after their creation.
+
+    Each strategy name referenced in `ScoringStrategy` must have a same-named implementation
+    in `ScoringImplementations`, and reciprocally.
+    """
+    method_names = {key for key, val in vars(ScoringImplementations).items() if is_strategy(val)}
+    # SKIP is a special case: it is not an evaluation strategy, but simply means "Skip this question".
+    enum_items = {str(item) for item in ScoringStrategy if item != ScoringStrategy.SKIP}
+    if missing := method_names - enum_items:
+        raise ValueError(
+            "Some scoring strategies are implemented in `ScoringImplementations`,"
+            f" yet they are not referenced in `ScoringStrategy`: {', '.join(missing)}."
+        )
+    if missing := enum_items - method_names:
+        raise ValueError(
+            "Some scoring strategies are referenced in `ScoringStrategy`,"
+            " but are not implemented in `ScoringImplementations`:"
+            f" {', '.join(missing)}."
+        )
+
+
+_check_strategies()

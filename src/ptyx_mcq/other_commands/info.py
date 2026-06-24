@@ -6,7 +6,7 @@ import re
 
 from ptyx.pretty_print import term_color, TermColors
 
-from ptyx_mcq.scan.score_management.evaluation_strategies import EvaluationStrategies
+from ptyx_mcq.scan.score_management.evaluation_strategies import ScoringImplementations
 from ptyx_mcq.make.extend_latex_generator import HeaderConfigKeys
 
 
@@ -40,10 +40,10 @@ def _print_options_info(title: str, options_info: dict[str, str]) -> None:
 def info_strategies() -> None:
     """Display all evaluation modes with a description."""
 
-    strategies = EvaluationStrategies.get_all_strategies()
+    strategies = ScoringImplementations.get_all_strategies()
     _print_options_info(
         title="Available strategies",
-        options_info={name: getattr(EvaluationStrategies, name).__doc__.strip() for name in strategies},
+        options_info={name: getattr(ScoringImplementations, name).__doc__.strip() for name in strategies},
     )
 
 

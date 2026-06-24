@@ -1,9 +1,11 @@
+import json
 import re
 import typing
-from dataclasses import dataclass, asdict, field
-import json
+from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import Any, TypeVar, TypedDict, Literal, NewType, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Literal, NewType, TypedDict, TypeVar
+
+from ptyx_mcq.scan.score_management.evaluation_strategies import QuestionWeight, ScoringStrategy
 
 if TYPE_CHECKING:
     pass
@@ -113,11 +115,15 @@ def recursively_update_dict(
 # TODO: improve typing precision
 @dataclass(kw_only=True, slots=True)
 class Configuration:
-    mode: dict[QuestionNumberOrDefault, str] = field(default_factory=lambda: {"default": "all"})
+    mode: dict[QuestionNumberOrDefault, ScoringStrategy] = field(
+        default_factory=lambda: {"default": ScoringStrategy.ALL}
+    )
     correct: dict[QuestionNumberOrDefault, float] = field(default_factory=lambda: {"default": 1})
     incorrect: dict[QuestionNumberOrDefault, float] = field(default_factory=lambda: {"default": 0})
     skipped: dict[QuestionNumberOrDefault, float] = field(default_factory=lambda: {"default": 0})
-    weight: dict[QuestionNumberOrDefault, float] = field(default_factory=lambda: {"default": 1})
+    weight: dict[QuestionNumberOrDefault, QuestionWeight] = field(
+        default_factory=lambda: {"default": QuestionWeight(1)}
+    )
     # -inf and inf would be sensible defaults for floor and ceil,
     # but unfortunately they aren't supported by ast.literal_eval().
     floor: dict[QuestionNumberOrDefault, float | None] = field(default_factory=lambda: {"default": None})
