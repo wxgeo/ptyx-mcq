@@ -103,7 +103,7 @@ def resolve_includes(code: str, default_dir: Path, strict=True) -> str:
                         # New files to include.
                         ptyx_code.append(
                             "\n".join(
-                                _get_ex_file_content(path, exercise=(section == 1), position=str(line_num))
+                                _get_ex_file_content(path, is_exercise=(section == 1), position=str(line_num))
                                 for path in line.get_all_files(directory, error_if_none=strict)
                             )
                         )

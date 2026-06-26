@@ -257,7 +257,7 @@ def real2apparent(
     the ones before questions and answers were shuffled."""
     questions = config.ordering[doc_id]["questions"]
     answers = config.ordering[doc_id]["answers"]
-    # Apparent question number (ie. after shuffling).
+    # Apparent question number (i.e. after shuffling).
     # Attention, list index 0 corresponds to question number 1.
     pdf_q_num = ApparentQuestionNumber(questions.index(original_q_num) + 1)
     if original_a_num is None:
@@ -300,12 +300,12 @@ def apparent2real(
     """
     questions = config.ordering[doc_id]["questions"]
     answers = config.ordering[doc_id]["answers"]
-    # Real question number (ie. before shuffling).
+    # Real question number (i.e. before shuffling).
     # Attention, first question is numbered 1, corresponding to list index 0.
     original_q_num = questions[pdf_q_num - 1]
     if pdf_a_num is None:
         return original_q_num, None
-    # Real answer number (ie. before shuffling).
+    # Real answer number (i.e. before shuffling).
     original_a_num = answers[original_q_num][pdf_a_num - 1][0]
     return original_q_num, original_a_num
 

@@ -4,15 +4,15 @@ from typing import Any
 
 from ptyx.extensions.extended_python import PYTHON_DELIMITER
 from ptyx.latex_generator import Compiler
-from ptyx.utilities import extract_verbatim_tag_content, restore_verbatim_tag_content
 from ptyx.pretty_print import print_info, print_warning
+from ptyx.utilities import extract_verbatim_tag_content, restore_verbatim_tag_content
 
 from ptyx_mcq.make.parser_tools import is_new_exercise_start
-from ptyx_mcq.tools.io_tools import get_file_or_sysexit
 from ptyx_mcq.parameters import DEFAULT_TEMPLATE_FULLPATH
+from ptyx_mcq.tools.io_tools import get_file_or_sysexit
 
 
-def wrap_exercise(code: str, doc_path: Path = None) -> str:
+def wrap_exercise(code: str, doc_path: Path | None = None) -> str:
     """Add a minimal header to mcq exercises to make them compilation-ready."""
     template = (DEFAULT_TEMPLATE_FULLPATH / "new.ptyx").read_text()
     code = improve_ex_file_content(code, ex_file_path=doc_path)
@@ -21,7 +21,7 @@ def wrap_exercise(code: str, doc_path: Path = None) -> str:
     return f"{before}\n<<<\n{code}\n>>>\n{after}"
 
 
-def generate_exercise_latex_code_for_preview(*, code: str = None, path: Path = None) -> str:
+def generate_exercise_latex_code_for_preview(*, code: str | None = None, path: Path | None = None) -> str:
     """Generate the LaTeX code corresponding to an exercise, for preview.
 
     One must provide either the code of the exercise, or the path of a `.ex` file, but not both.
@@ -49,7 +49,7 @@ def generate_exercise_latex_code_for_preview(*, code: str = None, path: Path = N
     return compiler.parse(code=code, **context)
 
 
-def improve_ex_file_content(file_content: str, ex_file_path: Path = None, position: str = "") -> str:
+def improve_ex_file_content(file_content: str, ex_file_path: Path | None = None, position: str = "") -> str:
     """Improve the content of the exercise file, escaping `*` characters notably."""
     # Search for lines starting inadvertently with `* `, since a star is the symbol used to
     # start a new exercise.
@@ -62,6 +62,7 @@ def improve_ex_file_content(file_content: str, ex_file_path: Path = None, positi
         print_info("`* ` at the start of a line is used to declare a new exercise.")
         print_info("A space will be inserted before to prevent this in the following line:")
         star_prefixed_line = m.group(0)
+        assert isinstance(star_prefixed_line, str)
         print_info(star_prefixed_line + "\n")
         return " " + star_prefixed_line
 
@@ -70,9 +71,9 @@ def improve_ex_file_content(file_content: str, ex_file_path: Path = None, positi
 
     # Insert `*\n` to mark the start of a new exercise.
     # Nota: Add a line break (instead of a space) after the star,
-    #       in case the .ex file starts with python code.
+    #       in case the .ex file starts with Python code.
     #       This avoids to get something like "* .............",
-    #       where the line of dots introduces python code.
+    #       where the line of dots introduces Python code.
     file_content = "*\n" + file_content
 
     # Test for unbalanced python delimiters.
@@ -101,7 +102,7 @@ def improve_ex_file_content(file_content: str, ex_file_path: Path = None, positi
 #     return str(ex_file_path.parent / f"\u001b[36m{ex_file_path.name}\u001b[0m").replace("#", "##")
 
 
-def _get_ex_file_content(ex_file_path: Path, exercise=True, position: str = "") -> str:
+def _get_ex_file_content(ex_file_path: Path, is_exercise=True, position: str = "") -> str:
     """Get the content of the file to include, with a few enhancements.
 
     - Prefix the file content with `*` if needed (each pTyX exercise must begin with `*`).
@@ -114,7 +115,10 @@ def _get_ex_file_content(ex_file_path: Path, exercise=True, position: str = "") 
 
         # Each exercise must start with a star. Since each included file is supposed to be an exercise,
         # add the initial star if missing.
-        if exercise:
+        if is_exercise:
             return improve_ex_file_content(file_content, ex_file_path=ex_file_path, position=position)
         else:
+            # The included code will be wrapped with #INCLUDE_START and #INCLUDE_END tags, to keep a track of
+            # where the exercise has been inserted.
+            # It will enable the generation of meaningful tracebacks whenever an exception is raised.
             return f"#INCLUDE_START{{{ex_file_path}}}{{{position}}}\n" + file_content + "\n#INCLUDE_END\n"

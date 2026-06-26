@@ -26,7 +26,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from enum import StrEnum, auto
 from pathlib import Path
-from typing import TypedDict
+from typing import Any, TypedDict
 
 from ptyx.errors import PtyxRuntimeError
 from ptyx.latex_generator import LatexGenerator
@@ -43,6 +43,7 @@ from ptyx_mcq.tools.parse_config.subtypes import (
     StudentName,
 )
 
+from ..tools.evaluation_strategies import ScoringStrategy
 from .header import (
     IdentifiantError,
     extract_students_id_and_name_from_csv,
@@ -311,14 +312,16 @@ class MCQLatexGenerator(LatexGenerator):
         return raw_code
 
     def _mcq_shuffle_and_parse_children(
-        self, node: Node, children: list = None, target: Tag = "ITEM"
+        self, node: Node, children: list | None = None, target: Tag = "ITEM"
     ) -> None:
         if self.context.get("MCQ_KEEP_ALL_VERSIONS"):
             self._parse_children(node.children)
         else:
             self._shuffle_and_parse_children(node, children, target=target)
 
-    def _mcq_pick_and_parse_children(self, node: Node, children: list = None, target: Tag = "ITEM") -> None:
+    def _mcq_pick_and_parse_children(
+        self, node: Node, children: list | None = None, target: Tag = "ITEM"
+    ) -> None:
         if self.context.get("MCQ_KEEP_ALL_VERSIONS"):
             self._parse_children(node.children)
         else:
@@ -399,7 +402,7 @@ class MCQLatexGenerator(LatexGenerator):
     def _parse_CONSECUTIVE_QUESTION_tag(self, node: Node) -> None:
         self.mcq_current_state.question_number += 1
         self.mcq_current_state.version_number = 0
-        # For a consecutive question, the context (i. e. local variables) must not be reset.
+        # For a consecutive question, the context (i.e. local variables) must not be reset.
         self._mcq_pick_and_parse_children(node, children=node.children, target="VERSION")
 
     def _parse_VERSION_tag(self, node: Node) -> None:
@@ -531,10 +534,11 @@ class MCQLatexGenerator(LatexGenerator):
     ) -> None:
         # `n` is question number *before* shuffling
         # `k` is answer number *before* shuffling
-        # When the pdf with solutions will be generated, incorrect answers
+        # When the PDF with solutions will be generated, incorrect answers
         # will be preceded by a white square, while correct ones will
         # be preceded by a gray one.
         if width := self.context.get("ANSWER_WIDTH"):
+            assert isinstance(width, str), width
             if re.fullmatch(r"\d+.?\d*|\.\d+", width):
                 # Default unit is `\linewidth`.
                 width += r"\linewidth"
@@ -628,27 +632,47 @@ class MCQLatexGenerator(LatexGenerator):
         # self.write(data)
 
     def _parse_QUESTION_CONFIG_tag(self, node: Node) -> None:
+        """
+        Enable to pass configuration options to the current question.
+
+        Example:
+        #QUESTION_CONFIG{ weight=1.5 ; mode=correct_minus_incorrect }
+        """
         if getattr(self, "mcq_question_number", None) is None:
             raise RuntimeError("#QUESTION_CONFIG can only be used inside a question.")
-        for line in node.arg(0).split("\n"):
-            line = line.strip()
-            if line == "":
-                continue
-            # Support for `;` delimiter between `key = value` entries.
-            for key_val in line.split(";"):
-                key_val = key_val.strip()
-                match key_val.split("=", maxsplit=1):
-                    case key, val:
-                        key = key.strip()
-                        val = val.strip()
-                        if key in SCORE_CONFIG_KEYS_TYPES:
-                            val_type = SCORE_CONFIG_KEYS_TYPES[key]
-                            getattr(self.mcq_data, key)[self.mcq_question_number] = val_type(val)
-                        else:
-                            raise NameError(f"Unknown key in #QUESTION_CONFIG: {key!r}.")
-                    case _:
-                        if key_val != "":
-                            raise RuntimeError(f"Invalid line in #QUESTION_CONFIG: {key_val!r}.")
+
+        def _store(_key: HeaderConfigKeys, _val: Any) -> None:
+            val_type = SCORE_CONFIG_KEYS_TYPES[_key]
+            getattr(self.mcq_data, _key)[self.mcq_question_number] = val_type(_val)
+
+        # The `key=value` entries may be delimited either by new line, or by `;` (or a mix of both).
+        for key_val in node.arg(0).replace("\n", ";").split(";"):
+            match [_.strip() for _ in key_val.split("=", maxsplit=1)]:
+                case "mode", val:
+                    if not hasattr(ScoringStrategy, val.upper()):
+                        raise NameError(
+                            f"Unknown evaluation mode: {val!r}."
+                            f" Implemented evaluation modes: {', '.join(ScoringStrategy)}"
+                        )
+                    _store(HeaderConfigKeys.mode, val)
+                case "weight", val:
+                    try:
+                        if float(val) < 0:
+                            raise ValueError
+                    except ValueError:
+                        raise ValueError(f"Invalid question's weight: {val!r}.")
+                    _store(HeaderConfigKeys.weight, val)
+                case key, val:
+                    if key not in SCORE_CONFIG_KEYS_TYPES:
+                        raise NameError(f"Unknown key in #QUESTION_CONFIG: {key!r}.")
+                    _store(key, val)
+
+                case _:
+                    if key_val.strip():
+                        raise RuntimeError(
+                            f"Invalid line in #QUESTION_CONFIG: {key_val!r}."
+                            " Example: #QUESTION_CONFIG{ weight=1.5 ; mode=correct_minus_incorrect }."
+                        )
 
     @staticmethod
     def _parse_sty_list(sty_packages: str) -> str:
@@ -658,7 +682,7 @@ class MCQLatexGenerator(LatexGenerator):
             if package:
                 package = package.strip()
                 # noinspection RegExpRedundantEscape
-                m = re.match(r"\s*\[(?P<options>(?:\w|\s)+)\](?P<package>.+)", package)
+                m = re.match(r"\s*\[(?P<options>[\w\s]+)\](?P<package>.+)", package)
                 if m is None:
                     packages.append(f"{{{package}}}")
                 else:
