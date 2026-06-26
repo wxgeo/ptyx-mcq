@@ -1,13 +1,13 @@
 import shutil
 
-import pytest
 import numpy as np
+import pytest
 
 from ptyx_mcq.make.generate_ptyx_code import LatexPackages
 from ptyx_mcq.tools.extend_literal_eval import extended_literal_eval
-from ptyx_mcq.tools.io_tools import is_ptyx_mcq_file, get_file_with_extension
-from ptyx_mcq.tools.pdf import similar_pdfs, similar_pdf_page
-from ptyx_mcq.tools.pic import load_webp, save_webp, convert_to_webp
+from ptyx_mcq.tools.io_tools import get_file_with_extension, is_ptyx_mcq_file
+from ptyx_mcq.tools.pdf import similar_pdf_page, similar_pdfs
+from ptyx_mcq.tools.pic import convert_to_webp, load_webp, save_webp
 from tests import ASSETS_DIR
 
 
@@ -112,3 +112,5 @@ def test_parse_packages_enumeration():
         "third_package": {"one", "two", "three"},
         "new_package": set(),
     }
+
+

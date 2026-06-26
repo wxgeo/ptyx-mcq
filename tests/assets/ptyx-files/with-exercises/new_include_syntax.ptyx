@@ -7,9 +7,9 @@
 ======= Mathematics ===========
 
 !-- exercises/ex1.ex
--- exercises/ex2.ex
+-- exercises/ex2.ex : 1.5 : some
 -- DIR: other_exercises/a subfolder with a space in its name
--- ex3.ex
+-- ex3.ex : 2
 -- DIR: other_exercises
 -- ex4 has spaces in its name, and other str@#g€ things too !.ex
 -- some/invalid/path.ex

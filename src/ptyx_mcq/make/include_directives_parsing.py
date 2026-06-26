@@ -69,6 +69,7 @@ from ptyx.pretty_print import print_error, print_warning
 
 from ptyx_mcq.make.exercises_parsing import _get_ex_file_content
 from ptyx_mcq.tools.evaluation_strategies import ScoringStrategy
+from ptyx_mcq.tools.parse_config.subtypes import QuestionWeight
 
 
 class UnsafeUpdate(RuntimeError):
@@ -91,22 +92,38 @@ class Directive:
     path: Path
     is_disabled: bool = False
     comment: str = ""
-    coefficient: float = 1
-    evaluation_method: ScoringStrategy = ScoringStrategy.ALL
+    question_weight: float | None = None
+    scoring_strategy: ScoringStrategy | None = None
 
     def __str__(self):
         comment = f"@{self.comment}: " if self.comment else ""
         disabled = "!" if self.is_disabled else ""
         type_ = " DIR:" if isinstance(self, ChangeDirectory) else ""
-        return f"{comment}{disabled}--{type_} {self.path}"
+        directive = f"{comment}{disabled}--{type_} {self.path}"
+        weight = "" if self.question_weight is None else format(self.question_weight, "g")
+        meth = "" if self.scoring_strategy is None else str(self.scoring_strategy)
+        if ":" in str(self.path) or weight or meth:
+            directive += f" : {weight}"
+            if ":" in str(self.path) or meth:
+                directive += f" : {meth}"
+        return directive
 
-    def copy(self, is_disabled=None, comment=None) -> Self:
-        if comment is None:
-            comment = self.comment
-        if is_disabled is None:
-            is_disabled = self.is_disabled
-        # noinspection PyArgumentList
-        return self.__class__(self.path, comment=comment, is_disabled=is_disabled)
+    def copy(
+        self,
+        is_disabled: bool | None = None,
+        comment: str | None = None,
+        # question_weight: QuestionWeight | None = None,
+        # scoring_strategy: ScoringStrategy | None = None,
+    ) -> Self:
+        """Make a copy, but allow to update some attributes."""
+        # noinspection PyTypeChecker
+        return self.__class__(
+            self.path,
+            comment=(self.comment if comment is None else comment),
+            is_disabled=(self.is_disabled if is_disabled is None else is_disabled),
+            question_weight=self.question_weight,
+            scoring_strategy=self.scoring_strategy,
+        )
 
     def __lt__(self, other: "Directive"):
         if not isinstance(other, Directive):
@@ -171,30 +188,68 @@ class ChangeDirectory(Directive):
 #     disabled: bool
 
 
-def _parse_directive(line: str) -> Directive | str:
+def parse_directive(line: str) -> Directive | str:
     """
     Analyze the line, and return either the corresponding directive, or the line itself.
 
     If the line is an include directive, then a `Directive` object will be returned instead.
     Else, the line will be returned unchanged.
+
+    This function can also be used to test if a line of text is a valid directive or not,
+    by checking if a `Directive` instance is returned or not.
     """
-    m = re.match(
-        "^(?:@(?P<comment>\\w+):)?\\s*(?P<disable>!)?--\\s+(?P<special>DIR:|ROOT:)?(?P<path>.+)$",
-        line,
-    )
-    if m is None:
+    # language=regexp
+    prefix = "(?:@(?P<comment>\\w+):)?\\s*(?P<disable>!)?--\\s+(?P<special>DIR:|ROOT:)?"
+    if (m := re.match(prefix, line)) is None:
         return line
-    d = m.groupdict()
+    pos = m.end()
+    d = m.groupdict(default="")
+
+    # language=regexp
+    short_pattern = "(?P<path>.+)"
+    # The regex for the score's weight and the strategy should accept any character for now, since the validation
+    # will occur after.
+    # language=regexp
+    mid_pattern = short_pattern + ":(?P<weight>.*)"
+    # language=regexp
+    long_pattern = mid_pattern + ":(?P<strategy>.*)"
+    # The longest pattern must be tested at first, since it is the more specific.
+    # (Note that if the path contains colons, which is very unlikely, it must follow the long pattern.)
+    for pattern in (long_pattern, mid_pattern, short_pattern):
+        if m := re.fullmatch(pattern, line[pos:]):
+            break
+    else:
+        return line
+    d |= m.groupdict(default="")
     if d["special"] == "ROOT:":
         raise DeprecationWarning(
             f"Error in `{line}`:\n`-- ROOT:` is not supported anymore, use `-- DIR:` instead."
         )
 
+    try:
+        if d.get("weight"):
+            # Accept both `.` and `,` as decimal separator.
+            weight = QuestionWeight(float(d["weight"].replace(",", ".")))
+        else:
+            weight = None
+    except ValueError:
+        print_warning(f"Invalid score weight: {d['weight']!r}.")
+        return line
+    try:
+        if d.get("strategy"):
+            strategy = getattr(ScoringStrategy, d["strategy"].strip().upper())
+        else:
+            strategy = None
+    except AttributeError:
+        print_warning(f"Unknown scoring strategy: {d['strategy']!r}.")
+        return line
     # noinspection PyArgumentList
     return (ChangeDirectory if d["special"] == "DIR:" else AddPath)(
         Path(d["path"].strip()).expanduser(),
         is_disabled=(d["disable"] == "!"),
-        comment=d["comment"] or "",
+        comment=d["comment"],
+        question_weight=weight,
+        scoring_strategy=strategy,
     )
 
 
@@ -202,7 +257,7 @@ def parse_code(code: str) -> list[Directive | str]:
     """Parse pTyx code, searching for include directives.
 
     Return a list of lines of code or directive objects."""
-    return [_parse_directive(line) for line in code.splitlines()]
+    return [parse_directive(line) for line in code.splitlines()]
 
 
 def resolve_includes(code: str, default_dir: Path, strict=True) -> str:
@@ -440,8 +495,8 @@ class IncludesUpdater:
 
 def _split_around_mcq(
     *,
-    ptyx_file: Path = None,
-    code: str = None,
+    ptyx_file: Path | None = None,
+    code: str | None = None,
 ) -> tuple[list[str | Directive], list[str | Directive], list[str | Directive]]:
     """
     Split the lines in 3 sub-lists:

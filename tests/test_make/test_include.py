@@ -6,37 +6,138 @@ from ptyx.latex_generator import Compiler
 
 # noinspection PyProtectedMember
 from ptyx_mcq.make.include_directives_parsing import (
-    parse_code,
-    Directive,
-    ChangeDirectory,
     AddPath,
+    ChangeDirectory,
+    Directive,
     IncludesUpdater,
-    update_file,
-    resolve_includes_from_file,
     UnsafeUpdate,
+    parse_code,
+    parse_directive,
+    resolve_includes_from_file,
+    update_file,
 )
+from ptyx_mcq.tools.evaluation_strategies import ScoringStrategy
 from tests import ASSETS_DIR
 
 
-def _dir(directory: str, is_disabled=False, comment=""):
-    return ChangeDirectory(path=Path(directory), is_disabled=is_disabled, comment=comment)
+def _dir(
+    directory: str,
+    is_disabled=False,
+    comment="",
+    question_weight: float | None = None,
+    scoring_strategy: ScoringStrategy | None = None,
+):
+    return ChangeDirectory(
+        path=Path(directory),
+        is_disabled=is_disabled,
+        comment=comment,
+        question_weight=question_weight,
+        scoring_strategy=scoring_strategy,
+    )
 
 
-def _file(file: str, is_disabled=False, comment=""):
-    return AddPath(path=Path(file), is_disabled=is_disabled, comment=comment)
+def _file(
+    file: str,
+    is_disabled=False,
+    comment="",
+    question_weight: float | None = None,
+    scoring_strategy: ScoringStrategy | None = None,
+):
+    return AddPath(
+        path=Path(file),
+        is_disabled=is_disabled,
+        comment=comment,
+        question_weight=question_weight,
+        scoring_strategy=scoring_strategy,
+    )
 
 
 DATA_DIR = ASSETS_DIR / "ptyx-files"
 
 
-def test_include_parser():
+def _test_idempotent_directive(line: str, _class: type[Directive], **kw) -> None:
+    assert isinstance(directive := parse_directive(line), _class)
+    for key, val in kw.items():
+        assert getattr(directive, key) == val
+    assert str(directive) == line
+
+
+def test_parser_idempotence():
+    _test_idempotent_directive(
+        "-- DIR: some/path : 1.5",
+        ChangeDirectory,
+        path=Path("some/path"),
+        comment="",
+        is_disabled=False,
+        question_weight=1.5,
+        scoring_strategy=None,
+    )
+    _test_idempotent_directive(
+        "-- DIR: some/path : 2 : some",
+        ChangeDirectory,
+        path=Path("some/path"),
+        comment="",
+        is_disabled=False,
+        question_weight=2,
+        scoring_strategy=ScoringStrategy.SOME,
+    )
+    _test_idempotent_directive(
+        "-- DIR: some/path : 1.5",
+        ChangeDirectory,
+        path=Path("some/path"),
+        comment="",
+        is_disabled=False,
+        question_weight=1.5,
+        scoring_strategy=None,
+    )
+    _test_idempotent_directive(
+        "-- some/path : 0.5 : correct_minus_incorrect",
+        AddPath,
+        path=Path("some/path"),
+        comment="",
+        is_disabled=False,
+        question_weight=0.5,
+        scoring_strategy=ScoringStrategy.CORRECT_MINUS_INCORRECT,
+    )
+    _test_idempotent_directive(
+        "-- some/path : 1.5",
+        AddPath,
+        path=Path("some/path"),
+        comment="",
+        is_disabled=False,
+        question_weight=1.5,
+        scoring_strategy=None,
+    )
+
+
+def test_negatives():
+    new_s = parse_directive(s := "-not a directive")
+    assert isinstance(new_s, str)
+    assert new_s == s
+    new_s = parse_directive(s := "-- not:a:valid:one:either")
+    assert isinstance(new_s, str)
+    assert new_s == s
+
+
+def test_parser_special_cases():
+    # comma instead of dot as decimal separator:
+    d = parse_directive("--   path:1,5  :")
+    assert isinstance(d, AddPath)
+    assert str(d) == "-- path : 1.5"
+    # minimal support for colons in the path:
+    d = parse_directive("-- pa:th/w:ith/co:lon:s.ex::")
+    assert isinstance(d, AddPath)
+    assert str(d) == "-- pa:th/w:ith/co:lon:s.ex :  : "
+
+
+def test_exemple_complet():
     content = (DATA_DIR / "with-exercises/new_include_syntax.ptyx").read_text(encoding="utf8")
     directives = [line for line in parse_code(content) if isinstance(line, Directive)]
     assert directives == [
         _file("exercises/ex1.ex", is_disabled=True),
-        _file("exercises/ex2.ex"),
+        _file("exercises/ex2.ex", question_weight=1.5, scoring_strategy=ScoringStrategy.SOME),
         _dir("other_exercises/a subfolder with a space in its name"),
-        _file("ex3.ex"),
+        _file("ex3.ex", question_weight=2),
         _dir("other_exercises"),
         _file("ex4 has spaces in its name, and other str@#g€ things too !.ex"),
         _file("some/invalid/path.ex"),
