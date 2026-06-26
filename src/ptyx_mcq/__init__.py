@@ -122,10 +122,11 @@ def extend_compiler() -> "CompilerExtension":
 def main(text: str, compiler: "Compiler") -> str:
     """This function is automatically called by pTyX extension machinery to preparse MCQ code and return pTyX code."""
     from ptyx.extensions import extended_python
+
     from ptyx_mcq.make.generate_ptyx_code import generate_ptyx_code
-    from ptyx_mcq.make.include_directives_parsing import resolve_includes
-    from ptyx_mcq.tools.io_tools import print_error, FatalError
+    from ptyx_mcq.make.include_directives.parser import resolve_includes
     from ptyx_mcq.make.parser_tools import autodetect_smallgraphlib
+    from ptyx_mcq.tools.io_tools import FatalError, print_error
 
     # Generation algorithm is the following:
     # 1. Parse AutoQCM code, to convert it to plain pTyX code.

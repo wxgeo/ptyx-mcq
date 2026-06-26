@@ -4,18 +4,11 @@ from pathlib import Path
 import pytest
 from ptyx.latex_generator import Compiler
 
+from ptyx_mcq.make.include_directives.directives import AddPath, ChangeDirectory, Directive
+from ptyx_mcq.make.include_directives.parser import parse_code, parse_directive, resolve_includes_from_file
+
 # noinspection PyProtectedMember
-from ptyx_mcq.make.include_directives_parsing import (
-    AddPath,
-    ChangeDirectory,
-    Directive,
-    IncludesUpdater,
-    UnsafeUpdate,
-    parse_code,
-    parse_directive,
-    resolve_includes_from_file,
-    update_file,
-)
+from ptyx_mcq.make.include_directives.update import IncludesUpdater, UnsafeUpdate, update_file
 from ptyx_mcq.tools.evaluation_strategies import ScoringStrategy
 from tests import ASSETS_DIR
 
@@ -158,7 +151,7 @@ def test_update_include():
     updater.update_file_content()
     assert updater.includes == {
         _dir("other_exercises/a subfolder with a space in its name"): [
-            _file("ex3.ex"),
+            _file("ex3.ex", question_weight=2.0),
             _file("ex5 - smallgraphlib import.ex", comment="new"),
         ],
         _dir("other_exercises"): [
@@ -169,7 +162,7 @@ def test_update_include():
     assert set(updater.local_includes) == {
         _file("custom_latex_packages/ex/custom_packages.ex", comment="new"),
         _file("exercises/ex1.ex", is_disabled=True),
-        _file("exercises/ex2.ex"),
+        _file("exercises/ex2.ex", question_weight=1.5, scoring_strategy=ScoringStrategy.SOME),
         _file("example_with_verbatim/ex/2.ex", comment="new"),
         _file("example_with_verbatim/ex/1.ex", comment="new"),
         _file("example_with_verbatim/ex/3.ex", comment="new"),
@@ -339,12 +332,12 @@ def test_unsafe_update(tmp_path):
     str_directives = [str(line) for line in parse_code(ptyx_path.read_text()) if isinstance(line, Directive)]
     assert str_directives == [
         "!-- exercises/ex1.ex",
-        "-- exercises/ex2.ex",
+        "-- exercises/ex2.ex : 1.5 : some",
         "@missing: !-- DIR: other_exercises",
         "@missing: !-- ex4 has spaces in its name, and other str@#g€ things too !.ex",
         "@missing: !-- some/invalid/path.ex",
         "@missing: !-- DIR: other_exercises/a subfolder with a space in its name",
-        "@missing: !-- ex3.ex",
+        "@missing: !-- ex3.ex : 2",
     ]
 
 

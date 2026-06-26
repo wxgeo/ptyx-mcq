@@ -3,6 +3,7 @@ Tools used to check mcq syntax.
 """
 
 import re
+from pathlib import Path
 
 from ptyx.pretty_print import print_error
 
@@ -54,3 +55,46 @@ def autodetect_smallgraphlib(text: str) -> list[str]:
                 "You can install it with the following command:\npip install smallgraphlib"
             )
     return []
+
+
+def split_around_mcq(
+    *,
+    ptyx_file: Path | None = None,
+    code: str | None = None,
+) -> tuple[list[str], list[str], list[str]]:
+    """
+    Split the lines in 3 sub-lists:
+    - the lines before the MCQ, including <<<
+    - the lines inside the MCQ (the part between <<< and >>>).
+    - the lines after the MCQ, including >>>
+
+    Raise NoMCQSectionFound if <<< or >>> is not found.
+    """
+    if code is None:
+        if ptyx_file is None:
+            raise ValueError("Either `ptyx_file` or `code` argument must be given.")
+        else:
+            code = ptyx_file.read_text()
+    lines = code.splitlines()
+    for start, line in enumerate(lines):
+        if line.startswith("<<<"):
+            break
+    else:
+        raise NoMCQSectionFound(f"`<<<` not found in '{ptyx_file}'.")
+    start += 1
+
+    for end, line in enumerate(lines[start:]):
+        if line.startswith(">>>"):
+            break
+    else:
+        raise NoMCQSectionFound(f"`>>>` not found in '{ptyx_file}'.")
+    end += start
+    return lines[:start], lines[start:end], lines[end:]
+
+
+class NoMCQSectionFound(RuntimeError):
+    """
+    Error raised when the file to update does not contain any MCQ section.
+
+    The MCQ section must be surrounded by `<<<` and `>>>` lines.
+    """
