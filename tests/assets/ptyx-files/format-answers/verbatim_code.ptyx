@@ -10,7 +10,7 @@ incorrect = 0
 skipped = 0
 # floor = 0
 # ceil = 1
-mode=correct_minus_incorrect_linear
+mode=correct_minus_incorrect
 id format=8 digits
 ---------------------------
 # You may include here raw LaTeX code (definition of new LaTeX commands for example).

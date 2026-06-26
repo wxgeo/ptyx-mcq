@@ -30,7 +30,7 @@ from typing import Any, TypedDict
 
 from ptyx.errors import PtyxRuntimeError
 from ptyx.latex_generator import LatexGenerator
-from ptyx.pretty_print import print_warning
+from ptyx.pretty_print import print_error, print_warning
 from ptyx.printers import sympy2latex
 from ptyx.syntax_tree import Node, Tag
 from ptyx.utilities import latex_verbatim
@@ -116,7 +116,7 @@ class HeaderConfigKeys(StrEnum):
 # assert set(HeaderConfigKeys.__members__).issubset(field.name for field in fields(Configuration))
 
 SCORE_CONFIG_KEYS_TYPES: dict[HeaderConfigKeys, type] = {
-    HeaderConfigKeys.mode: str,
+    HeaderConfigKeys.mode: ScoringStrategy,
     HeaderConfigKeys.weight: float,
     HeaderConfigKeys.correct: float,
     HeaderConfigKeys.incorrect: float,
@@ -638,6 +638,13 @@ class MCQLatexGenerator(LatexGenerator):
         Example:
         #QUESTION_CONFIG{ weight=1.5 ; mode=correct_minus_incorrect }
         """
+        try:
+            self.__parse_QUESTION_CONFIG_tag(node)
+        except Exception:
+            print_error(f"Invalid question config: {node.arg(0)!r}")
+            raise
+
+    def __parse_QUESTION_CONFIG_tag(self, node: Node) -> None:
         if getattr(self, "mcq_question_number", None) is None:
             raise RuntimeError("#QUESTION_CONFIG can only be used inside a question.")
 
@@ -649,15 +656,21 @@ class MCQLatexGenerator(LatexGenerator):
         for key_val in node.arg(0).replace("\n", ";").split(";"):
             match [_.strip() for _ in key_val.split("=", maxsplit=1)]:
                 case "mode", val:
-                    if not hasattr(ScoringStrategy, val.upper()):
+                    val = val.lower()
+                    # if val in ("none", "default"):
+                    #     # Default mode, nothing to do.
+                    #     continue
+                    try:
+                        _store(HeaderConfigKeys.mode, val)
+                    except ValueError:
                         raise NameError(
                             f"Unknown evaluation mode: {val!r}."
                             f" Implemented evaluation modes: {', '.join(ScoringStrategy)}"
                         )
-                    _store(HeaderConfigKeys.mode, val)
                 case "weight", val:
                     try:
-                        if float(val) < 0:
+                        val = float(val)
+                        if val < 0:
                             raise ValueError
                     except ValueError:
                         raise ValueError(f"Invalid question's weight: {val!r}.")

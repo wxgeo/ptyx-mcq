@@ -1,9 +1,11 @@
 import re
 from pathlib import Path
+from typing import Any
 
 from ptyx.pretty_print import print_warning
 
 from ptyx_mcq.make.exercises_parsing import _get_ex_file_content
+from ptyx_mcq.make.extend_latex_generator import HeaderConfigKeys
 from ptyx_mcq.make.include_directives.directives import AddPath, ChangeDirectory, Directive
 from ptyx_mcq.make.parser_tools import split_around_mcq
 from ptyx_mcq.tools.evaluation_strategies import ScoringStrategy
@@ -82,6 +84,25 @@ def parse_code(code: str) -> list[Directive | str]:
     return [parse_directive(line) for line in code.splitlines()]
 
 
+def _resolve_include(
+    is_exercise: bool, line_num: int, directive: AddPath, directory: Path, strict: bool
+) -> str:
+    config: dict[HeaderConfigKeys, Any] = {}
+    if directive.scoring_strategy is not None:
+        config[HeaderConfigKeys.mode] = directive.scoring_strategy
+    if directive.question_weight is not None:
+        config[HeaderConfigKeys.weight] = directive.question_weight
+    return "\n".join(
+        _get_ex_file_content(
+            path,
+            is_exercise=is_exercise,
+            position=str(line_num),
+            config=config,
+        )
+        for path in directive.get_all_files(directory, error_if_none=strict)
+    )
+
+
 def resolve_includes(code: str, default_dir: Path, strict=True) -> str:
     """Search for include directives, and insert the corresponding files content into the pTyX code."""
     directory: Path = default_dir
@@ -102,9 +123,12 @@ def resolve_includes(code: str, default_dir: Path, strict=True) -> str:
                         assert isinstance(line, AddPath)
                         # New files to include.
                         ptyx_code.append(
-                            "\n".join(
-                                _get_ex_file_content(path, is_exercise=(section == 1), position=str(line_num))
-                                for path in line.get_all_files(directory, error_if_none=strict)
+                            _resolve_include(
+                                is_exercise=(section == 1),
+                                line_num=line_num,
+                                directive=line,
+                                directory=directory,
+                                strict=strict,
                             )
                         )
             else:

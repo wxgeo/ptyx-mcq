@@ -312,6 +312,33 @@ def test_question_config(tmp_path):
     assert c.latex_generator.mcq_data.incorrect[2] == 4.0
 
 
+def test_question_config_include_syntax(tmp_path):
+    # Copy the files needed for the test:
+    # <tmp_path>
+    #     ├── new_include_syntax_weight_mode.ptyx
+    #     └── exercises
+    #             ├── 1.ex
+    #             └── 2.ex
+    root = ASSETS_DIR / "ptyx-files/with-exercises"
+    file_name = "new_include_syntax_weight_mode.ptyx"
+    shutil.copy(root / file_name, tmp_path)
+    (tmp_path / "exercises").mkdir()
+    for i in (1, 2):
+        shutil.copy(root / f"exercises/ex{i}.ex", tmp_path / "exercises")
+        shutil.copy(root / f"exercises/ex{i}.ex", tmp_path / "exercises")
+    ptyx_path = tmp_path / "new_include_syntax_weight_mode.ptyx"
+
+    # Launch tests.
+    c = load_ptyx_file(ptyx_path)
+    c.generate_syntax_tree()
+    c.get_latex()
+    assert c.latex_generator.mcq_data.mode["default"] == "all"
+    assert c.latex_generator.mcq_data.mode[2] == "some"
+    assert c.latex_generator.mcq_data.weight["default"] == 1.0
+    assert c.latex_generator.mcq_data.weight[1] == 2.0
+    assert c.latex_generator.mcq_data.weight[2] == 1.5
+
+
 def test_math_formatting(tmp_path):
     folder = copy_test("format-answers", tmp_path)
     c = load_ptyx_file(folder / "math_formatting.ptyx")
