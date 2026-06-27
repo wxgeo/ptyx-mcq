@@ -18,7 +18,7 @@ from PIL.Image import Image
 from ptyx_mcq.scan.data import ScanData
 from ptyx_mcq.scan.data.documents import Document
 from ptyx_mcq.scan.data.questions import Answer
-from ptyx_mcq.scan.picture_analyze.types_declaration import Col, Pixel, Row
+from ptyx_mcq.scan.picture_analyze.types_declaration import Col, Pixel
 from ptyx_mcq.tools.colors import RGB, Color
 from ptyx_mcq.tools.io_tools import generate_progression_callback
 from ptyx_mcq.tools.parse_config.config import (
@@ -26,6 +26,7 @@ from ptyx_mcq.tools.parse_config.config import (
     QuestionNumberOrDefault,
     real2apparent,
 )
+
 
 # if TYPE_CHECKING:
 #     from ptyx_mcq.scan.scanner import MCQPictureParser
@@ -104,7 +105,7 @@ def amend_doc(doc: Document, max_score_per_question: dict[QuestionNumberOrDefaul
             maximum = max_score_per_question.get(q, max_score_per_question["default"])
             assert isinstance(maximum, (float, int)), repr(maximum)
             i, j = top_left_positions[q]
-            _write_score(draw, (i, Col(j - 2 * size)), earn, maximum, size)
+            _write_score(draw, (i, Col(j - size)), earn, maximum, size, anchor="rt")
         # We will now sort pages.
         # For that, we use questions numbers: the page which displays
         # the smaller questions numbers is the first one, and so on.
@@ -118,8 +119,10 @@ def amend_doc(doc: Document, max_score_per_question: dict[QuestionNumberOrDefaul
     _, pages = zip(*sorted(images.items()))  # type: ignore
     draw = ImageDraw.Draw(pages[0])
     assert doc.score is not None
+    i, j = doc.first_page.pic.calibration_data.positions.TL
     # noinspection PyUnboundLocalVariable
-    _write_score(draw, (Row(2 * size), Col(4 * size)), doc.score, max_score, 2 * size)
+    _write_score(draw, (i, Col(j + 2 * size)), doc.score, max_score, 2 * size)
+    # _write_score(draw, (Row(2 * size), Col(8 * size)), doc.score, max_score, 2 * size)
     pages[0].save(
         join(doc.scan_data.dirs.pdf, f"{doc.student_name}-{doc.student_id}-{doc_id}.pdf"),
         save_all=True,
@@ -152,12 +155,16 @@ def _correct_checkboxes(draw: ImageDraw.ImageDraw, answer: Answer, size: int) ->
         draw.line((j + size - 1, i, j, i + size - 1), fill=red, width=2)
 
 
-def _write_score(draw: ImageDraw.ImageDraw, pos: Pixel, earn: float, maximum: float, size: int) -> None:
+def _write_score(
+    draw: ImageDraw.ImageDraw, pos: Pixel, earn: float, maximum: float, size: int, anchor="lt"
+) -> None:
     i, j = pos
     fnt = ImageFont.truetype("FreeSerif.ttf", int(0.7 * size))
     # Add 0.0 to result after rounding, to prevent negative zeros (-0.0).
     # (Don't use `:zn` formatter, since it will fail on integers!)
-    draw.text((j, i), f"{round(earn, 2) + 0.0:n}/{round(maximum, 2):n}", font=fnt, fill=Color.red)
+    draw.text(
+        (j, i), f"{round(earn, 2) + 0.0:n}/{round(maximum, 2):n}", anchor=anchor, font=fnt, fill=Color.red
+    )
 
 
 def _dash_generator(
