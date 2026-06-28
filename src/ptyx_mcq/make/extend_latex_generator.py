@@ -34,7 +34,6 @@ from ptyx.pretty_print import print_error, print_warning
 from ptyx.printers import sympy2latex
 from ptyx.syntax_tree import Node, Tag
 from ptyx.utilities import latex_verbatim
-
 from ptyx_mcq.tools.parse_config.config import Configuration
 from ptyx_mcq.tools.parse_config.subtypes import (
     OriginalAnswerNumber,
@@ -42,8 +41,6 @@ from ptyx_mcq.tools.parse_config.subtypes import (
     StudentId,
     StudentName,
 )
-
-from ..tools.evaluation_strategies import ScoringStrategy
 from .header import (
     IdentifiantError,
     extract_students_id_and_name_from_csv,
@@ -53,6 +50,7 @@ from .header import (
     student_id_table,
     students_checkboxes,
 )
+from ..tools.evaluation_strategies import ScoringStrategy
 
 
 class HeaderConfigKeys(StrEnum):
@@ -649,17 +647,15 @@ class MCQLatexGenerator(LatexGenerator):
             raise RuntimeError("#QUESTION_CONFIG can only be used inside a question.")
 
         def _store(_key: HeaderConfigKeys, _val: Any) -> None:
-            val_type = SCORE_CONFIG_KEYS_TYPES[_key]
-            getattr(self.mcq_data, _key)[self.mcq_question_number] = val_type(_val)
+            _val_type = SCORE_CONFIG_KEYS_TYPES[_key]
+            getattr(self.mcq_data, _key)[self.mcq_question_number] = _val_type(_val)
 
-        # The `key=value` entries may be delimited either by new line, or by `;` (or a mix of both).
-        for key_val in node.arg(0).replace("\n", ";").split(";"):
+        # The `key=value` entries may be delimited either by a new line, by `,` or by `;` (or a mix of both).
+        for key_val in node.arg(0).replace("\n", ";").replace(",", ";").split(";"):
             match [_.strip() for _ in key_val.split("=", maxsplit=1)]:
                 case "mode", val:
+                    # Control that the evaluation mode exists.
                     val = val.lower()
-                    # if val in ("none", "default"):
-                    #     # Default mode, nothing to do.
-                    #     continue
                     try:
                         _store(HeaderConfigKeys.mode, val)
                     except ValueError:
@@ -668,6 +664,7 @@ class MCQLatexGenerator(LatexGenerator):
                             f" Implemented evaluation modes: {', '.join(ScoringStrategy)}"
                         )
                 case "weight", val:
+                    # Control that the weight is a positive float.
                     try:
                         val = float(val)
                         if val < 0:
@@ -675,13 +672,30 @@ class MCQLatexGenerator(LatexGenerator):
                     except ValueError:
                         raise ValueError(f"Invalid question's weight: {val!r}.")
                     _store(HeaderConfigKeys.weight, val)
+
                 case key, val:
+                    # Control that the configuration key exists.
                     if key not in SCORE_CONFIG_KEYS_TYPES:
                         raise NameError(f"Unknown key in #QUESTION_CONFIG: {key!r}.")
                     _store(key, val)
 
-                case _:
-                    if key_val.strip():
+                case [""]:
+                    # Empty item, skip.
+                    pass
+
+                case [val]:
+                    # By default, a lonely numeric value is considered to be the weight of the question, and another
+                    #
+                    for key, val_type in (
+                        (HeaderConfigKeys.weight, float),
+                        (HeaderConfigKeys.mode, ScoringStrategy),
+                    ):
+                        try:
+                            _store(key, val_type(val.lower()))
+                            break
+                        except ValueError:
+                            pass
+                    else:
                         raise RuntimeError(
                             f"Invalid line in #QUESTION_CONFIG: {key_val!r}."
                             " Example: #QUESTION_CONFIG{ weight=1.5 ; mode=correct_minus_incorrect }."

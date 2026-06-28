@@ -4,8 +4,6 @@ from typing import Self
 
 from ptyx.pretty_print import print_error, print_warning
 
-from ptyx_mcq.tools.evaluation_strategies import ScoringStrategy
-
 
 @dataclass(frozen=True)
 class Directive:
@@ -15,28 +13,21 @@ class Directive:
     path: Path
     is_disabled: bool = False
     comment: str = ""
-    question_weight: float | None = None
-    scoring_strategy: ScoringStrategy | None = None
+    configuration: str = ""
 
     def __str__(self):
         comment = f"@{self.comment}: " if self.comment else ""
         disabled = "!" if self.is_disabled else ""
         type_ = " DIR:" if isinstance(self, ChangeDirectory) else ""
         directive = f"{comment}{disabled}--{type_} {self.path}"
-        weight = "" if self.question_weight is None else format(self.question_weight, "g")
-        meth = "" if self.scoring_strategy is None else str(self.scoring_strategy)
-        if ":" in str(self.path) or weight or meth:
-            directive += f" : {weight}"
-            if ":" in str(self.path) or meth:
-                directive += f" : {meth}"
+        if self.configuration or ":" in str(self.path):
+            directive += f" : {self.configuration}"
         return directive
 
     def copy(
         self,
         is_disabled: bool | None = None,
         comment: str | None = None,
-        # question_weight: QuestionWeight | None = None,
-        # scoring_strategy: ScoringStrategy | None = None,
     ) -> Self:
         """Make a copy, but allow to update some attributes."""
         # noinspection PyTypeChecker
@@ -44,8 +35,7 @@ class Directive:
             self.path,
             comment=(self.comment if comment is None else comment),
             is_disabled=(self.is_disabled if is_disabled is None else is_disabled),
-            question_weight=self.question_weight,
-            scoring_strategy=self.scoring_strategy,
+            configuration=self.configuration,
         )
 
     def __lt__(self, other: "Directive"):

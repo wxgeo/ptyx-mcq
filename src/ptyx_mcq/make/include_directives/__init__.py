@@ -46,14 +46,14 @@ Coefficients may be appended to directives, using `:` as separator:
 
 An evaluation method may be provided too:
 
-    -- path/to/file.ex:2:all
+    -- path/to/file.ex:2,all
 
 Or without setting the coefficient:
 
-    -- path/to/file.ex::all
+    -- path/to/file.ex:all
 
 If the path contain colons, the final colons are mandatory:
 
-    -- strang:e/pa:th/w:ith/c:o:l:o:n:s.ex::
+    -- strang:e/pa:th/w:ith/c:o:l:o:n:s.ex:
 
 """

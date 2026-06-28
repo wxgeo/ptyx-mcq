@@ -6,8 +6,6 @@ from ptyx.extensions.extended_python import PYTHON_DELIMITER
 from ptyx.latex_generator import Compiler
 from ptyx.pretty_print import print_info, print_warning
 from ptyx.utilities import extract_verbatim_tag_content, restore_verbatim_tag_content
-
-from ptyx_mcq.make.extend_latex_generator import HeaderConfigKeys
 from ptyx_mcq.make.parser_tools import is_new_exercise_start
 from ptyx_mcq.parameters import DEFAULT_TEMPLATE_FULLPATH
 from ptyx_mcq.tools.io_tools import get_file_or_sysexit
@@ -54,7 +52,7 @@ def improve_ex_file_content(
     file_content: str,
     ex_file_path: Path | None = None,
     position: str = "",
-    config: dict[HeaderConfigKeys, Any] | None = None,
+    config: str = "",
 ) -> str:
     """Improve the content of the exercise file, escaping `*` characters notably."""
     # Search for lines starting inadvertently with `* `, since a star is the symbol used to
@@ -98,8 +96,7 @@ def improve_ex_file_content(
             question_name = ex_file_path.name.replace("#", "##") if ex_file_path is not None else "?"
             lines.append(f"#QUESTION_NAME{{{question_name}}}")
             if config:
-                stringified_cfg = ";".join(f"{key}={val}" for key, val in config.items())
-                lines.append(f"#QUESTION_CONFIG{{{stringified_cfg}}}")
+                lines.append(f"#QUESTION_CONFIG{{{config}}}")
     # lines.append("#{MCQ_CURRENT_IMPORT_PATH=None;}")
     file_content = "\n".join(lines) + "\n#INCLUDE_END\n"
     return restore_verbatim_tag_content(file_content, verbatim_contents)
@@ -115,7 +112,7 @@ def _get_ex_file_content(
     ex_file_path: Path,
     is_exercise=True,
     position: str = "",
-    config: dict[HeaderConfigKeys, Any] | None = None,
+    config: str = "",
 ) -> str:
     """Get the content of the file to include, with a few enhancements.
 
