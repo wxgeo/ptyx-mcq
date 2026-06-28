@@ -166,16 +166,16 @@ class ExcelScoresPrinter(SheetsScoresPrinter):
         self._create_table(sheet, "StudentsScores")
 
         # Fix columns' widths.
-        sheet.column_dimensions["A"].width = 1.23 * max(
-            len(student_id) for _, student_id in self.parent.class_scores
-        )
-        sheet.column_dimensions["B"].width = 1.23 * max(
-            len(student_name) for student_name, _ in self.parent.class_scores
-        )
+        self._adjust_col_width(sheet, "A", [student_id for _, student_id in self.parent.class_scores])
+        self._adjust_col_width(sheet, "B", [student_name for student_name, _ in self.parent.class_scores])
 
         # Append some statistics concerning the students' scores.
         n = len(self.parent.class_scores)
         self._append_stats(sheet, n + 3, 2, (3, 4, 5), (2, n + 1))
+
+    @staticmethod
+    def _adjust_col_width(sheet: Worksheet, col_ref: str, items: list) -> None:
+        sheet.column_dimensions[col_ref].width = 1.23 * max([len(str(item)) for item in items], default=0)
 
     @staticmethod
     def _append_stats(
@@ -241,6 +241,7 @@ class ExcelScoresPrinter(SheetsScoresPrinter):
             else:
                 for i in chain(range(2, row + 1), range(row + 2, row + 6)):
                     sheet.cell(i, col).fill = PatternFill(fill_type="solid", fgColor="DDDDDD")
+        self._adjust_col_width(sheet, "A", [student_name for student_name, _ in self.parent.class_scores])
 
     @staticmethod
     def _color_cell_according_to_value(
