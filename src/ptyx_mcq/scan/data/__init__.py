@@ -1,12 +1,11 @@
 import multiprocessing
+import operator
 from collections.abc import Callable, Iterator
-
 # noinspection PyProtectedMember
 from multiprocessing.pool import AsyncResult
 from pathlib import Path
 
 from ptyx.pretty_print import print_error, print_info
-
 from ptyx_mcq.scan.data.documents import AnalyzeResult, Document, Page
 from ptyx_mcq.scan.data.extract import PdfCollectionExtractor
 from ptyx_mcq.scan.data.paths_manager import DirsPaths, FilesPaths, PathsHandler
@@ -47,6 +46,14 @@ class ScanData:
 
     def __iter__(self) -> Iterator[Document]:
         return iter(self.used_docs_index.values())
+
+    def sorted_by(self, attribute: str) -> list[Document]:
+        """
+        Return a list of the documents sorted by a document attribute.
+
+        For example: documents.sorted_by("student_name")
+        """
+        return sorted(self, key=operator.attrgetter(attribute))
 
     @property
     def pages(self) -> Iterator[Page]:

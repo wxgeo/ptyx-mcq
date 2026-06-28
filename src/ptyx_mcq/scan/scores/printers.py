@@ -2,17 +2,20 @@ import csv
 import math
 from abc import abstractmethod, ABC
 from collections import Counter
-from typing import TYPE_CHECKING, Callable
+from itertools import chain
+from typing import TYPE_CHECKING, Callable, Iterable
 
 from openpyxl import Workbook
 from openpyxl.chart import Reference, BarChart
 from openpyxl.chart.layout import ManualLayout, Layout
+from openpyxl.formatting.rule import ColorScaleRule
 from openpyxl.styles import PatternFill, Font
 from openpyxl.utils import get_column_letter
 from openpyxl.worksheet.table import Table, TableStyleInfo
 from openpyxl.worksheet.worksheet import Worksheet
 
 from ptyx.pretty_print import TermColors, bold, green, red, term_color, yellow, print_info
+from ptyx_mcq.tools.parse_config.subtypes import OriginalQuestionNumber
 
 if TYPE_CHECKING:
     from ptyx_mcq.scan.scores.scores_manager import ScoresManager
@@ -92,10 +95,32 @@ class ExcelScoresPrinter(SheetsScoresPrinter):
     def run(self) -> None:
         wb = self.workbook
         # grab the active worksheet
-        sheet: Worksheet | None = wb.active
-        assert sheet is not None
-        sheet.title = "Resume"
-        self._write_scores(writerow=sheet.append)
+        ws: Worksheet | None = wb.active
+        assert ws is not None
+        self._add_main_table(ws)
+        # Add a chart to illustrate scores' distribution.
+        ws = wb.create_sheet(title="Scores Distribution")
+        assert ws is not None
+        self._add_chart(ws)
+        # Add the detailed scores, question per question.
+        ws = wb.create_sheet(title="Details")
+        assert ws is not None
+        self._add_details(ws)
+        wb.save(self.parent.mcq_parser.scan_data.files.xlsx_scores)
+
+    def _create_table(
+        self,
+        sheet: Worksheet,
+        name: str,
+        min_row=1,
+        min_col=1,
+        max_row: int | None = None,
+        max_col: int | None = None,
+    ) -> None:
+        if max_row is None:
+            max_row = sheet.max_row
+        if max_col is None:
+            max_col = sheet.max_column
 
         header_fill = PatternFill(start_color="4472C4", end_color="4472C4", fill_type="solid")
         header_font = Font(color="FFFFFF", bold=True)
@@ -106,30 +131,39 @@ class ExcelScoresPrinter(SheetsScoresPrinter):
 
         # 2. Iterate and apply Direct Formatting (for LibreOffice)
         # We iterate from row 1 (header) to max_row
-        for row in sheet.iter_rows(min_row=1, max_row=sheet.max_row, max_col=sheet.max_column):
+        for row in sheet.iter_rows(min_row=min_row, max_row=max_row, min_col=min_col, max_col=max_col):
             for cell in row:
                 assert cell.row is not None
                 # Apply Header Style
-                if cell.row == 1:
+                if cell.row == min_row:
                     cell.fill = header_fill
                     cell.font = header_font
                 # Apply Striped Row Style (Even rows)
-                elif cell.row % 2 == 0:
+                elif (cell.row - min_row) % 2 == 1:
                     cell.fill = row_stripe_fill
 
-        tab = Table(displayName="Table1", ref=f"A1:{get_column_letter(sheet.max_column)}{sheet.max_row}")
+        tab = Table(
+            displayName=name,
+            ref=f"{get_column_letter(min_col)}{min_row}:{get_column_letter(max_col)}{max_row}",
+        )
 
         # Add a default style with striped rows and banded columns
-        style = TableStyleInfo(
+        # noinspection PyTypeChecker
+        tab.tableStyleInfo = TableStyleInfo(
             name="TableStyleMedium9",
             showFirstColumn=False,
             showLastColumn=False,
             showRowStripes=True,
             showColumnStripes=True,
         )
-        # noinspection PyTypeChecker
-        tab.tableStyleInfo = style
         sheet.add_table(tab)
+
+    def _add_main_table(self, sheet: Worksheet) -> None:
+        """Add the main table with the global students scores."""
+        sheet.title = "Resume"
+        self._write_scores(writerow=sheet.append)
+
+        self._create_table(sheet, "StudentsScores")
 
         # Fix columns' widths.
         sheet.column_dimensions["A"].width = 1.23 * max(
@@ -138,34 +172,109 @@ class ExcelScoresPrinter(SheetsScoresPrinter):
         sheet.column_dimensions["B"].width = 1.23 * max(
             len(student_name) for student_name, _ in self.parent.class_scores
         )
-        sheet.append([])
 
         # Append some statistics concerning the students' scores.
         n = len(self.parent.class_scores)
-        for legend, formula in STATISTIC_INFO.items():
-            sheet.append([legend.capitalize(), ""] + [f"={formula}({col}2:{col}{n + 1})" for col in "CDE"])
+        self._append_stats(sheet, n + 3, 2, (3, 4, 5), (2, n + 1))
 
-        # Add a chart to illustrate scores' distribution.
-        self._append_chart(wb)
-        wb.save(self.parent.mcq_parser.scan_data.files.xlsx_scores)
+    @staticmethod
+    def _append_stats(
+        sheet: Worksheet,
+        first_row: int,
+        first_col: int,
+        cols: Iterable[int],
+        row_range: tuple[int, int],
+    ):
+        for row, (legend, formula) in enumerate(STATISTIC_INFO.items(), start=first_row):
+            cell = sheet.cell(row, first_col)
+            cell.value = legend.capitalize()
+            cell.font = Font(bold=True)
+            for col in cols:
+                col_letter = get_column_letter(col)
+                cell = sheet.cell(row, col)
+                cell.value = f"={formula}({col_letter}{row_range[0]}:{col_letter}{row_range[1]})"
+                cell.number_format = "0.00"
+                cell.font = Font(bold=True)
 
-    # Remove the LineProperties import — not needed for bar fills
+    def _add_details(self, sheet: Worksheet) -> None:
+        """Add a table with the score for each question detailed."""
+        sheet.cell(1, 1, "Student")
+        questions_seen: set[OriginalQuestionNumber] = set()
+        row = 1
+        for row, doc in enumerate(self.parent.mcq_parser.scan_data.sorted_by("student_name"), start=2):
+            sheet.cell(row, 1, doc.student_name)
+            for q, question in doc.questions.items():
+                questions_seen.add(q)
+                col = q + 1
+                header_cell = sheet.cell(1, col)
+                header_cell.value = f"Q{q}"
+                cell = sheet.cell(row, col)
+                cell.value = question.score
+                cell.number_format = "0.00"
+        self._create_table(sheet, "ScoresDetails")
 
-    def _append_chart(self, wb: Workbook) -> None:
+        cell = sheet.cell(row + 2, 1)
+        cell.value = "Weight"
+        cell.font = Font(italic=True)
+
+        self._append_stats(sheet, row + 3, 1, range(2, max(questions_seen, default=0) + 2), (2, row))
+
+        cfg = self.parent.mcq_parser.config
+        for q in questions_seen:
+            cell = sheet.cell(row + 2, q + 1)
+            weight = cfg.weight.get(q, cfg.weight["default"])
+            correct = cfg.correct.get(q, cfg.correct["default"])
+            skipped = cfg.skipped.get(q, cfg.skipped["default"])
+            incorrect = cfg.incorrect.get(q, cfg.incorrect["default"])
+            cell.value = weight
+            cell.font = Font(italic=True)
+            cell_ref = f"{get_column_letter(q + 1)}{row + 3}"
+
+            if weight > 0:
+                self._color_cell_according_to_value(
+                    sheet, cell_ref, min_=weight * incorrect, med_=weight * skipped, max_=weight * correct
+                )
+            else:
+                for i in chain(range(2, row + 1), range(row + 2, row + 6)):
+                    sheet.cell(i, q + 1).fill = PatternFill(fill_type="solid", fgColor="DDDDDD")
+
+    @staticmethod
+    def _color_cell_according_to_value(
+        sheet: Worksheet, cell_ref: str, min_: float, med_: float, max_: float
+    ):
+        """
+        Apply a color to the given cell, depending on its current value.
+
+        The cell will be red if the value is `min_`, green if the value is `max_`,
+        else a yellowish intermediate color, proportionally to its value.
+        """
+        rule = ColorScaleRule(
+            start_type="num",
+            start_value=min_,
+            start_color="ebbbb5",  # red
+            mid_type="num",
+            mid_value=med_,
+            mid_color="ebe5b5",  # yellow
+            end_type="num",
+            end_value=max_,
+            end_color="bfebb5",  # green
+        )
+        sheet.conditional_formatting.add(cell_ref, rule)
+
+    def _add_chart(self, sheet: Worksheet) -> None:
         """Append a chart representing the scores' distribution as a new sheet."""
-        ws = wb.create_sheet(title="Scores Distribution")
 
         score_counts = Counter(
             round(score) for score in self.parent.class_scores.values() if isinstance(score, (int, float))
         )
 
-        ws.append(["Score", "Count"])
+        sheet.append(["Score", "Count"])
         for score in range(math.ceil(self.parent.max_score) + 1):
-            ws.append([score, score_counts.get(score, 0)])
+            sheet.append([score, score_counts.get(score, 0)])
 
-        n = ws.max_row
-        counts_ref = Reference(ws, min_col=2, min_row=2, max_row=n)
-        scores_ref = Reference(ws, min_col=1, min_row=2, max_row=n)
+        n = sheet.max_row
+        counts_ref = Reference(sheet, min_col=2, min_row=2, max_row=n)
+        scores_ref = Reference(sheet, min_col=1, min_row=2, max_row=n)
 
         # ✅ Use BarChart instead of LineChart
         chart = BarChart()
@@ -192,4 +301,4 @@ class ExcelScoresPrinter(SheetsScoresPrinter):
         # ✅ Control spacing between bars (lower % = narrower gaps, default is 150)
         chart.gapWidth = 50
 
-        ws.add_chart(chart, "E2")
+        sheet.add_chart(chart, "E2")

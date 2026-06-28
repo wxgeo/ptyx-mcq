@@ -63,7 +63,10 @@ class ScoringStrategy(StrEnum):
     SKIP = auto()
 
 
-def strategy(f: Callable[[AnswersData, ScoreData], float]) -> Callable[[AnswersData, ScoreData], float]:
+ScoringFunc = Callable[[AnswersData, ScoreData], float]
+
+
+def strategy(f: ScoringFunc) -> ScoringFunc:
     """A decorator for strategies."""
     IMPLEMENTED_STRATEGIES.append(f.__name__)
     return f
