@@ -5,9 +5,8 @@ from collections import Counter
 from typing import TYPE_CHECKING, Callable
 
 from openpyxl import Workbook
-from openpyxl.chart import LineChart, Reference
+from openpyxl.chart import Reference, BarChart
 from openpyxl.chart.layout import ManualLayout, Layout
-from openpyxl.drawing.line import LineProperties
 from openpyxl.styles import PatternFill, Font
 from openpyxl.utils import get_column_letter
 from openpyxl.worksheet.table import Table, TableStyleInfo
@@ -150,58 +149,47 @@ class ExcelScoresPrinter(SheetsScoresPrinter):
         self._append_chart(wb)
         wb.save(self.parent.mcq_parser.scan_data.files.xlsx_scores)
 
+    # Remove the LineProperties import — not needed for bar fills
+
     def _append_chart(self, wb: Workbook) -> None:
         """Append a chart representing the scores' distribution as a new sheet."""
         ws = wb.create_sheet(title="Scores Distribution")
 
-        # Count how many times each score appears
         score_counts = Counter(
             round(score) for score in self.parent.class_scores.values() if isinstance(score, (int, float))
         )
 
-        # Prepare continuous range 0–<max-score> (even if some scores are missing)
         ws.append(["Score", "Count"])
         for score in range(math.ceil(self.parent.max_score) + 1):
             ws.append([score, score_counts.get(score, 0)])
 
-        # Data range for chart
         n = ws.max_row
-        counts_ref = Reference(ws, min_col=2, min_row=2, max_row=n)  # counts
-        scores_ref = Reference(ws, min_col=1, min_row=2, max_row=n)  # scores
+        counts_ref = Reference(ws, min_col=2, min_row=2, max_row=n)
+        scores_ref = Reference(ws, min_col=1, min_row=2, max_row=n)
 
-        # Create a line chart
-        chart = LineChart()
+        # ✅ Use BarChart instead of LineChart
+        chart = BarChart()
+        chart.type = "col"  # vertical columns (not horizontal bars)
+        chart.grouping = "clustered"
         chart.title = "Scores Distribution"
         chart.x_axis.title = "Score"
         chart.y_axis.title = "Number of Students"
-        chart.style = 13
 
-        # Add data and categories
         chart.add_data(counts_ref, titles_from_data=False)
         chart.set_categories(scores_ref)
-        # chart.xvalues = scores_ref
 
-        chart.style = 2
-        # chart.legend.overlay = False
-        chart.layout = Layout()
-        chart.x_axis.delete = False
-        chart.y_axis.delete = False
+        chart.legend = None
         chart.width = 21
         chart.height = 9
         chart.layout = Layout(
             manualLayout=ManualLayout(x=0.005, y=0.05, w=0.75, h=0.8, xMode="factor", yMode="factor")
         )
-        chart.layout.layoutTarget = "inner"  # type: ignore
-        chart.legend = None
-        chart.series[0].smooth = False
-        # Configure axes
-        chart.x_axis.scaling.min = 1
-        chart.x_axis.scaling.max = self.parent.max_score + 1
 
-        # Set line color to solid red
-        chart.series[0].graphicalProperties.line = LineProperties(
-            solidFill="FF0000",  # RGB hex code for red
-        )
+        # ✅ Set bar fill to solid red (replaces LineProperties)
+        chart.series[0].graphicalProperties.solidFill = "FA8C84"
+        chart.series[0].graphicalProperties.line.solidFill = "FF0000"  # bar border color
 
-        # Add the chart to the worksheet
+        # ✅ Control spacing between bars (lower % = narrower gaps, default is 150)
+        chart.gapWidth = 50
+
         ws.add_chart(chart, "E2")
