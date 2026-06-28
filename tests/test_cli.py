@@ -13,8 +13,9 @@ from pathlib import Path
 import pymupdf
 import pytest
 from PIL import Image, ImageDraw
-from ptyx.pretty_print import print_info, print_warning
+from openpyxl import load_workbook
 
+from ptyx.pretty_print import print_info, print_warning
 from ptyx_mcq.cli import Handlers, get_handler
 from ptyx_mcq.cli import main as main_
 from ptyx_mcq.dev_cli import DevHandlers
@@ -137,6 +138,15 @@ def read_students_scores(path: Path) -> dict[tuple[StudentId, StudentName], str]
     return students
 
 
+def xlsx_to_dict(path: Path) -> dict[str, list[list]]:
+    """
+    Parse an Excel workbook into a dictionary mapping sheet names
+    to a 2D list (matrix) of cell values. Formulas are returned as-it, uninterpreted.
+    """
+    wb = load_workbook(path)  # default: data_only=False
+    return {ws.title: [[cell.value for cell in row] for row in ws.iter_rows()] for ws in wb.worksheets}
+
+
 @pytest.mark.slow
 def test_many_docs(tmp_path):
     number_of_documents = 10
@@ -233,7 +243,30 @@ def test_cli(tmp_path: Path) -> None:
         assert abs(float(score) - 4.0) < 1e-10, repr(score)  # Maximal score
     assert set(students_scores) == set(STUDENTS.items()), repr(students_scores)
 
-    assert (path / "new.scores.xlsx").exists()
+    assert (xlsx := path / "new.scores.xlsx").exists()
+    assert xlsx_to_dict(xlsx) == {
+        "Details": [
+            ["Student", "Q2", "Q3", "Q4", "Q5"],
+            ["Jean Dupond", 1, 1, 1, 1],
+            ["Martin De La Tour", 1, 1, 1, 1],
+            [None, None, None, None, None],
+            ["Weight", 1, 1, 1, 1],
+            ["Mean", "=AVERAGE(B2:B3)", "=AVERAGE(C2:C3)", "=AVERAGE(D2:D3)", "=AVERAGE(E2:E3)"],
+            ["Min", "=MIN(B2:B3)", "=MIN(C2:C3)", "=MIN(D2:D3)", "=MIN(E2:E3)"],
+            ["Max", "=MAX(B2:B3)", "=MAX(C2:C3)", "=MAX(D2:D3)", "=MAX(E2:E3)"],
+        ],
+        "Resume": [
+            ["ID", "Name", "Score/4", "Score/20", "Score/100"],
+            ["12345678", "Jean Dupond", 4, 20, 100],
+            ["34567890", "Martin De La Tour", 4, 20, 100],
+            [None, None, None, None, None],
+            [None, "Mean", "=AVERAGE(C2:C3)", "=AVERAGE(D2:D3)", "=AVERAGE(E2:E3)"],
+            [None, "Min", "=MIN(C2:C3)", "=MIN(D2:D3)", "=MIN(E2:E3)"],
+            [None, "Max", "=MAX(C2:C3)", "=MAX(D2:D3)", "=MAX(E2:E3)"],
+        ],
+        "Scores Distribution": [["Score", "Count"], [0, 0], [1, 0], [2, 0], [3, 0], [4, 2]],
+    }
+
     assert (output_pdf_path := path / "out/pdf").exists()
     for doc_id, (student_id, student_name) in enumerate(STUDENTS.items(), start=1):
         assert (output_pdf_path / f"{student_name}-{student_id}-{doc_id}.pdf").is_file()

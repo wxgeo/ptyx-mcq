@@ -198,14 +198,18 @@ class ExcelScoresPrinter(SheetsScoresPrinter):
 
     def _add_details(self, sheet: Worksheet) -> None:
         """Add a table with the score for each question detailed."""
+        scan_data = self.parent.mcq_parser.scan_data
         sheet.cell(1, 1, "Student")
-        questions_seen: set[OriginalQuestionNumber] = set()
+        questions_seen: list[OriginalQuestionNumber] = sorted(
+            set(q for doc in scan_data for q in doc.questions)
+        )
+        questions_col: dict[OriginalQuestionNumber, int] = {q: i + 2 for i, q in enumerate(questions_seen)}
+
         row = 1
-        for row, doc in enumerate(self.parent.mcq_parser.scan_data.sorted_by("student_name"), start=2):
+        for row, doc in enumerate(scan_data.sorted_by("student_name"), start=2):
             sheet.cell(row, 1, doc.student_name)
             for q, question in doc.questions.items():
-                questions_seen.add(q)
-                col = q + 1
+                col = questions_col[q]
                 header_cell = sheet.cell(1, col)
                 header_cell.value = f"Q{q}"
                 cell = sheet.cell(row, col)
@@ -217,26 +221,26 @@ class ExcelScoresPrinter(SheetsScoresPrinter):
         cell.value = "Weight"
         cell.font = Font(italic=True)
 
-        self._append_stats(sheet, row + 3, 1, range(2, max(questions_seen, default=0) + 2), (2, row))
+        self._append_stats(sheet, row + 3, 1, range(2, len(questions_seen) + 2), (2, row))
 
         cfg = self.parent.mcq_parser.config
         for q in questions_seen:
-            cell = sheet.cell(row + 2, q + 1)
+            col = questions_col[q]
+            cell = sheet.cell(row + 2, col)
             weight = cfg.weight.get(q, cfg.weight["default"])
             correct = cfg.correct.get(q, cfg.correct["default"])
             skipped = cfg.skipped.get(q, cfg.skipped["default"])
             incorrect = cfg.incorrect.get(q, cfg.incorrect["default"])
             cell.value = weight
             cell.font = Font(italic=True)
-            cell_ref = f"{get_column_letter(q + 1)}{row + 3}"
-
             if weight > 0:
+                cell_ref = f"{get_column_letter(col)}{row + 3}"
                 self._color_cell_according_to_value(
                     sheet, cell_ref, min_=weight * incorrect, med_=weight * skipped, max_=weight * correct
                 )
             else:
                 for i in chain(range(2, row + 1), range(row + 2, row + 6)):
-                    sheet.cell(i, q + 1).fill = PatternFill(fill_type="solid", fgColor="DDDDDD")
+                    sheet.cell(i, col).fill = PatternFill(fill_type="solid", fgColor="DDDDDD")
 
     @staticmethod
     def _color_cell_according_to_value(
