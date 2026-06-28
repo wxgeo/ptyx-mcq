@@ -76,8 +76,8 @@ def test_empty_document(no_display, tmp_path, custom_input):
     target = pytest.approx(
         {("John", "22301935"): 8.833333333333332, ("Edward", "22301417"): 9.455952380952379}
     )
-    assert mcq_parser.scores_manager.scores == target
-    assert mcq_parser.scores_manager.results == target
+    assert mcq_parser.scores_manager.class_scores == target
+    assert mcq_parser.scores_manager.work_scores == target
     # There should be no remaining question.
     assert custom_input.is_empty(), f"List of remaining questions/answers: {custom_input.remaining()}"
 
@@ -88,8 +88,8 @@ def test_empty_document(no_display, tmp_path, custom_input):
     assert custom_input.is_empty(), f"List of remaining questions/answers: {custom_input.remaining()}"
     # No change in results of course.
     target = pytest.approx({("John", "22301935"): 8.83333333, ("Edward", "22301417"): 9.45595238})
-    assert mcq_parser.scores_manager.scores == target
-    assert mcq_parser.scores_manager.results == target
+    assert mcq_parser.scores_manager.class_scores == target
+    assert mcq_parser.scores_manager.work_scores == target
 
 
 def test_identical_duplicate_documents(no_display, tmp_path, custom_input):
@@ -101,8 +101,8 @@ def test_identical_duplicate_documents(no_display, tmp_path, custom_input):
     shutil.copy(copy / "scan/flat-scan.pdf", copy / "scan/flat-scan-bis.pdf")
     mcq_parser = scan(copy)
     target = pytest.approx({("John", "22301935"): 8.83333333, ("Edward", "22301417"): 9.45595238})
-    assert mcq_parser.scores_manager.scores == target
-    assert mcq_parser.scores_manager.results == target
+    assert mcq_parser.scores_manager.class_scores == target
+    assert mcq_parser.scores_manager.work_scores == target
 
 
 def test_bug_inconsistent_checkboxes_state(tmp_path):
@@ -191,8 +191,8 @@ def duplicate_documents_test_base(tmp_path, custom_input, chosen_version: Litera
 
     for student in scores:
         target = pytest.approx(scores[student])
-        assert mcq_parser.scores_manager.scores[student] == target
-        assert mcq_parser.scores_manager.results[student] == target
+        assert mcq_parser.scores_manager.class_scores[student] == target
+        assert mcq_parser.scores_manager.work_scores[student] == target
 
 
 def test_different_duplicate_documents_keep_first(no_display, tmp_path, custom_input):

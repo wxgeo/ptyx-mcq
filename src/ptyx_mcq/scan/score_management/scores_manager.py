@@ -12,8 +12,8 @@ from openpyxl.styles import Font, PatternFill
 from openpyxl.utils import get_column_letter
 from openpyxl.worksheet.table import Table, TableStyleInfo
 from openpyxl.worksheet.worksheet import Worksheet
-from ptyx.pretty_print import TermColors, bold, green, print_info, red, term_color, yellow
 
+from ptyx.pretty_print import TermColors, bold, green, print_info, red, term_color, yellow
 from ptyx_mcq.tools.evaluation_strategies import (
     AnswersData,
     ScoreData,
@@ -31,8 +31,9 @@ STATISTIC_INFO = {"mean": "AVERAGE", "min": "MIN", "max": "MAX"}
 class ScoresManager:
     def __init__(self, mcq_parser: "MCQPictureParser"):
         self.mcq_parser = mcq_parser
-        self.scores: dict[tuple[StudentName, StudentId], float | str] = {}
-        self.results: dict[tuple[StudentName, StudentId], float] = {}
+        # The scores of all the scanned students' works.
+        # See the property `.class_scores` and its docstring for more information.
+        self.work_scores: dict[tuple[StudentName, StudentId], float] = {}
 
     @property
     def max_score(self):
@@ -105,17 +106,40 @@ class ScoresManager:
                 # harder to compare.
                 question.score = earn
 
-        default = self.mcq_parser.config.default_score
-        self.scores = {
-            (student_name, student_id): default
-            for student_id, student_name in self.mcq_parser.config.students_ids.items()
-        }
-        self.results = {
+        # default = self.mcq_parser.config.default_score
+        # self.class_scores = {
+        #     (student_name, student_id): default
+        #     for student_id, student_name in self.mcq_parser.config.students_ids.items()
+        # }
+        self.work_scores = {
             (doc.student_name, doc.student_id): doc.score
             for doc in self.mcq_parser.scan_data
             if doc.score is not None
         }
-        self.scores.update(self.results)
+        # self.class_scores.update(self.work_scores)
+
+    @property
+    def class_scores(self) -> dict[tuple[StudentName, StudentId], float | str]:
+        """
+        The scores of the class.
+
+        In addition to all the scanned work scores, a default score is added to absent students,
+        so most of the time, you should use it instead of the raw `.work_scores` attribute.
+
+        The default score may not be numeric (it may be "ABS" for example, depending on the configuration).
+
+        Note that all scores are kept, even for students which are not listed in the configuration file.
+        The last case is rare, but may occur if a student was present at the exam, but have resigned in the while,
+        and the configuration file is updated then.
+
+        To sum up, `class_scores` = `work_scores` + absents.
+        """
+        default = self.mcq_parser.config.default_score
+        defaults = {
+            (student_name, student_id): default
+            for student_id, student_name in self.mcq_parser.config.students_ids.items()
+        }
+        return defaults | self.work_scores
 
     @staticmethod
     def _convert(num: float | str, factor=1.0):
@@ -128,7 +152,7 @@ class ScoresManager:
         max_score: float = -math.inf
         print()
         print(term_color(f"SCORES (/{self.max_score:g}):", color=TermColors.CYAN))
-        for (student_name, student_id), score in sorted(self.scores.items()):
+        for (student_name, student_id), score in sorted(self.class_scores.items()):
             score = self._convert(score)
             if isinstance(score, (float, int)):
                 if score < min_score:
@@ -136,8 +160,8 @@ class ScoresManager:
                 if score > max_score:
                     max_score = score
             print(f" - {student_name}: {self._convert(score)}")
-        if self.results:
-            mean = round(sum(self.results.values()) / len(self.results), 2)
+        if self.work_scores:
+            mean = round(sum(self.work_scores.values()) / len(self.work_scores), 2)
             print(yellow("Mean: " + bold(f"{mean:g}") + f"/{self.max_score:g}"))
             print(f"Min: {red(min_score)} - Max: {green(max_score)}")
         else:
@@ -148,7 +172,7 @@ class ScoresManager:
         # max_score is the maximal theoretical score, not the highest actually obtained.
         max_score = self.max_score
         writerow(("ID", "Name", f"Score/{max_score:g}", "Score/20", "Score/100"))
-        for (student_name, student_id), score in sorted(self.scores.items()):
+        for (student_name, student_id), score in sorted(self.class_scores.items()):
             # TODO: Add ability to change the notation system.
             writerow(
                 [
@@ -166,7 +190,7 @@ class ScoresManager:
 
         # Count how many times each score appears
         score_counts = Counter(
-            round(score) for score in self.scores.values() if isinstance(score, (int, float))
+            round(score) for score in self.class_scores.values() if isinstance(score, (int, float))
         )
 
         # Prepare continuous range 0–<max-score> (even if some scores are missing)
@@ -265,12 +289,16 @@ class ScoresManager:
         sheet.add_table(tab)
 
         # Fix columns' widths.
-        sheet.column_dimensions["A"].width = 1.23 * max(len(student_id) for _, student_id in self.scores)
-        sheet.column_dimensions["B"].width = 1.23 * max(len(student_name) for student_name, _ in self.scores)
+        sheet.column_dimensions["A"].width = 1.23 * max(
+            len(student_id) for _, student_id in self.class_scores
+        )
+        sheet.column_dimensions["B"].width = 1.23 * max(
+            len(student_name) for student_name, _ in self.class_scores
+        )
         sheet.append([])
 
         # Append some statistics concerning the students' scores.
-        n = len(self.scores)
+        n = len(self.class_scores)
         for legend, formula in STATISTIC_INFO.items():
             sheet.append([legend.capitalize(), ""] + [f"={formula}({col}2:{col}{n + 1})" for col in "CDE"])
 
