@@ -119,6 +119,7 @@ class Configuration:
     default_score: str = ""
     students_ids: dict[StudentId, StudentName] = field(default_factory=dict)
     students_list: list[StudentName] = field(default_factory=list)
+    questions_names: dict[OriginalQuestionNumber, str] = field(default_factory=dict)
     ordering: dict[DocumentId, OrderingConfiguration] = field(default_factory=dict)
     # ordering: {<doc num>: {'questions': [2,1,3...],
     #                  'answers': {1: [(2, True), (1, False), (3, True)...], ...}}, ...}

@@ -6,8 +6,10 @@ from itertools import chain
 from typing import TYPE_CHECKING, Callable, Iterable
 
 from openpyxl import Workbook
+from openpyxl.cell import Cell, MergedCell
 from openpyxl.chart import Reference, BarChart
 from openpyxl.chart.layout import ManualLayout, Layout
+from openpyxl.comments import Comment
 from openpyxl.formatting.rule import ColorScaleRule
 from openpyxl.styles import PatternFill, Font
 from openpyxl.utils import get_column_letter
@@ -185,6 +187,12 @@ class ExcelScoresPrinter(SheetsScoresPrinter):
         cols: Iterable[int],
         row_range: tuple[int, int],
     ):
+        """
+        Add the average, the min and the max values at the bottom of the table.
+
+        (`first_row`, `first_cell`) is the position of the top left cell of the stats section.
+        `cols` and `row_range` refer to the data to sum-up.
+        """
         for row, (legend, formula) in enumerate(STATISTIC_INFO.items(), start=first_row):
             cell = sheet.cell(row, first_col)
             cell.value = legend.capitalize()
@@ -199,12 +207,19 @@ class ExcelScoresPrinter(SheetsScoresPrinter):
     def _add_details(self, sheet: Worksheet) -> None:
         """Add a table with the score for each question detailed."""
         scan_data = self.parent.mcq_parser.scan_data
+        cfg = self.parent.mcq_parser.config
         sheet.cell(1, 1, "Student")
+        # Enumerate all the questions (each version of version is seen as a different question).
         questions_seen: list[OriginalQuestionNumber] = sorted(
             set(q for doc in scan_data for q in doc.questions)
         )
         questions_col: dict[OriginalQuestionNumber, int] = {q: i + 2 for i, q in enumerate(questions_seen)}
 
+        def _tag_cell(_cell: Cell | MergedCell, q: OriginalQuestionNumber) -> None:
+            if q_name := cfg.questions_names.get(q, ""):
+                _cell.comment = Comment(text=q_name, author=f"Q{q}")
+
+        # Generate the table of the scores.
         row = 1
         for row, doc in enumerate(scan_data.sorted_by("student_name"), start=2):
             sheet.cell(row, 1, doc.student_name)
@@ -212,18 +227,17 @@ class ExcelScoresPrinter(SheetsScoresPrinter):
                 col = questions_col[q]
                 header_cell = sheet.cell(1, col)
                 header_cell.value = f"Q{q}"
+                _tag_cell(header_cell, q)
                 cell = sheet.cell(row, col)
                 cell.value = question.score
                 cell.number_format = "0.00"
         self._create_table(sheet, "ScoresDetails")
 
+        # Add the weight of each question, and some statistics.
         cell = sheet.cell(row + 2, 1)
         cell.value = "Weight"
         cell.font = Font(italic=True)
-
         self._append_stats(sheet, row + 3, 1, range(2, len(questions_seen) + 2), (2, row))
-
-        cfg = self.parent.mcq_parser.config
         for q in questions_seen:
             col = questions_col[q]
             cell = sheet.cell(row + 2, col)
@@ -238,9 +252,11 @@ class ExcelScoresPrinter(SheetsScoresPrinter):
                 self._color_cell_according_to_value(
                     sheet, cell_ref, min_=weight * incorrect, med_=weight * skipped, max_=weight * correct
                 )
+                _tag_cell(sheet[cell_ref], q)
             else:
                 for i in chain(range(2, row + 1), range(row + 2, row + 6)):
                     sheet.cell(i, col).fill = PatternFill(fill_type="solid", fgColor="DDDDDD")
+        # Adjust the width of the first column (students names).
         self._adjust_col_width(sheet, "A", [student_name for student_name, _ in self.parent.class_scores])
 
     @staticmethod
