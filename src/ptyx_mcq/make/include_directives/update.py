@@ -5,7 +5,7 @@ from typing import Final
 from ptyx.pretty_print import print_error, print_warning
 
 from ptyx_mcq.make.include_directives.directives import AddPath, ChangeDirectory, Directive
-from ptyx_mcq.make.include_directives.parser import parse_directive
+from ptyx_mcq.make.include_directives.parser import extract_directive
 from ptyx_mcq.make.parser_tools import split_around_mcq
 
 
@@ -65,7 +65,7 @@ class IncludesUpdater:
         sections: tuple[list[str | Directive], ...] = split_around_mcq(ptyx_file=self.ptyxfile_path)  # type: ignore
         for section in sections:
             for i, line in enumerate(section):
-                section[i] = parse_directive(line)  # type: ignore
+                section[i] = extract_directive(line)  # type: ignore
 
         before_mcq, mcq_section, after_mcq = sections
         self._extract_directives(mcq_section)

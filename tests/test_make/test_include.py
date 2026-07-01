@@ -5,7 +5,7 @@ import pytest
 
 from ptyx.latex_generator import Compiler
 from ptyx_mcq.make.include_directives.directives import AddPath, ChangeDirectory, Directive
-from ptyx_mcq.make.include_directives.parser import parse_code, parse_directive, resolve_includes_from_file
+from ptyx_mcq.make.include_directives.parser import parse_code, extract_directive, resolve_includes_from_file
 # noinspection PyProtectedMember
 from ptyx_mcq.make.include_directives.update import IncludesUpdater, UnsafeUpdate, update_file
 from tests import ASSETS_DIR
@@ -32,7 +32,7 @@ DATA_DIR = ASSETS_DIR / "ptyx-files"
 
 
 def _test_idempotent_directive(line: str, _class: type[Directive], **kw) -> None:
-    assert isinstance(directive := parse_directive(line), _class)
+    assert isinstance(directive := extract_directive(line), _class)
     for key, val in kw.items():
         assert getattr(directive, key) == val
     assert str(directive) == line
@@ -82,21 +82,21 @@ def test_parser_idempotence():
 
 
 def test_negatives():
-    new_s = parse_directive(s := "-not a directive")
+    new_s = extract_directive(s := "-not a directive")
     assert isinstance(new_s, str)
     assert new_s == s
-    new_s = parse_directive(s := "a -- not_a_valid_one either")
+    new_s = extract_directive(s := "a -- not_a_valid_one either")
     assert isinstance(new_s, str)
     assert new_s == s
 
 
 def test_parser_special_cases():
     # comma instead of dot as decimal separator:
-    d = parse_directive("--   path:1.5   ")
+    d = extract_directive("--   path:1.5   ")
     assert isinstance(d, AddPath)
     assert str(d) == "-- path : 1.5"
     # minimal support for colons in the path:
-    d = parse_directive("-- pa:th/w:ith/co:lon:s.ex:")
+    d = extract_directive("-- pa:th/w:ith/co:lon:s.ex:")
     assert isinstance(d, AddPath)
     assert str(d) == "-- pa:th/w:ith/co:lon:s.ex : "
 
