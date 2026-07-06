@@ -49,7 +49,7 @@ def test_normalize_text():
     Final line.
     """
     # Expected: Comments gone, indentation stripped, max 2 newlines
-    expected_output = "\section{Introduction}\n\nThis is text.\n\nFinal line."
+    expected_output = "\\section{Introduction}\n\nThis is text.\n\nFinal line."
     assert normalize_text(input_text) == expected_output
 
     # Test case: Commented out empty lines

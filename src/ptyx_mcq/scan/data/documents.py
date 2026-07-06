@@ -26,7 +26,7 @@ if TYPE_CHECKING:
 
 class AnalyzeResult(NamedTuple):
     students: list[Student | None]
-    checboxes_states: list[CheckboxAnalyzeResult] | None
+    checkboxes_states: list[CheckboxAnalyzeResult] | None
 
 
 @dataclass

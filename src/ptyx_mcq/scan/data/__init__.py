@@ -7,7 +7,7 @@ from pathlib import Path
 
 from ptyx.pretty_print import print_error, print_info
 from ptyx_mcq.scan.data.documents import AnalyzeResult, Document, Page
-from ptyx_mcq.scan.data.extract import PdfCollectionExtractor
+from ptyx_mcq.scan.data.extract import PdfCollectionExtractor, PageData, Event
 from ptyx_mcq.scan.data.paths_manager import DirsPaths, FilesPaths, PathsHandler
 from ptyx_mcq.scan.data.pictures import Picture
 from ptyx_mcq.scan.data.questions import Answer, Question
@@ -30,7 +30,10 @@ class ScanData:
     Parameters:
         - config_path: either the path of a configuration file (`.ptyx.mcq.config.json`),
             or a directory containing a single configuration file.
-        -
+        - input_dir: the directory of the PDF files containing the scanned students' work (default: scan/)
+        - output_dir: the directory where all the generated files will take place (default: out/)
+
+    To start the scan process, call `Scandata.run()`.
     """
 
     def __init__(self, config_path: Path, input_dir: Path | None = None, output_dir: Path | None = None):
@@ -43,6 +46,20 @@ class ScanData:
         self._log_file = self.dirs.log / "pictures-analyze.txt"
         if self._log_file.is_file():
             open(self._log_file, "w").close()
+
+    @property
+    def is_initialized(self) -> bool:
+        """
+
+        This can be used by a third-party tool to detect if a scan process was already run.
+
+        Testing directly the state of `self.index` is not possible, since the index is build on demand,
+        so any request on `self.index` will generate a scan process if needed.
+        """
+        return self.input_pdf_extractor.is_initialized
+
+    # def reset(self):
+    #     self._index = None
 
     def __iter__(self) -> Iterator[Document]:
         return iter(self.used_docs_index.values())
@@ -89,17 +106,21 @@ class ScanData:
             logfile.write(msg)
 
     def extract_pictures(
-        self, number_of_processes: int | None, progression: Callable[..., None] = None
+        self,
+        number_of_processes: int | None,
+        progression: Callable[[PageData | None], None] | None = None,
+        abort_event: Event | None = None,
     ) -> None:
         """Extract all pdf files' data and generate the documents tree."""
         self.input_pdf_extractor.collect_data(
-            number_of_processes=number_of_processes, progression=progression
+            number_of_processes=number_of_processes, progression=progression, abort_event=abort_event
         )
 
     def analyze_pictures(
         self,
         number_of_processes: int | None,
-        progression: Callable[[AnalyzeResult], None] = None,
+        progression: Callable[[AnalyzeResult], None] | None = None,
+        abort_event: Event | None = None,
     ) -> None:
         """Analyze all documents pictures, retrieving checkboxes states and students names and ids."""
         if progression is None:
@@ -107,26 +128,42 @@ class ScanData:
                 "Analyzing all documents data", len(self.all_docs_index)
             )
         if number_of_processes == 1:
-            self._sequential_analyze(progression=progression)
+            self._sequential_analyze(progression=progression, abort_event=abort_event)
         else:
-            self._parallel_analyze(number_of_processes=number_of_processes, progression=progression)
+            self._parallel_analyze(
+                number_of_processes=number_of_processes, progression=progression, abort_event=abort_event
+            )
         print("Pictures data have been successfully retrieved.")
 
     def run(
         self,
         number_of_processes: int | None = None,
         reset=False,
-        progression: Callable[..., None] = None,
+        progression: Callable[[AnalyzeResult | PageData | None], None] | None = None,
+        abort_event: Event | None = None,
     ) -> None:
-        """Main method: extract pictures and analyze them, generating the documents tree."""
+        """
+        Main method: extract pictures and analyze them, generating the documents tree.
+
+        abort_event is used by external tools to be able to stop the process.
+        """
         self.initialize(reset=reset)
-        self.extract_pictures(number_of_processes=number_of_processes, progression=progression)
-        self.analyze_pictures(number_of_processes=number_of_processes, progression=progression)
+        if abort_event is None or not abort_event.is_set():
+            self.extract_pictures(
+                number_of_processes=number_of_processes, progression=progression, abort_event=abort_event
+            )
+        if abort_event is None or not abort_event.is_set():
+            # Don't launch analyze_pictures() if abort_event is set, since it accesses data.
+            # This would relaunch automatically the aborted pictures' extraction!
+            self.analyze_pictures(
+                number_of_processes=number_of_processes, progression=progression, abort_event=abort_event
+            )
 
     def _parallel_analyze(
         self,
         number_of_processes: int | None,
         progression: Callable[[AnalyzeResult], None],
+        abort_event: Event | None = None,
     ) -> None:
         pool: multiprocessing.pool.Pool
         results: dict[DocumentId, AsyncResult] = {}
@@ -136,10 +173,18 @@ class ScanData:
                     self.analyze_doc, (doc, self._log_file), callback=progression
                 )
             for doc_id, result in results.items():
+                if abort_event is not None and abort_event.is_set():
+                    return
                 self.all_docs_index[doc_id].update_info(*result.get())
 
-    def _sequential_analyze(self, progression: Callable[[AnalyzeResult], None]) -> None:
+    def _sequential_analyze(
+        self,
+        progression: Callable[[AnalyzeResult], None],
+        abort_event: Event | None = None,
+    ) -> None:
         for doc_id, doc in self.all_docs_index.items():
+            if abort_event is not None and abort_event.is_set():
+                return
             analyze_results = self.analyze_doc(doc, self._log_file)
             doc.update_info(*analyze_results)
             progression(analyze_results)

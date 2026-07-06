@@ -2,7 +2,6 @@ from abc import ABC, abstractmethod
 from typing import Literal
 
 from ptyx.pretty_print import print_success
-
 from ptyx_mcq.scan.data import ScanData, Picture
 from ptyx_mcq.scan.data.conflict_gestion.integrity_check.check import (
     MissingPage,
@@ -37,12 +36,11 @@ class AbstractIntegrityIssuesFixer(ABC):
         ...
 
     def run(self, check_results: IntegrityCheckResult) -> None:
+        # Note: `check_results.missing_pages` is True if some questions are not found.
+        # Empty pages not found are silently ignored (except for a warning in the log).
+        # However, an error must be raised for missing questions.
         if check_results.missing_pages:
-            # Don't raise an error for pages not found (only a warning in log)
-            # since if all questions were found, they were probably only empty pages.
-            # However, an error must be raised for missing questions.
-            #            if input("Should we skip missing questions? (y/n)").lower() != "y":
-            raise MissingPage("Page not seen! (Look at message above).")
+            raise MissingPage("Page not seen! (Look at the message above).")
         else:
             print_success("Data integrity successfully verified.")
 

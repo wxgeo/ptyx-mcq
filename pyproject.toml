@@ -42,8 +42,6 @@ dev = [
     "sphinx-autodoc-typehints>=1.18.3,<2",
     "sphinx-rtd-theme>=1.0.0,<2",
     "myst-parser>=1.0.0,<2",
-    "pytest-xdist>=3.5.0,<4",
-    "pytest-profiling>=1.8.1,<2",
 ]
 
 [tool.uv]

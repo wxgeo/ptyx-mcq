@@ -23,6 +23,13 @@ class DataCheckResult:
     def names_to_review(self) -> list[DocumentId]:
         return self.unnamed_docs + [doc_id for docs in self.duplicate_names.values() for doc_id in docs]
 
+    @property
+    def ambiguous_answers_by_doc(self) -> dict[DocumentId, list[PageNum]]:
+        d: dict[DocumentId, list[PageNum]] = {}
+        for doc_id, page_num in self.ambiguous_answers:
+            d.setdefault(doc_id, []).append(page_num)
+        return d
+
 
 class DataChecker:
     """

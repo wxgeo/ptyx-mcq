@@ -1,8 +1,8 @@
 import sys
 import traceback
+from collections.abc import Callable
 from pathlib import Path
 from types import TracebackType
-from collections.abc import Callable
 
 from ptyx.pretty_print import print_error
 

@@ -1,19 +1,20 @@
 import io
+import multiprocessing.synchronize
 import subprocess
+import threading
+from collections.abc import Callable
 from hashlib import blake2b
 from multiprocessing import Pool
-
 # noinspection PyProtectedMember
 from multiprocessing.pool import AsyncResult
 from pathlib import Path
 from shutil import rmtree
 from typing import TYPE_CHECKING, NamedTuple, NewType
-from collections.abc import Callable
 
 import numpy as np
 import pymupdf
-from numpy import ndarray
 from PIL import Image, UnidentifiedImageError
+from numpy import ndarray
 
 from ptyx.pretty_print import print_warning
 from ptyx_mcq.parameters import IMAGE_FORMAT
@@ -41,7 +42,7 @@ if TYPE_CHECKING:
 
 PdfHash = NewType("PdfHash", str)
 PicNum = NewType("PicNum", int)
-PdfData = dict[PdfHash, dict[PicNum, tuple[CalibrationData, IdentificationData]]]
+Event = threading.Event | multiprocessing.synchronize.Event
 
 
 class PageData(NamedTuple):
@@ -53,6 +54,9 @@ class PageData(NamedTuple):
 
     calibration_data: CalibrationData
     identification_data: IdentificationData
+
+
+PdfData = dict[PdfHash, dict[PicNum, PageData]]
 
 
 class PdfCollectionExtractor:
@@ -70,6 +74,10 @@ class PdfCollectionExtractor:
         if self._log_file.is_file():
             open(self._log_file, "w").close()
         self.hash2pdf = self._generate_current_pdf_hashes()
+
+    @property
+    def is_initialized(self) -> bool:
+        return self._data is not None
 
     @property
     def data(self) -> PdfData:
@@ -103,7 +111,8 @@ class PdfCollectionExtractor:
         self,
         number_of_processes: int | None,
         progression: Callable[[PageData | None], None],
-    ) -> PdfData:
+        abort_event: Event | None = None,
+    ) -> PdfData | None:
         # TODO: use ThreadPool instead?
         with Pool(number_of_processes) as pool:
             futures: dict[PdfHash, dict[PicNum, AsyncResult[PageData | None]]] = {}
@@ -119,16 +128,24 @@ class PdfCollectionExtractor:
             pdf_data: PdfData = {}
             for pdf_hash in futures:
                 for pic_num, future_result in futures[pdf_hash].items():
+                    if abort_event is not None and abort_event.is_set():
+                        return None
                     result = future_result.get()
                     if result is not None:
                         pdf_data.setdefault(pdf_hash, {})[pic_num] = result
         return pdf_data
 
-    def _sequential_collect(self, progression: Callable[[PageData | None], None]) -> PdfData:
+    def _sequential_collect(
+        self,
+        progression: Callable[[PageData | None], None],
+        abort_event: Event | None = None,
+    ) -> PdfData | None:
         pdf_data: PdfData = {}
         for pdf_hash, pdf_path in self.hash2pdf.items():
             folder = self.paths.dirs.cache / pdf_hash
             for page_num in range(number_of_pages(pdf_path)):
+                if abort_event is not None and abort_event.is_set():
+                    return None
                 # Only extract a page if the corresponding .pic-data file is not found.
                 # (Resume an interrupted scan without extracting again previously extracted pages).
                 # print(f"Extracting page {page_num + 1} from '{pdf_path}'...")
@@ -141,8 +158,9 @@ class PdfCollectionExtractor:
     def collect_data(
         self,
         number_of_processes=1,
-        progression: Callable[[PageData | None], None] = None,
-    ) -> PdfData:
+        progression: Callable[[PageData | None], None] | None = None,
+        abort_event: Event | None = None,
+    ) -> PdfData | None:
         """Test if input data has changed, and update information if needed.
 
         Data are stored on disk, to avoid saturating memory, and to allow resuming
@@ -158,10 +176,10 @@ class PdfCollectionExtractor:
         # 2. Extract all data from existing pdf files
         # (if not already done in a previous run).
         if number_of_processes == 1:
-            self._data = self._sequential_collect(progression=progression)
+            self._data = self._sequential_collect(progression=progression, abort_event=abort_event)
         else:
             self._data = self._parallel_collect(
-                number_of_processes=number_of_processes, progression=progression
+                number_of_processes=number_of_processes, progression=progression, abort_event=abort_event
             )
         return self._data
 
