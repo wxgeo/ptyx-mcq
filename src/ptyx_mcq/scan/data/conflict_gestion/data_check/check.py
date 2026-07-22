@@ -30,6 +30,9 @@ class DataCheckResult:
             d.setdefault(doc_id, []).append(page_num)
         return d
 
+    @property
+    def is_ok(self) -> bool:
+        return len(self.unnamed_docs) + len(self.duplicate_names) + len(self.ambiguous_answers) == 0
 
 class DataChecker:
     """

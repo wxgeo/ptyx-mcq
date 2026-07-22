@@ -24,6 +24,10 @@ class IntegrityCheckResult:
     duplicates: dict[DocumentId, list[PageNum]]
     missing_pages: dict[DocumentId, list[PageNum]]
 
+    @property
+    def is_ok(self) -> bool:
+        return len(self.duplicates) + len(self.missing_pages) == 0
+
 
 class IntegrityChecker:
     """Test for data integrity: each scanned document must appear only once, and must be complete."""
