@@ -5,6 +5,7 @@ import threading
 from collections.abc import Callable
 from hashlib import blake2b
 from multiprocessing import Pool
+
 # noinspection PyProtectedMember
 from multiprocessing.pool import AsyncResult
 from pathlib import Path

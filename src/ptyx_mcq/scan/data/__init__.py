@@ -1,6 +1,7 @@
 import multiprocessing
 import operator
 from collections.abc import Callable, Iterator
+
 # noinspection PyProtectedMember
 from multiprocessing.pool import AsyncResult
 from pathlib import Path

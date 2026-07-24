@@ -6,6 +6,7 @@ import pytest
 from ptyx.latex_generator import Compiler
 from ptyx_mcq.make.include_directives.directives import AddPath, ChangeDirectory, Directive
 from ptyx_mcq.make.include_directives.parser import parse_code, extract_directive, resolve_includes_from_file
+
 # noinspection PyProtectedMember
 from ptyx_mcq.make.include_directives.update import IncludesUpdater, UnsafeUpdate, update_file
 from tests import ASSETS_DIR

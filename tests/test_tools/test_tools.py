@@ -112,5 +112,3 @@ def test_parse_packages_enumeration():
         "third_package": {"one", "two", "three"},
         "new_package": set(),
     }
-
-

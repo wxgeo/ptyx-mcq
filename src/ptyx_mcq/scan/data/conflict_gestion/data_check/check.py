@@ -34,6 +34,7 @@ class DataCheckResult:
     def is_ok(self) -> bool:
         return len(self.unnamed_docs) + len(self.duplicate_names) + len(self.ambiguous_answers) == 0
 
+
 class DataChecker:
     """
     Check for missing data.

@@ -3,6 +3,7 @@ from subprocess import CompletedProcess, Popen
 from ptyx.pretty_print import print_warning
 
 from ptyx_mcq.scan.data import Picture, ScanData
+from ptyx_mcq.scan.data.conflict_gestion.data_check.cb_styles import CbColors, CbThickness
 from ptyx_mcq.scan.data.conflict_gestion.data_check.fix import (
     AbstractAnswersReviewer,
     AbstractDocHeaderDisplayer,
@@ -11,7 +12,6 @@ from ptyx_mcq.scan.data.conflict_gestion.data_check.fix import (
 )
 from ptyx_mcq.scan.data.questions import CbxState
 from ptyx_mcq.scan.picture_analyze.image_viewer import ImageViewer
-from ptyx_mcq.tools.colors import RGB, Color
 from ptyx_mcq.tools.misc import copy_docstring
 from ptyx_mcq.tools.parse_config.config import (
     ApparentAnswerNumber,
@@ -137,27 +137,6 @@ class ClAnswersReviewer(AbstractAnswersReviewer):
         "\nWhat should we do?"
     )
 
-    default_colors: dict[CbxState, RGB] = {
-        CbxState.CHECKED: Color.blue,
-        CbxState.PROBABLY_CHECKED: Color.green,
-        CbxState.PROBABLY_UNCHECKED: Color.magenta,
-        CbxState.UNCHECKED: Color.pink,
-    }
-    reviewed_colors: dict[CbxState, RGB] = {
-        CbxState.CHECKED: Color.cyan,
-        CbxState.UNCHECKED: Color.red,
-    }
-    default_thicknesses: dict[CbxState, int] = {
-        CbxState.CHECKED: 2,
-        CbxState.PROBABLY_CHECKED: 5,
-        CbxState.PROBABLY_UNCHECKED: 5,
-        CbxState.UNCHECKED: 2,
-    }
-    reviewed_thicknesses: dict[CbxState, int] = {
-        CbxState.CHECKED: 5,
-        CbxState.UNCHECKED: 5,
-    }
-
     def _update_answer(
         self, op: str, doc_id: DocumentId, q: OriginalQuestionNumber, a: OriginalAnswerNumber
     ) -> None:
@@ -254,9 +233,15 @@ class ClAnswersReviewer(AbstractAnswersReviewer):
                 viewer.add_rectangle(
                     answer.position,
                     pic.calibration_data.cell_size,
-                    color=((cls.reviewed_colors if answer.reviewed else cls.default_colors)[answer.state]),
-                    thickness=(cls.reviewed_thicknesses if answer.reviewed else cls.default_thicknesses)[
-                        answer.state
-                    ],
+                    color=(
+                        (CbColors.reviewed_colors if answer.reviewed else CbColors.default_colors)[
+                            answer.state
+                        ]
+                    ),
+                    thickness=(
+                        CbThickness.reviewed_thicknesses
+                        if answer.reviewed
+                        else CbThickness.default_thicknesses
+                    )[answer.state],
                 )
         return viewer.display(wait=False)

@@ -116,6 +116,17 @@ class Answer:
         """Has the state been manually reviewed?"""
         return self._amended_state is not None
 
+    def toggle_state(self) -> None:
+        """
+        Toggle the state of the checkbox.
+
+        This is used during manual review.
+        Raise `RuntimeError` if the state of the checkbox has not been analyzed yet.
+        """
+        if (checked := self.checked) is None:
+            raise RuntimeError("The state of the checkbox has not been analyzed yet.")
+        self.state = CbxState.UNCHECKED if checked else CbxState.CHECKED
+
 
 @dataclass
 class Question:
