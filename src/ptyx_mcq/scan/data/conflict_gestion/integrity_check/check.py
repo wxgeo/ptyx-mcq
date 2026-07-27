@@ -2,7 +2,7 @@ from dataclasses import dataclass
 
 from ptyx.pretty_print import print_error, print_info, print_success, print_warning
 
-from ptyx_mcq.scan.data import ScanData
+from ptyx_mcq.scan.data.scan_data import ScanData
 from ptyx_mcq.scan.data.documents import Document
 from ptyx_mcq.tools.parse_config.subtypes import DocumentId, OriginalQuestionNumber, PageNum
 

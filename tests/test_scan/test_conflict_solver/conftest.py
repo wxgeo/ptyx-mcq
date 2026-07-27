@@ -4,7 +4,7 @@ import subprocess
 import pytest
 from numpy import ndarray, array
 
-from ptyx_mcq.scan.data import ScanData
+from ptyx_mcq.scan.data.scan_data import ScanData
 from ptyx_mcq.scan.data.conflict_gestion import ConflictSolver
 from tests.test_scan.test_conflict_solver import ASSETS_DIR
 

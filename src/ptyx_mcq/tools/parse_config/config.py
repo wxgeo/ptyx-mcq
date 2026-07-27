@@ -5,6 +5,7 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any, Literal
 
+from ptyx_mcq.scan.data.students import Student
 from ptyx_mcq.tools.evaluation_strategies import ScoringStrategy
 from ptyx_mcq.tools.parse_config.subtypes import (
     AnswerNumber,
@@ -126,6 +127,22 @@ class Configuration:
     boxes: dict[DocumentId, dict["PageNum", dict[CbxRef, tuple[float, float]]]] = field(default_factory=dict)
     # boxes: {<doc num>: {<page num>: {"Q<question num>-<answer num>": (<x-coordinate>, <y-coordinate>), ...}, ...}
     id_table_pos: tuple[float, float] | None = None
+
+    # TODO: use this new .students() method whenever applicable.
+    @property
+    def students(self) -> list[Student]:
+        """
+        A uniformed API to access students, whatever the way there are stored internally.
+
+        Use this `.students` attribute whenever possible instead of `.students_ids` and `.students_list`.
+        Students may be stored internally either as an ID-to-name mapping, or as a simple list of names (no IDs).
+        If no IDs are present, the student's rank in the list is used as ID, starting from 0.
+
+        :return: a list of `Student` instances.
+        """
+        if self.students_ids:
+            return [Student(name=name, id=id_) for id_, name in self.students_ids.items()]
+        return [Student(name=name, id=StudentId(str(num))) for num, name in enumerate(self.students_list)]
 
     @property
     def max_score(self) -> float:

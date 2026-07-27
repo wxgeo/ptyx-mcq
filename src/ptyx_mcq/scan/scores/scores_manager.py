@@ -1,7 +1,7 @@
 from typing import TYPE_CHECKING
 
 from ptyx.pretty_print import TermColors, term_color
-from ptyx_mcq.scan.data import Question
+from ptyx_mcq.scan.data.documents import Question
 from ptyx_mcq.scan.scores.printers import (
     TerminalScoresPrinter,
     ExcelScoresPrinter,
@@ -17,7 +17,7 @@ from ptyx_mcq.tools.evaluation_strategies import (
 from ptyx_mcq.tools.parse_config.subtypes import StudentId, StudentName
 
 if TYPE_CHECKING:
-    from ptyx_mcq.scan import MCQPictureParser
+    from ptyx_mcq.scan.scan_doc import MCQPictureParser
 
 
 class SkipQuestion(Exception):

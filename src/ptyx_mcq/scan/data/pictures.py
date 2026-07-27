@@ -26,7 +26,7 @@ from ptyx_mcq.tools.parse_config.config import (
 )
 
 if TYPE_CHECKING:
-    from ptyx_mcq.scan.data import Page
+    from ptyx_mcq.scan.data.documents import Page
 
 
 @dataclass(kw_only=True)

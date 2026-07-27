@@ -7,7 +7,7 @@ from ptyx.pretty_print import print_success
 
 from ptyx_mcq.scan.data.analyze.checkboxes import export_checkboxes as export_checkboxes_
 from ptyx_mcq.scan.scan_doc import MCQPictureParser
-from ptyx_mcq.scan.data import ScanData
+from ptyx_mcq.scan.data.scan_data import ScanData
 
 
 def calibration(

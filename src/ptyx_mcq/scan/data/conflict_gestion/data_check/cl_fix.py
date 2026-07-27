@@ -2,8 +2,9 @@ from subprocess import CompletedProcess, Popen
 
 from ptyx.pretty_print import print_warning
 
-from ptyx_mcq.scan.data import Picture, ScanData
-from ptyx_mcq.scan.data.conflict_gestion.data_check.cb_styles import CbColors, CbThickness
+from ptyx_mcq.scan.data.pictures import Picture
+from ptyx_mcq.scan.data.scan_data import ScanData
+from ptyx_mcq.scan.data.conflict_gestion.data_check.cb_styles import CbxColors, CbxThickness
 from ptyx_mcq.scan.data.conflict_gestion.data_check.fix import (
     AbstractAnswersReviewer,
     AbstractDocHeaderDisplayer,
@@ -234,14 +235,14 @@ class ClAnswersReviewer(AbstractAnswersReviewer):
                     answer.position,
                     pic.calibration_data.cell_size,
                     color=(
-                        (CbColors.reviewed_colors if answer.reviewed else CbColors.default_colors)[
+                        (CbxColors.reviewed_colors if answer.reviewed else CbxColors.default_colors)[
                             answer.state
                         ]
                     ),
                     thickness=(
-                        CbThickness.reviewed_thicknesses
+                        CbxThickness.reviewed_thicknesses
                         if answer.reviewed
-                        else CbThickness.default_thicknesses
+                        else CbxThickness.default_thicknesses
                     )[answer.state],
                 )
         return viewer.display(wait=False)

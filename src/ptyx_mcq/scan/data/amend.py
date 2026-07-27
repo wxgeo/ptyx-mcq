@@ -15,7 +15,7 @@ from os.path import join
 from PIL import ImageDraw, ImageFont
 from PIL.Image import Image
 
-from ptyx_mcq.scan.data import ScanData
+from ptyx_mcq.scan.data.scan_data import ScanData
 from ptyx_mcq.scan.data.documents import Document
 from ptyx_mcq.scan.data.questions import Answer
 from ptyx_mcq.scan.picture_analyze.types_declaration import Col, Pixel

@@ -1,6 +1,6 @@
 import shutil
 
-from ptyx_mcq.scan import scan
+from ptyx_mcq.scan.scan_doc import scan
 from tests import ASSETS_DIR
 
 

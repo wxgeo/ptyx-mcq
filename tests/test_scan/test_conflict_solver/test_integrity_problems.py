@@ -4,8 +4,8 @@ from typing import Literal
 
 import pytest
 
-from ptyx_mcq.scan import scan
-from ptyx_mcq.scan.data import ScanData
+from ptyx_mcq.scan.scan_doc import scan
+from ptyx_mcq.scan.data.scan_data import ScanData
 from ptyx_mcq.scan.data.conflict_gestion.data_check.cl_fix import (
     ClNamesReviewer as NamesReviewer,
 )

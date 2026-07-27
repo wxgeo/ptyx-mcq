@@ -21,7 +21,7 @@ from ptyx_mcq.tools.parse_config.config import CbxRef, real2apparent
 from ptyx_mcq.tools.pic import save_webp
 
 if TYPE_CHECKING:
-    from ptyx_mcq.scan.data import ScanData
+    from ptyx_mcq.scan.data.scan_data import ScanData
     from ptyx_mcq.scan.data.documents import Document
 
 CheckboxAnalyzeResult = dict[CbxRef, CbxState]

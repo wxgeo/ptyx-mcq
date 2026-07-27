@@ -1,6 +1,6 @@
 from ptyx_mcq.scan.data.conflict_gestion.data_check.check import DataChecker
 from ptyx_mcq.scan.data.conflict_gestion.integrity_check.check import IntegrityChecker
-from ptyx_mcq.scan.data import ScanData
+from ptyx_mcq.scan.data.scan_data import ScanData
 
 
 class ConflictSolver:
@@ -20,6 +20,4 @@ class ConflictSolver:
         Config.AllDataIssuesFixer(self.scan_data).run(check_result=data_check_results)
 
 
-__all__ = [
-    "ConflictSolver",
-]
+__all__ = ["ConflictSolver", "DataChecker", "IntegrityChecker"]

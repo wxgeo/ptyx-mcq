@@ -76,7 +76,7 @@ def get_handler(handler_location: str) -> Callable:
 class Handlers(StrEnum):
     new = "ptyx_mcq.other_commands.new.new"
     make = "ptyx_mcq.make.make"
-    scan = "ptyx_mcq.scan.scan"
+    scan = "ptyx_mcq.scan.scan_doc.scan"
     clear = "ptyx_mcq.other_commands.clear.clear"
     see = "ptyx_mcq.other_commands.see.see"
     fix_doc = "ptyx_mcq.other_commands.fix.fix_doc"

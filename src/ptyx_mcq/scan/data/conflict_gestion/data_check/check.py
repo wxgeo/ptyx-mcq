@@ -10,7 +10,7 @@ AmbiguousPagesList = list[tuple[DocumentId, PageNum]]
 DuplicateNamesDict = dict[StudentName, list[DocumentId]]
 
 if TYPE_CHECKING:
-    from ptyx_mcq.scan.data import ScanData
+    from ptyx_mcq.scan.data.scan_data import ScanData
 
 
 @dataclass

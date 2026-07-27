@@ -5,7 +5,7 @@ from enum import StrEnum
 
 from ptyx.pretty_print import print_info, print_warning
 
-from ptyx_mcq.scan.data import ScanData
+from ptyx_mcq.scan.data.scan_data import ScanData
 from ptyx_mcq.scan.data.conflict_gestion.data_check.check import DataChecker, DataCheckResult
 from ptyx_mcq.scan.data.students import Student
 from ptyx_mcq.tools.math import levenshtein_distance

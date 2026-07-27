@@ -19,7 +19,9 @@ from ptyx_mcq.tools.parse_config.subtypes import (
 )
 
 if TYPE_CHECKING:
-    from ptyx_mcq.scan.data import Picture, ScanData
+    from ptyx_mcq.scan.data.pictures import Picture
+    from ptyx_mcq.scan.data.scan_data import ScanData
+
 
 # AnalyzeResult = tuple[list[Student | None], list[CheckboxAnalyzeResult] | None]
 

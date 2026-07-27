@@ -1,4 +1,4 @@
-from ptyx_mcq.scan.data import Document
+from ptyx_mcq.scan.data.documents import Document
 from ptyx_mcq.scan.data.conflict_gestion.data_check.cl_fix import (
     ClNamesReviewer as NamesReviewer,
 )

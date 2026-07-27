@@ -6,15 +6,16 @@ import os
 from pathlib import Path
 
 # from numpy import ndarray
-from ptyx.pretty_print import print_success, green
+from ptyx.pretty_print import print_success, green, print_warning, print_info
 from ptyx.sys_info import CPU_PHYSICAL_CORES
 from ptyx_mcq.parameters import CONFIG_FILE_EXTENSION, IMAGE_FORMAT
-from ptyx_mcq.scan.data import ScanData
+from ptyx_mcq.scan.data.scan_data import ScanData
 from ptyx_mcq.scan.data.amend import amend_all
 from ptyx_mcq.scan.data.conflict_gestion import ConflictSolver
 from ptyx_mcq.scan.data.conflict_gestion.data_check.cl_fix import ClAnswersReviewer
 from ptyx_mcq.scan.data.extract import PicNum, PdfHash
 from ptyx_mcq.scan.scores.scores_manager import ScoresManager
+from ptyx_mcq.tools.io_tools import ProcessInterrupted
 
 
 # -----------------------------------------
@@ -217,3 +218,31 @@ class MCQPictureParser:
         self.generate_documents()
 
         print(green("\nSuccess ! :)"))
+
+
+def scan(
+    path: Path,
+    reset: bool = False,
+    cores: int = 0,
+    test_picture: Path = None,
+    debug: bool = False,
+) -> "MCQPictureParser":
+    """Implement `mcq scan` command.
+
+    Return a `MCQPictureParser` instance, which may be used by tests to check the scan's result.
+    """
+
+    try:
+        mcq_parser = MCQPictureParser(path)
+        if test_picture is None:
+            mcq_parser.run(number_of_processes=cores, debug=debug, reset=reset)
+            print_success("Students' marks successfully generated. :)")
+        else:
+            mcq_parser.scan_single_picture(test_picture)
+            print_success(f"Picture {test_picture!r} scanned.")
+        return mcq_parser
+    except KeyboardInterrupt:
+        print()
+        print_warning("Script interrupted.")
+        print_info("Relaunch it to resume scan process.")
+        raise ProcessInterrupted

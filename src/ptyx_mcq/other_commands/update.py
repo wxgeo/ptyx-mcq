@@ -4,7 +4,7 @@ from ptyx.latex_generator import Compiler
 from ptyx.pretty_print import print_error, print_success, print_warning, print_info
 from ptyx_mcq.make.include_directives.update import update_file
 from ptyx_mcq.parameters import CONFIG_FILE_EXTENSION
-from ptyx_mcq.scan.data import ScanData
+from ptyx_mcq.scan.data.scan_data import ScanData
 from ptyx_mcq.tools.io_tools import FatalError, get_file_or_sysexit
 from ptyx_mcq.tools.parse_config.config import Configuration
 

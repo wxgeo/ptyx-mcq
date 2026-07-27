@@ -39,7 +39,7 @@ from ptyx_mcq.tools.pdf import number_of_pages
 from ptyx_mcq.tools.pic import array_to_image, image_to_array, load_webp
 
 if TYPE_CHECKING:
-    from ptyx_mcq.scan.data import ScanData
+    from ptyx_mcq.scan.data.scan_data import ScanData
 
 PdfHash = NewType("PdfHash", str)
 PicNum = NewType("PicNum", int)

@@ -6,7 +6,7 @@ from ptyx_mcq.scan.data.questions import CbxState
 from ptyx_mcq.tools.colors import Color, RGB
 
 
-class CbColors:
+class CbxColors:
     default_colors: dict[CbxState, RGB] = {
         CbxState.CHECKED: Color.blue,
         CbxState.PROBABLY_CHECKED: Color.green,
@@ -19,7 +19,7 @@ class CbColors:
     }
 
 
-class CbThickness:
+class CbxThickness:
     default_thicknesses: dict[CbxState, int] = {
         CbxState.CHECKED: 2,
         CbxState.PROBABLY_CHECKED: 5,
