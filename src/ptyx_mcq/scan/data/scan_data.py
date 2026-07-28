@@ -56,8 +56,14 @@ class ScanData:
         """
         return self.input_pdf_extractor.is_initialized
 
-    # def reset(self):
-    #     self._index = None
+    def reset(self):
+        """
+        Remove all scan generated data.
+
+        This is used by `ptyx-mcq-corrector` to reinitialize the scan operation.
+        """
+        self.initialize(reset=True)
+        self._index = None
 
     def __iter__(self) -> Iterator[Document]:
         return iter(self.used_docs_index.values())
