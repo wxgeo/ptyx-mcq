@@ -4,6 +4,7 @@ import numpy as np
 import pytest
 
 from ptyx_mcq.make.generate_ptyx_code import LatexPackages
+from ptyx_mcq.scan.data.students import Student, StudentName, StudentId
 from ptyx_mcq.tools.extend_literal_eval import extended_literal_eval
 from ptyx_mcq.tools.io_tools import get_file_with_extension, is_ptyx_mcq_file
 from ptyx_mcq.tools.pdf import similar_pdf_page, similar_pdfs
@@ -112,3 +113,13 @@ def test_parse_packages_enumeration():
         "third_package": {"one", "two", "three"},
         "new_package": set(),
     }
+
+
+def test_student():
+    # Can be pretty printed and converted back.
+    leo = Student(name=StudentName("Leonard LeCanard"), id=StudentId("LAXRTTF"))
+    assert Student.from_text(leo.to_text()) == leo
+    secret_agent = Student(name=StudentName(""), id=StudentId("007"))
+    assert Student.from_text(secret_agent.to_text()) == secret_agent
+    # Order by names, not ids.
+    assert Student(id="2", name="A") < Student(id="0", name="B") < Student(id="1", name="C")  # type:ignore

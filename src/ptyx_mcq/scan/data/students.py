@@ -41,3 +41,22 @@ class Student:
 
     def save(self, path: Path) -> None:
         path.write_text(self._as_str(), encoding="utf8")
+
+    def to_text(self) -> str:
+        """Convert to text suitable for pretty printing (display)."""
+        if self.name:
+            return f"{self.name} ({self.id})"
+        return self.id
+
+    @classmethod
+    def from_text(cls, text: str) -> Self:
+        """Convert back from pretty printed text (display)."""
+        match text.split("("):
+            case name, id_:
+                assert name.endswith(" ")
+                assert id_.endswith(")")
+                return cls(name=StudentName(name[:-1]), id=StudentId(id_[:-1]))
+            case (id_,):
+                return cls(name=StudentName(""), id=StudentId(id_))
+            case _:
+                raise ValueError(f"Student name and id couldn't be extracted from this text: '{text}'.")
