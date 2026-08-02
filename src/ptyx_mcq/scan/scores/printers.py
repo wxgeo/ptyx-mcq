@@ -46,14 +46,14 @@ class TerminalScoresPrinter(ScoresPrinter):
         max_score: float = -math.inf
         print()
         print(term_color(f"SCORES (/{self.parent.max_score:g}):", color=TermColors.CYAN))
-        for (student_name, student_id), score in sorted(self.parent.class_scores.items()):
+        for student, score in sorted(self.parent.class_scores.items()):
             score = self._convert(score)
             if isinstance(score, (float, int)):
                 if score < min_score:
                     min_score = score
                 if score > max_score:
                     max_score = score
-            print(f" - {student_name}: {self._convert(score)}")
+            print(f" - {student.name}: {self._convert(score)}")
         if self.parent.work_scores:
             mean = round(sum(self.parent.work_scores.values()) / len(self.parent.work_scores), 2)
             print(yellow("Mean: " + bold(f"{mean:g}") + f"/{self.parent.max_score:g}"))
@@ -68,12 +68,12 @@ class SheetsScoresPrinter(ScoresPrinter, ABC):
         # max_score is the maximal theoretical score, not the highest actually obtained.
         max_score = self.parent.max_score
         writerow(("ID", "Name", f"Score/{max_score:g}", "Score/20", "Score/100"))
-        for (student_name, student_id), score in sorted(self.parent.class_scores.items()):
+        for student, score in sorted(self.parent.class_scores.items()):
             # TODO: Add ability to change the notation system.
             writerow(
                 [
-                    student_id,
-                    student_name,
+                    student.id,
+                    student.name,
                     self._convert(score),
                     self._convert(score, factor=20 / max_score) if max_score else 0,
                     self._convert(score, factor=100 / max_score) if max_score else 0,
@@ -168,8 +168,8 @@ class ExcelScoresPrinter(SheetsScoresPrinter):
         self._create_table(sheet, "StudentsScores")
 
         # Fix columns' widths.
-        self._adjust_col_width(sheet, "A", [student_id for _, student_id in self.parent.class_scores])
-        self._adjust_col_width(sheet, "B", [student_name for student_name, _ in self.parent.class_scores])
+        self._adjust_col_width(sheet, "A", [student.id for student in self.parent.class_scores])
+        self._adjust_col_width(sheet, "B", [student.name for student in self.parent.class_scores])
 
         # Append some statistics concerning the students' scores.
         n = len(self.parent.class_scores)
@@ -257,7 +257,7 @@ class ExcelScoresPrinter(SheetsScoresPrinter):
                 for i in chain(range(2, row + 1), range(row + 2, row + 6)):
                     sheet.cell(i, col).fill = PatternFill(fill_type="solid", fgColor="DDDDDD")
         # Adjust the width of the first column (students names).
-        self._adjust_col_width(sheet, "A", [student_name for student_name, _ in self.parent.class_scores])
+        self._adjust_col_width(sheet, "A", [student.name for student in self.parent.class_scores])
 
     @staticmethod
     def _color_cell_according_to_value(

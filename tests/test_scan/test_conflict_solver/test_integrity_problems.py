@@ -4,6 +4,7 @@ from typing import Literal
 
 import pytest
 
+from ptyx_mcq.scan.data.students import Student
 from ptyx_mcq.scan.scan_doc import scan
 from ptyx_mcq.scan.data.scan_data import ScanData
 from ptyx_mcq.scan.data.conflict_gestion.data_check.cl_fix import (
@@ -73,9 +74,10 @@ def test_empty_document(no_display, tmp_path, custom_input):
     copy = tmp_path / "unfilled-doc-test"
     shutil.copytree(origin, copy)
     mcq_parser = scan(copy)
-    target = pytest.approx(
-        {("John", "22301935"): 8.833333333333332, ("Edward", "22301417"): 9.455952380952379}
-    )
+    john = Student(name=StudentName("John"), id=StudentId("22301935"))
+    edward = Student(name=StudentName("Edward"), id=StudentId("22301417"))
+    target = pytest.approx({john: 8.833333333333332, edward: 9.455952380952379})
+    target = pytest.approx({john: 8.833333333333332, edward: 9.455952380952379})
     assert mcq_parser.scores_manager.class_scores == target
     assert mcq_parser.scores_manager.work_scores == target
     # There should be no remaining question.
@@ -87,7 +89,7 @@ def test_empty_document(no_display, tmp_path, custom_input):
     # There should be no remaining question.
     assert custom_input.is_empty(), f"List of remaining questions/answers: {custom_input.remaining()}"
     # No change in results of course.
-    target = pytest.approx({("John", "22301935"): 8.83333333, ("Edward", "22301417"): 9.45595238})
+    target = pytest.approx({john: 8.83333333, edward: 9.45595238})
     assert mcq_parser.scores_manager.class_scores == target
     assert mcq_parser.scores_manager.work_scores == target
 
@@ -100,7 +102,9 @@ def test_identical_duplicate_documents(no_display, tmp_path, custom_input):
     (copy / "scan/flat-scan-conflict.pdf").unlink()
     shutil.copy(copy / "scan/flat-scan.pdf", copy / "scan/flat-scan-bis.pdf")
     mcq_parser = scan(copy)
-    target = pytest.approx({("John", "22301935"): 8.83333333, ("Edward", "22301417"): 9.45595238})
+    john = Student(name=StudentName("John"), id=StudentId("22301935"))
+    edward = Student(name=StudentName("Edward"), id=StudentId("22301417"))
+    target = pytest.approx({john: 8.83333333, edward: 9.45595238})
     assert mcq_parser.scores_manager.class_scores == target
     assert mcq_parser.scores_manager.work_scores == target
 
@@ -189,8 +193,9 @@ def duplicate_documents_test_base(tmp_path, custom_input, chosen_version: Litera
             (StudentName("Edward"), StudentId("22301417")): 9.45595238,
         }
 
-    for student in scores:
-        target = pytest.approx(scores[student])
+    for student_name, student_id in scores:
+        target = pytest.approx(scores[(student_name, student_id)])
+        student = Student(name=student_name, id=student_id)
         assert mcq_parser.scores_manager.class_scores[student] == target
         assert mcq_parser.scores_manager.work_scores[student] == target
 

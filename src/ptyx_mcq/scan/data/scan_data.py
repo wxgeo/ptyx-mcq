@@ -72,7 +72,7 @@ class ScanData:
 
         This is used by `ptyx-mcq-corrector` to reinitialize the review operation.
         """
-        rmtree(path:=self.paths.dirs.fix, ignore_errors=True)
+        rmtree(path := self.paths.dirs.fix, ignore_errors=True)
         self._generate_index()
         print_info(f"Folder '{path}' removed.")
 
@@ -330,4 +330,4 @@ class ScanData:
         for doc in self:
             name = self.config.students_ids.get(student_id := doc.student_id)
             if name is not None:
-                doc.student = Student(student_id, name)
+                doc.student = Student(id=student_id, name=name)

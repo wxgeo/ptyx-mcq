@@ -6,12 +6,16 @@ from ptyx_mcq.scan.data.questions import InvalidFormat
 from ptyx_mcq.tools.parse_config.subtypes import StudentId, StudentName
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, order=True)
 class Student:
-    """Data class regrouping information concerning one student."""
+    """
+    Data class regrouping information concerning one student.
 
+    Students can be natively sorted, by name first, then by id.
+    """
+
+    name: StudentName  # Sort by name, then by id.
     id: StudentId
-    name: StudentName
 
     def _as_str(self) -> str:
         return f"{self.name}\n{self.id}\n"

@@ -2,6 +2,7 @@ from typing import TYPE_CHECKING
 
 from ptyx.pretty_print import TermColors, term_color
 from ptyx_mcq.scan.data.documents import Question
+from ptyx_mcq.scan.data.students import Student
 from ptyx_mcq.scan.scores.printers import (
     TerminalScoresPrinter,
     ExcelScoresPrinter,
@@ -14,7 +15,6 @@ from ptyx_mcq.tools.evaluation_strategies import (
     ScoringStrategy,
     ScoringFunc,
 )
-from ptyx_mcq.tools.parse_config.subtypes import StudentId, StudentName
 
 if TYPE_CHECKING:
     from ptyx_mcq.scan.scan_doc import MCQPictureParser
@@ -33,7 +33,7 @@ class ScoresManager:
         self.mcq_parser = mcq_parser
         # The scores of all the scanned students' works.
         # See the property `.class_scores` and its docstring for more information.
-        self.work_scores: dict[tuple[StudentName, StudentId], float] = {}
+        self.work_scores: dict[Student, float] = {}
 
     @property
     def max_score(self):
@@ -114,13 +114,13 @@ class ScoresManager:
                 earn *= float(cfg.weight.get(q, cfg.weight["default"]))
                 question.score = earn
         self.work_scores = {
-            (doc.student_name, doc.student_id): doc.score
+            Student(name=doc.student_name, id=doc.student_id): doc.score
             for doc in self.mcq_parser.scan_data
             if doc.score is not None
         }
 
     @property
-    def class_scores(self) -> dict[tuple[StudentName, StudentId], float | str]:
+    def class_scores(self) -> dict[Student, float | str]:
         """
         The scores of the class.
 
@@ -137,7 +137,7 @@ class ScoresManager:
         """
         default = self.mcq_parser.config.default_score
         defaults = {
-            (student_name, student_id): default
+            Student(name=student_name, id=student_id): default
             for student_id, student_name in self.mcq_parser.config.students_ids.items()
         }
         return defaults | self.work_scores
