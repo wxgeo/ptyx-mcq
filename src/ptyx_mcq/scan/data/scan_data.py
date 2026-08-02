@@ -3,6 +3,7 @@ import operator
 from multiprocessing.pool import AsyncResult
 from pathlib import Path
 from typing import Iterator, Callable
+from shutil import rmtree
 
 from ptyx.pretty_print import print_info, print_error
 from ptyx_mcq.scan.data.documents import Document, Page, AnalyzeResult
@@ -56,14 +57,24 @@ class ScanData:
         """
         return self.input_pdf_extractor.is_initialized
 
-    def reset(self):
+    def reset(self) -> None:
         """
         Remove all scan generated data.
 
         This is used by `ptyx-mcq-corrector` to reinitialize the scan operation.
         """
         self.initialize(reset=True)
-        self._index = None
+        self._generate_index()
+
+    def reset_review(self) -> None:
+        """
+        Remove all review generated data.
+
+        This is used by `ptyx-mcq-corrector` to reinitialize the review operation.
+        """
+        rmtree(path:=self.paths.dirs.fix, ignore_errors=True)
+        self._generate_index()
+        print_info(f"Folder '{path}' removed.")
 
     def __iter__(self) -> Iterator[Document]:
         return iter(self.used_docs_index.values())
