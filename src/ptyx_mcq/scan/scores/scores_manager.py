@@ -89,18 +89,20 @@ class ScoresManager:
             earn = ceil
         return earn, scores_data
 
-    def calculate_scores(self) -> None:
+    def calculate_scores(self, verbose: bool = False) -> None:
         """
         Calculate and update the scores for all students.
         """
         cfg = self.mcq_parser.config
         for doc_id, doc in self.mcq_parser.scan_data.used_docs_index.items():
-            print(f"Test {doc_id} - {doc.student_name}")
+            if verbose:
+                print(f"Test {doc_id} - {doc.student_name}")
             for q, question in doc.questions.items():
                 try:
                     earn, score_data = self._get_raw_question_score(question)
                 except SkipQuestion:
-                    print(f"Question {q} skipped...")
+                    if verbose:
+                        print(f"Question {q} skipped...")
                     continue
 
                 if earn == score_data.correct:
@@ -109,7 +111,8 @@ class ScoresManager:
                     color = TermColors.RED
                 else:
                     color = TermColors.YELLOW
-                print("-  " + term_color(f"Rating (Q{q}): {earn:g}", color=color))
+                if verbose:
+                    print("-  " + term_color(f"Rating (Q{q}): {earn:g}", color=color))
                 # Don't forget to include the weight of the question to calculate the global score.
                 earn *= float(cfg.weight.get(q, cfg.weight["default"]))
                 question.score = earn

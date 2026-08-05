@@ -9,15 +9,14 @@ for all students.
 from collections.abc import Callable, Generator
 from itertools import chain
 from multiprocessing import Pool
-from os.path import join
 
 # from typing import TYPE_CHECKING
 from PIL import ImageDraw, ImageFont
 from PIL.Image import Image
 
-from ptyx_mcq.scan.data.scan_data import ScanData
 from ptyx_mcq.scan.data.documents import Document
 from ptyx_mcq.scan.data.questions import Answer
+from ptyx_mcq.scan.data.scan_data import ScanData
 from ptyx_mcq.scan.picture_analyze.types_declaration import Col, Pixel
 from ptyx_mcq.tools.colors import RGB, Color
 from ptyx_mcq.tools.io_tools import generate_progression_callback
@@ -25,6 +24,7 @@ from ptyx_mcq.tools.parse_config.config import (
     OriginalQuestionNumber,
     QuestionNumberOrDefault,
     real2apparent,
+    Configuration,
 )
 
 
@@ -32,13 +32,8 @@ from ptyx_mcq.tools.parse_config.config import (
 #     from ptyx_mcq.scan.scanner import MCQPictureParser
 
 
-def amend_all(scan_data: ScanData, progression: Callable[..., None] = None) -> None:
-    """Amend all generated documents, adding the scores and indicating the correct answers."""
-    if progression is None:
-        progression = generate_progression_callback(
-            "Generating the amended pdf files", len(scan_data.all_docs_index)
-        )
-    cfg = scan_data.config
+def get_max_score_per_question(cfg: Configuration) -> dict[QuestionNumberOrDefault, float]:
+    """Return a dict that associates each question with its maximal possible score."""
     default_weight = cfg.weight["default"]
     assert isinstance(default_weight, (int, float))
     default_correct = cfg.correct["default"]
@@ -49,6 +44,16 @@ def amend_all(scan_data: ScanData, progression: Callable[..., None] = None) -> N
     for question in set(cfg.correct) | set(cfg.weight) - {"default"}:
         _max_score = cfg.weight.get(question, default_weight) * cfg.correct.get(question, default_correct)
         max_score_per_question[question] = _max_score
+    return max_score_per_question
+
+
+def amend_all(scan_data: ScanData, progression: Callable[..., None] | None = None) -> None:
+    """Amend all generated documents, adding the scores and indicating the correct answers."""
+    if progression is None:
+        progression = generate_progression_callback(
+            "Generating the amended pdf files", len(scan_data.all_docs_index)
+        )
+    max_score_per_question = get_max_score_per_question(scan_data.config)
 
     # Global maximal score.
     # Note that the global maximal score can not be easily deduced from the dict `max_score_per_question`,
@@ -124,7 +129,7 @@ def amend_doc(doc: Document, max_score_per_question: dict[QuestionNumberOrDefaul
     _write_score(draw, (i, Col(j + 2 * size)), doc.score, max_score, 2 * size)
     # _write_score(draw, (Row(2 * size), Col(8 * size)), doc.score, max_score, 2 * size)
     pages[0].save(
-        join(doc.scan_data.dirs.pdf, f"{doc.student_name}-{doc.student_id}-{doc_id}.pdf"),
+        doc.correction_path,
         save_all=True,
         append_images=pages[1:],
     )

@@ -2,8 +2,8 @@ import multiprocessing
 import operator
 from multiprocessing.pool import AsyncResult
 from pathlib import Path
-from typing import Iterator, Callable
 from shutil import rmtree
+from typing import Iterator, Callable
 
 from ptyx.pretty_print import print_info, print_error
 from ptyx_mcq.scan.data.documents import Document, Page, AnalyzeResult
@@ -331,3 +331,15 @@ class ScanData:
             name = self.config.students_ids.get(student_id := doc.student_id)
             if name is not None:
                 doc.student = Student(id=student_id, name=name)
+
+    def get_student_doc(self, student: Student) -> Document | None:
+        """
+        Find the document associated with the given student.
+
+        The scan process must have been done before, else `None` is returned.
+        If no document is associated with this student, `None` is returned as well.
+        """
+        for doc in self.used_docs_index.values():
+            if doc.student == student:
+                return doc
+        return None

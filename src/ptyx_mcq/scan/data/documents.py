@@ -19,7 +19,6 @@ from ptyx_mcq.tools.parse_config.subtypes import (
 )
 
 if TYPE_CHECKING:
-    from ptyx_mcq.scan.data.pictures import Picture
     from ptyx_mcq.scan.data.scan_data import ScanData
 
 
@@ -276,3 +275,8 @@ class Document:
     def answered(self) -> dict[OriginalQuestionNumber, set[OriginalAnswerNumber]]:
         """Answers checked by the student for each question."""
         return {question: answers for page in self for question, answers in page.pic.answered.items()}
+
+    @property
+    def correction_path(self) -> Path:
+        """The path of the generated PDF file that will contain the individual correction."""
+        return self.scan_data.dirs.pdf / f"{self.student_name}-{self.student_id}-{self.doc_id}.pdf"

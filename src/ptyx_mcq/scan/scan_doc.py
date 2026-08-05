@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 import csv
 import os
-
 # import time
 from pathlib import Path
 
@@ -9,11 +8,11 @@ from pathlib import Path
 from ptyx.pretty_print import print_success, green, print_warning, print_info
 from ptyx.sys_info import CPU_PHYSICAL_CORES
 from ptyx_mcq.parameters import CONFIG_FILE_EXTENSION, IMAGE_FORMAT
-from ptyx_mcq.scan.data.scan_data import ScanData
 from ptyx_mcq.scan.data.amend import amend_all
 from ptyx_mcq.scan.data.conflict_gestion import ConflictSolver
 from ptyx_mcq.scan.data.conflict_gestion.data_check.cl_fix import ClAnswersReviewer
 from ptyx_mcq.scan.data.extract import PicNum, PdfHash
+from ptyx_mcq.scan.data.scan_data import ScanData
 from ptyx_mcq.scan.scores.scores_manager import ScoresManager
 from ptyx_mcq.tools.io_tools import ProcessInterrupted
 
@@ -172,7 +171,7 @@ class MCQPictureParser:
 
     def calculate_scores(self):
         """Calculate the score, taking care of the chosen mode."""
-        self.scores_manager.calculate_scores()
+        self.scores_manager.calculate_scores(verbose=True)
         self.scores_manager.print_scores()
 
     def generate_documents(self):
