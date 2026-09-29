@@ -1,23 +1,22 @@
+from collections.abc import Iterator
 from dataclasses import dataclass
 from enum import Enum
 from math import hypot, atan, degrees
 from typing import Literal, NamedTuple
-from collections.abc import Iterator
 
 import numpy as np
 from PIL import Image
 from numpy import ndarray, flipud, fliplr, zeros, amin, dot, amax
-from ptyx.pretty_print import print_warning
 
+from ptyx.pretty_print import print_warning
 from ptyx_mcq.parameters import (
     SQUARE_SIZE_IN_CM,
     CALIBRATION_SQUARE_SIZE,
     CALIBRATION_SQUARE_POSITION,
     CELL_SIZE_IN_CM,
 )
-from ptyx_mcq.tools.colors import Color
+from ptyx_mcq.scan.picture_analyze.image_viewer import ImageViewer
 from ptyx_mcq.scan.picture_analyze.square_detection import eval_square_color, find_black_square
-from ptyx_mcq.tools.math import round
 from ptyx_mcq.scan.picture_analyze.types_declaration import (
     Pixel,
     MissingSquare,
@@ -30,7 +29,8 @@ from ptyx_mcq.scan.picture_analyze.types_declaration import (
     Col,
     Row,
 )
-from ptyx_mcq.scan.picture_analyze.image_viewer import ImageViewer
+from ptyx_mcq.tools.colors import Color
+from ptyx_mcq.tools.math import round
 from ptyx_mcq.tools.pic import array_to_image, image_to_array
 
 ValidCornerStringValues = Literal["TL", "TR", "BL", "BR"]
@@ -866,6 +866,7 @@ def adjust_contrast(m: ndarray, filename: str = None, debug=False) -> ndarray:
             print(f"New range: {amin(m)} - {amax(m)}")
             # ImageViewer(m).display()
     else:
-        ImageViewer(array=m).display()
+        if debug:
+            ImageViewer(array=m).display()
         print_warning(f"Not enough contrast in picture {filename!r}!")
     return m
