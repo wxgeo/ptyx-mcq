@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Any, Literal
 
 from ptyx_mcq.scan.data.students import Student
-from ptyx_mcq.tools.evaluation_strategies import ScoringStrategy
+from ptyx_mcq.tools.evaluation_strategies import ScoringStrategy, DEFAULT_SCORING_STRATEGY
 from ptyx_mcq.tools.parse_config.subtypes import (
     AnswerNumber,
     ApparentAnswerNumber,
@@ -104,7 +104,7 @@ def recursively_update_dict(
 @dataclass(kw_only=True, slots=True)
 class Configuration:
     mode: dict[QuestionNumberOrDefault, ScoringStrategy] = field(
-        default_factory=lambda: {"default": ScoringStrategy.ALL}
+        default_factory=lambda: {"default": DEFAULT_SCORING_STRATEGY}
     )
     correct: dict[QuestionNumberOrDefault, float] = field(default_factory=lambda: {"default": 1})
     incorrect: dict[QuestionNumberOrDefault, float] = field(default_factory=lambda: {"default": 0})

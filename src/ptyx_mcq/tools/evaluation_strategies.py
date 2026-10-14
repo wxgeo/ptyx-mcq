@@ -51,6 +51,7 @@ class ScoreData:
 
 class ScoringStrategy(StrEnum):
     SOME = auto()
+    LENIENT_SOME = auto()
     ALL = auto()
     PROPORTIONAL = auto()
     PARTIAL_ANSWERS = auto()
@@ -62,6 +63,8 @@ class ScoringStrategy(StrEnum):
     # Special case: skip the question
     SKIP = auto()
 
+
+DEFAULT_SCORING_STRATEGY = ScoringStrategy.CORRECT_MINUS_INCORRECT
 
 ScoringFunc = Callable[[AnswersData, ScoreData], float]
 
@@ -106,6 +109,24 @@ class ScoringImplementations:
             return score.skipped
         else:
             return score.incorrect
+
+    @staticmethod
+    @strategy
+    def lenient_some(answers: AnswersData, score: ScoreData) -> float:
+        """Like the `some` strategy, but if a mix of correct and incorrect answers is checked,
+        the median score will be applied (as if the question was skipped), instead of the minimal one."""
+        # Answer is valid if and only if :
+        # (proposed ≠ ∅ and proposed ⊆ correct) or (proposed = correct = ∅)
+        ok = (answers.checked and answers.checked.issubset(answers.correct)) or (
+            not answers.checked and not answers.correct
+        )
+        really_bad = answers.checked and answers.checked.issubset(answers.incorrect)
+        if ok:
+            return score.correct
+        elif really_bad:
+            return score.incorrect
+        else:
+            return score.skipped
 
     @staticmethod
     @strategy
