@@ -698,7 +698,7 @@ class MCQLatexGenerator(LatexGenerator):
             if getattr(self, "mcq_question_number", None) is None:
                 raise RuntimeError("#QUESTION_CONFIG can only be used inside a question.")
 
-            for key, val in parse_question_config(node.arg(0)):
+            for key, val in parse_question_config(node.arg(0)).items():
                 getattr(self.mcq_data, key)[self.mcq_question_number] = val
 
         except Exception:
