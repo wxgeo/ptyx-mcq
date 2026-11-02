@@ -2,7 +2,7 @@ project := "ptyx-mcq"
 
 import "../justfiles/config.just"
 
-default:
+list:
     just --list
     
 doc:
