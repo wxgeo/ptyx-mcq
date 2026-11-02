@@ -28,6 +28,7 @@ class Directive:
         self,
         is_disabled: bool | None = None,
         comment: str | None = None,
+        configuration: str | None = None,
     ) -> Self:
         """Make a copy, but allow to update some attributes."""
         # noinspection PyTypeChecker
@@ -35,7 +36,7 @@ class Directive:
             self.path,
             comment=(self.comment if comment is None else comment),
             is_disabled=(self.is_disabled if is_disabled is None else is_disabled),
-            configuration=self.configuration,
+            configuration=(self.configuration if configuration is None else configuration),
         )
 
     def __lt__(self, other: "Directive"):

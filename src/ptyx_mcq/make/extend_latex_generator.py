@@ -143,6 +143,63 @@ class CurrentState:
     version_number: int = 0
 
 
+def parse_question_config(config: str) -> dict[HeaderConfigKeys, Any]:
+    """Return the configuration of the question as a dict."""
+    cfg: dict[HeaderConfigKeys, Any] = {}
+    # The `key=value` entries may be delimited either by a new line, by `,` or by `;` (or a mix of both).
+    for key_val in config.replace("\n", ";").replace(",", ";").split(";"):
+        match [_.strip() for _ in key_val.split("=", maxsplit=1)]:
+            case "mode", val:
+                # Control that the evaluation mode exists.
+                val = val.lower()
+                try:
+                    cfg[HeaderConfigKeys.mode] = ScoringStrategy(val)
+                except ValueError:
+                    raise NameError(
+                        f"Unknown evaluation mode: {val!r}."
+                        f" Implemented evaluation modes: {', '.join(ScoringStrategy)}"
+                    )
+            case "weight", val:
+                # Control that the weight is a positive float.
+                try:
+                    val = float(val)
+                    if val < 0:
+                        raise ValueError
+                except ValueError:
+                    raise ValueError(f"Invalid question's weight: {val!r}.")
+                cfg[HeaderConfigKeys.weight] = val
+
+            case key, val:
+                # Control that the configuration key exists.
+                if key not in SCORE_CONFIG_KEYS_TYPES:
+                    raise NameError(f"Unknown key in #QUESTION_CONFIG: {key!r}.")
+                # Convert the value according to `SCORE_CONFIG_KEYS_TYPES`.
+                cfg[HeaderConfigKeys(key)] = SCORE_CONFIG_KEYS_TYPES[HeaderConfigKeys(key)](val)
+
+            case [""]:
+                # Empty item, skip.
+                pass
+
+            case [val]:
+                # By default, a lonely numeric value is considered to be the weight of the question,
+                # any other type of value must be a scoring strategy name.
+                for key, val_type in (
+                    (HeaderConfigKeys.weight, float),
+                    (HeaderConfigKeys.mode, ScoringStrategy),
+                ):
+                    try:
+                        cfg[key] = val_type(val.lower())
+                        break
+                    except ValueError:
+                        pass
+                else:
+                    raise RuntimeError(
+                        f"Invalid line in #QUESTION_CONFIG: {key_val!r}."
+                        " Example: #QUESTION_CONFIG{ weight=1.5 ; mode=correct_minus_incorrect }."
+                    )
+    return cfg
+
+
 def _handle_multiline_answers(s):
     s = s.strip()
     if "\n" in s:
@@ -638,69 +695,15 @@ class MCQLatexGenerator(LatexGenerator):
         #QUESTION_CONFIG{ weight=1.5 ; mode=correct_minus_incorrect }
         """
         try:
-            self.__parse_QUESTION_CONFIG_tag(node)
+            if getattr(self, "mcq_question_number", None) is None:
+                raise RuntimeError("#QUESTION_CONFIG can only be used inside a question.")
+
+            for key, val in parse_question_config(node.arg(0)):
+                getattr(self.mcq_data, key)[self.mcq_question_number] = val
+
         except Exception:
             print_error(f"Invalid question config: {node.arg(0)!r}")
             raise
-
-    def __parse_QUESTION_CONFIG_tag(self, node: Node) -> None:
-        if getattr(self, "mcq_question_number", None) is None:
-            raise RuntimeError("#QUESTION_CONFIG can only be used inside a question.")
-
-        def _store(_key: HeaderConfigKeys, _val: Any) -> None:
-            _val_type = SCORE_CONFIG_KEYS_TYPES[_key]
-            getattr(self.mcq_data, _key)[self.mcq_question_number] = _val_type(_val)
-
-        # The `key=value` entries may be delimited either by a new line, by `,` or by `;` (or a mix of both).
-        for key_val in node.arg(0).replace("\n", ";").replace(",", ";").split(";"):
-            match [_.strip() for _ in key_val.split("=", maxsplit=1)]:
-                case "mode", val:
-                    # Control that the evaluation mode exists.
-                    val = val.lower()
-                    try:
-                        _store(HeaderConfigKeys.mode, val)
-                    except ValueError:
-                        raise NameError(
-                            f"Unknown evaluation mode: {val!r}."
-                            f" Implemented evaluation modes: {', '.join(ScoringStrategy)}"
-                        )
-                case "weight", val:
-                    # Control that the weight is a positive float.
-                    try:
-                        val = float(val)
-                        if val < 0:
-                            raise ValueError
-                    except ValueError:
-                        raise ValueError(f"Invalid question's weight: {val!r}.")
-                    _store(HeaderConfigKeys.weight, val)
-
-                case key, val:
-                    # Control that the configuration key exists.
-                    if key not in SCORE_CONFIG_KEYS_TYPES:
-                        raise NameError(f"Unknown key in #QUESTION_CONFIG: {key!r}.")
-                    _store(key, val)
-
-                case [""]:
-                    # Empty item, skip.
-                    pass
-
-                case [val]:
-                    # By default, a lonely numeric value is considered to be the weight of the question, and another
-                    #
-                    for key, val_type in (
-                        (HeaderConfigKeys.weight, float),
-                        (HeaderConfigKeys.mode, ScoringStrategy),
-                    ):
-                        try:
-                            _store(key, val_type(val.lower()))
-                            break
-                        except ValueError:
-                            pass
-                    else:
-                        raise RuntimeError(
-                            f"Invalid line in #QUESTION_CONFIG: {key_val!r}."
-                            " Example: #QUESTION_CONFIG{ weight=1.5 ; mode=correct_minus_incorrect }."
-                        )
 
     @staticmethod
     def _parse_sty_list(sty_packages: str) -> str:

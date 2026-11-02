@@ -13,6 +13,12 @@ RE_DIRECTIVE_CORE = "(?P<path>.+?)(:(?P<config>[^:]*))?"
 
 
 def parse_directive(line: str) -> tuple[re.Match[str], re.Match[str]] | None:
+    """
+    Parse an include directive.
+
+    Return two match objects (the prefix, and the directive itself with the path and the configuration).
+    If it is not a directive, return None instead.
+    """
     if (m1 := re.match(RE_DIRECTIVE_PREFIX, line)) is None:
         return None
     pos = m1.end()
