@@ -50,16 +50,16 @@ class ScoreData:
 
 
 class ScoringStrategy(StrEnum):
+    ALL = auto()
     SOME = auto()
     LENIENT_SOME = auto()
-    ALL = auto()
     PROPORTIONAL = auto()
-    PARTIAL_ANSWERS = auto()
-    PARTIAL_ANSWERS_QUADRATIC = auto()
-    SPECIAL_CORRECT_MINUS_INCORRECT = auto()
-    SPECIAL_CORRECT_MINUS_INCORRECT_QUADRATIC = auto()
     CORRECT_MINUS_INCORRECT = auto()
+    SPECIAL_CORRECT_MINUS_INCORRECT = auto()
+    PARTIAL_ANSWERS = auto()
     CORRECT_MINUS_INCORRECT_QUADRATIC = auto()
+    SPECIAL_CORRECT_MINUS_INCORRECT_QUADRATIC = auto()
+    PARTIAL_ANSWERS_QUADRATIC = auto()
     # Special case: skip the question
     SKIP = auto()
 
