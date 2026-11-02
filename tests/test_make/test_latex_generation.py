@@ -9,11 +9,12 @@ import shutil
 from pathlib import Path
 
 import pytest
+
 from ptyx.errors import ErrorInformation, PythonBlockError
 from ptyx.latex_generator import Compiler, Node
-
 from ptyx_mcq.make import make
 from ptyx_mcq.make.extend_latex_generator import SameAnswerError
+from ptyx_mcq.tools.evaluation_strategies import DEFAULT_SCORING_STRATEGY
 from ptyx_mcq.tools.parse_config.config import Configuration, DocumentId, OriginalQuestionNumber
 from tests import ASSETS_DIR
 from tests.test_make.toolbox import load_ptyx_file, normalize_text
@@ -332,7 +333,7 @@ def test_question_config_include_syntax(tmp_path):
     c = load_ptyx_file(ptyx_path)
     c.generate_syntax_tree()
     c.get_latex()
-    assert c.latex_generator.mcq_data.mode["default"] == "all"
+    assert c.latex_generator.mcq_data.mode["default"] == DEFAULT_SCORING_STRATEGY
     assert c.latex_generator.mcq_data.mode[2] == "some"
     assert c.latex_generator.mcq_data.weight["default"] == 1.0
     assert c.latex_generator.mcq_data.weight[1] == 2.0

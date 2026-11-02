@@ -162,12 +162,12 @@ def parse_question_config(config: str) -> dict[HeaderConfigKeys, Any]:
             case "weight", val:
                 # Control that the weight is a positive float.
                 try:
-                    val = float(val)
-                    if val < 0:
+                    val_as_float = float(val)
+                    if val_as_float < 0:
                         raise ValueError
                 except ValueError:
                     raise ValueError(f"Invalid question's weight: {val!r}.")
-                cfg[HeaderConfigKeys.weight] = val
+                cfg[HeaderConfigKeys.weight] = val_as_float
 
             case key, val:
                 # Control that the configuration key exists.
