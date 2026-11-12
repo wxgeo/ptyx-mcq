@@ -2,6 +2,131 @@
 
 <!-- version list -->
 
+## v32.0.0 (2026-11-12)
+
+### Bug Fixes
+
+- Adjust the first column width in the XLSX file.
+  ([`d81af29`](https://github.com/wxgeo/ptyx-mcq/commit/d81af29a32e7b3ee894a46560a77e3a03d281d3f))
+
+- Fix regression in configuration parsing.
+  ([`48aebc4`](https://github.com/wxgeo/ptyx-mcq/commit/48aebc40fabe46a64bbbdd423000673897ef690b))
+
+- Fix remaining bugs in new include syntax.
+  ([`db8cc00`](https://github.com/wxgeo/ptyx-mcq/commit/db8cc0040a667c6736023264d97dc1b4dc69699e))
+
+- Incorrect XLSX file when questions numbers where not consecutive.
+  ([`78dd84d`](https://github.com/wxgeo/ptyx-mcq/commit/78dd84d845e097ec24d0dd2649fabf81e924622a))
+
+- Minor fix.
+  ([`b93de95`](https://github.com/wxgeo/ptyx-mcq/commit/b93de95791f8973b5792f6a2a5fdbffd99bec567))
+
+- Trailing "END" appeared after mcq introduction. Also improve some error messages.
+  ([`7e4d1e3`](https://github.com/wxgeo/ptyx-mcq/commit/7e4d1e35deaca131a1ee910a1a461fb4f4d8ce09))
+
+- Update the cached students's names after a configuration's file update.
+  ([`9ad34cc`](https://github.com/wxgeo/ptyx-mcq/commit/9ad34ccd2f43851bd5de5f878f2750c61cfd410a))
+
+### Features
+
+- Add `mcq fix doc` and `mcq fix name` to CLI.
+  ([`dbea035`](https://github.com/wxgeo/ptyx-mcq/commit/dbea035cff8cbd52e960485a3bb37dc822579c71))
+
+- Add detailed stats for each question.
+  ([`7fee6cf`](https://github.com/wxgeo/ptyx-mcq/commit/7fee6cfec975b87abccc9dcd9856c4b5abb504c2))
+
+- Add get_max_score_per_question() and ScanData.get_student_doc() to API.
+  ([`f39370f`](https://github.com/wxgeo/ptyx-mcq/commit/f39370f4db93676b0f94b191f1969308638c5999))
+
+- Add new reset_review() method to ScanData.
+  ([`3943cf5`](https://github.com/wxgeo/ptyx-mcq/commit/3943cf5723d0482efc403c4c28284efff45676a9))
+
+- Change again the new include syntax, for more flexibility and a simpler implementation.
+  ([`7b6dd83`](https://github.com/wxgeo/ptyx-mcq/commit/7b6dd838b56dfa8eb2552e2e8ff47466c31db280))
+
+- Create a standalone function to parse a question's configuration.
+  ([`1fc0a6d`](https://github.com/wxgeo/ptyx-mcq/commit/1fc0a6dc35658c226865417b80021c2f0239e527))
+
+- Improve the placement of the scores on the amended PDF files.
+  ([`8a212d5`](https://github.com/wxgeo/ptyx-mcq/commit/8a212d56fc3da35a54424cfd8918d829972efb2f))
+
+- Inject some pretty printing into the Student class.
+  ([`60f184a`](https://github.com/wxgeo/ptyx-mcq/commit/60f184ae262aac26ee9f5a07d23d55e2e026726a))
+
+- Modernize scores_manager API by using Student() instances.
+  ([`7f37ced`](https://github.com/wxgeo/ptyx-mcq/commit/7f37ced0c81678ead338ea2b3653cd4154411e5d))
+
+- More explicit error messages when the config could not be updated.
+  ([`8de5e60`](https://github.com/wxgeo/ptyx-mcq/commit/8de5e602214767cbec0279e4d679d8896110cc40))
+
+- New ScanData.reset() method, used by ptyx-mcq-corrector.
+  ([`43da9bc`](https://github.com/wxgeo/ptyx-mcq/commit/43da9bc1114e1bcacd2e01e183dff514087119da))
+
+- New scoring strategy added (lenient_some).
+  ([`7655c83`](https://github.com/wxgeo/ptyx-mcq/commit/7655c837338775d1771f0159bc52ae393f2ab703))
+
+- New syntax added to set question's weight.
+  ([`edf6f78`](https://github.com/wxgeo/ptyx-mcq/commit/edf6f78164bb19a5ebf005a9053a23bb1ecec8bc))
+
+- Nicer diagram.
+  ([`221d4f9`](https://github.com/wxgeo/ptyx-mcq/commit/221d4f9fff4e6e15db209a05c4fd8bfe301f8255))
+
+- Questions' names are stored in the config file now.
+  ([`a841a1d`](https://github.com/wxgeo/ptyx-mcq/commit/a841a1d8aecad8ac05b85015898ad1722dc77eb6))
+
+- Raise an explicit error when an invalid evaluation mode is selected.
+  ([`bede6db`](https://github.com/wxgeo/ptyx-mcq/commit/bede6db3103a1530a30685f4603c4c4f22d71a19))
+
+- Rename `mcq doc` to `mcq info`, to avoid confusion with `mcq fix doc`.
+  ([`d8829af`](https://github.com/wxgeo/ptyx-mcq/commit/d8829af3959864ea7ee00c0c267a78880cba37ae))
+
+- Reorder scoring strategies.
+  ([`0309501`](https://github.com/wxgeo/ptyx-mcq/commit/03095010416608a55c4502a73e1e57be37ca013f))
+
+- Skipped questions now clearly appear as such in the generated pdf correction.
+  ([`9d821f6`](https://github.com/wxgeo/ptyx-mcq/commit/9d821f6114a6afe623ea4bde395fb0e6ea0c36ec))
+
+- Support a threading or multiprocessing event to cancel the current scan analyze cooperatively.
+  ([`131220e`](https://github.com/wxgeo/ptyx-mcq/commit/131220e24506469a61d7c97b2c9324a6cf3cc43e))
+
+- The function `get_file_with_extension()` now accepts a .ptyx file with the same stem.
+  ([`c31613a`](https://github.com/wxgeo/ptyx-mcq/commit/c31613a3fc44b46a848bbaae4aa7176296bf8fb5))
+
+### Refactoring
+
+- Avoid writing code directly in __init__.py, to make partial loading of a module easier.
+  ([`6029bea`](https://github.com/wxgeo/ptyx-mcq/commit/6029bea2a7eaaaa4cb5899ab8cf169b97b018fe1))
+
+- Create a separate file for checkboxes styles.
+  ([`8daf062`](https://github.com/wxgeo/ptyx-mcq/commit/8daf0620d4ab3318a6ca26194852f6c48397aad2))
+
+- Improve types for scores.
+  ([`c97525f`](https://github.com/wxgeo/ptyx-mcq/commit/c97525f10db23ddda7ef6fa4f3398012352d5395))
+
+- Much clear distinction between class scores and work scores.
+  ([`f29f293`](https://github.com/wxgeo/ptyx-mcq/commit/f29f293961ab09925cb989aa4d6e8c66d11d0c85))
+
+- Remove some minor old api features.
+  ([`a65b6fc`](https://github.com/wxgeo/ptyx-mcq/commit/a65b6fc9781631cff432378a03a9221866cadcf9))
+
+- Reorganize scores management.
+  ([`bdb1967`](https://github.com/wxgeo/ptyx-mcq/commit/bdb1967317659f9e0790a4ce11edcbddc8d752c7))
+
+- Split parse_directive() in two functions, to make it easier to reuse.
+  ([`5794072`](https://github.com/wxgeo/ptyx-mcq/commit/5794072d08e6ec5480e4a227e3e966e8892039be))
+
+- Split the code handling the include directives accross a new module.
+  ([`7cf15c1`](https://github.com/wxgeo/ptyx-mcq/commit/7cf15c1da4e5b9cef58a51e418c28b772ecbbde9))
+
+### Testing
+
+- Update failing test.
+  ([`907d5fd`](https://github.com/wxgeo/ptyx-mcq/commit/907d5fd839225ff4103153d5f2255328f6134ebc))
+
+- Update tests.
+  ([`569ae30`](https://github.com/wxgeo/ptyx-mcq/commit/569ae30dda3a2babc62b8be20622e1ac80f11f88))
+
+
 ## v31.2.0 (2026-06-02)
 
 ### Bug Fixes
