@@ -21,7 +21,7 @@ class ProcessInterrupted(BaseException):
 
 
 def is_ptyx_mcq_file(path: Path) -> bool:
-    """Test whether the file looks like a pTyX file."""
+    """Test whether the file looks like a pTyX-MCQ file."""
     if not path.is_file():
         return False
     with open(path) as f:
@@ -46,9 +46,12 @@ def get_file_or_sysexit(path: Path, *, extension: str, autodetect_ptyx_files=Tru
 def get_file_with_extension(path: Path, *, extension: str, autodetect_ptyx_files: bool = True) -> Path:
     """Get the path of the pTyX file corresponding to the given `path` and the specified extension.
 
-    If `path` is already the path of a pTyX file of the required extension, just return `path` unchanged.
-    Else, `path` must be a directory which contains a single pTyX file with the specified extension, and the path
-    of this ptyx file is returned.
+    The path `path` must be either:
+    - the path of a pTyX file of the required extension,
+    - the path of a directory containing a single pTyX file with the specified extension,
+    - a `.ptyx` file, whose extension will be changed to the required one.
+
+    The path of the file will be returned.
 
     Raise `FileNotFoundError` if `path` is neither a directory nor a pTyX file, or if `path`
     is a directory but contains no pTyX file or several ptyx files.
@@ -57,6 +60,8 @@ def get_file_with_extension(path: Path, *, extension: str, autodetect_ptyx_files
     if autodetect_ptyx_files and extension == ".ptyx" and is_ptyx_mcq_file(path):
         # Detect pTyX files even if there have another extension, like `.tex`... is it still useful?
         return path
+    if path.name.endswith(".ptyx"):
+        path = path.with_suffix(extension)
     if path.name.endswith(extension):
         if not path.is_file():
             raise FileNotFoundError(f"File '{path}' not found.")
