@@ -22,19 +22,19 @@ class ProcessInterrupted(BaseException):
 
 def is_ptyx_mcq_file(path: Path) -> bool:
     """Test whether the file looks like a pTyX-MCQ file."""
-    if not path.is_file():
+    if not path.is_file() or not path.name.endswith(".ptyx"):
         return False
     with open(path) as f:
         return "#LOAD{mcq}" in f.read(1000)
 
 
-def get_file_or_sysexit(path: Path, *, extension: str, autodetect_ptyx_files=True) -> Path:
+def get_file_or_sysexit(path: Path, *, extension: str) -> Path:
     """Get the path of the file corresponding to the given `path`, with given extension.
 
     If the file is not found, exit calling `sys.exit(1)`.
     """
     try:
-        return get_file_with_extension(path, extension=extension, autodetect_ptyx_files=autodetect_ptyx_files)
+        return get_file_with_extension(path, extension=extension)
     except OSError:
         traceback.print_exc()
         resolve = f" ({path.resolve()})" if str(path) != str(path.resolve()) else ""
@@ -43,7 +43,7 @@ def get_file_or_sysexit(path: Path, *, extension: str, autodetect_ptyx_files=Tru
         raise FatalError
 
 
-def get_file_with_extension(path: Path, *, extension: str, autodetect_ptyx_files: bool = True) -> Path:
+def get_file_with_extension(path: Path, *, extension: str) -> Path:
     """Get the path of the pTyX file corresponding to the given `path` and the specified extension.
 
     The path `path` must be either:
@@ -57,10 +57,9 @@ def get_file_with_extension(path: Path, *, extension: str, autodetect_ptyx_files
     is a directory but contains no pTyX file or several ptyx files.
     """
     path = path.expanduser().resolve()
-    if autodetect_ptyx_files and extension == ".ptyx" and is_ptyx_mcq_file(path):
-        # Detect pTyX files even if there have another extension, like `.tex`... is it still useful?
-        return path
     if path.name.endswith(".ptyx"):
+        if not is_ptyx_mcq_file(path):
+            raise ValueError("The pTyX file does not load the MCQ extension.")
         path = path.with_suffix(extension)
     if path.name.endswith(extension):
         if not path.is_file():
@@ -81,31 +80,6 @@ def get_file_with_extension(path: Path, *, extension: str, autodetect_ptyx_files
     return path
 
 
-# config_path = config_path.expanduser().resolve()
-#         if config_path.is_dir():
-#             self.configfile = search_by_extension(config_path, ".ptyx.mcq.config.json")
-#         elif config_path.is_file():
-#             self.configfile = config_path.with_suffix(".ptyx.mcq.config.json")
-#             if not self.configfile.is_file():
-#                 raise FileNotFoundError(f"File '{self.configfile}' not found.")
-
-
-# def search_by_extension(directory: Path, ext: str) -> Path:
-#     """Search for a file with extension `ext` in given directory.
-#
-#     Search is NOT case sensible.
-#     If no or more than one file is found, an error is raised.
-#     """
-#     ext = ext.lower()
-#     paths = [pth for pth in directory.glob("*") if pth.name.lower().endswith(ext)]
-#     if not paths:
-#         raise FileNotFoundError(f"No {ext!r} file found in that directory: {directory} ! ")
-#     elif len(paths) > 1:
-#         raise RuntimeError(
-#             f"Several {ext!r} file found in that directory: {directory} ! "
-#             "Keep only one of them and delete all the others (or rename their extensions)."
-#         )
-#     return paths[0]
 def print_framed_msg(msg: str) -> None:
     decoration = max(len(line) for line in msg.split("\n")) * "-"
     print(decoration)
