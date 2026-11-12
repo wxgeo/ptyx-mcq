@@ -19,6 +19,7 @@ from ptyx_mcq.scan.data.questions import Answer
 from ptyx_mcq.scan.data.scan_data import ScanData
 from ptyx_mcq.scan.picture_analyze.types_declaration import Col, Pixel
 from ptyx_mcq.tools.colors import RGB, Color
+from ptyx_mcq.tools.evaluation_strategies import ScoringStrategy
 from ptyx_mcq.tools.io_tools import generate_progression_callback
 from ptyx_mcq.tools.parse_config.config import (
     OriginalQuestionNumber,
@@ -105,12 +106,16 @@ def amend_doc(doc: Document, max_score_per_question: dict[QuestionNumberOrDefaul
                 else:
                     top_left_positions[q] = answer.position
         for q in top_left_positions:
-            earn = pic.questions[q].score
+            question = pic.questions[q]
+            earn = question.score
             assert earn is not None
             maximum = max_score_per_question.get(q, max_score_per_question["default"])
             assert isinstance(maximum, (float, int)), repr(maximum)
             i, j = top_left_positions[q]
-            _write_score(draw, (i, Col(j - size)), earn, maximum, size, anchor="rt")
+            assert question.scoring_strategy is not None
+            _write_score(
+                draw, (i, Col(j - size)), earn, maximum, size, mode=question.scoring_strategy, anchor="rt"
+            )
         # We will now sort pages.
         # For that, we use questions numbers: the page which displays
         # the smaller questions numbers is the first one, and so on.
@@ -161,15 +166,26 @@ def _correct_checkboxes(draw: ImageDraw.ImageDraw, answer: Answer, size: int) ->
 
 
 def _write_score(
-    draw: ImageDraw.ImageDraw, pos: Pixel, earn: float, maximum: float, size: int, anchor="lt"
+    draw: ImageDraw.ImageDraw,
+    pos: Pixel,
+    earn: float,
+    maximum: float,
+    size: int,
+    mode: ScoringStrategy | None = None,
+    anchor="lt",
 ) -> None:
     i, j = pos
     fnt = ImageFont.truetype("FreeSerif.ttf", int(0.7 * size))
-    # Add 0.0 to result after rounding, to prevent negative zeros (-0.0).
-    # (Don't use `:zn` formatter, since it will fail on integers!)
-    draw.text(
-        (j, i), f"{round(earn, 2) + 0.0:n}/{round(maximum, 2):n}", anchor=anchor, font=fnt, fill=Color.red
-    )
+    # Test with `==`, not `is`!
+    if mode == ScoringStrategy.SKIP:
+        text = "(SKIPPED)"
+        color = Color.gray
+    else:
+        # Add 0.0 to result after rounding, to prevent negative zeros (-0.0).
+        # (Don't use `:zn` formatter, since it will fail on integers!)
+        text = f"{round(earn, 2) + 0.0:n}/{round(maximum, 2):n}"
+        color = Color.red
+    draw.text((j, i), text, anchor=anchor, font=fnt, fill=color)
 
 
 def _dash_generator(

@@ -2,6 +2,7 @@ from dataclasses import dataclass
 from enum import Enum, auto
 
 from ptyx_mcq.scan.picture_analyze.types_declaration import Col, Pixel, Row
+from ptyx_mcq.tools.evaluation_strategies import ScoringStrategy
 from ptyx_mcq.tools.parse_config.subtypes import CbxRef, OriginalAnswerNumber, OriginalQuestionNumber
 
 CbxPositions = dict[CbxRef, tuple[Row, Col]]
@@ -133,6 +134,7 @@ class Question:
     question_num: OriginalQuestionNumber
     answers: dict[OriginalAnswerNumber, Answer]
     score: float | None = None
+    scoring_strategy: ScoringStrategy | None = None
 
     def __iter__(self):
         return iter(answer for answer in self.answers.values())

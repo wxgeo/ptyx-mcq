@@ -13,6 +13,7 @@ class Color:
     orange = (255, 128, 0)
     purple = (128, 128, 0)
     pink = (255, 192, 203)
+    gray = (150, 150, 150)
 
 
 RGB = tuple[int, int, int]

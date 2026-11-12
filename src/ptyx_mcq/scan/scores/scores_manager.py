@@ -20,10 +20,6 @@ if TYPE_CHECKING:
     from ptyx_mcq.scan.scan_doc import MCQPictureParser
 
 
-class SkipQuestion(Exception):
-    """Error raised to skip a question. It should be intercepted by the caller."""
-
-
 class ScoresManager:
     """
     Main class for scores' management.
@@ -40,7 +36,7 @@ class ScoresManager:
         """Return the maximal global score that can be obtained, considering the questions' weight."""
         return self.mcq_parser.config.max_score
 
-    def _get_raw_question_score(self, question: Question) -> tuple[float, ScoreData]:
+    def _get_raw_question_score(self, question: Question) -> tuple[float, ScoreData, ScoringStrategy]:
         """
         Get the score obtained for the question, as well as a `ScoreData` instance with the question's main parameters.
 
@@ -48,46 +44,46 @@ class ScoresManager:
         """
         q = question.question_num
         cfg = self.mcq_parser.config
-
-        mode = cfg.mode.get(q, cfg.mode["default"])
-        if mode == ScoringStrategy.SKIP:
-            # Can be used to skip a bogus question which would have been detected only after the exam.
-            raise SkipQuestion
-
-        try:
-            func: ScoringFunc = getattr(ScoringImplementations, mode)
-        except AttributeError:
-            raise AttributeError(f"Unknown evaluation mode: {mode!r}.")
-
-        answered = {answer.answer_num for answer in question if answer.checked}
-        correct_ones = {answer.answer_num for answer in question if answer.is_correct}
-        neutralized_ones = {answer.answer_num for answer in question if answer.neutralized}
-        all_answers = {answer.answer_num for answer in question}
-
-        # Neutralized answers must be removed from each set of answers.
-        # (Typically, neutralized answers are answers which were detected faulty during or after the
-        # examination).
-        answered -= neutralized_ones
-        correct_ones -= neutralized_ones
-        all_answers -= neutralized_ones
-
-        ans_data = AnswersData(checked=answered, correct=correct_ones, all=all_answers)
         scores_data = ScoreData(
             correct=float(cfg.correct.get(q, cfg.correct["default"])),
             skipped=float(cfg.skipped.get(q, cfg.skipped["default"])),
             incorrect=float(cfg.incorrect.get(q, cfg.incorrect["default"])),
         )
-        earn = func(ans_data, scores_data)
+        mode = cfg.mode.get(q, cfg.mode["default"])
 
-        floor = cfg.floor.get(q, cfg.floor["default"])
-        assert floor is None or isinstance(floor, (float, int))
-        if floor is not None and earn < floor:
-            earn = floor
-        ceil = cfg.ceil.get(q, cfg.ceil["default"])
-        assert ceil is None or isinstance(ceil, (float, int))
-        if ceil is not None and earn > ceil:
-            earn = ceil
-        return earn, scores_data
+        if mode == ScoringStrategy.SKIP:
+            # Can be used to skip a bogus question which would have been detected only after the exam.
+            earn = 0.0
+        else:
+            try:
+                func: ScoringFunc = getattr(ScoringImplementations, mode)
+            except AttributeError:
+                raise AttributeError(f"Unknown evaluation mode: {mode!r}.")
+
+            answered = {answer.answer_num for answer in question if answer.checked}
+            correct_ones = {answer.answer_num for answer in question if answer.is_correct}
+            neutralized_ones = {answer.answer_num for answer in question if answer.neutralized}
+            all_answers = {answer.answer_num for answer in question}
+
+            # Neutralized answers must be removed from each set of answers.
+            # (Typically, neutralized answers are answers which were detected faulty during or after the
+            # examination).
+            answered -= neutralized_ones
+            correct_ones -= neutralized_ones
+            all_answers -= neutralized_ones
+
+            ans_data = AnswersData(checked=answered, correct=correct_ones, all=all_answers)
+            earn = func(ans_data, scores_data)
+
+            floor = cfg.floor.get(q, cfg.floor["default"])
+            assert floor is None or isinstance(floor, (float, int))
+            if floor is not None and earn < floor:
+                earn = floor
+            ceil = cfg.ceil.get(q, cfg.ceil["default"])
+            assert ceil is None or isinstance(ceil, (float, int))
+            if ceil is not None and earn > ceil:
+                earn = ceil
+        return earn, scores_data, mode
 
     def calculate_scores(self, verbose: bool = False) -> None:
         """
@@ -98,24 +94,26 @@ class ScoresManager:
             if verbose:
                 print(f"Test {doc_id} - {doc.student_name}")
             for q, question in doc.questions.items():
-                try:
-                    earn, score_data = self._get_raw_question_score(question)
-                except SkipQuestion:
+                if doc_id == 34:
+                    print("!!!!!", q)
+                earn, score_data, mode = self._get_raw_question_score(question)
+                question.scoring_strategy = mode
+                if mode is ScoringStrategy.SKIP:
                     if verbose:
                         print(f"Question {q} skipped...")
-                    continue
-
-                if earn == score_data.correct:
-                    color = TermColors.GREEN
-                elif earn == score_data.incorrect:
-                    color = TermColors.RED
+                    question.score = 0.0
                 else:
-                    color = TermColors.YELLOW
-                if verbose:
-                    print("-  " + term_color(f"Rating (Q{q}): {earn:g}", color=color))
-                # Don't forget to include the weight of the question to calculate the global score.
-                earn *= float(cfg.weight.get(q, cfg.weight["default"]))
-                question.score = earn
+                    if earn == score_data.correct:
+                        color = TermColors.GREEN
+                    elif earn == score_data.incorrect:
+                        color = TermColors.RED
+                    else:
+                        color = TermColors.YELLOW
+                    if verbose:
+                        print("-  " + term_color(f"Rating (Q{q}): {earn:g}", color=color))
+                    # Don't forget to include the weight of the question to calculate the global score.
+                    earn *= float(cfg.weight.get(q, cfg.weight["default"]))
+                    question.score = earn
         self.work_scores = {
             Student(name=doc.student_name, id=doc.student_id): doc.score
             for doc in self.mcq_parser.scan_data
